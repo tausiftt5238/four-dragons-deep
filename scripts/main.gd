@@ -17,6 +17,9 @@ const FACING_ROT: Array[float] = [0.0, -PI / 2.0, PI, PI / 2.0]
 var player_pos: Vector2i = Vector2i.ZERO
 var player_facing: int   = 0
 
+var cam_yaw: float  = 0.0  # continuous Y rotation — never wrapped, avoids shortest-path issues
+var turn_tween: Tween
+
 var floor_num: int = 1
 var floor_label: Label
 
@@ -102,6 +105,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	_resize_minimap()
 
 	_sync_player()
+	_snap_cam_yaw()
 
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -180,14 +184,28 @@ func _sync_player() -> void:
 		EYE_HEIGHT,
 		player_pos.y * Dungeon.CELL_SIZE
 	)
-	cam_base_pos  = pos
-	cam.position  = pos
-	cam.rotation  = Vector3(0.0, FACING_ROT[player_facing], 0.0)
+	cam_base_pos   = pos
+	cam.position   = pos
 	torch.position = pos + Vector3(0.0, 0.3, 0.0)
 	_mark_visited()
 	minimap_ctrl.player_pos    = player_pos
 	minimap_ctrl.player_facing = player_facing
 	minimap_ctrl.queue_redraw()
+
+
+# Snaps camera rotation to the current facing with no animation. Used on level load.
+func _snap_cam_yaw() -> void:
+	cam_yaw = FACING_ROT[player_facing]
+	cam.rotation = Vector3(0.0, cam_yaw, 0.0)
+
+
+# Smoothly rotates the camera by delta_yaw radians. Kills any in-progress turn first.
+func _tween_turn(delta_yaw: float) -> void:
+	cam_yaw += delta_yaw
+	if turn_tween:
+		turn_tween.kill()
+	turn_tween = create_tween()
+	turn_tween.tween_property(cam, "rotation:y", cam_yaw, 0.12)
 
 
 # Returns true if (col, row) is within bounds and not a wall.
@@ -246,13 +264,15 @@ func _input(event: InputEvent) -> void:
 			else:
 				_shake_camera()
 		KEY_LEFT:
-			# Rotate 90° counter-clockwise: subtract 1 with wrap-around
 			player_facing = (player_facing + 3) % 4
-			moved = true
+			_tween_turn(PI / 2.0)
+			minimap_ctrl.player_facing = player_facing
+			minimap_ctrl.queue_redraw()
 		KEY_RIGHT:
-			# Rotate 90° clockwise
 			player_facing = (player_facing + 1) % 4
-			moved = true
+			_tween_turn(-PI / 2.0)
+			minimap_ctrl.player_facing = player_facing
+			minimap_ctrl.queue_redraw()
 	if moved:
 		_sync_player()
 		_check_portal()
