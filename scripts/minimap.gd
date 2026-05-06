@@ -22,6 +22,9 @@ var exit_pos: Vector2i = Vector2i(-1, -1)
 # Pixel size of each maze cell on the minimap.
 const CELL_PX: int = 10
 
+# Half-width of the view window in cells. The full window is VIEW_HALF*2 square.
+const VIEW_HALF: int = 5
+
 # Padding (px) between the map edge and the background rectangle border.
 const PAD: int = 5
 
@@ -51,44 +54,45 @@ func _draw() -> void:
 	if maze.is_empty():
 		return
 
-	var rows: int = maze.size()
-	var cols: int = (maze[0] as Array).size()
+	var view: int = VIEW_HALF * 2
+	var map_w: float = view * CELL_PX + PAD * 2
+	var map_h: float = view * CELL_PX + PAD * 2
 
-	# Total pixel size of the map area including padding on all sides.
-	var map_w: float = cols * CELL_PX + PAD * 2
-	var map_h: float = rows * CELL_PX + PAD * 2
-
-	# Background panel
 	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), C_BG)
 
-	# Draw every revealed cell as a small rectangle. A 1px gap between cells
-	# (CELL_PX - 1) creates a subtle grid that makes individual tiles easier to read.
-	# Unvisited cells are skipped — they blend into the dark background panel.
-	for row in range(rows):
-		var row_data: Array = maze[row]
-		for col in range(row_data.size()):
-			if not visited.has(Vector2i(col, row)):
+	# Top-left maze cell of the view window.
+	var origin: Vector2i = player_pos - Vector2i(VIEW_HALF, VIEW_HALF)
+
+	for vr: int in range(view):
+		for vc: int in range(view):
+			var mc: int = origin.x + vc
+			var mr: int = origin.y + vr
+			# Skip out-of-bounds and unvisited cells.
+			if mr < 0 or mr >= maze.size() or mc < 0:
 				continue
-			var rx: float = PAD + col * CELL_PX
-			var ry: float = PAD + row * CELL_PX
-			var c: Color = C_WALL if row_data[col] == 1 else C_FLOOR
+			var row_data: Array = maze[mr] as Array
+			if mc >= row_data.size():
+				continue
+			if not visited.has(Vector2i(mc, mr)):
+				continue
+			var rx: float = PAD + vc * CELL_PX
+			var ry: float = PAD + vr * CELL_PX
+			var c: Color = C_WALL if row_data[mc] == 1 else C_FLOOR
 			draw_rect(Rect2(rx, ry, CELL_PX - 1, CELL_PX - 1), c)
 
-	# Portal marker — drawn over the floor tile so it's visible as soon as
-	# the cell is revealed. Skipped if exit_pos is the sentinel (-1,-1).
+	# Portal marker within the view window.
 	if exit_pos.x >= 0 and visited.has(exit_pos):
-		var rx: float = PAD + exit_pos.x * CELL_PX
-		var ry: float = PAD + exit_pos.y * CELL_PX
-		draw_rect(Rect2(rx, ry, CELL_PX - 1, CELL_PX - 1), C_PORTAL)
+		var vc: int = exit_pos.x - origin.x
+		var vr: int = exit_pos.y - origin.y
+		if vc >= 0 and vc < view and vr >= 0 and vr < view:
+			draw_rect(Rect2(PAD + vc * CELL_PX, PAD + vr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_PORTAL)
 
-	# Player marker: a filled circle at the cell centre with a short line
-	# extending in the facing direction so the player can tell which way they face.
-	var cx: float = PAD + player_pos.x * CELL_PX + CELL_PX * 0.5
-	var cy: float = PAD + player_pos.y * CELL_PX + CELL_PX * 0.5
+	# Player is always at the centre of the window.
+	var cx: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
+	var cy: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
 	var center: Vector2 = Vector2(cx, cy)
 	var tip: Vector2 = center + FACING_DIR[player_facing] * (CELL_PX * 0.65)
 	draw_circle(center, 3.0, C_PLAYER)
 	draw_line(center, tip, C_PLAYER, 2.0)
 
-	# Border drawn after cells so it overlaps any edge bleed from cell rects.
 	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), C_BORDER, false, 1.5)

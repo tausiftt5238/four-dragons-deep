@@ -131,9 +131,9 @@ func _setup_minimap() -> void:
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
 # Called after every level load because maps can differ in dimensions.
 func _resize_minimap() -> void:
-	var maze: Array[Array] = current_level.maze
-	var map_w: float = Minimap.CELL_PX * (maze[0] as Array).size() + Minimap.PAD * 2
-	var map_h: float = Minimap.CELL_PX * maze.size() + Minimap.PAD * 2
+	var view: int = Minimap.VIEW_HALF * 2
+	var map_w: float = Minimap.CELL_PX * view + Minimap.PAD * 2
+	var map_h: float = Minimap.CELL_PX * view + Minimap.PAD * 2
 	var margin: float = 10.0
 
 	# Both horizontal anchors = 1 pins the right edge to the viewport right edge;
