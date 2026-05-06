@@ -17,6 +17,9 @@ const FACING_ROT: Array[float] = [0.0, -PI / 2.0, PI, PI / 2.0]
 var player_pos: Vector2i = Vector2i.ZERO
 var player_facing: int   = 0
 
+var floor_num: int = 1
+var floor_label: Label
+
 var cam: Camera3D
 var torch: OmniLight3D
 var minimap_ctrl: Minimap
@@ -127,6 +130,17 @@ func _setup_minimap() -> void:
 	minimap_ctrl.visited = visited  # Shared reference — no copy needed
 	layer.add_child(minimap_ctrl)
 
+	floor_label = Label.new()
+	floor_label.text = "Floor 1"
+	floor_label.anchor_left   = 0.0
+	floor_label.anchor_right  = 1.0
+	floor_label.anchor_top    = 0.0
+	floor_label.anchor_bottom = 0.0
+	floor_label.offset_top    = 10.0
+	floor_label.offset_bottom = 40.0
+	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	layer.add_child(floor_label)
+
 
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
 # Called after every level load because maps can differ in dimensions.
@@ -190,7 +204,10 @@ func _is_open(col: int, row: int) -> bool:
 # transitions to the next level. Called after every successful move.
 func _check_portal() -> void:
 	if current_level.next_scene != "" and player_pos == current_level.exit_pos:
-		_load_level(current_level.next_scene, false)
+		floor_num += 1
+		floor_label.text = "Floor %d" % floor_num
+		visited_by_map.erase(current_level.next_scene)
+		_load_level(current_level.next_scene, true)
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
