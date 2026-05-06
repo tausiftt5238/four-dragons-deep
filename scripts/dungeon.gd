@@ -16,7 +16,8 @@ const WALL_HEIGHT: float = 2.0
 # Reads all visual settings and the portal position from the Level.
 func build(level: Level) -> void:
 	_build_geometry(level)
-	_add_exit_marker(level.exit_pos)
+	if level.exit_pos.x >= 0:
+		_add_exit_marker(level.exit_pos)
 	_setup_environment()
 
 

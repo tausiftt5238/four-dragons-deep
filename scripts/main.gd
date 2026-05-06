@@ -1,6 +1,6 @@
 # Main
 # Top-level game controller. Owns player state, camera, torch, and minimap.
-# Delegates 3D geometry to Dungeon and map data to Level subclasses (map1, map2).
+# Delegates 3D geometry to Dungeon and map data to Level subclasses.
 # On startup it loads Map 1; stepping on the portal cell triggers a level swap.
 extends Node3D
 
@@ -189,7 +189,7 @@ func _is_open(col: int, row: int) -> bool:
 # Checks whether the player is standing on the portal tile and, if so,
 # transitions to the next level. Called after every successful move.
 func _check_portal() -> void:
-	if player_pos == current_level.exit_pos:
+	if current_level.next_scene != "" and player_pos == current_level.exit_pos:
 		_load_level(current_level.next_scene, false)
 
 

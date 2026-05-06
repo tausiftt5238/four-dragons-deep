@@ -1,5 +1,5 @@
 # Map 1 — the starting dungeon with warm stone walls.
-# Portal at (8,7) leads to Map 2. Player starts at (1,1) facing South.
+# Player starts at (1,1) facing South.
 extends Level
 
 
@@ -24,9 +24,3 @@ func _ready() -> void:
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
-
-	exit_pos    = Vector2i(8, 7)
-	entry_pos   = Vector2i(7, 7)
-	entry_facing = 1  # East — facing the portal
-
-	next_scene = "res://scenes/map2.tscn"

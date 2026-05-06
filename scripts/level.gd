@@ -1,7 +1,7 @@
 # Level
 # Base class for all map data scripts. Holds the maze layout, visual colours,
 # and the portal positions that main.gd reads during scene transitions.
-# Each map (map1.gd, map2.gd, …) extends this and sets the fields in _ready().
+# Each map script extends this and sets the fields in _ready().
 class_name Level extends Node3D
 
 # 2D maze layout: 1 = wall, 0 = open floor.
@@ -23,7 +23,7 @@ var entry_pos: Vector2i    = Vector2i(7, 7)
 var entry_facing: int      = 1  # East — facing the portal at (8,7)
 
 # The portal tile. Stepping onto this cell triggers a scene transition.
-var exit_pos: Vector2i     = Vector2i(8, 7)
+var exit_pos: Vector2i     = Vector2i(-1, -1)
 
 # Path to the scene file loaded when the player steps through the portal.
 var next_scene: String     = ""
