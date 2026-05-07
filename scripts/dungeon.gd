@@ -11,6 +11,9 @@ const CELL_SIZE: float = 2.0
 # Height of wall blocks.
 const WALL_HEIGHT: float = 2.0
 
+# Chest root nodes keyed by grid position so they can be removed on pickup.
+var _chest_nodes: Dictionary = {}
+
 
 # Entry point — call once after adding Dungeon to the scene tree.
 # Reads all visual settings and the portal position from the Level.
@@ -18,6 +21,7 @@ func build(level: Level) -> void:
 	_build_geometry(level)
 	if level.exit_pos.x >= 0:
 		_add_exit_marker(level.exit_pos)
+	_add_chests(level)
 	_setup_environment()
 
 
@@ -77,6 +81,68 @@ func _add_exit_marker(exit_pos: Vector2i) -> void:
 	light.omni_range = 4.0
 	light.position = Vector3(wx, WALL_HEIGHT * 0.6, wz)
 	add_child(light)
+
+
+# Spawns a visible chest model at each position in level.chest_items.
+func _add_chests(level: Level) -> void:
+	for pos: Variant in level.chest_items.keys():
+		_add_chest_marker(pos as Vector2i)
+
+
+# Builds a small treasure chest (body + lid + gold trim + amber light) for one cell.
+func _add_chest_marker(pos: Vector2i) -> void:
+	var wx: float = pos.x * CELL_SIZE
+	var wz: float = pos.y * CELL_SIZE
+
+	var root: Node3D = Node3D.new()
+	root.position = Vector3(wx, 0.0, wz)
+	add_child(root)
+	_chest_nodes[pos] = root
+
+	var body_mat: StandardMaterial3D = StandardMaterial3D.new()
+	body_mat.albedo_color = Color(0.45, 0.28, 0.12)
+	body_mat.roughness    = 0.85
+	_add_box_child(root, Vector3(0, 0.22, 0), Vector3(0.70, 0.44, 0.50), body_mat)
+
+	var lid_mat: StandardMaterial3D = StandardMaterial3D.new()
+	lid_mat.albedo_color = Color(0.58, 0.40, 0.18)
+	lid_mat.roughness    = 0.75
+	_add_box_child(root, Vector3(0, 0.50, 0), Vector3(0.72, 0.14, 0.52), lid_mat)
+
+	# Emissive gold trim along the seam between body and lid
+	var trim_mat: StandardMaterial3D = StandardMaterial3D.new()
+	trim_mat.albedo_color            = Color(0.90, 0.72, 0.15)
+	trim_mat.emission_enabled        = true
+	trim_mat.emission                = Color(0.90, 0.72, 0.15)
+	trim_mat.emission_energy_multiplier = 1.8
+	_add_box_child(root, Vector3(0, 0.455, 0), Vector3(0.73, 0.04, 0.53), trim_mat)
+
+	# Soft amber glow overhead so the chest is visible from a distance
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color  = Color(1.0, 0.80, 0.30)
+	light.light_energy = 1.4
+	light.omni_range   = 3.5
+	light.position     = Vector3(0, WALL_HEIGHT * 0.55, 0)
+	root.add_child(light)
+
+
+# Removes the 3D chest visual when the player picks it up.
+func remove_chest(pos: Vector2i) -> void:
+	if _chest_nodes.has(pos):
+		(_chest_nodes[pos] as Node3D).queue_free()
+		_chest_nodes.erase(pos)
+
+
+# Adds a box mesh as a child of the given parent node (not self).
+func _add_box_child(parent: Node3D, pos: Vector3, size: Vector3,
+		mat: StandardMaterial3D) -> void:
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	var mesh: BoxMesh = BoxMesh.new()
+	mesh.size = size
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	parent.add_child(mi)
 
 
 # Creates a single MeshInstance3D box and adds it as a child of this node.

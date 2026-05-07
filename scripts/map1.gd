@@ -16,6 +16,7 @@ func _ready() -> void:
 
 	exit_pos   = _random_reachable_cell(maze, player_start)
 	next_scene = "res://scenes/map1.tscn"
+	_place_chests()
 
 
 # Generates a 20x20 maze with loops and variable-size rooms.
@@ -116,3 +117,51 @@ func _random_reachable_cell(grid: Array[Array], start: Vector2i) -> Vector2i:
 					queue.append(nxt)
 
 	return reachable[randi() % reachable.size()] as Vector2i
+
+
+# Scatters 4–5 treasure chests at random reachable cells, avoiding the
+# player start and portal exit. Each chest holds one random item.
+func _place_chests() -> void:
+	const COUNT: int = 5
+	var occupied: Dictionary = {exit_pos: true}
+	var attempts: int = 0
+	var placed:   int = 0
+	while placed < COUNT and attempts < 60:
+		attempts += 1
+		var pos: Vector2i = _random_reachable_cell(maze, player_start)
+		if occupied.has(pos):
+			continue
+		occupied[pos] = true
+		chest_items[pos] = _random_loot()
+		placed += 1
+
+
+func _random_loot() -> Dictionary:
+	var roll: int = randi() % 100
+	if roll < 22:
+		return PlayerCharacter.make_consumable(
+			"health_potion", "Health Potion", "Restores 30 HP.", 30, 0)
+	elif roll < 38:
+		return PlayerCharacter.make_consumable(
+			"hi_potion", "Hi-Potion", "Restores 80 HP.", 80, 0)
+	elif roll < 52:
+		return PlayerCharacter.make_consumable(
+			"ether", "Ether", "Restores 20 MP.", 0, 20)
+	elif roll < 62:
+		return PlayerCharacter.make_weapon(
+			"iron_sword", "Iron Sword", "A reliable blade.  STR+4", 4, 0)
+	elif roll < 70:
+		return PlayerCharacter.make_weapon(
+			"battle_axe", "Battle Axe", "Powerful but heavy.  STR+7 AGL-1", 7, 0, -1)
+	elif roll < 78:
+		return PlayerCharacter.make_weapon(
+			"magic_rod", "Magic Rod", "Channels arcane power.  MAG+5", 0, 5)
+	elif roll < 87:
+		return PlayerCharacter.make_armor(
+			"leather_vest", "Leather Vest", "Light protection.  DEF+3", 3)
+	elif roll < 94:
+		return PlayerCharacter.make_armor(
+			"chain_mail", "Chain Mail", "Solid protection.  DEF+6 AGL-1", 6, -1)
+	else:
+		return PlayerCharacter.make_armor(
+			"plate_armor", "Plate Armor", "Heavy protection.  DEF+10 AGL-2", 10, -2)

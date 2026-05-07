@@ -27,3 +27,7 @@ var exit_pos: Vector2i     = Vector2i(-1, -1)
 
 # Path to the scene file loaded when the player steps through the portal.
 var next_scene: String     = ""
+
+# Treasure chests: grid position → item Dictionary.
+# Entries are erased by main.gd when the player picks them up.
+var chest_items: Dictionary = {}

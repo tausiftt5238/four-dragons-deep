@@ -26,6 +26,16 @@ var floor_label: Label
 var cam: Camera3D
 var torch: OmniLight3D
 var minimap_ctrl: Minimap
+var hud_layer: CanvasLayer       # CanvasLayer holding the minimap; hidden during combat
+
+var player_char: PlayerCharacter  # RPG stats — persists across encounters and floors
+var in_combat:  bool = false
+var menu_open:  bool = false
+var menu_layer:    CanvasLayer
+var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
+
+var _chest_popup:       Label   # brief "Found X!" label in the HUD
+var _chest_popup_tween: Tween
 
 # Canonical camera position — stored so _shake_camera always snaps back to the
 # correct grid position even when called during a shake-in-progress.
@@ -54,6 +64,10 @@ func _ready() -> void:
 
 	# Minimap must exist before _sync_player too (it writes to minimap_ctrl).
 	_setup_minimap()
+
+	# Create the player's persistent RPG character.
+	player_char = PlayerCharacter.new()
+	add_child(player_char)
 
 	# Load Map 1 as the starting level. _sync_player is called inside here.
 	_load_level("res://scenes/map1.tscn", true)
@@ -126,9 +140,10 @@ func _setup_player_nodes() -> void:
 # Creates the CanvasLayer and Minimap control, anchored to the top-right corner.
 # The minimap size is recalculated whenever a new level is loaded via _resize_minimap().
 func _setup_minimap() -> void:
-	var layer: CanvasLayer = CanvasLayer.new()
-	layer.layer = 10  # Renders above all 3D content
-	add_child(layer)
+	hud_layer = CanvasLayer.new()
+	hud_layer.layer = 10  # Renders above all 3D content
+	add_child(hud_layer)
+	var layer: CanvasLayer = hud_layer
 
 	minimap_ctrl = Minimap.new()
 	minimap_ctrl.visited = visited  # Shared reference — no copy needed
@@ -144,6 +159,18 @@ func _setup_minimap() -> void:
 	floor_label.offset_bottom = 40.0
 	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layer.add_child(floor_label)
+
+	_chest_popup = Label.new()
+	_chest_popup.anchor_left   = 0.0
+	_chest_popup.anchor_right  = 1.0
+	_chest_popup.anchor_top    = 1.0
+	_chest_popup.anchor_bottom = 1.0
+	_chest_popup.offset_top    = -80.0
+	_chest_popup.offset_bottom = -46.0
+	_chest_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_chest_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
+	_chest_popup.modulate.a = 0.0
+	layer.add_child(_chest_popup)
 
 
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
@@ -247,6 +274,16 @@ func _shake_camera() -> void:
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
+	# ESC toggles the menu (blocked during combat).
+	if event.keycode == KEY_ESCAPE:
+		if not in_combat:
+			if menu_open:
+				_close_menu()
+			else:
+				_open_menu()
+		return
+	if in_combat or menu_open:
+		return
 	var moved: bool = false
 	match event.keycode:
 		KEY_UP:
@@ -275,4 +312,145 @@ func _input(event: InputEvent) -> void:
 			minimap_ctrl.queue_redraw()
 	if moved:
 		_sync_player()
+		_check_chest()
 		_check_portal()
+		_check_encounter()
+
+
+# ── Encounter system ─────────────────────────────────────────────────────────
+
+func _check_encounter() -> void:
+	if randi() % 5 == 0:
+		_start_combat()
+
+
+func _start_combat() -> void:
+	in_combat = true
+	hud_layer.visible = false
+
+	var foe: Enemy = Enemy.make_random(floor_num)
+	add_child(foe)
+
+	var combat_layer: CanvasLayer = CanvasLayer.new()
+	combat_layer.layer = 20  # Above the HUD
+	add_child(combat_layer)
+
+	var ui: CombatUI = CombatUI.new()
+	ui.player = player_char
+	ui.enemy  = foe
+	ui.combat_ended.connect(_on_combat_ended.bind(foe, combat_layer))
+	combat_layer.add_child(ui)
+
+
+func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> void:
+	var exp_reward: int = foe.exp_reward  # read before queue_free
+	foe.queue_free()
+	combat_layer.queue_free()
+
+	match result:
+		"win":
+			var before: Dictionary = _player_snapshot()
+			player_char.gain_exp(exp_reward)
+			var after: Dictionary = _player_snapshot()
+			if after["lv"] > before["lv"]:
+				_show_level_up(before, after)
+			else:
+				_resume_from_overlay()
+		"lose":
+			_show_game_over()
+		"flee":
+			_resume_from_overlay()
+
+
+func _resume_from_overlay() -> void:
+	hud_layer.visible = true
+	in_combat = false
+
+
+func _player_snapshot() -> Dictionary:
+	return {
+		lv=player_char.lv, str=player_char.str, def=player_char.def,
+		mag=player_char.mag, agl=player_char.agl,
+		max_hp=player_char.max_hp, max_mp=player_char.max_mp,
+	}
+
+
+func _get_overlay_layer() -> CanvasLayer:
+	if not is_instance_valid(overlay_layer):
+		overlay_layer = CanvasLayer.new()
+		overlay_layer.layer = 25
+		add_child(overlay_layer)
+	return overlay_layer
+
+
+func _show_level_up(before: Dictionary, after: Dictionary) -> void:
+	var ui: LevelUpUI = LevelUpUI.new()
+	ui.before = before
+	ui.after  = after
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_resume_from_overlay()
+	)
+	_get_overlay_layer().add_child(ui)
+
+
+func _show_game_over() -> void:
+	var ui: GameOverUI = GameOverUI.new()
+	ui.try_again.connect(func():
+		ui.queue_free()
+		player_char.heal(player_char.max_hp)
+		player_char.restore_mp(player_char.max_mp)
+		player_pos    = current_level.player_start
+		player_facing = current_level.player_start_facing
+		_sync_player()
+		_snap_cam_yaw()
+		_resume_from_overlay()
+	)
+	_get_overlay_layer().add_child(ui)
+
+
+# ── Chest system ──────────────────────────────────────────────────────────────
+
+func _check_chest() -> void:
+	if not current_level.chest_items.has(player_pos):
+		return
+	var item: Dictionary = (current_level.chest_items[player_pos] as Dictionary).duplicate()
+	current_level.chest_items.erase(player_pos)
+	dungeon.remove_chest(player_pos)
+	player_char.add_item(item)
+	_show_chest_popup("Found:  " + item["name"] + "!")
+
+
+func _show_chest_popup(text: String) -> void:
+	_chest_popup.text = text
+	_chest_popup.modulate.a = 1.0
+	if is_instance_valid(_chest_popup_tween):
+		_chest_popup_tween.kill()
+	_chest_popup_tween = create_tween()
+	_chest_popup_tween.tween_interval(1.8)
+	_chest_popup_tween.tween_property(_chest_popup, "modulate:a", 0.0, 0.6)
+
+
+# ── Menu ─────────────────────────────────────────────────────────────────────
+
+func _open_menu() -> void:
+	menu_open = true
+	hud_layer.visible = false
+
+	if not is_instance_valid(menu_layer):
+		menu_layer = CanvasLayer.new()
+		menu_layer.layer = 15  # Above HUD, below combat
+		add_child(menu_layer)
+
+	var menu: MenuUI = MenuUI.new()
+	menu.player = player_char
+	menu.menu_closed.connect(_close_menu)
+	menu_layer.add_child(menu)
+
+
+func _close_menu() -> void:
+	if is_instance_valid(menu_layer):
+		for child: Node in menu_layer.get_children():
+			child.queue_free()
+	hud_layer.visible = true
+	menu_open = false
