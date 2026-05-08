@@ -36,6 +36,8 @@ func _ready() -> void:
 
 	add_item(Item.health_potion(), 2)
 	add_item(Item.ether(), 1)
+	add_item(Item.antidote(), 1)
+	add_item(Item.stimulant(), 1)
 	add_item(Item.scroll_cure(), 1)
 
 	add_item(Weapon.iron_sword())
@@ -81,8 +83,9 @@ func use_item(item: Dictionary) -> String:
 	match item["type"]:
 		"consumable":
 			var msg: String = ""
-			var hp_val: int = item.get("hp_restore", 0)
-			var mp_val: int = item.get("mp_restore", 0)
+			var hp_val: int  = item.get("hp_restore", 0)
+			var mp_val: int  = item.get("mp_restore", 0)
+			var cure: String = item.get("cures_status", "")
 			if hp_val > 0:
 				var before: int = hp
 				heal(hp_val)
@@ -90,7 +93,16 @@ func use_item(item: Dictionary) -> String:
 			if mp_val > 0:
 				var before: int = mp
 				restore_mp(mp_val)
-				msg += "Restored %d MP." % (mp - before)
+				msg += "Restored %d MP. " % (mp - before)
+			if cure == "all":
+				active_statuses.clear()
+				msg += "Cured all ailments."
+			elif cure != "":
+				if has_status(cure):
+					remove_status(cure)
+					msg += "Cured %s." % Status.get_data(cure).get("name", cure)
+				else:
+					msg += "Not afflicted."
 			remove_item(item, 1)
 			return msg.strip_edges()
 		"scroll":

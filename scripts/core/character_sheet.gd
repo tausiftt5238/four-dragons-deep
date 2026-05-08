@@ -64,3 +64,25 @@ func _level_up() -> void:
 	compute_max_mp()
 	hp = min(max_hp, hp + (max_hp - old_max_hp))
 	mp = min(max_mp, mp + (max_mp - old_max_mp))
+
+
+# ── Status ailments ───────────────────────────────────────────────────────────
+
+var active_statuses: Array[String] = []
+
+func apply_status(status_id: String) -> void:
+	if status_id not in active_statuses:
+		active_statuses.append(status_id)
+
+func remove_status(status_id: String) -> void:
+	active_statuses.erase(status_id)
+
+func has_status(status_id: String) -> bool:
+	return status_id in active_statuses
+
+func poison_tick() -> int:
+	if not has_status(Status.POISON):
+		return 0
+	var dmg: int = max(1, max_hp / 10)
+	take_damage(dmg)
+	return dmg

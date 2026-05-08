@@ -3,17 +3,18 @@
 # Use make_random() to generate a floor-scaled enemy without adding it to the tree.
 class_name Enemy extends CharacterSheet
 
-var enemy_name: String = "Unknown"
-var exp_reward:  int = 20
-var gold_reward: int = 5
+var enemy_name:    String = "Unknown"
+var exp_reward:    int    = 20
+var gold_reward:   int    = 5
+var status_attack: String = ""
 
 # Template data for all enemy types. Stats are base values for floor 1.
 const TEMPLATES: Array[Dictionary] = [
-	{name = "Slime",    str = 2, def = 1, mag = 0, agl = 1, exp = 15, gold = 5},
-	{name = "Goblin",   str = 4, def = 2, mag = 0, agl = 4, exp = 25, gold = 8},
-	{name = "Skeleton", str = 5, def = 3, mag = 1, agl = 2, exp = 30, gold = 10},
-	{name = "Wraith",   str = 3, def = 1, mag = 5, agl = 5, exp = 40, gold = 13},
-	{name = "Troll",    str = 7, def = 5, mag = 0, agl = 1, exp = 50, gold = 17},
+	{name="Slime",    str=2, def=1, mag=0, agl=1, exp=15, gold=5,  status_attack="poison"},
+	{name="Goblin",   str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack=""},
+	{name="Skeleton", str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize"},
+	{name="Wraith",   str=3, def=1, mag=5, agl=5, exp=40, gold=13, status_attack="silence"},
+	{name="Troll",    str=7, def=5, mag=0, agl=1, exp=50, gold=17, status_attack="immobilize"},
 ]
 
 
@@ -30,7 +31,8 @@ static func make_random(floor_num: int) -> Enemy:
 	e.agl         = t["agl"]
 	e.exp_to_next = 0  # enemies don't level up
 	e.exp_reward  = t["exp"] * floor_num
-	e.gold_reward = (t["gold"] + randi() % 5) * floor_num
+	e.gold_reward   = (t["gold"] + randi() % 5) * floor_num
+	e.status_attack = t.get("status_attack", "")
 	e.compute_max_hp()
 	return e
 

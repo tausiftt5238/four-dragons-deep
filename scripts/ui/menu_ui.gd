@@ -153,6 +153,16 @@ func _build_stats() -> void:
 	gold_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.25))
 	_content.add_child(gold_lbl)
 
+	if not p.active_statuses.is_empty():
+		_content.add_child(HSeparator.new())
+		_content.add_child(_make_section_label("ACTIVE AILMENTS"))
+		for s_id: String in p.active_statuses:
+			var sdata: Dictionary = Status.get_data(s_id)
+			var s_lbl: Label = Label.new()
+			s_lbl.text = "%s — %s" % [sdata.get("name", s_id), sdata.get("desc", "")]
+			s_lbl.add_theme_color_override("font_color", sdata.get("color", Color(0.9, 0.9, 0.9)))
+			_content.add_child(s_lbl)
+
 
 func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) -> void:
 	var name_lbl: Label = Label.new()

@@ -2,7 +2,7 @@
 # Final-Fantasy-style combat layout:
 #   top    – combat log (slim strip)
 #   middle – enemy sprite + name + HP bar (fills remaining space)
-#   bottom – [portrait/HP/MP] | [action buttons] | [item/magic submenu]
+#   bottom – [portrait/HP/MP/status] | [action buttons] | [item/magic submenu]
 class_name CombatScene extends Control
 
 signal combat_ended(result: String)
@@ -15,11 +15,12 @@ var _defending: bool = false
 var _log_label:      RichTextLabel
 var _log_first_line: bool = true
 
-var _player_lv_lbl: Label
-var _player_hp_bar: ProgressBar
-var _player_hp_lbl: Label
-var _player_mp_bar: ProgressBar
-var _player_mp_lbl: Label
+var _player_lv_lbl:  Label
+var _player_hp_bar:  ProgressBar
+var _player_hp_lbl:  Label
+var _player_mp_bar:  ProgressBar
+var _player_mp_lbl:  Label
+var _player_sts_lbl: Label
 
 var _enemy_hp_bar: ProgressBar
 var _enemy_hp_lbl: Label
@@ -37,6 +38,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
 	_refresh_hp()
+	_refresh_button_states()
 	_log("[color=yellow]A %s appeared![/color]" % enemy.enemy_name)
 
 
@@ -58,7 +60,6 @@ func _build_ui() -> void:
 	_build_bottom_bar(root)
 
 
-# Thin combat log at the very top of the screen.
 func _build_log_strip(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(0, 80)
@@ -78,7 +79,6 @@ func _build_log_strip(parent: Control) -> void:
 	m.add_child(_log_label)
 
 
-# Large enemy display that fills the middle of the screen.
 func _build_enemy_area(parent: Control) -> void:
 	var area: VBoxContainer = VBoxContainer.new()
 	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -100,7 +100,6 @@ func _build_enemy_area(parent: Control) -> void:
 	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
 	area.add_child(name_lbl)
 
-	# HP bar centred with a fixed max-width so it doesn't stretch edge-to-edge.
 	var hp_wrap: MarginContainer = MarginContainer.new()
 	hp_wrap.custom_minimum_size   = Vector2(280, 0)
 	hp_wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -120,7 +119,6 @@ func _build_enemy_area(parent: Control) -> void:
 	hp_col.add_child(_enemy_hp_lbl)
 
 
-# Three-column bottom bar: [player] | [actions] | [submenu]
 func _build_bottom_bar(parent: Control) -> void:
 	var sep: HSeparator = HSeparator.new()
 	parent.add_child(sep)
@@ -157,7 +155,6 @@ func _build_player_col(parent: Control) -> void:
 	hbox.add_theme_constant_override("separation", 10)
 	m.add_child(hbox)
 
-	# Portrait
 	var portrait: TextureRect = TextureRect.new()
 	portrait.texture             = load("res://icon.svg") as Texture2D
 	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -166,9 +163,8 @@ func _build_player_col(parent: Control) -> void:
 	portrait.modulate            = Color(0.55, 0.60, 0.78)
 	hbox.add_child(portrait)
 
-	# Stats column
 	var stats: VBoxContainer = VBoxContainer.new()
-	stats.add_theme_constant_override("separation", 5)
+	stats.add_theme_constant_override("separation", 4)
 	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(stats)
@@ -192,8 +188,12 @@ func _build_player_col(parent: Control) -> void:
 		func(b: ProgressBar) -> void: _player_mp_bar = b,
 		func(l: Label)       -> void: _player_mp_lbl = l))
 
+	_player_sts_lbl = Label.new()
+	_player_sts_lbl.add_theme_color_override("font_color", Color(0.90, 0.78, 0.30))
+	_player_sts_lbl.add_theme_font_size_override("font_size", 11)
+	stats.add_child(_player_sts_lbl)
 
-# Builds one "TAG [bar] value" row and wires up bar/label via callbacks.
+
 func _make_stat_row(tag: String,
 		tag_color: Color, bar_color: Color, val_color: Color,
 		set_bar: Callable, set_lbl: Callable) -> HBoxContainer:
@@ -322,14 +322,32 @@ func _refresh_hp() -> void:
 	_player_mp_bar.value     = player.mp
 	_player_mp_lbl.text      = "%d/%d" % [player.mp, player.max_mp]
 
+	_player_sts_lbl.text = _format_statuses(player.active_statuses)
+
 	_enemy_hp_bar.max_value = enemy.max_hp
 	_enemy_hp_bar.value     = enemy.hp
 	_enemy_hp_lbl.text      = "HP %d / %d" % [enemy.hp, enemy.max_hp]
 
 
+func _format_statuses(statuses: Array[String]) -> String:
+	if statuses.is_empty():
+		return ""
+	var names: Array[String] = []
+	for s: String in statuses:
+		names.append(Status.get_data(s).get("name", s))
+	return "  ".join(names)
+
+
 func _set_buttons(enabled: bool) -> void:
 	for btn: Button in _buttons.values():
 		btn.disabled = not enabled
+
+
+func _refresh_button_states() -> void:
+	if player.has_status(Status.SILENCE):
+		_buttons["Magic"].disabled = true
+	if player.has_status(Status.IMMOBILIZE):
+		_buttons["Attack"].disabled = true
 
 
 # ── Submenus ──────────────────────────────────────────────────────────────────
@@ -461,9 +479,7 @@ func _round_player_first(action: String) -> void:
 		await get_tree().create_timer(1.8).timeout
 		_end_combat("lose")
 		return
-	await get_tree().create_timer(1.1).timeout
-	if is_instance_valid(self):
-		_set_buttons(true)
+	await _do_end_of_round()
 
 
 func _round_enemy_first(action: String) -> void:
@@ -482,14 +498,45 @@ func _round_enemy_first(action: String) -> void:
 		await get_tree().create_timer(1.8).timeout
 		_end_combat("win")
 		return
+	await _do_end_of_round()
+
+
+func _do_end_of_round() -> void:
+	var tick_msg: String = _do_poison_ticks()
+	if not tick_msg.is_empty():
+		_log(tick_msg)
+		_refresh_hp()
+	if not player.is_alive():
+		await get_tree().create_timer(1.8).timeout
+		_end_combat("lose")
+		return
+	if not enemy.is_alive():
+		_log("[color=lime]%s succumbed to poison![/color]" % enemy.enemy_name)
+		await get_tree().create_timer(1.8).timeout
+		_end_combat("win")
+		return
 	await get_tree().create_timer(1.1).timeout
 	if is_instance_valid(self):
 		_set_buttons(true)
+		_refresh_button_states()
+
+
+func _do_poison_ticks() -> String:
+	var msgs: Array[String] = []
+	var p_dmg: int = player.poison_tick()
+	if p_dmg > 0:
+		msgs.append("[color=chartreuse]Poison deals %d damage to you![/color]" % p_dmg)
+	var e_dmg: int = enemy.poison_tick()
+	if e_dmg > 0:
+		msgs.append("[color=violet]Poison deals %d damage to %s![/color]" % [e_dmg, enemy.enemy_name])
+	return "\n".join(msgs)
 
 
 # ── Individual action logic ───────────────────────────────────────────────────
 
 func _apply_player_action(action: String) -> String:
+	if player.has_status(Status.PARALYZED) and randi() % 4 == 0:
+		return "[color=yellow]Paralyzed! You cannot act this turn.[/color]"
 	if action.begins_with("Magic:"):
 		return _cast_spell(action.substr(6))
 	if action.begins_with("Item:"):
@@ -511,18 +558,31 @@ func _cast_spell(spell_id: String) -> String:
 	if player.mp < mp_cost:
 		return "[color=gray]Not enough MP![/color]"
 	player.mp -= mp_cost
+
+	var spell_type: String = data.get("type", "dmg")
+	if spell_type == "ailment":
+		var target_status: String = data.get("status", "")
+		if target_status == "":
+			return "Nothing happened."
+		if enemy.has_status(target_status):
+			return "%s is already %s." % [enemy.enemy_name, Status.get_data(target_status).get("name", target_status)]
+		enemy.apply_status(target_status)
+		return "You cast %s!  [color=violet]%s is now %s.[/color]" % [
+			data["name"], enemy.enemy_name, Status.get_data(target_status).get("name", target_status)]
+
 	match spell_id:
 		"fire":
 			var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
 			enemy.take_damage(dmg)
 			return "You cast Fire!  [color=violet]%s takes %d magic damage.[/color]" % [enemy.enemy_name, dmg]
-		"cure":
+		"cure", "cura", "curaga":
+			var heal_amt: int = data.get("heal", 30)
 			var before: int = player.hp
-			player.heal(max(1, player.effective_mag() * 3))
-			return "[color=lime]You cast Cure! Restored %d HP.[/color]" % (player.hp - before)
+			player.heal(max(1, heal_amt + player.effective_mag()))
+			return "[color=lime]You cast %s! Restored %d HP.[/color]" % [data["name"], player.hp - before]
 	var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
 	enemy.take_damage(dmg)
-	return "You cast a spell!  [color=violet]%s takes %d magic damage.[/color]" % [enemy.enemy_name, dmg]
+	return "You cast %s!  [color=violet]%s takes %d magic damage.[/color]" % [data["name"], enemy.enemy_name, dmg]
 
 
 func _use_item_by_id(item_id: String) -> String:
@@ -534,8 +594,21 @@ func _use_item_by_id(item_id: String) -> String:
 
 
 func _apply_enemy_turn() -> String:
+	if enemy.has_status(Status.PARALYZED) and randi() % 4 == 0:
+		return "[color=yellow]%s is paralyzed and cannot act![/color]" % enemy.enemy_name
+
 	var eff_def: int = player.effective_def() * (2 if _defending else 1)
 	_defending = false
+
+	# 30% chance of status attack if enemy has one and player lacks the status
+	if enemy.status_attack != "" and not player.has_status(enemy.status_attack) and randi() % 10 < 3:
+		var sdata: Dictionary = Status.get_data(enemy.status_attack)
+		var dmg: int = max(1, enemy.str / 2 - eff_def / 3 + randi() % 2)
+		player.take_damage(dmg)
+		player.apply_status(enemy.status_attack)
+		return "[color=red]%s attacks for %d and inflicts %s![/color]" % [
+			enemy.enemy_name, dmg, sdata.get("name", enemy.status_attack)]
+
 	var dmg: int = max(1, enemy.str - eff_def / 2 + randi() % 3)
 	player.take_damage(dmg)
 	return "[color=red]%s attacks you for %d damage![/color]" % [enemy.enemy_name, dmg]
@@ -557,6 +630,7 @@ func _do_flee() -> void:
 		await get_tree().create_timer(1.1).timeout
 		if is_instance_valid(self):
 			_set_buttons(true)
+			_refresh_button_states()
 
 
 func _end_combat(result: String) -> void:
