@@ -9,7 +9,7 @@ var gold: int = 50
 var equipped_weapon: Dictionary = {}
 var equipped_armor:  Dictionary = {}
 
-# Learnable spell IDs. MenuUI looks these up in its SPELL_DATA table.
+# Learnable spell IDs. Looked up in Spell.DATA for display and cost.
 var known_spells: Array[String] = []
 
 # Inventory: Array of item dicts. Consumables stack via the qty field.
@@ -30,16 +30,16 @@ func _ready() -> void:
 	known_spells = ["fire"]
 
 	# Starting gear — player begins with a rusty dagger pre-equipped.
-	var dagger: Dictionary = make_weapon("rusty_dagger", "Rusty Dagger", "A worn blade, better than bare hands.", 2, 0)
+	var dagger: Dictionary = Weapon.rusty_dagger()
 	inventory.append(dagger)
 	equip_weapon(dagger)
 
-	add_item(make_consumable("health_potion", "Health Potion", "Restores 30 HP.", 30, 0), 2)
-	add_item(make_consumable("ether",         "Ether",         "Restores 20 MP.", 0, 20), 1)
-	add_item(make_scroll("scroll_cure", "Scroll of Cure", "cure", "Cure", "Teaches the Cure healing spell."), 1)
+	add_item(Item.health_potion(), 2)
+	add_item(Item.ether(), 1)
+	add_item(Item.scroll_cure(), 1)
 
-	add_item(make_weapon("iron_sword",    "Iron Sword",    "A sturdy iron blade.", 5, 0, -1))
-	add_item(make_armor( "leather_armor", "Leather Armor", "Light but dependable.", 3, 0))
+	add_item(Weapon.iron_sword())
+	add_item(Armor.leather_armor())
 
 
 # ── Effective stats (base + equipment bonuses) ────────────────────────────────
@@ -55,32 +55,6 @@ func effective_mag() -> int:
 
 func effective_agl() -> int:
 	return agl + equipped_weapon.get("agl_pen", 0) + equipped_armor.get("agl_pen", 0)
-
-
-# ── Item factories ────────────────────────────────────────────────────────────
-
-static func make_consumable(id: String, name: String, desc: String,
-		hp_restore: int, mp_restore: int) -> Dictionary:
-	return {id=id, name=name, type="consumable", desc=desc,
-			hp_restore=hp_restore, mp_restore=mp_restore, qty=1}
-
-
-static func make_weapon(id: String, name: String, desc: String,
-		str_bonus: int, mag_bonus: int, agl_pen: int = 0) -> Dictionary:
-	return {id=id, name=name, type="weapon", desc=desc,
-			str_bonus=str_bonus, mag_bonus=mag_bonus, agl_pen=agl_pen, qty=1}
-
-
-static func make_armor(id: String, name: String, desc: String,
-		def_bonus: int, agl_pen: int = 0) -> Dictionary:
-	return {id=id, name=name, type="armor", desc=desc,
-			def_bonus=def_bonus, agl_pen=agl_pen, qty=1}
-
-
-static func make_scroll(id: String, name: String, spell_id: String,
-		spell_name: String, desc: String) -> Dictionary:
-	return {id=id, name=name, type="scroll", desc=desc,
-			teaches=spell_id, spell_name=spell_name, qty=1}
 
 
 # ── Inventory management ──────────────────────────────────────────────────────

@@ -16,13 +16,6 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "Troll",    str = 7, def = 5, mag = 0, agl = 1, exp = 50, gold = 17},
 ]
 
-# Possible consumable drops (plain Dictionaries matching player inventory format).
-const DROP_TABLE: Array[Dictionary] = [
-	{id="health_potion", name="Health Potion", type="consumable",
-		desc="Restores 30 HP.", hp_restore=30, mp_restore=0,  qty=1},
-	{id="ether",         name="Ether",         type="consumable",
-		desc="Restores 20 MP.", hp_restore=0,  mp_restore=20, qty=1},
-]
 
 
 static func make_random(floor_num: int) -> Enemy:
@@ -46,4 +39,5 @@ static func make_random(floor_num: int) -> Enemy:
 func roll_drop() -> Dictionary:
 	if randi() % 100 < 65:
 		return {}
-	return DROP_TABLE[randi() % DROP_TABLE.size()].duplicate()
+	var table: Array[Dictionary] = Item.drop_table()
+	return table[randi() % table.size()]

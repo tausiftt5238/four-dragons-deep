@@ -138,30 +138,12 @@ func _place_chests() -> void:
 
 func _random_loot() -> Dictionary:
 	var roll: int = randi() % 100
-	if roll < 22:
-		return PlayerCharacter.make_consumable(
-			"health_potion", "Health Potion", "Restores 30 HP.", 30, 0)
-	elif roll < 38:
-		return PlayerCharacter.make_consumable(
-			"hi_potion", "Hi-Potion", "Restores 80 HP.", 80, 0)
-	elif roll < 52:
-		return PlayerCharacter.make_consumable(
-			"ether", "Ether", "Restores 20 MP.", 0, 20)
-	elif roll < 62:
-		return PlayerCharacter.make_weapon(
-			"iron_sword", "Iron Sword", "A reliable blade.  STR+4", 4, 0)
-	elif roll < 70:
-		return PlayerCharacter.make_weapon(
-			"battle_axe", "Battle Axe", "Powerful but heavy.  STR+7 AGL-1", 7, 0, -1)
-	elif roll < 78:
-		return PlayerCharacter.make_weapon(
-			"magic_rod", "Magic Rod", "Channels arcane power.  MAG+5", 0, 5)
-	elif roll < 87:
-		return PlayerCharacter.make_armor(
-			"leather_vest", "Leather Vest", "Light protection.  DEF+3", 3)
-	elif roll < 94:
-		return PlayerCharacter.make_armor(
-			"chain_mail", "Chain Mail", "Solid protection.  DEF+6 AGL-1", 6, -1)
-	else:
-		return PlayerCharacter.make_armor(
-			"plate_armor", "Plate Armor", "Heavy protection.  DEF+10 AGL-2", 10, -2)
+	if   roll < 22: return Item.health_potion()
+	elif roll < 38: return Item.hi_potion()
+	elif roll < 52: return Item.ether()
+	elif roll < 62: return Weapon.iron_sword()
+	elif roll < 70: return Weapon.battle_axe()
+	elif roll < 78: return Weapon.magic_rod()
+	elif roll < 87: return Armor.leather_vest()
+	elif roll < 94: return Armor.chain_mail()
+	else:           return Armor.plate_armor()

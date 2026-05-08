@@ -31,10 +31,6 @@ var _right_title:    Label
 var _right_back_btn: Button
 var _right_list:     VBoxContainer
 
-const SPELL_DATA: Dictionary = {
-	"fire": {name = "Fire", mp = 8},
-	"cure": {name = "Cure", mp = 6},
-}
 
 
 func _ready() -> void:
@@ -372,7 +368,7 @@ func _show_magic_submenu() -> void:
 		return
 
 	for spell_id: String in player.known_spells:
-		var data: Dictionary = SPELL_DATA.get(spell_id, {name = spell_id, mp = 8})
+		var data: Dictionary = Spell.DATA.get(spell_id, {name = spell_id, mp = 8})
 		var btn: Button = Button.new()
 		btn.text                = "%s  (%d MP)" % [data["name"], data["mp"]]
 		btn.custom_minimum_size = Vector2(0, 28)
@@ -510,7 +506,7 @@ func _apply_player_action(action: String) -> String:
 
 
 func _cast_spell(spell_id: String) -> String:
-	var data: Dictionary = SPELL_DATA.get(spell_id, {name = "Spell", mp = 8})
+	var data: Dictionary = Spell.DATA.get(spell_id, {name = "Spell", mp = 8})
 	var mp_cost: int = data.get("mp", 8)
 	if player.mp < mp_cost:
 		return "[color=gray]Not enough MP![/color]"

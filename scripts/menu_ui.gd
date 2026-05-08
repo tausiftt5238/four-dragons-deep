@@ -5,16 +5,6 @@ class_name MenuUI extends Control
 
 signal menu_closed
 
-# Spells the game knows about. Player only sees IDs listed in player.known_spells.
-# type "heal" = castable from menu; type "dmg" = battle only.
-const SPELL_DATA: Dictionary = {
-	"fire":     {name="Fire",     mp=8,  heal=0,    type="dmg",  desc="Deals fire damage to one enemy."},
-	"thunder":  {name="Thunder",  mp=10, heal=0,    type="dmg",  desc="Deals lightning to one enemy."},
-	"blizzard": {name="Blizzard", mp=10, heal=0,    type="dmg",  desc="Deals ice damage to one enemy."},
-	"cure":     {name="Cure",     mp=5,  heal=30,   type="heal", desc="Restores 30 HP."},
-	"cura":     {name="Cura",     mp=15, heal=80,   type="heal", desc="Restores 80 HP."},
-	"curaga":   {name="Curaga",   mp=30, heal=9999, type="heal", desc="Fully restores HP."},
-}
 
 var player: PlayerCharacter
 
@@ -457,7 +447,7 @@ func _build_magic() -> void:
 		return
 
 	for spell_id: String in p.known_spells:
-		var spell: Dictionary = SPELL_DATA.get(spell_id, {})
+		var spell: Dictionary = Spell.get_data(spell_id)
 		if spell.is_empty():
 			continue
 		_content.add_child(_make_spell_row(spell_id, spell))
