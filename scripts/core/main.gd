@@ -70,7 +70,7 @@ func _ready() -> void:
 	add_child(player_char)
 
 	# Load Map 1 as the starting level. _sync_player is called inside here.
-	_load_level("res://scenes/map1.tscn", true)
+	_load_level("res://scenes/map.tscn", true)
 
 
 # ── Level loading ────────────────────────────────────────────────────────────

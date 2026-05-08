@@ -1,4 +1,4 @@
-# Map 1 — the starting dungeon with warm stone walls.
+# Map — the dungeon level with warm stone walls.
 # Player starts at (1,1) facing South. Maze is procedurally generated on load.
 extends Level
 
@@ -15,7 +15,7 @@ func _ready() -> void:
 	player_start_facing = 2  # South
 
 	exit_pos   = _random_reachable_cell(maze, player_start)
-	next_scene = "res://scenes/map1.tscn"
+	next_scene = "res://scenes/map.tscn"
 	_place_chests()
 
 
