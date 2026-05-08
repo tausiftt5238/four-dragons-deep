@@ -335,11 +335,12 @@ func _start_combat() -> void:
 	combat_layer.layer = 20  # Above the HUD
 	add_child(combat_layer)
 
-	var ui: CombatUI = CombatUI.new()
-	ui.player = player_char
-	ui.enemy  = foe
-	ui.combat_ended.connect(_on_combat_ended.bind(foe, combat_layer))
-	combat_layer.add_child(ui)
+	var packed: PackedScene = load("res://scenes/combat.tscn") as PackedScene
+	var scene: CombatScene = packed.instantiate() as CombatScene
+	scene.player = player_char
+	scene.enemy  = foe
+	scene.combat_ended.connect(_on_combat_ended.bind(foe, combat_layer))
+	combat_layer.add_child(scene)
 
 
 func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> void:
