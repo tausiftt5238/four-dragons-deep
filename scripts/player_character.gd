@@ -38,6 +38,9 @@ func _ready() -> void:
 	add_item(make_consumable("ether",         "Ether",         "Restores 20 MP.", 0, 20), 1)
 	add_item(make_scroll("scroll_cure", "Scroll of Cure", "cure", "Cure", "Teaches the Cure healing spell."), 1)
 
+	add_item(make_weapon("iron_sword",    "Iron Sword",    "A sturdy iron blade.", 5, 0, -1))
+	add_item(make_armor( "leather_armor", "Leather Armor", "Light but dependable.", 3, 0))
+
 
 # ── Effective stats (base + equipment bonuses) ────────────────────────────────
 

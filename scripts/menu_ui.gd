@@ -290,25 +290,27 @@ func _build_equipment() -> void:
 	_content.add_child(_make_header("EQUIPPED GEAR"))
 	_content.add_child(HSeparator.new())
 
-	# Weapon slot
-	_content.add_child(_make_equip_slot_row(
-		"Weapon",
-		player.equipped_weapon,
-		func():
-			player.unequip_weapon()
-			_set_status("Weapon removed.")
-			_refresh()
-	))
+	var slots_hbox: HBoxContainer = HBoxContainer.new()
+	slots_hbox.add_theme_constant_override("separation", 0)
+	_content.add_child(slots_hbox)
 
-	# Armor slot
-	_content.add_child(_make_equip_slot_row(
-		"Armor",
+	var weapon_col: VBoxContainer = _build_slot_section("Weapon", "weapon",
+		player.equipped_weapon,
+		func(): player.unequip_weapon(); _set_status("Weapon removed."); _refresh(),
+		func(it: Dictionary): player.equip_weapon(it); _set_status("Equipped %s." % it["name"]); _refresh()
+	)
+	weapon_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slots_hbox.add_child(weapon_col)
+
+	slots_hbox.add_child(VSeparator.new())
+
+	var armor_col: VBoxContainer = _build_slot_section("Armor", "armor",
 		player.equipped_armor,
-		func():
-			player.unequip_armor()
-			_set_status("Armor removed.")
-			_refresh()
-	))
+		func(): player.unequip_armor(); _set_status("Armor removed."); _refresh(),
+		func(it: Dictionary): player.equip_armor(it); _set_status("Equipped %s." % it["name"]); _refresh()
+	)
+	armor_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slots_hbox.add_child(armor_col)
 
 	_content.add_child(HSeparator.new())
 	_content.add_child(_make_section_label("EFFECTIVE STATS"))
@@ -325,41 +327,92 @@ func _build_equipment() -> void:
 	_add_cmp_row(grid, "AGL", player.agl, player.effective_agl())
 
 
-func _make_equip_slot_row(slot_name: String, item: Dictionary, on_unequip: Callable) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+# Builds one slot column (currently equipped + inventory choices) and returns it.
+func _build_slot_section(slot_name: String, item_type: String,
+		equipped: Dictionary, on_unequip: Callable, on_equip: Callable) -> VBoxContainer:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
 
+	var m: MarginContainer = MarginContainer.new()
+	for s: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(s, 8)
+	col.add_child(m)
+
+	var inner: VBoxContainer = VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 6)
+	m.add_child(inner)
+
+	# Slot header label
 	var slot_lbl: Label = Label.new()
-	slot_lbl.text = slot_name + ":"
-	slot_lbl.custom_minimum_size = Vector2(60, 0)
-	row.add_child(slot_lbl)
+	slot_lbl.text = slot_name.to_upper()
+	slot_lbl.add_theme_color_override("font_color", Color(0.70, 0.65, 0.50))
+	inner.add_child(slot_lbl)
 
-	if item.is_empty():
+	# Currently equipped row
+	var eq_row: HBoxContainer = HBoxContainer.new()
+	eq_row.add_theme_constant_override("separation", 8)
+	inner.add_child(eq_row)
+
+	if equipped.is_empty():
 		var none_lbl: Label = Label.new()
 		none_lbl.text = "(none)"
 		none_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 		none_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(none_lbl)
+		eq_row.add_child(none_lbl)
 	else:
-		var bonus_parts: Array[String] = []
-		if item.get("str_bonus", 0) != 0: bonus_parts.append("STR%+d" % item["str_bonus"])
-		if item.get("def_bonus", 0) != 0: bonus_parts.append("DEF%+d" % item["def_bonus"])
-		if item.get("mag_bonus", 0) != 0: bonus_parts.append("MAG%+d" % item["mag_bonus"])
-		if item.get("agl_pen",   0) != 0: bonus_parts.append("AGL%+d" % item["agl_pen"])
-		var bonus_str: String = "  (%s)" % "  ".join(bonus_parts) if not bonus_parts.is_empty() else ""
-
 		var item_lbl: Label = Label.new()
-		item_lbl.text = item["name"] + bonus_str
+		item_lbl.text = equipped["name"] + _bonus_string(equipped)
 		item_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(item_lbl)
+		eq_row.add_child(item_lbl)
 
 		var unequip_btn: Button = Button.new()
 		unequip_btn.text = "Unequip"
 		unequip_btn.custom_minimum_size = Vector2(70, 26)
 		unequip_btn.pressed.connect(on_unequip)
-		row.add_child(unequip_btn)
+		eq_row.add_child(unequip_btn)
 
-	return row
+	# Inventory items of this type available to equip
+	var available: Array[Dictionary] = []
+	for it: Dictionary in player.inventory:
+		if it["type"] == item_type:
+			available.append(it)
+
+	if available.is_empty():
+		return col
+
+	inner.add_child(HSeparator.new())
+
+	var avail_lbl: Label = Label.new()
+	avail_lbl.text = "In inventory:"
+	avail_lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+	inner.add_child(avail_lbl)
+
+	for it: Dictionary in available:
+		var avail_row: HBoxContainer = HBoxContainer.new()
+		avail_row.add_theme_constant_override("separation", 8)
+		inner.add_child(avail_row)
+
+		var name_lbl: Label = Label.new()
+		name_lbl.text = it["name"] + _bonus_string(it)
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		avail_row.add_child(name_lbl)
+
+		var equip_btn: Button = Button.new()
+		equip_btn.text = "Equip"
+		equip_btn.custom_minimum_size = Vector2(60, 26)
+		equip_btn.pressed.connect(on_equip.bind(it))
+		avail_row.add_child(equip_btn)
+
+	return col
+
+
+func _bonus_string(item: Dictionary) -> String:
+	var parts: Array[String] = []
+	if item.get("str_bonus", 0) != 0: parts.append("STR%+d" % item["str_bonus"])
+	if item.get("def_bonus", 0) != 0: parts.append("DEF%+d" % item["def_bonus"])
+	if item.get("mag_bonus", 0) != 0: parts.append("MAG%+d" % item["mag_bonus"])
+	if item.get("agl_pen",   0) != 0: parts.append("AGL%+d" % item["agl_pen"])
+	return "  (%s)" % "  ".join(parts) if not parts.is_empty() else ""
 
 
 func _add_cmp_row(grid: GridContainer, stat: String, base: int, eff: int) -> void:

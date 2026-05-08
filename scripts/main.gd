@@ -344,23 +344,43 @@ func _start_combat() -> void:
 
 
 func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> void:
-	var exp_reward: int = foe.exp_reward  # read before queue_free
+	var exp_reward:  int        = foe.exp_reward
+	var gold_reward: int        = foe.gold_reward
+	var item_drop:   Dictionary = foe.roll_drop()
 	foe.queue_free()
 	combat_layer.queue_free()
 
 	match result:
 		"win":
+			player_char.gold += gold_reward
+			if not item_drop.is_empty():
+				player_char.add_item(item_drop)
 			var before: Dictionary = _player_snapshot()
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
-			if after["lv"] > before["lv"]:
-				_show_level_up(before, after)
-			else:
-				_resume_from_overlay()
+			var leveled: bool = after["lv"] > before["lv"]
+			_show_combat_result(exp_reward, gold_reward, item_drop,
+				before if leveled else {}, after if leveled else {})
 		"lose":
 			_show_game_over()
 		"flee":
 			_resume_from_overlay()
+
+
+func _show_combat_result(exp: int, gold: int, item: Dictionary,
+		lv_before: Dictionary, lv_after: Dictionary) -> void:
+	var ui: CombatResultUI = CombatResultUI.new()
+	ui.exp_gained  = exp
+	ui.gold_gained = gold
+	ui.item_drop   = item
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		if not lv_before.is_empty():
+			_show_level_up(lv_before, lv_after)
+		else:
+			_resume_from_overlay()
+	)
+	_get_overlay_layer().add_child(ui)
 
 
 func _resume_from_overlay() -> void:
