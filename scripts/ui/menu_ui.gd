@@ -244,25 +244,26 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(name_lbl)
 
-	# Description snippet
-	var desc_lbl: Label = Label.new()
-	desc_lbl.text = item.get("desc", "")
-	desc_lbl.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
-	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(desc_lbl)
-
 	# Action buttons depending on item type
+	var is_throwable: bool = item.has("inflicts_status") \
+		or (item.has("element") and item.get("dmg", 0) > 0)
 	match item["type"]:
 		"consumable", "scroll":
-			var use_btn: Button = Button.new()
-			use_btn.text = "Use"
-			use_btn.custom_minimum_size = Vector2(50, 26)
-			use_btn.pressed.connect(func():
-				var result: String = player.use_item(item)
-				_set_status(result)
-				_refresh()
-			)
-			row.add_child(use_btn)
+			if is_throwable:
+				var tag: Label = Label.new()
+				tag.text = "Battle only"
+				tag.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+				row.add_child(tag)
+			else:
+				var use_btn: Button = Button.new()
+				use_btn.text = "Use"
+				use_btn.custom_minimum_size = Vector2(50, 26)
+				use_btn.pressed.connect(func():
+					var result: String = player.use_item(item)
+					_set_status(result)
+					_refresh()
+				)
+				row.add_child(use_btn)
 		"weapon":
 			var is_equipped: bool = (player.equipped_weapon.get("id", "") == item.get("id", "##"))
 			var equip_btn: Button = Button.new()

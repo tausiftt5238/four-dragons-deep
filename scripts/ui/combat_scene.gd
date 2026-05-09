@@ -560,6 +560,7 @@ func _cast_spell(spell_id: String) -> String:
 	player.mp -= mp_cost
 
 	var spell_type: String = data.get("type", "dmg")
+
 	if spell_type == "ailment":
 		var target_status: String = data.get("status", "")
 		if target_status == "":
@@ -570,19 +571,22 @@ func _cast_spell(spell_id: String) -> String:
 		return "You cast %s!  [color=violet]%s is now %s.[/color]" % [
 			data["name"], enemy.enemy_name, Status.get_data(target_status).get("name", target_status)]
 
-	match spell_id:
-		"fire":
-			var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
-			enemy.take_damage(dmg)
-			return "You cast Fire!  [color=violet]%s takes %d magic damage.[/color]" % [enemy.enemy_name, dmg]
-		"cure", "cura", "curaga":
-			var heal_amt: int = data.get("heal", 30)
-			var before: int = player.hp
-			player.heal(max(1, heal_amt + player.effective_mag()))
-			return "[color=lime]You cast %s! Restored %d HP.[/color]" % [data["name"], player.hp - before]
+	if spell_type == "heal":
+		var heal_amt: int = data.get("heal", 30)
+		var before: int = player.hp
+		player.heal(max(1, heal_amt + player.effective_mag()))
+		return "[color=lime]You cast %s! Restored %d HP.[/color]" % [data["name"], player.hp - before]
+
+	# damage spell — apply elemental weakness
 	var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
+	var element: String = data.get("element", "")
+	var weak_tag: String = ""
+	if element != "" and enemy.weakness == element:
+		dmg *= 2
+		weak_tag = "  [color=yellow]WEAKNESS![/color]"
 	enemy.take_damage(dmg)
-	return "You cast %s!  [color=violet]%s takes %d magic damage.[/color]" % [data["name"], enemy.enemy_name, dmg]
+	return "You cast %s!%s  [color=violet]%s takes %d magic damage.[/color]" % [
+		data["name"], weak_tag, enemy.enemy_name, dmg]
 
 
 func _use_item_by_id(item_id: String) -> String:
@@ -596,6 +600,18 @@ func _use_item_by_id(item_id: String) -> String:
 					return "[color=aqua]Used %s.[/color] %s is already %s." % [item["name"], enemy.enemy_name, sname]
 				enemy.apply_status(inflicts)
 				return "[color=aqua]Used %s![/color]  [color=violet]%s is now %s.[/color]" % [item["name"], enemy.enemy_name, sname]
+			var element: String = item.get("element", "")
+			var base_dmg: int = item.get("dmg", 0)
+			if element != "" and base_dmg > 0:
+				var dmg: int = base_dmg
+				var weak_tag: String = ""
+				if enemy.weakness == element:
+					dmg *= 2
+					weak_tag = "  [color=yellow]WEAKNESS![/color]"
+				enemy.take_damage(dmg)
+				player.remove_item(item, 1)
+				return "[color=aqua]Used %s![/color]%s  [color=violet]%s takes %d damage.[/color]" % [
+					item["name"], weak_tag, enemy.enemy_name, dmg]
 			var result: String = player.use_item(item)
 			return "[color=aqua]Used %s. %s[/color]" % [item["name"], result]
 	return "[color=gray]Item not found.[/color]"

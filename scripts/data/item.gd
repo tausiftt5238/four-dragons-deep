@@ -24,6 +24,12 @@ static func scroll(id: String, name: String, spell_id: String,
 			teaches=spell_id, spell_name=spell_name, qty=1}
 
 
+static func elemental_throwable(id: String, name: String, desc: String,
+		element: String, dmg: int) -> Dictionary:
+	return {id=id, name=name, type="consumable", desc=desc,
+			hp_restore=0, mp_restore=0, qty=1, element=element, dmg=dmg}
+
+
 # ── Predefined consumables ────────────────────────────────────────────────────
 
 static func health_potion() -> Dictionary:
@@ -73,6 +79,18 @@ static func scroll_bind() -> Dictionary:
 	return scroll("scroll_bind", "Scroll of Bind", "bind", "Bind",
 			"Teaches the Bind ailment spell.")
 
+static func scroll_fira() -> Dictionary:
+	return scroll("scroll_fira", "Scroll of Fira", "fira", "Fira",
+			"Teaches the Fira fire spell.")
+
+static func scroll_thundara() -> Dictionary:
+	return scroll("scroll_thundara", "Scroll of Thundara", "thundara", "Thundara",
+			"Teaches the Thundara lightning spell.")
+
+static func scroll_blizzara() -> Dictionary:
+	return scroll("scroll_blizzara", "Scroll of Blizzara", "blizzara", "Blizzara",
+			"Teaches the Blizzara ice spell.")
+
 
 # ── Predefined offensive throwables ──────────────────────────────────────────
 
@@ -89,8 +107,24 @@ static func binding_web() -> Dictionary:
 	return consumable("binding_web", "Binding Web", "Ensnares an enemy, immobilizing it.", 0, 0, "", "immobilize")
 
 
+# ── Elemental throwables ──────────────────────────────────────────────────────
+
+static func fire_bomb() -> Dictionary:
+	return elemental_throwable("fire_bomb", "Fire Bomb", "Hurls a flaming explosive. Effective vs. fire-weak foes.", "fire", 20)
+
+static func ice_shard() -> Dictionary:
+	return elemental_throwable("ice_shard", "Ice Shard", "Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.", "ice", 20)
+
+static func thunder_bead() -> Dictionary:
+	return elemental_throwable("thunder_bead", "Thunder Bead", "Discharges a crackling orb. Effective vs. thunder-weak foes.", "thunder", 20)
+
+
 # ── Enemy drop table ──────────────────────────────────────────────────────────
 
 static func drop_table() -> Array[Dictionary]:
-	return [health_potion(), ether(), antidote(), stimulant(), echo_gem(),
-			venom_flask(), flash_powder(), silence_dust(), binding_web()]
+	return [
+		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
+		venom_flask(), flash_powder(), silence_dust(), binding_web(),
+		fire_bomb(), ice_shard(), thunder_bead(),
+		scroll_fira(), scroll_thundara(), scroll_blizzara(),
+	]
