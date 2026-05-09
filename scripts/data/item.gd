@@ -7,11 +7,14 @@ class_name Item
 # ── Factories ─────────────────────────────────────────────────────────────────
 
 static func consumable(id: String, name: String, desc: String,
-		hp_restore: int, mp_restore: int, cures_status: String = "") -> Dictionary:
+		hp_restore: int, mp_restore: int, cures_status: String = "",
+		inflicts_status: String = "") -> Dictionary:
 	var d: Dictionary = {id=id, name=name, type="consumable", desc=desc,
 			hp_restore=hp_restore, mp_restore=mp_restore, qty=1}
 	if cures_status != "":
 		d["cures_status"] = cures_status
+	if inflicts_status != "":
+		d["inflicts_status"] = inflicts_status
 	return d
 
 
@@ -71,7 +74,23 @@ static func scroll_bind() -> Dictionary:
 			"Teaches the Bind ailment spell.")
 
 
+# ── Predefined offensive throwables ──────────────────────────────────────────
+
+static func venom_flask() -> Dictionary:
+	return consumable("venom_flask", "Venom Flask", "Throws a vial of poison at an enemy.", 0, 0, "", "poison")
+
+static func flash_powder() -> Dictionary:
+	return consumable("flash_powder", "Flash Powder", "Blinds and paralyzes an enemy.", 0, 0, "", "paralyzed")
+
+static func silence_dust() -> Dictionary:
+	return consumable("silence_dust", "Silence Dust", "Silences an enemy, preventing spells.", 0, 0, "", "silence")
+
+static func binding_web() -> Dictionary:
+	return consumable("binding_web", "Binding Web", "Ensnares an enemy, immobilizing it.", 0, 0, "", "immobilize")
+
+
 # ── Enemy drop table ──────────────────────────────────────────────────────────
 
 static func drop_table() -> Array[Dictionary]:
-	return [health_potion(), ether(), antidote(), stimulant(), echo_gem()]
+	return [health_potion(), ether(), antidote(), stimulant(), echo_gem(),
+			venom_flask(), flash_powder(), silence_dust(), binding_web()]

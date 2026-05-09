@@ -38,6 +38,7 @@ func _ready() -> void:
 	add_item(Item.ether(), 1)
 	add_item(Item.antidote(), 1)
 	add_item(Item.stimulant(), 1)
+	add_item(Item.venom_flask(), 1)
 	add_item(Item.scroll_cure(), 1)
 
 	add_item(Weapon.iron_sword())

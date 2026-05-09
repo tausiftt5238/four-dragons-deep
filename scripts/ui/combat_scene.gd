@@ -588,6 +588,14 @@ func _cast_spell(spell_id: String) -> String:
 func _use_item_by_id(item_id: String) -> String:
 	for item: Dictionary in player.inventory:
 		if item["id"] == item_id and item["type"] == "consumable":
+			var inflicts: String = item.get("inflicts_status", "")
+			if inflicts != "":
+				var sname: String = Status.get_data(inflicts).get("name", inflicts)
+				player.remove_item(item, 1)
+				if enemy.has_status(inflicts):
+					return "[color=aqua]Used %s.[/color] %s is already %s." % [item["name"], enemy.enemy_name, sname]
+				enemy.apply_status(inflicts)
+				return "[color=aqua]Used %s![/color]  [color=violet]%s is now %s.[/color]" % [item["name"], enemy.enemy_name, sname]
 			var result: String = player.use_item(item)
 			return "[color=aqua]Used %s. %s[/color]" % [item["name"], result]
 	return "[color=gray]Item not found.[/color]"

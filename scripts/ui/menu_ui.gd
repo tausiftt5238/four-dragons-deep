@@ -129,9 +129,27 @@ func _build_stats() -> void:
 	_content.add_child(_make_header("ADVENTURER   LV %d" % p.lv))
 	_content.add_child(HSeparator.new())
 
-	_content.add_child(_make_bar_row("HP",  p.hp,  p.max_hp,      Color(0.20, 0.78, 0.25)))
-	_content.add_child(_make_bar_row("MP",  p.mp,  p.max_mp,      Color(0.28, 0.50, 1.00)))
-	_content.add_child(_make_bar_row("EXP", p.exp, p.exp_to_next, Color(0.90, 0.70, 0.10)))
+	var portrait_row: HBoxContainer = HBoxContainer.new()
+	portrait_row.add_theme_constant_override("separation", 16)
+	_content.add_child(portrait_row)
+
+	var portrait: TextureRect = TextureRect.new()
+	portrait.texture             = load("res://icon.svg") as Texture2D
+	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.custom_minimum_size = Vector2(90, 90)
+	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	portrait.modulate            = Color(0.55, 0.60, 0.78)
+	portrait_row.add_child(portrait)
+
+	var bars: VBoxContainer = VBoxContainer.new()
+	bars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bars.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
+	bars.add_theme_constant_override("separation", 6)
+	portrait_row.add_child(bars)
+
+	bars.add_child(_make_bar_row("HP",  p.hp,  p.max_hp,      Color(0.20, 0.78, 0.25)))
+	bars.add_child(_make_bar_row("MP",  p.mp,  p.max_mp,      Color(0.28, 0.50, 1.00)))
+	bars.add_child(_make_bar_row("EXP", p.exp, p.exp_to_next, Color(0.90, 0.70, 0.10)))
 
 	_content.add_child(HSeparator.new())
 
