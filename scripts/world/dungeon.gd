@@ -19,9 +19,11 @@ var _chest_nodes: Dictionary = {}
 # Reads all visual settings and the portal position from the Level.
 func build(level: Level) -> void:
 	_build_geometry(level)
-	if level.exit_pos.x >= 0:
-		_add_exit_marker(level.exit_pos)
+	if level.exit_pos.x >= 0 and level.exit_wall_pos.x >= 0:
+		_add_exit_marker(level.exit_wall_pos, level.exit_pos)
 	_add_chests(level)
+	if level.store_entry_pos.x >= 0:
+		_add_store_marker(level.store_wall_pos, level.store_entry_pos)
 	_setup_environment()
 
 
@@ -59,27 +61,35 @@ func _build_geometry(level: Level) -> void:
 						Vector3(CELL_SIZE, 0.1, CELL_SIZE), ceil_mat)
 
 
-# Adds a glowing green floor tile and overhead light at the portal cell so the
-# player can spot the exit from a distance. Teal is used on both maps so it
-# reads as "portal" regardless of the surrounding wall colour.
-func _add_exit_marker(exit_pos: Vector2i) -> void:
-	var wx: float = exit_pos.x * CELL_SIZE
-	var wz: float = exit_pos.y * CELL_SIZE
+# Glowing teal panel on the wall face adjacent to the portal floor tile.
+# dir = entry_pos - wall_pos identifies the accessible face.
+func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
+	var dir: Vector2i = entry_pos - wall_pos
+	var wx: float = wall_pos.x * CELL_SIZE
+	var wz: float = wall_pos.y * CELL_SIZE
 
-	# Emissive floor tile slightly above the normal floor so it isn't z-fighting
+	var px: float = wx + dir.x * (CELL_SIZE * 0.5 + 0.05)
+	var pz: float = wz + dir.y * (CELL_SIZE * 0.5 + 0.05)
+	var py: float = WALL_HEIGHT * 0.5
+
+	var panel_size: Vector3
+	if dir.x != 0:
+		panel_size = Vector3(0.08, WALL_HEIGHT * 0.75, CELL_SIZE * 0.80)
+	else:
+		panel_size = Vector3(CELL_SIZE * 0.80, WALL_HEIGHT * 0.75, 0.08)
+
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.albedo_color = Color(0.0, 0.55, 0.38)
 	mat.emission_enabled = true
 	mat.emission = Color(0.0, 0.55, 0.38)
 	mat.emission_energy_multiplier = 2.5
-	_add_box(Vector3(wx, 0.02, wz), Vector3(CELL_SIZE * 0.85, 0.05, CELL_SIZE * 0.85), mat)
+	_add_box(Vector3(px, py, pz), panel_size, mat)
 
-	# Soft overhead light to cast a teal glow on surrounding walls
 	var light: OmniLight3D = OmniLight3D.new()
-	light.light_color = Color(0.2, 1.0, 0.6)
+	light.light_color  = Color(0.2, 1.0, 0.6)
 	light.light_energy = 1.5
-	light.omni_range = 4.0
-	light.position = Vector3(wx, WALL_HEIGHT * 0.6, wz)
+	light.omni_range   = 4.0
+	light.position     = Vector3(px, py, pz)
 	add_child(light)
 
 
@@ -124,6 +134,40 @@ func _add_chest_marker(pos: Vector2i) -> void:
 	light.omni_range   = 3.5
 	light.position     = Vector3(0, WALL_HEIGHT * 0.55, 0)
 	root.add_child(light)
+
+
+# Glowing purple panel on the wall face that the player walks toward.
+# dir = entry_pos - wall_pos tells us which face of the wall is accessible.
+func _add_store_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
+	var dir: Vector2i = entry_pos - wall_pos
+	var wx: float = wall_pos.x * CELL_SIZE
+	var wz: float = wall_pos.y * CELL_SIZE
+
+	# Place the panel at the wall face, protruding 0.05 units into the corridor.
+	var px: float = wx + dir.x * (CELL_SIZE * 0.5 + 0.05)
+	var pz: float = wz + dir.y * (CELL_SIZE * 0.5 + 0.05)
+	var py: float = WALL_HEIGHT * 0.5
+
+	# Panel is thin along the approach axis and wide along the perpendicular.
+	var panel_size: Vector3
+	if dir.x != 0:
+		panel_size = Vector3(0.08, WALL_HEIGHT * 0.75, CELL_SIZE * 0.80)
+	else:
+		panel_size = Vector3(CELL_SIZE * 0.80, WALL_HEIGHT * 0.75, 0.08)
+
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.40, 0.10, 0.80)
+	mat.emission_enabled = true
+	mat.emission = Color(0.40, 0.10, 0.80)
+	mat.emission_energy_multiplier = 2.5
+	_add_box(Vector3(px, py, pz), panel_size, mat)
+
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color  = Color(0.65, 0.35, 1.0)
+	light.light_energy = 1.5
+	light.omni_range   = 4.0
+	light.position     = Vector3(px, py, pz)
+	add_child(light)
 
 
 # Removes the 3D chest visual when the player picks it up.

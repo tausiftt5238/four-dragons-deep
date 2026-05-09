@@ -14,9 +14,12 @@ func _ready() -> void:
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
 
-	exit_pos   = _random_reachable_cell(maze, player_start)
-	next_scene = "res://scenes/map.tscn"
+	var exit_pair: Dictionary = _random_frontier_wall({player_start: true})
+	exit_wall_pos = exit_pair["wall"]
+	exit_pos      = exit_pair["floor"]
+	next_scene    = "res://scenes/map.tscn"
 	_place_chests()
+	_place_store()
 
 
 # Generates a 20x20 maze with loops and variable-size rooms.
@@ -134,6 +137,54 @@ func _place_chests() -> void:
 		occupied[pos] = true
 		chest_items[pos] = _random_loot()
 		placed += 1
+
+
+# Flood-fills from player_start and returns a random {wall, floor} pair where
+# floor is a reachable open cell not in excluded_floors, and wall is an
+# interior wall cell orthogonally adjacent to floor.
+# Guaranteed to find a result in any well-formed 20×20 maze.
+func _random_frontier_wall(excluded_floors: Dictionary) -> Dictionary:
+	const DIRS: Array[Vector2i] = [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
+	var rows: int = maze.size()
+	var cols: int = (maze[0] as Array).size()
+
+	var reachable: Dictionary = {}
+	var queue: Array = [player_start]
+	reachable[player_start] = true
+	while queue.size() > 0:
+		var cur: Vector2i = queue.pop_front() as Vector2i
+		for d: Vector2i in DIRS:
+			var nxt: Vector2i = cur + d
+			if nxt.x >= 0 and nxt.x < cols and nxt.y >= 0 and nxt.y < rows:
+				if (maze[nxt.y] as Array)[nxt.x] == 0 and not reachable.has(nxt):
+					reachable[nxt] = true
+					queue.append(nxt)
+
+	var seen_walls: Dictionary = {}
+	var candidates: Array = []
+	for fp: Variant in reachable.keys():
+		if excluded_floors.has(fp):
+			continue
+		for d: Vector2i in DIRS:
+			var wp: Vector2i = (fp as Vector2i) + d
+			if seen_walls.has(wp):
+				continue
+			if wp.x <= 0 or wp.x >= cols - 1 or wp.y <= 0 or wp.y >= rows - 1:
+				continue
+			if (maze[wp.y] as Array)[wp.x] == 1:
+				seen_walls[wp] = true
+				candidates.append({wall=wp, floor=fp})
+
+	return candidates[randi() % candidates.size()]
+
+
+func _place_store() -> void:
+	var excluded: Dictionary = {player_start: true, exit_pos: true, exit_wall_pos: true}
+	for cp: Variant in chest_items.keys():
+		excluded[cp] = true
+	var pair: Dictionary = _random_frontier_wall(excluded)
+	store_wall_pos  = pair["wall"] as Vector2i
+	store_entry_pos = pair["floor"] as Vector2i
 
 
 func _random_loot() -> Dictionary:

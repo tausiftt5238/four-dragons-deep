@@ -31,7 +31,12 @@ var hud_layer: CanvasLayer       # CanvasLayer holding the minimap; hidden durin
 var player_char: PlayerCharacter  # RPG stats — persists across encounters and floors
 var in_combat:  bool = false
 var menu_open:  bool = false
+var store_open: bool = false
+
+var _encounters_enabled: bool = true
+var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
+var store_layer:   CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
 var _chest_popup:       Label   # brief "Found X!" label in the HUD
@@ -115,7 +120,8 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	# The reference must be reassigned here because visited was just repointed.
 	minimap_ctrl.maze     = current_level.maze
 	minimap_ctrl.visited  = visited
-	minimap_ctrl.exit_pos = current_level.exit_pos
+	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
+	minimap_ctrl.store_pos = current_level.store_wall_pos
 	_resize_minimap()
 
 	_sync_player()
@@ -171,6 +177,19 @@ func _setup_minimap() -> void:
 	_chest_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
 	_chest_popup.modulate.a = 0.0
 	layer.add_child(_chest_popup)
+
+	_encounter_debug_lbl = Label.new()
+	_encounter_debug_lbl.anchor_left   = 0.0
+	_encounter_debug_lbl.anchor_right  = 0.0
+	_encounter_debug_lbl.anchor_top    = 0.0
+	_encounter_debug_lbl.anchor_bottom = 0.0
+	_encounter_debug_lbl.offset_left   = 10.0
+	_encounter_debug_lbl.offset_right  = 260.0
+	_encounter_debug_lbl.offset_top    = 10.0
+	_encounter_debug_lbl.offset_bottom = 34.0
+	_encounter_debug_lbl.add_theme_font_size_override("font_size", 13)
+	_update_encounter_debug_label()
+	layer.add_child(_encounter_debug_lbl)
 
 
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
@@ -248,11 +267,12 @@ func _is_open(col: int, row: int) -> bool:
 # Checks whether the player is standing on the portal tile and, if so,
 # transitions to the next level. Called after every successful move.
 func _check_portal() -> void:
-	if current_level.next_scene != "" and player_pos == current_level.exit_pos:
-		floor_num += 1
-		floor_label.text = "Floor %d" % floor_num
-		visited_by_map.erase(current_level.next_scene)
-		_load_level(current_level.next_scene, true)
+	if current_level.next_scene == "":
+		return
+	floor_num += 1
+	floor_label.text = "Floor %d" % floor_num
+	visited_by_map.erase(current_level.next_scene)
+	_load_level(current_level.next_scene, true)
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
@@ -274,15 +294,22 @@ func _shake_camera() -> void:
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
-	# ESC toggles the menu (blocked during combat).
+	if event.keycode == KEY_Q and not in_combat:
+		_encounters_enabled = not _encounters_enabled
+		_update_encounter_debug_label()
+		return
+
+	# ESC: close store → close menu → open menu. Blocked during combat.
 	if event.keycode == KEY_ESCAPE:
 		if not in_combat:
-			if menu_open:
+			if store_open:
+				_close_store()
+			elif menu_open:
 				_close_menu()
 			else:
 				_open_menu()
 		return
-	if in_combat or menu_open:
+	if in_combat or menu_open or store_open:
 		return
 	var moved: bool = false
 	match event.keycode:
@@ -291,6 +318,10 @@ func _input(event: InputEvent) -> void:
 			if _is_open(nxt.x, nxt.y):
 				player_pos = nxt
 				moved = true
+			elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
+				_check_portal()
+			elif nxt == current_level.store_wall_pos and player_pos == current_level.store_entry_pos:
+				_open_store()
 			else:
 				_shake_camera()
 		KEY_DOWN:
@@ -313,14 +344,22 @@ func _input(event: InputEvent) -> void:
 	if moved:
 		_sync_player()
 		_check_chest()
-		_check_portal()
 		_check_encounter()
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────
 
+func _update_encounter_debug_label() -> void:
+	if _encounters_enabled:
+		_encounter_debug_lbl.text = "[DEBUG] Encounters: ON"
+		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.45, 0.90, 0.45))
+	else:
+		_encounter_debug_lbl.text = "[DEBUG] Encounters: OFF"
+		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
+
+
 func _check_encounter() -> void:
-	if randi() % 5 == 0:
+	if _encounters_enabled and randi() % 5 == 0:
 		_start_combat()
 
 
@@ -475,3 +514,27 @@ func _close_menu() -> void:
 			child.queue_free()
 	hud_layer.visible = true
 	menu_open = false
+
+
+func _open_store() -> void:
+	store_open = true
+	hud_layer.visible = false
+
+	if not is_instance_valid(store_layer):
+		store_layer = CanvasLayer.new()
+		store_layer.layer = 15
+		add_child(store_layer)
+
+	var packed: PackedScene = load("res://scenes/store.tscn") as PackedScene
+	var store: StoreUI = packed.instantiate() as StoreUI
+	store.player = player_char
+	store.store_closed.connect(_close_store)
+	store_layer.add_child(store)
+
+
+func _close_store() -> void:
+	if is_instance_valid(store_layer):
+		for child: Node in store_layer.get_children():
+			child.queue_free()
+	hud_layer.visible = true
+	store_open = false

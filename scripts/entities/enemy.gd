@@ -10,19 +10,27 @@ var status_attack: String = ""
 var weakness:      String = ""
 
 # Template data for all enemy types. Stats are base values for floor 1.
+# min_floor / max_floor control which dungeon floors they appear on.
+# max_floor = -1 means no upper limit.
 const TEMPLATES: Array[Dictionary] = [
-	{name="Slime",    str=2, def=1, mag=0, agl=1, exp=15, gold=5,  status_attack="poison",     weakness="fire"},
-	{name="Goblin",   str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack="",           weakness="thunder"},
-	{name="Skeleton", str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize", weakness="fire"},
-	{name="Wraith",   str=3, def=1, mag=5, agl=5, exp=40, gold=13, status_attack="silence",    weakness="ice"},
-	{name="Troll",    str=7, def=5, mag=0, agl=1, exp=50, gold=17, status_attack="immobilize", weakness="ice"},
+	{name="Slime",    str=2, def=1, mag=0, agl=1, exp=15, gold=5,  status_attack="poison",     weakness="fire",    min_floor=1, max_floor=2},
+	{name="Goblin",   str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack="",           weakness="thunder", min_floor=1, max_floor=3},
+	{name="Skeleton", str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize", weakness="fire",    min_floor=2, max_floor=4},
+	{name="Wraith",   str=3, def=1, mag=5, agl=5, exp=40, gold=13, status_attack="silence",    weakness="ice",     min_floor=3, max_floor=-1},
+	{name="Troll",    str=7, def=5, mag=0, agl=1, exp=50, gold=17, status_attack="immobilize", weakness="ice",     min_floor=4, max_floor=-1},
 ]
 
 
 
 static func make_random(floor_num: int) -> Enemy:
 	var e: Enemy = Enemy.new()
-	var t: Dictionary = TEMPLATES[randi() % TEMPLATES.size()]
+	var pool: Array[Dictionary] = []
+	for tmpl: Dictionary in TEMPLATES:
+		if floor_num >= tmpl["min_floor"] and (tmpl["max_floor"] == -1 or floor_num <= tmpl["max_floor"]):
+			pool.append(tmpl)
+	if pool.is_empty():
+		pool = TEMPLATES  # fallback: use all if nothing matches
+	var t: Dictionary = pool[randi() % pool.size()]
 	var bonus: int = floor_num - 1
 	e.enemy_name  = t["name"]
 	e.lv          = max(1, floor_num + randi() % 2)

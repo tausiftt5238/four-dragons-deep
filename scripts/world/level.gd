@@ -23,7 +23,9 @@ var entry_pos: Vector2i    = Vector2i(7, 7)
 var entry_facing: int      = 1  # East — facing the portal at (8,7)
 
 # The portal tile. Stepping onto this cell triggers a scene transition.
-var exit_pos: Vector2i     = Vector2i(-1, -1)
+var exit_pos:      Vector2i = Vector2i(-1, -1)
+# Wall cell adjacent to exit_pos — the glowing panel is rendered here.
+var exit_wall_pos: Vector2i = Vector2i(-1, -1)
 
 # Path to the scene file loaded when the player steps through the portal.
 var next_scene: String     = ""
@@ -31,3 +33,8 @@ var next_scene: String     = ""
 # Treasure chests: grid position → item Dictionary.
 # Entries are erased by main.gd when the player picks them up.
 var chest_items: Dictionary = {}
+
+# Store entrance: the wall cell the player walks into, and the open floor cell
+# in front of it where the glowing marker is placed.
+var store_wall_pos:  Vector2i = Vector2i(-1, -1)
+var store_entry_pos: Vector2i = Vector2i(-1, -1)
