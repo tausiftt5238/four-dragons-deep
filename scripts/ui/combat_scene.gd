@@ -22,6 +22,9 @@ var _player_mp_bar:  ProgressBar
 var _player_mp_lbl:  Label
 var _player_sts_lbl: Label
 
+var _player_portrait: TextureRect
+var _enemy_portrait:  TextureRect
+
 var _enemy_hp_bar: ProgressBar
 var _enemy_hp_lbl: Label
 
@@ -93,6 +96,7 @@ func _build_enemy_area(parent: Control) -> void:
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon.modulate              = Color(0.95, 0.28, 0.28)
 	area.add_child(icon)
+	_enemy_portrait = icon
 
 	var name_lbl: Label = Label.new()
 	name_lbl.text                 = enemy.enemy_name.to_upper()
@@ -162,6 +166,7 @@ func _build_player_col(parent: Control) -> void:
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	portrait.modulate            = Color(0.55, 0.60, 0.78)
 	hbox.add_child(portrait)
+	_player_portrait = portrait
 
 	var stats: VBoxContainer = VBoxContainer.new()
 	stats.add_theme_constant_override("separation", 4)
@@ -281,9 +286,15 @@ func _build_submenu_col(parent: Control) -> void:
 
 	vbox.add_child(HSeparator.new())
 
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(scroll)
+
 	_right_list = VBoxContainer.new()
 	_right_list.add_theme_constant_override("separation", 4)
-	vbox.add_child(_right_list)
+	_right_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_right_list)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -302,6 +313,15 @@ func _bar_fill(color: Color) -> StyleBoxFlat:
 	var s: StyleBoxFlat = StyleBoxFlat.new()
 	s.bg_color = color
 	return s
+
+
+func _shake_portrait(node: TextureRect) -> void:
+	node.pivot_offset = node.size / 2.0
+	var tween: Tween = create_tween()
+	tween.tween_property(node, "scale", Vector2(1.18, 0.82), 0.05)
+	tween.tween_property(node, "scale", Vector2(0.88, 1.14), 0.06)
+	tween.tween_property(node, "scale", Vector2(1.07, 0.94), 0.05)
+	tween.tween_property(node, "scale", Vector2(1.0,  1.0),  0.05)
 
 
 func _log(line: String) -> void:
@@ -465,15 +485,21 @@ func _dispatch_round(action: String) -> void:
 # ── Round resolution ──────────────────────────────────────────────────────────
 
 func _round_player_first(action: String) -> void:
+	var e_hp_before: int = enemy.hp
 	var p_msg: String = _apply_player_action(action)
 	_refresh_hp()
+	if enemy.hp < e_hp_before:
+		_shake_portrait(_enemy_portrait)
 	if not enemy.is_alive():
 		_log(p_msg + "\n[color=lime]%s was defeated![/color]" % enemy.enemy_name)
 		await get_tree().create_timer(1.8).timeout
 		_end_combat("win")
 		return
+	var p_hp_before: int = player.hp
 	var e_msg: String = _apply_enemy_turn()
 	_refresh_hp()
+	if player.hp < p_hp_before:
+		_shake_portrait(_player_portrait)
 	_log(p_msg + "\n" + e_msg)
 	if not player.is_alive():
 		await get_tree().create_timer(1.8).timeout
@@ -483,15 +509,21 @@ func _round_player_first(action: String) -> void:
 
 
 func _round_enemy_first(action: String) -> void:
+	var p_hp_before: int = player.hp
 	var e_msg: String = _apply_enemy_turn()
 	_refresh_hp()
+	if player.hp < p_hp_before:
+		_shake_portrait(_player_portrait)
 	if not player.is_alive():
 		_log(e_msg + "\n[color=red]You were defeated...[/color]")
 		await get_tree().create_timer(1.8).timeout
 		_end_combat("lose")
 		return
+	var e_hp_before: int = enemy.hp
 	var p_msg: String = _apply_player_action(action)
 	_refresh_hp()
+	if enemy.hp < e_hp_before:
+		_shake_portrait(_enemy_portrait)
 	_log(e_msg + "\n" + p_msg)
 	if not enemy.is_alive():
 		_log("[color=lime]%s was defeated![/color]" % enemy.enemy_name)
@@ -502,10 +534,16 @@ func _round_enemy_first(action: String) -> void:
 
 
 func _do_end_of_round() -> void:
+	var p_hp_before: int = player.hp
+	var e_hp_before: int = enemy.hp
 	var tick_msg: String = _do_poison_ticks()
 	if not tick_msg.is_empty():
 		_log(tick_msg)
 		_refresh_hp()
+		if player.hp < p_hp_before:
+			_shake_portrait(_player_portrait)
+		if enemy.hp < e_hp_before:
+			_shake_portrait(_enemy_portrait)
 	if not player.is_alive():
 		await get_tree().create_timer(1.8).timeout
 		_end_combat("lose")
