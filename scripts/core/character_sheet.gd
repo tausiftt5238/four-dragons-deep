@@ -52,14 +52,25 @@ func gain_exp(amount: int) -> void:
 
 
 func _level_up() -> void:
-	lv  += 1
-	str += 1
-	def += 1
-	mag += 1
-	agl += 1
+	lv += 1
 	exp_to_next = int(exp_to_next * 1.5)
 	var old_max_hp: int = max_hp
 	var old_max_mp: int = max_mp
+	compute_max_hp()
+	compute_max_mp()
+	hp = min(max_hp, hp + (max_hp - old_max_hp))
+	mp = min(max_mp, mp + (max_mp - old_max_mp))
+
+
+# Called by LevelUpUI after the player distributes their stat points.
+# Applies bonus stats without resetting current HP/MP to max.
+func apply_stat_bonus(bonus: Dictionary) -> void:
+	var old_max_hp: int = max_hp
+	var old_max_mp: int = max_mp
+	str += bonus.get("str", 0)
+	def += bonus.get("def", 0)
+	mag += bonus.get("mag", 0)
+	agl += bonus.get("agl", 0)
 	compute_max_hp()
 	compute_max_mp()
 	hp = min(max_hp, hp + (max_hp - old_max_hp))

@@ -343,8 +343,9 @@ func _input(event: InputEvent) -> void:
 			minimap_ctrl.queue_redraw()
 	if moved:
 		_sync_player()
-		_check_chest()
-		_check_encounter()
+		_check_step_poison()
+		if player_char.is_alive() and not _check_chest():
+			_check_encounter()
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────
@@ -445,8 +446,9 @@ func _get_overlay_layer() -> CanvasLayer:
 
 func _show_level_up(before: Dictionary, after: Dictionary) -> void:
 	var ui: LevelUpUI = LevelUpUI.new()
-	ui.before = before
-	ui.after  = after
+	ui.before  = before
+	ui.after   = after
+	ui.player  = player_char
 	ui.dismissed.connect(func():
 		ui.queue_free()
 		_resume_from_overlay()
@@ -458,6 +460,7 @@ func _show_game_over() -> void:
 	var ui: GameOverUI = GameOverUI.new()
 	ui.try_again.connect(func():
 		ui.queue_free()
+		player_char.active_statuses.clear()
 		player_char.heal(player_char.max_hp)
 		player_char.restore_mp(player_char.max_mp)
 		player_pos    = current_level.player_start
@@ -471,24 +474,36 @@ func _show_game_over() -> void:
 
 # ── Chest system ──────────────────────────────────────────────────────────────
 
-func _check_chest() -> void:
+func _check_chest() -> bool:
 	if not current_level.chest_items.has(player_pos):
-		return
+		return false
 	var item: Dictionary = (current_level.chest_items[player_pos] as Dictionary).duplicate()
 	current_level.chest_items.erase(player_pos)
 	dungeon.remove_chest(player_pos)
 	player_char.add_item(item)
-	_show_chest_popup("Found:  " + item["name"] + "!")
+	_show_hud_popup("Found:  " + item["name"] + "!")
+	return true
 
 
-func _show_chest_popup(text: String) -> void:
+func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> void:
 	_chest_popup.text = text
+	_chest_popup.add_theme_color_override("font_color", color)
 	_chest_popup.modulate.a = 1.0
 	if is_instance_valid(_chest_popup_tween):
 		_chest_popup_tween.kill()
 	_chest_popup_tween = create_tween()
 	_chest_popup_tween.tween_interval(1.8)
 	_chest_popup_tween.tween_property(_chest_popup, "modulate:a", 0.0, 0.6)
+
+
+func _check_step_poison() -> void:
+	if not player_char.has_status(Status.POISON):
+		return
+	var dmg: int = max(1, int(player_char.max_hp * 0.05))
+	player_char.take_damage(dmg)
+	_show_hud_popup("Poison  -%d HP" % dmg, Color(0.55, 0.90, 0.30))
+	if not player_char.is_alive():
+		_show_game_over()
 
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
