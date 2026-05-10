@@ -4,6 +4,8 @@
 class_name MenuUI extends Control
 
 signal menu_closed
+signal save_requested
+signal load_requested
 
 
 var player: PlayerCharacter
@@ -69,6 +71,18 @@ func _build_shell() -> void:
 	var spacer: Control = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tab_row.add_child(spacer)
+
+	var save_btn: Button = Button.new()
+	save_btn.text = "Save  [F5]"
+	save_btn.custom_minimum_size = Vector2(88, 32)
+	save_btn.pressed.connect(func(): save_requested.emit())
+	tab_row.add_child(save_btn)
+
+	var load_btn: Button = Button.new()
+	load_btn.text = "Load  [F9]"
+	load_btn.custom_minimum_size = Vector2(88, 32)
+	load_btn.pressed.connect(func(): load_requested.emit())
+	tab_row.add_child(load_btn)
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Close  [ESC]"

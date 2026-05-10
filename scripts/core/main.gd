@@ -32,11 +32,13 @@ var player_char: PlayerCharacter  # RPG stats — persists across encounters and
 var in_combat:  bool = false
 var menu_open:  bool = false
 var store_open: bool = false
+var save_open:  bool = false
 
 var _encounters_enabled: bool = true
 var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
 var store_layer:   CanvasLayer
+var save_layer:    CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
 var _chest_popup:       Label   # brief "Found X!" label in the HUD
@@ -299,17 +301,31 @@ func _input(event: InputEvent) -> void:
 		_update_encounter_debug_label()
 		return
 
-	# ESC: close store → close menu → open menu. Blocked during combat.
+	if event.keycode == KEY_F5 and not in_combat and not store_open and not save_open:
+		if menu_open:
+			_close_menu()
+		_open_save_menu()
+		return
+
+	if event.keycode == KEY_F9 and not in_combat and not store_open and not save_open:
+		if menu_open:
+			_close_menu()
+		_open_load_menu()
+		return
+
+	# ESC: close save picker → close store → close menu → open menu. Blocked during combat.
 	if event.keycode == KEY_ESCAPE:
 		if not in_combat:
-			if store_open:
+			if save_open:
+				_close_save_layer()
+			elif store_open:
 				_close_store()
 			elif menu_open:
 				_close_menu()
 			else:
 				_open_menu()
 		return
-	if in_combat or menu_open or store_open:
+	if in_combat or menu_open or store_open or save_open:
 		return
 	var moved: bool = false
 	match event.keycode:
@@ -469,6 +485,11 @@ func _show_game_over() -> void:
 		_snap_cam_yaw()
 		_resume_from_overlay()
 	)
+	ui.load_game.connect(func():
+		ui.queue_free()
+		in_combat = false
+		_open_load_menu()
+	)
 	_get_overlay_layer().add_child(ui)
 
 
@@ -520,6 +541,14 @@ func _open_menu() -> void:
 	var menu: MenuUI = MenuUI.new()
 	menu.player = player_char
 	menu.menu_closed.connect(_close_menu)
+	menu.save_requested.connect(func():
+		_close_menu()
+		_open_save_menu()
+	)
+	menu.load_requested.connect(func():
+		_close_menu()
+		_open_load_menu()
+	)
 	menu_layer.add_child(menu)
 
 
@@ -553,3 +582,193 @@ func _close_store() -> void:
 			child.queue_free()
 	hud_layer.visible = true
 	store_open = false
+
+
+# ── Save / Load ───────────────────────────────────────────────────────────────
+
+func _open_save_menu() -> void:
+	save_open = true
+	hud_layer.visible = false
+	if not is_instance_valid(save_layer):
+		save_layer = CanvasLayer.new()
+		save_layer.layer = 16
+		add_child(save_layer)
+	var ui: SaveSlotUI = SaveSlotUI.new()
+	ui.mode = "save"
+	ui.slot_chosen.connect(_do_save)
+	ui.cancelled.connect(_close_save_layer)
+	save_layer.add_child(ui)
+
+
+func _open_load_menu() -> void:
+	save_open = true
+	hud_layer.visible = false
+	if not is_instance_valid(save_layer):
+		save_layer = CanvasLayer.new()
+		save_layer.layer = 16
+		add_child(save_layer)
+	var ui: SaveSlotUI = SaveSlotUI.new()
+	ui.mode = "load"
+	ui.slot_chosen.connect(_do_load)
+	ui.cancelled.connect(_close_save_layer)
+	save_layer.add_child(ui)
+
+
+func _close_save_layer() -> void:
+	if is_instance_valid(save_layer):
+		for child: Node in save_layer.get_children():
+			child.queue_free()
+	hud_layer.visible = true
+	save_open = false
+
+
+func _do_save(slot: int) -> void:
+	SaveSystem.write(slot, _gather_save_data())
+	_close_save_layer()
+	_show_hud_popup("Game saved to Slot %d." % slot)
+
+
+func _do_load(slot: int) -> void:
+	var data: Dictionary = SaveSystem.read(slot)
+	if data.is_empty():
+		return
+	_close_save_layer()
+	_restore_save(data)
+
+
+func _gather_save_data() -> Dictionary:
+	var p: PlayerCharacter = player_char
+	var visited_serial: Dictionary = {}
+	for sp: Variant in visited_by_map.keys():
+		visited_serial[sp as String] = SaveSystem.pack_visited(visited_by_map[sp] as Dictionary)
+
+	return {
+		timestamp   = Time.get_datetime_string_from_system(),
+		floor_num   = floor_num,
+		player_pos  = [player_pos.x, player_pos.y],
+		player_facing = player_facing,
+		player = {
+			lv = p.lv, str = p.str, def = p.def, mag = p.mag, agl = p.agl,
+			exp = p.exp, exp_to_next = p.exp_to_next,
+			hp = p.hp, max_hp = p.max_hp, mp = p.mp, max_mp = p.max_mp,
+			gold = p.gold,
+			known_spells    = p.known_spells,
+			active_statuses = p.active_statuses,
+			inventory       = p.inventory,
+			equipped_weapon = p.equipped_weapon,
+			equipped_armor  = p.equipped_armor,
+		},
+		map = {
+			scene       = "res://scenes/map.tscn",
+			maze        = current_level.maze,
+			exit_wall   = [current_level.exit_wall_pos.x,   current_level.exit_wall_pos.y],
+			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
+			store_wall  = [current_level.store_wall_pos.x,  current_level.store_wall_pos.y],
+			store_entry = [current_level.store_entry_pos.x, current_level.store_entry_pos.y],
+			chest_items = SaveSystem.pack_chest_items(current_level.chest_items),
+		},
+		visited = visited_serial,
+	}
+
+
+func _restore_save(data: Dictionary) -> void:
+	in_combat  = false
+	menu_open  = false
+	store_open = false
+	if is_instance_valid(overlay_layer):
+		for c: Node in overlay_layer.get_children():
+			c.queue_free()
+	if is_instance_valid(menu_layer):
+		for c: Node in menu_layer.get_children():
+			c.queue_free()
+	if is_instance_valid(store_layer):
+		for c: Node in store_layer.get_children():
+			c.queue_free()
+
+	_apply_player_data(data["player"] as Dictionary)
+
+	floor_num = int(data["floor_num"])
+	floor_label.text = "Floor %d" % floor_num
+
+	if is_instance_valid(dungeon):
+		dungeon.queue_free()
+		dungeon = null
+	if is_instance_valid(current_level):
+		current_level.queue_free()
+		current_level = null
+
+	var map_data: Dictionary = data["map"] as Dictionary
+	var scene_path: String   = map_data["scene"] as String
+	var packed: PackedScene  = load(scene_path) as PackedScene
+	current_level = packed.instantiate() as Level
+	add_child(current_level)
+
+	# Overwrite the freshly-generated maze with the saved layout.
+	var raw_maze: Array = map_data["maze"] as Array
+	var saved_maze: Array[Array] = []
+	for row: Variant in raw_maze:
+		saved_maze.append(row as Array)
+	current_level.maze = saved_maze
+
+	var ew: Array  = map_data["exit_wall"]   as Array
+	var ep: Array  = map_data["exit_pos"]    as Array
+	var sw: Array  = map_data["store_wall"]  as Array
+	var se: Array  = map_data["store_entry"] as Array
+	current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
+	current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
+	current_level.store_wall_pos  = Vector2i(int(sw[0]), int(sw[1]))
+	current_level.store_entry_pos = Vector2i(int(se[0]), int(se[1]))
+	current_level.next_scene      = scene_path
+	current_level.chest_items     = SaveSystem.unpack_chest_items(map_data["chest_items"] as Dictionary)
+
+	dungeon = Dungeon.new()
+	add_child(dungeon)
+	dungeon.build(current_level)
+
+	# Restore fog-of-war.
+	var raw_visited: Dictionary = data["visited"] as Dictionary
+	visited_by_map = {}
+	for sp: Variant in raw_visited.keys():
+		visited_by_map[sp as String] = SaveSystem.unpack_visited(raw_visited[sp as String] as Array)
+	visited = visited_by_map.get(scene_path, {})
+
+	minimap_ctrl.maze      = current_level.maze
+	minimap_ctrl.visited   = visited
+	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
+	minimap_ctrl.store_pos = current_level.store_wall_pos
+	_resize_minimap()
+
+	var pos_arr: Array = data["player_pos"] as Array
+	player_pos    = Vector2i(int(pos_arr[0]), int(pos_arr[1]))
+	player_facing = int(data["player_facing"])
+
+	_sync_player()
+	_snap_cam_yaw()
+	hud_layer.visible = true
+
+
+func _apply_player_data(pdata: Dictionary) -> void:
+	player_char.lv          = int(pdata["lv"])
+	player_char.str         = int(pdata["str"])
+	player_char.def         = int(pdata["def"])
+	player_char.mag         = int(pdata["mag"])
+	player_char.agl         = int(pdata["agl"])
+	player_char.exp         = int(pdata["exp"])
+	player_char.exp_to_next = int(pdata["exp_to_next"])
+	player_char.hp          = int(pdata["hp"])
+	player_char.max_hp      = int(pdata["max_hp"])
+	player_char.mp          = int(pdata["mp"])
+	player_char.max_mp      = int(pdata["max_mp"])
+	player_char.gold        = int(pdata["gold"])
+
+	player_char.known_spells.clear()
+	player_char.known_spells.assign(pdata["known_spells"] as Array)
+
+	player_char.active_statuses.clear()
+	player_char.active_statuses.assign(pdata["active_statuses"] as Array)
+
+	player_char.inventory.clear()
+	player_char.inventory.assign(pdata["inventory"] as Array)
+
+	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
+	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
