@@ -241,9 +241,17 @@ func _make_buy_row(item: Dictionary, price: int) -> HBoxContainer:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = item["name"]
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = item.get("desc", "")
+	name_lbl.tooltip_text = _gear_tooltip(item) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
+
+	var owned: int = _owned_qty(item.get("id", ""))
+	var own_lbl: Label = Label.new()
+	own_lbl.text = "Own ×%d" % owned if owned > 0 else ""
+	own_lbl.custom_minimum_size = Vector2(62, 0)
+	own_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	own_lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+	row.add_child(own_lbl)
 
 	var price_lbl: Label = Label.new()
 	price_lbl.text = "%d gp" % price
@@ -280,18 +288,34 @@ func _make_buy_row(item: Dictionary, price: int) -> HBoxContainer:
 # ── Sell tab ──────────────────────────────────────────────────────────────────
 
 func _build_sell() -> void:
-	var sellable: Array[Dictionary] = []
-	for item: Dictionary in player.inventory:
-		sellable.append(item)
+	var sort_row: HBoxContainer = HBoxContainer.new()
+	sort_row.add_theme_constant_override("separation", 6)
+	_content.add_child(sort_row)
 
-	if sellable.is_empty():
+	var sort_lbl: Label = Label.new()
+	sort_lbl.text = "Sort:"
+	sort_row.add_child(sort_lbl)
+
+	for mode: String in ["type", "name"]:
+		var btn: Button = Button.new()
+		btn.text = mode.capitalize()
+		btn.custom_minimum_size = Vector2(70, 26)
+		btn.pressed.connect(func():
+			player.sort_inventory(mode)
+			_refresh()
+		)
+		sort_row.add_child(btn)
+
+	_content.add_child(HSeparator.new())
+
+	if player.inventory.is_empty():
 		var lbl: Label = Label.new()
 		lbl.text = "Nothing to sell."
 		lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_content.add_child(lbl)
 		return
 
-	for item: Dictionary in sellable:
+	for item: Dictionary in player.inventory.duplicate():
 		_content.add_child(_make_sell_row(item))
 
 
@@ -303,7 +327,7 @@ func _make_sell_row(item: Dictionary) -> HBoxContainer:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = item.get("desc", "")
+	name_lbl.tooltip_text = _gear_tooltip(item) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
@@ -327,3 +351,55 @@ func _make_sell_row(item: Dictionary) -> HBoxContainer:
 	row.add_child(sell_btn)
 
 	return row
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+func _owned_qty(item_id: String) -> int:
+	var total: int = 0
+	for it: Dictionary in player.inventory:
+		if it.get("id", "") == item_id:
+			total += it.get("qty", 1)
+	if player.equipped_weapon.get("id", "") == item_id:
+		total += 1
+	if player.equipped_armor.get("id", "") == item_id:
+		total += 1
+	return total
+
+
+# ── Gear tooltip helpers ──────────────────────────────────────────────────────
+
+func _gear_tooltip(item: Dictionary) -> String:
+	var p: PlayerCharacter = player
+	var lines: Array[String] = []
+
+	var desc: String = item.get("desc", "")
+	if not desc.is_empty():
+		lines.append(desc)
+		lines.append("")
+
+	match item["type"]:
+		"weapon":
+			var new_str: int = p.str + item.get("str_bonus", 0)
+			var new_mag: int = p.mag + item.get("mag_bonus", 0)
+			var new_agl: int = p.agl + p.equipped_armor.get("agl_pen", 0) + item.get("agl_pen", 0)
+			lines.append(_cmp_line("STR", p.effective_str(), new_str))
+			if new_mag != p.effective_mag() or item.get("mag_bonus", 0) != 0:
+				lines.append(_cmp_line("MAG", p.effective_mag(), new_mag))
+			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
+				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
+		"armor":
+			var new_def: int = p.def + item.get("def_bonus", 0)
+			var new_agl: int = p.agl + p.equipped_weapon.get("agl_pen", 0) + item.get("agl_pen", 0)
+			lines.append(_cmp_line("DEF", p.effective_def(), new_def))
+			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
+				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
+
+	return "\n".join(lines)
+
+
+func _cmp_line(stat: String, cur: int, nxt: int) -> String:
+	var diff: int = nxt - cur
+	if diff == 0:
+		return "%s  %d" % [stat, nxt]
+	return "%s  %d → %d  (%s%d)" % [stat, cur, nxt, ("+" if diff > 0 else ""), diff]

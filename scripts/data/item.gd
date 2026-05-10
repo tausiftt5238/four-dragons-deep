@@ -45,13 +45,13 @@ static func antidote() -> Dictionary:
 	return consumable("antidote", "Antidote", "Cures Poison.", 0, 0, 1, "poison")
 
 static func stimulant() -> Dictionary:
-	return consumable("stimulant", "Stimulant", "Cures Paralysis.", 0, 0, 2, "paralyzed")
+	return consumable("stimulant", "Stimulant", "Cures Paralysis.", 0, 0, 1, "paralyzed")
 
 static func echo_gem() -> Dictionary:
-	return consumable("echo_gem", "Echo Gem", "Cures Silence.", 0, 0, 2, "silence")
+	return consumable("echo_gem", "Echo Gem", "Cures Silence.", 0, 0, 1, "silence")
 
 static func elixir_motion() -> Dictionary:
-	return consumable("elixir_motion", "Elixir of Motion", "Cures Immobilize.", 0, 0, 2, "immobilize")
+	return consumable("elixir_motion", "Elixir of Motion", "Cures Immobilize.", 0, 0, 1, "immobilize")
 
 static func panacea() -> Dictionary:
 	return consumable("panacea", "Panacea", "Cures all ailments.", 0, 0, 4, "all")

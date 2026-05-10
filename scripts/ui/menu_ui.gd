@@ -273,7 +273,7 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 	var qty: int = item.get("qty", 1)
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = item.get("desc", "")
+	name_lbl.tooltip_text = _gear_tooltip(item) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
@@ -291,6 +291,7 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 				var use_btn: Button = Button.new()
 				use_btn.text = "Use"
 				use_btn.custom_minimum_size = Vector2(50, 26)
+				use_btn.disabled = not player.can_use_item(item)
 				use_btn.pressed.connect(func():
 					var result: String = player.use_item(item)
 					_set_status(result)
@@ -413,8 +414,10 @@ func _build_slot_section(slot_name: String, item_type: String,
 		eq_row.add_child(none_lbl)
 	else:
 		var item_lbl: Label = Label.new()
-		item_lbl.text = equipped["name"] + _bonus_string(equipped)
+		item_lbl.text = equipped["name"]
 		item_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_lbl.tooltip_text = _gear_tooltip(equipped)
+		item_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		eq_row.add_child(item_lbl)
 
 		var unequip_btn: Button = Button.new()
@@ -445,8 +448,10 @@ func _build_slot_section(slot_name: String, item_type: String,
 		inner.add_child(avail_row)
 
 		var name_lbl: Label = Label.new()
-		name_lbl.text = it["name"] + _bonus_string(it)
+		name_lbl.text = it["name"]
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.tooltip_text = _gear_tooltip(it)
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		avail_row.add_child(name_lbl)
 
 		var equip_btn: Button = Button.new()
@@ -456,6 +461,42 @@ func _build_slot_section(slot_name: String, item_type: String,
 		avail_row.add_child(equip_btn)
 
 	return col
+
+
+func _gear_tooltip(item: Dictionary) -> String:
+	var p: PlayerCharacter = player
+	var lines: Array[String] = []
+
+	var desc: String = item.get("desc", "")
+	if not desc.is_empty():
+		lines.append(desc)
+		lines.append("")
+
+	match item["type"]:
+		"weapon":
+			var new_str: int = p.str + item.get("str_bonus", 0)
+			var new_mag: int = p.mag + item.get("mag_bonus", 0)
+			var new_agl: int = p.agl + p.equipped_armor.get("agl_pen", 0) + item.get("agl_pen", 0)
+			lines.append(_cmp_line("STR", p.effective_str(), new_str))
+			if new_mag != p.effective_mag() or item.get("mag_bonus", 0) != 0:
+				lines.append(_cmp_line("MAG", p.effective_mag(), new_mag))
+			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
+				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
+		"armor":
+			var new_def: int = p.def + item.get("def_bonus", 0)
+			var new_agl: int = p.agl + p.equipped_weapon.get("agl_pen", 0) + item.get("agl_pen", 0)
+			lines.append(_cmp_line("DEF", p.effective_def(), new_def))
+			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
+				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
+
+	return "\n".join(lines)
+
+
+func _cmp_line(stat: String, cur: int, nxt: int) -> String:
+	var diff: int = nxt - cur
+	if diff == 0:
+		return "%s  %d" % [stat, nxt]
+	return "%s  %d → %d  (%s%d)" % [stat, cur, nxt, ("+" if diff > 0 else ""), diff]
 
 
 func _bonus_string(item: Dictionary) -> String:

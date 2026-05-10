@@ -20,12 +20,12 @@ static func rusty_dagger() -> Dictionary:
 
 static func iron_sword() -> Dictionary:
 	return make("iron_sword", "Iron Sword",
-			"A sturdy iron blade.  STR+5  AGL-1", 5, 0, 1, -1)
+			"A sturdy iron blade.", 5, 0, 1, -1)
 
 static func battle_axe() -> Dictionary:
 	return make("battle_axe", "Battle Axe",
-			"Powerful but heavy.  STR+7  AGL-1", 7, 0, 2, -1)
+			"Powerful but heavy.", 7, 0, 2, -1)
 
 static func magic_rod() -> Dictionary:
 	return make("magic_rod", "Magic Rod",
-			"Channels arcane power.  MAG+5", 0, 5, 3)
+			"Channels arcane power.", 0, 5, 3)

@@ -81,6 +81,25 @@ func remove_item(item: Dictionary, count: int = 1) -> void:
 		inventory.erase(item)
 
 
+# Returns true if using this item would have any effect on the player's current state.
+func can_use_item(item: Dictionary) -> bool:
+	match item["type"]:
+		"consumable":
+			if item.get("hp_restore", 0) > 0 and hp < max_hp:
+				return true
+			if item.get("mp_restore", 0) > 0 and mp < max_mp:
+				return true
+			var cure: String = item.get("cures_status", "")
+			if cure == "all":
+				return not active_statuses.is_empty()
+			if cure != "":
+				return has_status(cure)
+			return false
+		"scroll":
+			return item.get("teaches", "") not in known_spells
+	return false
+
+
 # Uses a consumable or scroll. Returns a human-readable result string.
 func use_item(item: Dictionary) -> String:
 	match item["type"]:
