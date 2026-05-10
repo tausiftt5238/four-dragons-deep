@@ -419,7 +419,7 @@ func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> 
 				before if leveled else {}, after if leveled else {})
 		"lose":
 			_show_game_over()
-		"flee":
+		"flee", "talk":
 			_resume_from_overlay()
 
 
@@ -654,6 +654,7 @@ func _gather_save_data() -> Dictionary:
 			hp = p.hp, max_hp = p.max_hp, mp = p.mp, max_mp = p.max_mp,
 			gold = p.gold,
 			known_spells    = p.known_spells,
+			recruited       = p.recruited,
 			active_statuses = p.active_statuses,
 			inventory       = p.inventory,
 			equipped_weapon = p.equipped_weapon,
@@ -764,6 +765,9 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.known_spells.clear()
 	player_char.known_spells.assign(pdata["known_spells"] as Array)
+
+	player_char.recruited.clear()
+	player_char.recruited.assign(pdata.get("recruited", []) as Array)
 
 	player_char.active_statuses.clear()
 	player_char.active_statuses.assign(pdata["active_statuses"] as Array)

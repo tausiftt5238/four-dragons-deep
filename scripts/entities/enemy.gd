@@ -3,21 +3,23 @@
 # Use make_random() to generate a floor-scaled enemy without adding it to the tree.
 class_name Enemy extends CharacterSheet
 
-var enemy_name:    String = "Unknown"
-var exp_reward:    int    = 20
-var gold_reward:   int    = 5
-var status_attack: String = ""
-var weakness:      String = ""
+var enemy_name:      String = "Unknown"
+var exp_reward:      int    = 20
+var gold_reward:     int    = 5
+var status_attack:   String = ""
+var weakness:        String = ""
+var negotiable:      bool   = true
+var talk_difficulty: int    = 2
 
 # Template data for all enemy types. Stats are base values for floor 1.
 # min_floor / max_floor control which dungeon floors they appear on.
 # max_floor = -1 means no upper limit.
 const TEMPLATES: Array[Dictionary] = [
-	{name="Slime",    str=2, def=1, mag=0, agl=1, exp=15, gold=5,  status_attack="poison",     weakness="fire",    min_floor=1, max_floor=2},
-	{name="Goblin",   str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack="",           weakness="thunder", min_floor=1, max_floor=3},
-	{name="Skeleton", str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize", weakness="fire",    min_floor=2, max_floor=4},
-	{name="Wraith",   str=3, def=1, mag=5, agl=5, exp=40, gold=13, status_attack="silence",    weakness="ice",     min_floor=3, max_floor=-1},
-	{name="Troll",    str=7, def=5, mag=0, agl=1, exp=50, gold=17, status_attack="immobilize", weakness="ice",     min_floor=4, max_floor=-1},
+	{name="Slime",    str=2, def=1, mag=0, agl=1, exp=15, gold=5,  status_attack="poison",     weakness="fire",    min_floor=1, max_floor=2,  negotiable=true,  talk_difficulty=1},
+	{name="Goblin",   str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack="",           weakness="thunder", min_floor=1, max_floor=3,  negotiable=true,  talk_difficulty=2},
+	{name="Skeleton", str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize", weakness="fire",    min_floor=2, max_floor=4,  negotiable=false, talk_difficulty=0},
+	{name="Wraith",   str=3, def=1, mag=5, agl=5, exp=40, gold=13, status_attack="silence",    weakness="ice",     min_floor=3, max_floor=-1, negotiable=false, talk_difficulty=0},
+	{name="Troll",    str=7, def=5, mag=0, agl=1, exp=50, gold=17, status_attack="immobilize", weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4},
 ]
 
 
@@ -41,8 +43,10 @@ static func make_random(floor_num: int) -> Enemy:
 	e.exp_to_next = 0  # enemies don't level up
 	e.exp_reward  = t["exp"] * floor_num
 	e.gold_reward   = (t["gold"] + randi() % 5) * floor_num
-	e.status_attack = t.get("status_attack", "")
-	e.weakness      = t.get("weakness", "")
+	e.status_attack   = t.get("status_attack", "")
+	e.weakness        = t.get("weakness", "")
+	e.negotiable      = t.get("negotiable", true)
+	e.talk_difficulty = t.get("talk_difficulty", 2)
 	e.compute_max_hp()
 	return e
 

@@ -14,6 +14,9 @@ var equipped_armor:  Dictionary = {}
 # Learnable spell IDs. Looked up in Spell.DATA for display and cost.
 var known_spells: Array[String] = []
 
+# Enemy names successfully recruited via the Talk > Threaten critical path.
+var recruited: Array[String] = []
+
 # Inventory: Array of item dicts. Consumables stack via the qty field.
 var inventory: Array[Dictionary] = []
 

@@ -244,7 +244,7 @@ func _build_action_col(parent: Control) -> void:
 	_action_vbox.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 	m.add_child(_action_vbox)
 
-	for action: String in ["Attack", "Magic", "Item", "Defend", "Flee"]:
+	for action: String in ["Attack", "Magic", "Item", "Defend", "Talk", "Flee"]:
 		var btn: Button = Button.new()
 		btn.text                = action
 		btn.custom_minimum_size = Vector2(140, 30)
@@ -437,6 +437,89 @@ func _show_item_submenu() -> void:
 		_right_list.add_child(_dim_label("No items."))
 
 
+func _show_talk_submenu() -> void:
+	_hide_actions()
+	_right_back_btn.show()
+	_right_title.text = "TALK"
+	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
+	for child: Node in _right_list.get_children():
+		child.queue_free()
+
+	var bribe_cost: int = enemy.gold_reward / 2
+	var opts: Array[Array] = [
+		["Reason",   "Persuade with logic  (MAG)"],
+		["Bribe",    "Offer %d gold" % bribe_cost],
+		["Threaten", "Intimidate  (AGL) — risky"],
+	]
+	for opt: Array in opts:
+		var btn: Button = Button.new()
+		btn.text                = opt[1] as String
+		btn.custom_minimum_size = Vector2(0, 28)
+		btn.pressed.connect(_on_talk.bind(opt[0] as String))
+		_right_list.add_child(btn)
+
+
+func _on_talk(approach: String) -> void:
+	_show_main_actions()
+	_set_buttons(false)
+
+	if approach == "Bribe":
+		var cost: int = enemy.gold_reward / 2
+		if player.gold < cost:
+			_log("[color=gray]Not enough gold to bribe.[/color]")
+			await get_tree().create_timer(0.9).timeout
+			if is_instance_valid(self):
+				_set_buttons(true)
+				_refresh_button_states()
+			return
+		player.gold -= cost
+
+	var success: bool = false
+	var recruit: bool = false
+
+	match approach:
+		"Reason":
+			var score: int = player.effective_mag() - enemy.talk_difficulty * 2
+			success = randi() % 10 < (5 + score)
+		"Bribe":
+			success = true
+		"Threaten":
+			var score: int = player.effective_agl() - enemy.agl
+			var roll: int  = randi() % 10
+			if roll < (4 + score):
+				success = true
+				recruit = (roll == 0)
+
+	if success:
+		var msg: String = "[color=lime]%s backed down.[/color]" % enemy.enemy_name
+		if recruit:
+			player.recruited.append(enemy.enemy_name)
+			msg += "  [color=yellow]Recruited %s![/color]" % enemy.enemy_name
+		elif approach == "Reason":
+			player.gold += enemy.gold_reward / 2
+		_log(msg)
+		await get_tree().create_timer(1.5).timeout
+		_end_combat("talk")
+	else:
+		_log("[color=red]%s is enraged![/color]" % enemy.enemy_name)
+		var p_hp_before: int = player.hp
+		var e_msg: String    = _apply_enemy_turn()
+		if approach == "Threaten":
+			e_msg += "\n" + _apply_enemy_turn()
+		_refresh_hp()
+		if player.hp < p_hp_before:
+			_shake_portrait(_player_portrait)
+		_log(e_msg)
+		if not player.is_alive():
+			await get_tree().create_timer(1.8).timeout
+			_end_combat("lose")
+			return
+		await get_tree().create_timer(1.1).timeout
+		if is_instance_valid(self):
+			_set_buttons(true)
+			_refresh_button_states()
+
+
 func _dim_label(text: String) -> Label:
 	var lbl: Label = Label.new()
 	lbl.text = text
@@ -453,6 +536,12 @@ func _on_action(action: String) -> void:
 			return
 		"Item":
 			_show_item_submenu()
+			return
+		"Talk":
+			if not enemy.negotiable:
+				_log("[color=gray]%s won't listen.[/color]" % enemy.enemy_name)
+				return
+			_show_talk_submenu()
 			return
 		"Flee":
 			_set_buttons(false)
