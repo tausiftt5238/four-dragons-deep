@@ -571,7 +571,8 @@ func _open_store() -> void:
 
 	var packed: PackedScene = load("res://scenes/store.tscn") as PackedScene
 	var store: StoreUI = packed.instantiate() as StoreUI
-	store.player = player_char
+	store.player    = player_char
+	store.floor_num = floor_num
 	store.store_closed.connect(_close_store)
 	store_layer.add_child(store)
 

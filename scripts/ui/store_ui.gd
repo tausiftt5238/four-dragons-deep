@@ -5,7 +5,8 @@ class_name StoreUI extends Control
 
 signal store_closed
 
-var player: PlayerCharacter
+var player:    PlayerCharacter
+var floor_num: int = 1
 
 var _active_tab:  String = "buy"
 var _tab_btns:    Dictionary = {}
@@ -215,13 +216,20 @@ func _set_status(msg: String) -> void:
 
 func _build_buy() -> void:
 	for section: Dictionary in get_sections():
+		var available: Array = (section["entries"] as Array).filter(
+			func(e: Variant) -> bool:
+				return ((e as Dictionary)["item"] as Dictionary).get("floor", 1) <= floor_num
+		)
+		if available.is_empty():
+			continue
+
 		var hdr: Label = Label.new()
 		hdr.text = section["label"] as String
 		hdr.add_theme_color_override("font_color", Color(0.70, 0.65, 0.50))
 		_content.add_child(hdr)
 
-		for entry: Dictionary in (section["entries"] as Array):
-			_content.add_child(_make_buy_row(entry["item"] as Dictionary, entry["price"] as int))
+		for entry: Variant in available:
+			_content.add_child(_make_buy_row((entry as Dictionary)["item"] as Dictionary, (entry as Dictionary)["price"] as int))
 
 		_content.add_child(HSeparator.new())
 
@@ -233,6 +241,8 @@ func _make_buy_row(item: Dictionary, price: int) -> HBoxContainer:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = item["name"]
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.tooltip_text = item.get("desc", "")
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
 	var price_lbl: Label = Label.new()
@@ -293,6 +303,8 @@ func _make_sell_row(item: Dictionary) -> HBoxContainer:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.tooltip_text = item.get("desc", "")
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
 	var sp: int = sell_price(item)

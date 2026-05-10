@@ -30,85 +30,102 @@ func _build_shell() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	# Central panel  640 × 580
+	# Central panel 700 × 560
 	var panel: Panel = Panel.new()
 	panel.anchor_left   = 0.5
 	panel.anchor_right  = 0.5
 	panel.anchor_top    = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left   = -320
-	panel.offset_right  = 320
-	panel.offset_top    = -290
-	panel.offset_bottom = 290
+	panel.offset_left   = -350
+	panel.offset_right  = 350
+	panel.offset_top    = -280
+	panel.offset_bottom = 280
 	add_child(panel)
 
 	var margin: MarginContainer = MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left",   14)
-	margin.add_theme_constant_override("margin_right",  14)
-	margin.add_theme_constant_override("margin_top",    10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(side, 12)
 	panel.add_child(margin)
 
-	var root: VBoxContainer = VBoxContainer.new()
-	root.add_theme_constant_override("separation", 6)
-	margin.add_child(root)
+	var hbox: HBoxContainer = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 0)
+	margin.add_child(hbox)
 
-	# Tab row
-	var tab_row: HBoxContainer = HBoxContainer.new()
-	tab_row.add_theme_constant_override("separation", 4)
-	root.add_child(tab_row)
+	# ── Left sidebar ──────────────────────────────────────────────────────────
+	var sidebar: VBoxContainer = VBoxContainer.new()
+	sidebar.add_theme_constant_override("separation", 4)
+	sidebar.custom_minimum_size = Vector2(138, 0)
+	hbox.add_child(sidebar)
 
 	for tab_id: String in ["stats", "items", "equipment", "magic"]:
 		var btn: Button = Button.new()
 		btn.text        = tab_id.capitalize()
 		btn.toggle_mode = true
-		btn.custom_minimum_size = Vector2(118, 32)
+		btn.custom_minimum_size     = Vector2(0, 36)
+		btn.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(_switch_tab.bind(tab_id))
-		tab_row.add_child(btn)
+		sidebar.add_child(btn)
 		_tab_btns[tab_id] = btn
 
 	var spacer: Control = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tab_row.add_child(spacer)
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sidebar.add_child(spacer)
+
+	sidebar.add_child(HSeparator.new())
 
 	var save_btn: Button = Button.new()
 	save_btn.text = "Save  [F5]"
-	save_btn.custom_minimum_size = Vector2(88, 32)
+	save_btn.custom_minimum_size   = Vector2(0, 32)
+	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save_btn.pressed.connect(func(): save_requested.emit())
-	tab_row.add_child(save_btn)
+	sidebar.add_child(save_btn)
 
 	var load_btn: Button = Button.new()
 	load_btn.text = "Load  [F9]"
-	load_btn.custom_minimum_size = Vector2(88, 32)
+	load_btn.custom_minimum_size   = Vector2(0, 32)
+	load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	load_btn.pressed.connect(func(): load_requested.emit())
-	tab_row.add_child(load_btn)
+	sidebar.add_child(load_btn)
+
+	sidebar.add_child(HSeparator.new())
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Close  [ESC]"
-	close_btn.custom_minimum_size = Vector2(110, 32)
+	close_btn.custom_minimum_size   = Vector2(0, 32)
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	close_btn.pressed.connect(func(): menu_closed.emit())
-	tab_row.add_child(close_btn)
+	sidebar.add_child(close_btn)
 
-	root.add_child(HSeparator.new())
+	# ── Vertical divider ──────────────────────────────────────────────────────
+	var vsep_wrap: MarginContainer = MarginContainer.new()
+	vsep_wrap.add_theme_constant_override("margin_left",  10)
+	vsep_wrap.add_theme_constant_override("margin_right", 10)
+	vsep_wrap.add_child(VSeparator.new())
+	hbox.add_child(vsep_wrap)
 
-	# Scrollable content area
+	# ── Right content area ────────────────────────────────────────────────────
+	var right: VBoxContainer = VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("separation", 6)
+	hbox.add_child(right)
+
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(scroll)
+	right.add_child(scroll)
 
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.add_theme_constant_override("separation", 8)
 	scroll.add_child(_content)
 
-	root.add_child(HSeparator.new())
+	right.add_child(HSeparator.new())
 
 	_status_line = Label.new()
 	_status_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status_line.add_theme_color_override("font_color", Color(0.9, 0.85, 0.45))
 	_status_line.custom_minimum_size = Vector2(0, 22)
-	root.add_child(_status_line)
+	right.add_child(_status_line)
 
 
 # ── Tab routing ───────────────────────────────────────────────────────────────
@@ -140,7 +157,7 @@ func _set_status(msg: String) -> void:
 func _build_stats() -> void:
 	var p: PlayerCharacter = player
 
-	_content.add_child(_make_header("ADVENTURER   LV %d" % p.lv))
+	_content.add_child(_make_header("%s   LV %d" % [PlayerCharacter.DISPLAY_NAME.to_upper(), p.lv]))
 	_content.add_child(HSeparator.new())
 
 	var portrait_row: HBoxContainer = HBoxContainer.new()
@@ -256,6 +273,8 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 	var qty: int = item.get("qty", 1)
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.tooltip_text = item.get("desc", "")
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
 	# Action buttons depending on item type

@@ -3,6 +3,8 @@
 # and gold. HP/MP persist across encounters; manage them carefully.
 class_name PlayerCharacter extends CharacterSheet
 
+const DISPLAY_NAME: String = "Hero"
+
 var gold: int = 50
 
 # Equipment — empty dict means nothing equipped.

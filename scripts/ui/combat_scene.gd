@@ -175,7 +175,7 @@ func _build_player_col(parent: Control) -> void:
 	hbox.add_child(stats)
 
 	var name_lbl: Label = Label.new()
-	name_lbl.text = "HERO"
+	name_lbl.text = PlayerCharacter.DISPLAY_NAME.to_upper()
 	name_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 1.0))
 	stats.add_child(name_lbl)
 
