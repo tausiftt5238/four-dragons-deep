@@ -24,6 +24,8 @@ func build(level: Level) -> void:
 	_add_chests(level)
 	if level.store_entry_pos.x >= 0:
 		_add_store_marker(level.store_wall_pos, level.store_entry_pos)
+	if level.rest_entry_pos.x >= 0:
+		_add_rest_marker(level.rest_wall_pos, level.rest_entry_pos)
 	_setup_environment()
 
 
@@ -188,6 +190,38 @@ func _add_wall_label(text: String, pos: Vector3, dir: Vector2i, color: Color) ->
 	lbl.rotation.y       = atan2(-float(dir.x), -float(dir.y))
 	lbl.scale.x          = -1.0
 	add_child(lbl)
+
+
+# Glowing amber panel for the inn/rest door.
+func _add_rest_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
+	var dir: Vector2i = entry_pos - wall_pos
+	var wx: float = wall_pos.x * CELL_SIZE
+	var wz: float = wall_pos.y * CELL_SIZE
+
+	var px: float = wx + dir.x * (CELL_SIZE * 0.5 + 0.05)
+	var pz: float = wz + dir.y * (CELL_SIZE * 0.5 + 0.05)
+	var py: float = WALL_HEIGHT * 0.5
+
+	var panel_size: Vector3
+	if dir.x != 0:
+		panel_size = Vector3(0.08, WALL_HEIGHT * 0.75, CELL_SIZE * 0.80)
+	else:
+		panel_size = Vector3(CELL_SIZE * 0.80, WALL_HEIGHT * 0.75, 0.08)
+
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.75, 0.38, 0.05)
+	mat.emission_enabled = true
+	mat.emission = Color(0.75, 0.38, 0.05)
+	mat.emission_energy_multiplier = 2.5
+	_add_box(Vector3(px, py, pz), panel_size, mat)
+
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color  = Color(1.0, 0.65, 0.25)
+	light.light_energy = 1.5
+	light.omni_range   = 4.0
+	light.position     = Vector3(px, py, pz)
+	add_child(light)
+	_add_wall_label("INN", Vector3(px, WALL_HEIGHT * 0.95, pz), dir, Color(1.0, 0.70, 0.25))
 
 
 # Removes the 3D chest visual when the player picks it up.

@@ -38,3 +38,7 @@ var chest_items: Dictionary = {}
 # in front of it where the glowing marker is placed.
 var store_wall_pos:  Vector2i = Vector2i(-1, -1)
 var store_entry_pos: Vector2i = Vector2i(-1, -1)
+
+# Inn entrance: same layout as the store.
+var rest_wall_pos:  Vector2i = Vector2i(-1, -1)
+var rest_entry_pos: Vector2i = Vector2i(-1, -1)

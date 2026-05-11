@@ -20,6 +20,8 @@ var visited: Dictionary = {}
 var exit_pos:  Vector2i = Vector2i(-1, -1)
 # Grid position of the shop wall. Drawn in purple once explored.
 var store_pos: Vector2i = Vector2i(-1, -1)
+# Grid position of the inn wall. Drawn in amber once explored.
+var rest_pos:  Vector2i = Vector2i(-1, -1)
 
 # Pixel size of each maze cell on the minimap.
 const CELL_PX: int = 10
@@ -38,6 +40,7 @@ const C_FLOOR: Color  = Color(0.13, 0.12, 0.10, 1.00)  # Near-black open floor
 const C_PLAYER: Color = Color(1.00, 0.82, 0.20, 1.00)  # Bright yellow player marker
 const C_PORTAL: Color = Color(0.00, 0.82, 0.55, 1.00)  # Teal portal — matches the in-world exit glow
 const C_SHOP:   Color = Color(0.55, 0.15, 1.00, 1.00)  # Purple shop — matches the in-world store glow
+const C_REST:   Color = Color(1.00, 0.60, 0.10, 1.00)  # Amber inn — matches the in-world rest glow
 
 # 2D unit vectors for each facing direction, used to draw the direction arrow.
 # Order must match the facing constants in main.gd:
@@ -96,6 +99,13 @@ func _draw() -> void:
 		var vr: int = store_pos.y - origin.y
 		if vc >= 0 and vc < view and vr >= 0 and vr < view:
 			draw_rect(Rect2(PAD + vc * CELL_PX, PAD + vr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_SHOP)
+
+	# Inn marker within the view window.
+	if rest_pos.x >= 0 and visited.has(rest_pos):
+		var vc: int = rest_pos.x - origin.x
+		var vr: int = rest_pos.y - origin.y
+		if vc >= 0 and vc < view and vr >= 0 and vr < view:
+			draw_rect(Rect2(PAD + vc * CELL_PX, PAD + vr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_REST)
 
 	# Player is always at the centre of the window.
 	var cx: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5

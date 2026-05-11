@@ -32,12 +32,14 @@ var player_char: PlayerCharacter  # RPG stats — persists across encounters and
 var in_combat:  bool = false
 var menu_open:  bool = false
 var store_open: bool = false
+var rest_open:  bool = false
 var save_open:  bool = false
 
 var _encounters_enabled: bool = true
 var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
 var store_layer:   CanvasLayer
+var rest_layer:    CanvasLayer
 var save_layer:    CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
@@ -120,10 +122,11 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 
 	# Update minimap to the new map's data and its own visited reference.
 	# The reference must be reassigned here because visited was just repointed.
-	minimap_ctrl.maze     = current_level.maze
-	minimap_ctrl.visited  = visited
+	minimap_ctrl.maze      = current_level.maze
+	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
 	minimap_ctrl.store_pos = current_level.store_wall_pos
+	minimap_ctrl.rest_pos  = current_level.rest_wall_pos
 	_resize_minimap()
 
 	_sync_player()
@@ -320,12 +323,14 @@ func _input(event: InputEvent) -> void:
 				_close_save_layer()
 			elif store_open:
 				_close_store()
+			elif rest_open:
+				_close_rest()
 			elif menu_open:
 				_close_menu()
 			else:
 				_open_menu()
 		return
-	if in_combat or menu_open or store_open or save_open:
+	if in_combat or menu_open or store_open or rest_open or save_open:
 		return
 	var moved: bool = false
 	match event.keycode:
@@ -338,6 +343,8 @@ func _input(event: InputEvent) -> void:
 				_check_portal()
 			elif nxt == current_level.store_wall_pos and player_pos == current_level.store_entry_pos:
 				_open_store()
+			elif nxt == current_level.rest_wall_pos and player_pos == current_level.rest_entry_pos:
+				_open_rest()
 			else:
 				_shake_camera()
 		KEY_DOWN:
@@ -585,6 +592,29 @@ func _close_store() -> void:
 	store_open = false
 
 
+func _open_rest() -> void:
+	rest_open = true
+	hud_layer.visible = false
+
+	if not is_instance_valid(rest_layer):
+		rest_layer = CanvasLayer.new()
+		rest_layer.layer = 15
+		add_child(rest_layer)
+
+	var ui: RestUI = RestUI.new()
+	ui.player = player_char
+	ui.rest_closed.connect(_close_rest)
+	rest_layer.add_child(ui)
+
+
+func _close_rest() -> void:
+	if is_instance_valid(rest_layer):
+		for child: Node in rest_layer.get_children():
+			child.queue_free()
+	hud_layer.visible = true
+	rest_open = false
+
+
 # ── Save / Load ───────────────────────────────────────────────────────────────
 
 func _open_save_menu() -> void:
@@ -667,6 +697,8 @@ func _gather_save_data() -> Dictionary:
 			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
 			store_wall  = [current_level.store_wall_pos.x,  current_level.store_wall_pos.y],
 			store_entry = [current_level.store_entry_pos.x, current_level.store_entry_pos.y],
+			rest_wall   = [current_level.rest_wall_pos.x,   current_level.rest_wall_pos.y],
+			rest_entry  = [current_level.rest_entry_pos.x,  current_level.rest_entry_pos.y],
 			chest_items = SaveSystem.pack_chest_items(current_level.chest_items),
 		},
 		visited = visited_serial,
@@ -720,6 +752,10 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
 	current_level.store_wall_pos  = Vector2i(int(sw[0]), int(sw[1]))
 	current_level.store_entry_pos = Vector2i(int(se[0]), int(se[1]))
+	var rw: Array = map_data["rest_wall"]  as Array
+	var re: Array = map_data["rest_entry"] as Array
+	current_level.rest_wall_pos  = Vector2i(int(rw[0]), int(rw[1]))
+	current_level.rest_entry_pos = Vector2i(int(re[0]), int(re[1]))
 	current_level.next_scene      = scene_path
 	current_level.chest_items     = SaveSystem.unpack_chest_items(map_data["chest_items"] as Dictionary)
 
@@ -738,6 +774,7 @@ func _restore_save(data: Dictionary) -> void:
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
 	minimap_ctrl.store_pos = current_level.store_wall_pos
+	minimap_ctrl.rest_pos  = current_level.rest_wall_pos
 	_resize_minimap()
 
 	var pos_arr: Array = data["player_pos"] as Array

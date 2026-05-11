@@ -20,6 +20,7 @@ func _ready() -> void:
 	next_scene    = "res://scenes/map.tscn"
 	_place_chests()
 	_place_store()
+	_place_rest()
 
 
 # Generates a 20x20 maze with loops and variable-size rooms.
@@ -185,6 +186,18 @@ func _place_store() -> void:
 	var pair: Dictionary = _random_frontier_wall(excluded)
 	store_wall_pos  = pair["wall"] as Vector2i
 	store_entry_pos = pair["floor"] as Vector2i
+
+
+func _place_rest() -> void:
+	var excluded: Dictionary = {
+		player_start: true, exit_pos: true, exit_wall_pos: true,
+		store_wall_pos: true, store_entry_pos: true,
+	}
+	for cp: Variant in chest_items.keys():
+		excluded[cp] = true
+	var pair: Dictionary = _random_frontier_wall(excluded)
+	rest_wall_pos  = pair["wall"] as Vector2i
+	rest_entry_pos = pair["floor"] as Vector2i
 
 
 func _random_loot() -> Dictionary:
