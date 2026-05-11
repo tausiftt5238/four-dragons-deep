@@ -91,6 +91,7 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	light.omni_range   = 4.0
 	light.position     = Vector3(px, py, pz)
 	add_child(light)
+	_add_wall_label("NEXT FLOOR", Vector3(px, WALL_HEIGHT * 0.95, pz), dir, Color(0.20, 1.0, 0.70))
 
 
 # Spawns a visible chest model at each position in level.chest_items.
@@ -168,6 +169,25 @@ func _add_store_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	light.omni_range   = 4.0
 	light.position     = Vector3(px, py, pz)
 	add_child(light)
+	_add_wall_label("SHOP", Vector3(px, WALL_HEIGHT * 0.95, pz), dir, Color(0.75, 0.40, 1.0))
+
+
+# Flat label above a wall marker, facing the same direction as the panel.
+# dir = entry_pos - wall_pos; used to derive the Y rotation so the text is
+# readable from the approach side.
+func _add_wall_label(text: String, pos: Vector3, dir: Vector2i, color: Color) -> void:
+	var lbl: Label3D = Label3D.new()
+	lbl.text             = text
+	lbl.font_size        = 28
+	lbl.pixel_size       = 0.008
+	lbl.modulate         = color
+	lbl.outline_size     = 6
+	lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+	lbl.position         = pos
+	# Label3D default normal is -Z; rotate so it faces the entry side (toward player).
+	lbl.rotation.y       = atan2(-float(dir.x), -float(dir.y))
+	lbl.scale.x          = -1.0
+	add_child(lbl)
 
 
 # Removes the 3D chest visual when the player picks it up.

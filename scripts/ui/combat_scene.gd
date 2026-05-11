@@ -445,11 +445,10 @@ func _show_talk_submenu() -> void:
 	for child: Node in _right_list.get_children():
 		child.queue_free()
 
-	var bribe_cost: int = enemy.gold_reward / 2
 	var opts: Array[Array] = [
-		["Reason",   "Persuade with logic  (MAG)"],
-		["Bribe",    "Offer %d gold" % bribe_cost],
-		["Threaten", "Intimidate  (AGL) — risky"],
+		["Reason",   "Negotiate"],
+		["Bribe",    "Bribe"],
+		["Threaten", "Threaten"],
 	]
 	for opt: Array in opts:
 		var btn: Button = Button.new()
@@ -484,7 +483,7 @@ func _on_talk(approach: String) -> void:
 		"Bribe":
 			success = true
 		"Threaten":
-			var score: int = player.effective_agl() - enemy.agl
+			var score: int = player.effective_str() - enemy.str
 			var roll: int  = randi() % 10
 			if roll < (4 + score):
 				success = true
