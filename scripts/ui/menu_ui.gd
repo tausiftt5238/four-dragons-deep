@@ -30,16 +30,8 @@ func _build_shell() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	# Central panel 700 × 560
 	var panel: Panel = Panel.new()
-	panel.anchor_left   = 0.5
-	panel.anchor_right  = 0.5
-	panel.anchor_top    = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left   = -350
-	panel.offset_right  = 350
-	panel.offset_top    = -280
-	panel.offset_bottom = 280
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(panel)
 
 	var margin: MarginContainer = MarginContainer.new()

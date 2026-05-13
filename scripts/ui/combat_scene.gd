@@ -65,7 +65,7 @@ func _build_ui() -> void:
 
 func _build_log_strip(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 80)
+	panel.custom_minimum_size = Vector2(0, 65)
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(panel)
 
@@ -328,7 +328,22 @@ func _log(line: String) -> void:
 	if not _log_first_line:
 		_log_label.append_text("\n")
 	_log_first_line = false
-	_log_label.append_text(line)
+	_log_label.append_text(_uppercase_text(line))
+
+
+func _uppercase_text(text: String) -> String:
+	var result := ""
+	var in_tag := false
+	for ch: String in text:
+		if ch == "[":
+			in_tag = true
+			result += ch
+		elif ch == "]":
+			in_tag = false
+			result += ch
+		else:
+			result += ch.to_upper() if not in_tag else ch
+	return result
 
 
 func _refresh_hp() -> void:

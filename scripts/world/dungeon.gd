@@ -4,9 +4,8 @@
 # come from the level definition — no hardcoded values here.
 class_name Dungeon extends Node3D
 
-# World-space size of one grid cell. Referenced by main.gd via Dungeon.CELL_SIZE
-# so the value lives in exactly one place.
 const CELL_SIZE: float = 2.0
+const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
 
 # Height of wall blocks.
 const WALL_HEIGHT: float = 2.0
@@ -36,10 +35,25 @@ func _build_geometry(level: Level) -> void:
 	var wall_mat: StandardMaterial3D = StandardMaterial3D.new()
 	wall_mat.albedo_color = level.wall_color
 	wall_mat.roughness = 1.0
+	if level.wall_texture != null:
+		wall_mat.albedo_color = Color.WHITE
+		wall_mat.albedo_texture = level.wall_texture
+		wall_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		wall_mat.uv1_triplanar = true
+		wall_mat.uv1_triplanar_sharpness = 20.0
+		wall_mat.uv1_scale = Vector3(1.0 / CELL_SIZE, 1.0 / WALL_HEIGHT, 1.0 / CELL_SIZE)
+		wall_mat.uv1_offset = Vector3(0.5, 0.5, 0.5)
 
 	var floor_mat: StandardMaterial3D = StandardMaterial3D.new()
 	floor_mat.albedo_color = level.floor_color
 	floor_mat.roughness = 1.0
+	if level.floor_texture != null:
+		floor_mat.albedo_color = Color.WHITE
+		floor_mat.albedo_texture = level.floor_texture
+		floor_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		floor_mat.uv1_triplanar = true
+		floor_mat.uv1_triplanar_sharpness = 20.0
+		floor_mat.uv1_scale = Vector3(1.0 / CELL_SIZE, 1.0 / CELL_SIZE, 1.0 / CELL_SIZE)
 
 	var ceil_mat: StandardMaterial3D = StandardMaterial3D.new()
 	ceil_mat.albedo_color = level.ceil_color
@@ -180,6 +194,8 @@ func _add_store_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 func _add_wall_label(text: String, pos: Vector3, dir: Vector2i, color: Color) -> void:
 	var lbl: Label3D = Label3D.new()
 	lbl.text             = text
+	lbl.font             = _FONT
+	lbl.uppercase        = true
 	lbl.font_size        = 28
 	lbl.pixel_size       = 0.008
 	lbl.modulate         = color

@@ -12,6 +12,10 @@ var wall_color: Color  = Color(0.42, 0.32, 0.22)
 var floor_color: Color = Color(0.22, 0.20, 0.16)
 var ceil_color: Color  = Color(0.16, 0.16, 0.20)
 
+# Optional pixel-art textures. When set, dungeon.gd uses these instead of plain colour.
+var wall_texture: Texture2D  = null
+var floor_texture: Texture2D = null
+
 # Where the player spawns when this map is first loaded (start of the game).
 var player_start: Vector2i        = Vector2i(1, 1)
 var player_start_facing: int      = 2  # South

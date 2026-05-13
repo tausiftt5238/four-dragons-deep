@@ -11,6 +11,9 @@ func _ready() -> void:
 	floor_color = Color(0.22, 0.20, 0.16)
 	ceil_color  = Color(0.16, 0.16, 0.20)
 
+	wall_texture  = load("res://resources/mapAsset/level_1_wall_1.png")
+	floor_texture = load("res://resources/mapAsset/level_1_floor_1.png")
+
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
 

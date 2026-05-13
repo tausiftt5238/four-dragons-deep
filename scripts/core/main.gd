@@ -5,6 +5,7 @@
 extends Node3D
 
 const EYE_HEIGHT: float = 1.0
+const _UI_FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
 
 # Grid offsets for each facing direction (col delta, row delta).
 # Index: 0=North(-Z)  1=East(+X)  2=South(+Z)  3=West(-X)
@@ -67,6 +68,8 @@ var dungeon: Dungeon
 
 
 func _ready() -> void:
+	get_tree().node_added.connect(_on_node_added)
+
 	# Camera and torch must exist before the first _sync_player call,
 	# so set up the player nodes first.
 	_setup_player_nodes()
@@ -814,3 +817,16 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
 	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
+
+
+func _on_node_added(node: Node) -> void:
+	if node is RichTextLabel:
+		(node as RichTextLabel).add_theme_font_override("normal_font", _UI_FONT)
+	elif node is Label:
+		(node as Label).add_theme_font_override("font", _UI_FONT)
+		(node as Label).uppercase = true
+	elif node is Button:
+		(node as Button).add_theme_font_override("font", _UI_FONT)
+		(node as Button).text = (node as Button).text.to_upper()
+	elif node is Control:
+		(node as Control).add_theme_font_override("font", _UI_FONT)
