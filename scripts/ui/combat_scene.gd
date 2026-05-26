@@ -90,11 +90,15 @@ func _build_enemy_area(parent: Control) -> void:
 	parent.add_child(area)
 
 	var icon: TextureRect = TextureRect.new()
-	icon.texture               = load("res://icon.svg") as Texture2D
+	if enemy.sprite_path != "":
+		icon.texture        = load(enemy.sprite_path) as Texture2D
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		icon.texture  = load("res://icon.svg") as Texture2D
+		icon.modulate = Color(0.95, 0.28, 0.28)
 	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size   = Vector2(130, 130)
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	icon.modulate              = Color(0.95, 0.28, 0.28)
 	area.add_child(icon)
 	_enemy_portrait = icon
 

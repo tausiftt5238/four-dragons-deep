@@ -10,16 +10,32 @@ var status_attack:   String = ""
 var weakness:        String = ""
 var negotiable:      bool   = true
 var talk_difficulty: int    = 2
+var sprite_path:     String = ""
 
 # Template data for all enemy types. Stats are base values for floor 1.
 # min_floor / max_floor control which dungeon floors they appear on.
 # max_floor = -1 means no upper limit.
 const TEMPLATES: Array[Dictionary] = [
-	{name="Slime",    str=2, def=1, mag=0, agl=1, exp=15, gold=5,  status_attack="poison",     weakness="fire",    min_floor=1, max_floor=2,  negotiable=true,  talk_difficulty=1},
-	{name="Goblin",   str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack="",           weakness="thunder", min_floor=1, max_floor=3,  negotiable=true,  talk_difficulty=2},
-	{name="Skeleton", str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize", weakness="fire",    min_floor=2, max_floor=4,  negotiable=false, talk_difficulty=0},
-	{name="Wraith",   str=3, def=1, mag=5, agl=5, exp=40, gold=13, status_attack="silence",    weakness="ice",     min_floor=3, max_floor=-1, negotiable=false, talk_difficulty=0},
-	{name="Troll",    str=7, def=5, mag=0, agl=1, exp=50, gold=17, status_attack="immobilize", weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4},
+	# --- Floor 1-2 ---
+	{name="Bat",           str=2, def=1, mag=0, agl=5, exp=12, gold=4,  status_attack="",           weakness="thunder", min_floor=1, max_floor=2,  negotiable=true,  talk_difficulty=1, sprite="res://resources/enemySprites/Bat.png"},
+	{name="Slug",          str=2, def=2, mag=0, agl=1, exp=18, gold=6,  status_attack="poison",     weakness="fire",    min_floor=1, max_floor=2,  negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/Slug.png"},
+	{name="GiantRat",      str=3, def=2, mag=0, agl=3, exp=20, gold=6,  status_attack="",           weakness="thunder", min_floor=1, max_floor=2,  negotiable=true,  talk_difficulty=1, sprite="res://resources/enemySprites/GiantRat.png"},
+	# --- Floor 1-3 ---
+	{name="Goblin",        str=4, def=2, mag=0, agl=4, exp=25, gold=8,  status_attack="",           weakness="thunder", min_floor=1, max_floor=3,  negotiable=true,  talk_difficulty=2, sprite="res://resources/enemySprites/Goblin.png"},
+	{name="GelatinousCube",str=2, def=4, mag=0, agl=1, exp=22, gold=7,  status_attack="immobilize", weakness="fire",    min_floor=1, max_floor=3,  negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/GelatinousCube.png"},
+	# --- Floor 2-4 ---
+	{name="Skeleton",      str=5, def=3, mag=1, agl=2, exp=30, gold=10, status_attack="immobilize", weakness="fire",    min_floor=2, max_floor=4,  negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/Skeleton.png"},
+	{name="GiantHornet",   str=4, def=2, mag=0, agl=6, exp=28, gold=9,  status_attack="poison",     weakness="ice",     min_floor=2, max_floor=4,  negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/GiantHornet.png"},
+	{name="Bandit",        str=5, def=3, mag=0, agl=5, exp=32, gold=12, status_attack="",           weakness="thunder", min_floor=2, max_floor=4,  negotiable=true,  talk_difficulty=2, sprite="res://resources/enemySprites/Bandit.png"},
+	{name="WildBoar",      str=6, def=3, mag=0, agl=2, exp=30, gold=9,  status_attack="",           weakness="thunder", min_floor=2, max_floor=4,  negotiable=true,  talk_difficulty=2, sprite="res://resources/enemySprites/WildBoar.png"},
+	{name="AnimatedPlant", str=3, def=3, mag=4, agl=1, exp=28, gold=8,  status_attack="poison",     weakness="fire",    min_floor=2, max_floor=4,  negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/AnimatedPlant.png"},
+	# --- Floor 3+ ---
+	{name="Treant",        str=6, def=6, mag=0, agl=1, exp=45, gold=14, status_attack="immobilize", weakness="fire",    min_floor=3, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/Treant.png"},
+	{name="Orc",           str=7, def=4, mag=0, agl=2, exp=38, gold=12, status_attack="",           weakness="ice",     min_floor=3, max_floor=5,  negotiable=true,  talk_difficulty=3, sprite="res://resources/enemySprites/Orc.png"},
+	{name="Fairy",         str=2, def=2, mag=6, agl=7, exp=42, gold=14, status_attack="silence",    weakness="thunder", min_floor=3, max_floor=-1, negotiable=true,  talk_difficulty=3, sprite="res://resources/enemySprites/Fairy.png"},
+	# --- Floor 4+ ---
+	{name="Ogre",          str=9, def=5, mag=0, agl=1, exp=55, gold=18, status_attack="",           weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4, sprite="res://resources/enemySprites/Ogre.png"},
+	{name="Wizard",        str=2, def=2, mag=8, agl=4, exp=52, gold=16, status_attack="silence",    weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=3, sprite="res://resources/enemySprites/Wizard.png"},
 ]
 
 
@@ -47,6 +63,7 @@ static func make_random(floor_num: int) -> Enemy:
 	e.weakness        = t.get("weakness", "")
 	e.negotiable      = t.get("negotiable", true)
 	e.talk_difficulty = t.get("talk_difficulty", 2)
+	e.sprite_path     = t.get("sprite", "")
 	e.compute_max_hp()
 	return e
 
