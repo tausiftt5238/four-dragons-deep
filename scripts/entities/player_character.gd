@@ -5,7 +5,7 @@ class_name PlayerCharacter extends CharacterSheet
 
 const DISPLAY_NAME: String = "Hero"
 
-var gold: int = 50
+var gold: int = 200
 
 # Equipment — empty dict means nothing equipped.
 var equipped_weapon: Dictionary = {}
@@ -36,21 +36,6 @@ func _ready() -> void:
 	compute_max_mp()
 
 	known_spells = ["fire"]
-
-	# Starting gear — player begins with a rusty dagger pre-equipped.
-	var dagger: Dictionary = Weapon.rusty_dagger()
-	inventory.append(dagger)
-	equip_weapon(dagger)
-
-	add_item(Item.health_potion(), 2)
-	add_item(Item.ether(), 1)
-	add_item(Item.antidote(), 1)
-	add_item(Item.stimulant(), 1)
-	add_item(Item.venom_flask(), 1)
-	add_item(Item.scroll_cure(), 1)
-
-	add_item(Weapon.iron_sword())
-	add_item(Armor.leather_armor())
 
 
 # ── Effective stats (base + equipment bonuses) ────────────────────────────────

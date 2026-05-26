@@ -7,9 +7,11 @@ class_name Armor
 # ── Factory ───────────────────────────────────────────────────────────────────
 
 static func make(id: String, name: String, desc: String,
-		def_bonus: int, floor: int, agl_pen: int = 0, weakness: String = "") -> Dictionary:
+		def_bonus: int, floor: int, agl_pen: int = 0, weakness: String = "",
+		reflect_element: String = "", absorb_element: String = "") -> Dictionary:
 	return {id=id, name=name, type="armor", desc=desc,
-			def_bonus=def_bonus, agl_pen=agl_pen, floor=floor, qty=1, weakness=weakness}
+			def_bonus=def_bonus, agl_pen=agl_pen, floor=floor, qty=1,
+			weakness=weakness, reflect_element=reflect_element, absorb_element=absorb_element}
 
 
 # ── Predefined armors ─────────────────────────────────────────────────────────
@@ -24,4 +26,4 @@ static func chain_mail() -> Dictionary:
 	return make("chain_mail", "Chain Mail", "Solid protection.", 6, 2, -1, "thunder")
 
 static func plate_armor() -> Dictionary:
-	return make("plate_armor", "Plate Armor", "Heavy protection.", 10, 3, -2, "ice")
+	return make("plate_armor", "Plate Armor", "Heavy protection.", 10, 3, -2, "ice", "fire")

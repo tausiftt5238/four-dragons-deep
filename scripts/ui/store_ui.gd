@@ -130,6 +130,14 @@ func _build_shell() -> void:
 	header.add_theme_constant_override("separation", 10)
 	root.add_child(header)
 
+	var merchant: TextureRect = TextureRect.new()
+	merchant.texture        = load("res://resources/enemySprites/Merchant.png") as Texture2D
+	merchant.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	merchant.stretch_mode   = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	merchant.custom_minimum_size = Vector2(48, 48)
+	merchant.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(merchant)
+
 	var title: Label = Label.new()
 	title.text = "SHOP"
 	title.add_theme_color_override("font_color", Color(0.95, 0.82, 0.25))
@@ -397,6 +405,12 @@ func _gear_tooltip(item: Dictionary) -> String:
 			var w: String = item.get("weakness", "")
 			if w != "":
 				lines.append("Weakness: %s" % w.capitalize())
+			var r: String = item.get("reflect_element", "")
+			if r != "":
+				lines.append("Reflects: %s" % r.capitalize())
+			var a: String = item.get("absorb_element", "")
+			if a != "":
+				lines.append("Absorbs: %s" % a.capitalize())
 
 	return "\n".join(lines)
 

@@ -794,13 +794,22 @@ func _cast_spell(spell_id: String) -> String:
 		player.heal(max(1, heal_amt + player.effective_mag()))
 		return "[color=lime]You cast %s! Restored %d HP.[/color]" % [data["name"], player.hp - before]
 
-	# damage spell — apply elemental weakness
+	# damage spell — apply elemental weakness / reflect / absorb
 	var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
 	var element: String = data.get("element", "")
 	var weak_tag: String = ""
-	if element != "" and enemy.weakness == element:
-		dmg *= 2
-		weak_tag = "  [color=yellow]WEAKNESS![/color]"
+	if element != "":
+		if enemy.absorb_element == element:
+			enemy.heal(dmg)
+			return "You cast %s!  [color=lime]%s absorbs the magic and recovers %d HP![/color]" % [
+				data["name"], enemy.enemy_name, dmg]
+		if enemy.reflect_element == element:
+			player.take_damage(dmg)
+			return "You cast %s!  [color=yellow]Magic reflected! You take %d damage![/color]" % [
+				data["name"], dmg]
+		if enemy.weakness == element:
+			dmg *= 2
+			weak_tag = "  [color=yellow]WEAKNESS![/color]"
 	enemy.take_damage(dmg)
 	return "You cast %s!%s  [color=violet]%s takes %d magic damage.[/color]" % [
 		data["name"], weak_tag, enemy.enemy_name, dmg]
@@ -821,6 +830,16 @@ func _use_item_by_id(item_id: String) -> String:
 			var base_dmg: int = item.get("dmg", 0)
 			if element != "" and base_dmg > 0:
 				var dmg: int = base_dmg
+				if enemy.absorb_element == element:
+					enemy.heal(dmg)
+					player.remove_item(item, 1)
+					return "[color=aqua]Used %s![/color]  [color=lime]%s absorbs it and recovers %d HP![/color]" % [
+						item["name"], enemy.enemy_name, dmg]
+				if enemy.reflect_element == element:
+					player.take_damage(dmg)
+					player.remove_item(item, 1)
+					return "[color=aqua]Used %s![/color]  [color=yellow]Reflected! You take %d damage![/color]" % [
+						item["name"], dmg]
 				var weak_tag: String = ""
 				if enemy.weakness == element:
 					dmg *= 2
@@ -844,7 +863,17 @@ func _apply_enemy_turn() -> String:
 	# 30% chance of elemental attack if enemy has one
 	if enemy.attack_element != "" and randi() % 10 < 3:
 		var elem_dmg: int = max(1, enemy.mag * 2 - eff_def / 3 + randi() % 3)
+		var armor_absorb: String  = player.equipped_armor.get("absorb_element", "")
+		var armor_reflect: String = player.equipped_armor.get("reflect_element", "")
 		var player_weakness: String = player.equipped_armor.get("weakness", "")
+		if armor_absorb == enemy.attack_element:
+			player.heal(elem_dmg)
+			return "[color=cyan]%s uses %s but armor absorbs it! Healed %d HP![/color]" % [
+				enemy.enemy_name, enemy.attack_element.capitalize(), elem_dmg]
+		if armor_reflect == enemy.attack_element:
+			enemy.take_damage(elem_dmg)
+			return "[color=cyan]%s uses %s but armor reflects it back for %d damage![/color]" % [
+				enemy.enemy_name, enemy.attack_element.capitalize(), elem_dmg]
 		var weak_tag: String = ""
 		if player_weakness == enemy.attack_element:
 			elem_dmg *= 2

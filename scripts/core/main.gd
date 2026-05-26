@@ -88,6 +88,10 @@ func _ready() -> void:
 		var slot: int = GameBoot.pending_slot
 		GameBoot.pending_slot = 0
 		call_deferred("_do_load", slot)
+	else:
+		player_pos = current_level.store_entry_pos
+		_sync_player()
+		_snap_cam_yaw()
 
 
 # ── Level loading ────────────────────────────────────────────────────────────

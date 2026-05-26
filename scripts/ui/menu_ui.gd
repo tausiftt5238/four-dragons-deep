@@ -484,6 +484,12 @@ func _gear_tooltip(item: Dictionary) -> String:
 			var w: String = item.get("weakness", "")
 			if w != "":
 				lines.append("Weakness: %s" % w.capitalize())
+			var r: String = item.get("reflect_element", "")
+			if r != "":
+				lines.append("Reflects: %s" % r.capitalize())
+			var a: String = item.get("absorb_element", "")
+			if a != "":
+				lines.append("Absorbs: %s" % a.capitalize())
 
 	return "\n".join(lines)
 
@@ -665,6 +671,14 @@ func _make_bestiary_entry(tmpl: Dictionary) -> HBoxContainer:
 	var atk_elem: String = tmpl.get("attack_element", "")
 	if atk_elem != "":
 		_add_info_line(info, "Attacks with: %s" % atk_elem.capitalize(), Color(1.0, 0.60, 0.25))
+
+	var refl: String = tmpl.get("reflect_element", "")
+	if refl != "":
+		_add_info_line(info, "Reflects: %s" % refl.capitalize(), Color(0.70, 0.90, 1.0))
+
+	var absorb: String = tmpl.get("absorb_element", "")
+	if absorb != "":
+		_add_info_line(info, "Absorbs: %s" % absorb.capitalize(), Color(0.35, 1.0, 0.55))
 
 	var status_atk: String = tmpl.get("status_attack", "")
 	if status_atk != "":
