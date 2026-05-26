@@ -394,6 +394,9 @@ func _gear_tooltip(item: Dictionary) -> String:
 			lines.append(_cmp_line("DEF", p.effective_def(), new_def))
 			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
 				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
+			var w: String = item.get("weakness", "")
+			if w != "":
+				lines.append("Weakness: %s" % w.capitalize())
 
 	return "\n".join(lines)
 

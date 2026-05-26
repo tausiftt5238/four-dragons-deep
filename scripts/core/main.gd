@@ -2,7 +2,7 @@
 # Top-level game controller. Owns player state, camera, torch, and minimap.
 # Delegates 3D geometry to Dungeon and map data to Level subclasses.
 # On startup it loads Map 1; stepping on the portal cell triggers a level swap.
-extends Node3D
+class_name Main extends Node3D
 
 const EYE_HEIGHT: float = 1.0
 const _UI_FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
@@ -83,6 +83,11 @@ func _ready() -> void:
 
 	# Load Map 1 as the starting level. _sync_player is called inside here.
 	_load_level("res://scenes/map.tscn", true)
+
+	if GameBoot.pending_slot > 0:
+		var slot: int = GameBoot.pending_slot
+		GameBoot.pending_slot = 0
+		call_deferred("_do_load", slot)
 
 
 # ── Level loading ────────────────────────────────────────────────────────────
@@ -396,6 +401,8 @@ func _start_combat() -> void:
 
 	var foe: Enemy = Enemy.make_random(floor_num)
 	add_child(foe)
+	if foe.enemy_name not in player_char.encountered_enemies:
+		player_char.encountered_enemies.append(foe.enemy_name)
 
 	var combat_layer: CanvasLayer = CanvasLayer.new()
 	combat_layer.layer = 20  # Above the HUD
@@ -686,9 +693,10 @@ func _gather_save_data() -> Dictionary:
 			exp = p.exp, exp_to_next = p.exp_to_next,
 			hp = p.hp, max_hp = p.max_hp, mp = p.mp, max_mp = p.max_mp,
 			gold = p.gold,
-			known_spells    = p.known_spells,
-			recruited       = p.recruited,
-			active_statuses = p.active_statuses,
+			known_spells        = p.known_spells,
+			recruited           = p.recruited,
+			encountered_enemies = p.encountered_enemies,
+			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
 			equipped_weapon = p.equipped_weapon,
 			equipped_armor  = p.equipped_armor,
@@ -808,6 +816,9 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.recruited.clear()
 	player_char.recruited.assign(pdata.get("recruited", []) as Array)
+
+	player_char.encountered_enemies.clear()
+	player_char.encountered_enemies.assign(pdata.get("encountered_enemies", []) as Array)
 
 	player_char.active_statuses.clear()
 	player_char.active_statuses.assign(pdata["active_statuses"] as Array)

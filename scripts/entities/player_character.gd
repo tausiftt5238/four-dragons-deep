@@ -17,6 +17,9 @@ var known_spells: Array[String] = []
 # Enemy names successfully recruited via the Talk > Threaten critical path.
 var recruited: Array[String] = []
 
+# Enemy names encountered at least once in combat (bestiary unlock).
+var encountered_enemies: Array[String] = []
+
 # Inventory: Array of item dicts. Consumables stack via the qty field.
 var inventory: Array[Dictionary] = []
 

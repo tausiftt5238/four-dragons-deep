@@ -10,7 +10,8 @@ signal combat_ended(result: String)
 var player: PlayerCharacter
 var enemy:  Enemy
 
-var _defending: bool = false
+var _defending: bool  = false
+var _summoned:  bool  = false
 
 var _log_label:      RichTextLabel
 var _log_first_line: bool = true
@@ -248,7 +249,7 @@ func _build_action_col(parent: Control) -> void:
 	_action_vbox.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 	m.add_child(_action_vbox)
 
-	for action: String in ["Attack", "Magic", "Item", "Defend", "Talk", "Flee"]:
+	for action: String in ["Attack", "Magic", "Item", "Defend", "Talk", "Summon", "Flee"]:
 		var btn: Button = Button.new()
 		btn.text                = action
 		btn.custom_minimum_size = Vector2(140, 30)
@@ -387,6 +388,7 @@ func _refresh_button_states() -> void:
 		_buttons["Magic"].disabled = true
 	if player.has_status(Status.IMMOBILIZE):
 		_buttons["Attack"].disabled = true
+	_buttons["Summon"].disabled = player.recruited.is_empty() or _summoned
 
 
 # ── Submenus ──────────────────────────────────────────────────────────────────
@@ -477,6 +479,65 @@ func _show_talk_submenu() -> void:
 		_right_list.add_child(btn)
 
 
+func _show_summon_submenu() -> void:
+	_hide_actions()
+	_right_back_btn.show()
+	_right_title.text = "SUMMON"
+	_right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.55))
+	for child: Node in _right_list.get_children():
+		child.queue_free()
+
+	for recruit_name: String in player.recruited:
+		var btn: Button = Button.new()
+		btn.text                = recruit_name
+		btn.custom_minimum_size = Vector2(0, 28)
+		btn.pressed.connect(_on_summon.bind(recruit_name))
+		_right_list.add_child(btn)
+
+
+func _on_summon(summon_name: String) -> void:
+	_show_main_actions()
+	_set_buttons(false)
+	_summoned = true
+
+	var e_hp_before: int = enemy.hp
+	var p_msg: String    = _apply_summon(summon_name)
+	_refresh_hp()
+	if enemy.hp < e_hp_before:
+		_shake_portrait(_enemy_portrait)
+	if not enemy.is_alive():
+		_log(p_msg + "\n[color=lime]%s was defeated![/color]" % enemy.enemy_name)
+		await get_tree().create_timer(1.8).timeout
+		_end_combat("win")
+		return
+	var p_hp_before: int = player.hp
+	var e_msg: String    = _apply_enemy_turn()
+	_refresh_hp()
+	if player.hp < p_hp_before:
+		_shake_portrait(_player_portrait)
+	_log(p_msg + "\n" + e_msg)
+	if not player.is_alive():
+		await get_tree().create_timer(1.8).timeout
+		_end_combat("lose")
+		return
+	await _do_end_of_round()
+
+
+func _apply_summon(summon_name: String) -> String:
+	var tmpl: Dictionary = {}
+	for t: Dictionary in Enemy.TEMPLATES:
+		if t["name"] == summon_name:
+			tmpl = t
+			break
+	if tmpl.is_empty():
+		return "[color=gray]%s didn't respond.[/color]" % summon_name
+	var str_val: int = int(tmpl.get("str", 3))
+	var dmg: int     = max(1, str_val + player.lv / 2 - enemy.def / 2 + randi() % 4)
+	enemy.take_damage(dmg)
+	return "[color=lime]%s charges in and deals %d damage to %s![/color]" % [
+		summon_name, dmg, enemy.enemy_name]
+
+
 func _on_talk(approach: String) -> void:
 	_show_main_actions()
 	_set_buttons(false)
@@ -560,6 +621,9 @@ func _on_action(action: String) -> void:
 				_log("[color=gray]%s won't listen.[/color]" % enemy.enemy_name)
 				return
 			_show_talk_submenu()
+			return
+		"Summon":
+			_show_summon_submenu()
 			return
 		"Flee":
 			_set_buttons(false)
@@ -768,6 +832,18 @@ func _apply_enemy_turn() -> String:
 
 	var eff_def: int = player.effective_def() * (2 if _defending else 1)
 	_defending = false
+
+	# 30% chance of elemental attack if enemy has one
+	if enemy.attack_element != "" and randi() % 10 < 3:
+		var elem_dmg: int = max(1, enemy.mag * 2 - eff_def / 3 + randi() % 3)
+		var player_weakness: String = player.equipped_armor.get("weakness", "")
+		var weak_tag: String = ""
+		if player_weakness == enemy.attack_element:
+			elem_dmg *= 2
+			weak_tag = "  [color=yellow]WEAKNESS![/color]"
+		player.take_damage(elem_dmg)
+		return "[color=red]%s uses %s for %d damage![/color]%s" % [
+			enemy.enemy_name, enemy.attack_element.capitalize(), elem_dmg, weak_tag]
 
 	# 30% chance of status attack if enemy has one and player lacks the status
 	if enemy.status_attack != "" and not player.has_status(enemy.status_attack) and randi() % 10 < 3:
