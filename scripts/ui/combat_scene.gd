@@ -470,11 +470,15 @@ func _show_talk_submenu() -> void:
 		["Reason",   "Negotiate"],
 		["Bribe",    "Bribe"],
 		["Threaten", "Threaten"],
+		["Recruit",  "Recruit"],
 	]
 	for opt: Array in opts:
 		var btn: Button = Button.new()
 		btn.text                = opt[1] as String
 		btn.custom_minimum_size = Vector2(0, 28)
+		if opt[0] == "Recruit" and enemy.enemy_name in player.recruited:
+			btn.text     = "Recruit (have)"
+			btn.disabled = true
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_right_list.add_child(btn)
 
@@ -568,6 +572,10 @@ func _on_talk(approach: String) -> void:
 			if roll < (4 + score):
 				success = true
 				recruit = (roll == 0)
+		"Recruit":
+			var score: int = player.effective_mag() - enemy.talk_difficulty * 3
+			success = randi() % 10 < (3 + score)
+			recruit = success
 
 	if success:
 		var msg: String = "[color=lime]%s backed down.[/color]" % enemy.enemy_name

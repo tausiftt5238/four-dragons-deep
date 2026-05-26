@@ -51,6 +51,11 @@ func _build() -> void:
 	load_btn.pressed.connect(_on_load_game)
 	vbox.add_child(load_btn)
 
+	var test_btn: Button = _make_btn("COMBAT TEST", Vector2(220, 40))
+	test_btn.add_theme_color_override("font_color", Color(0.55, 0.75, 1.0))
+	test_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/combat_test.tscn"))
+	vbox.add_child(test_btn)
+
 	vbox.add_child(HSeparator.new())
 
 	var hint: Label = _make_lbl("arrows: move / turn     esc: menu     f5: save     f9: load", 11, Color(0.35, 0.32, 0.40))

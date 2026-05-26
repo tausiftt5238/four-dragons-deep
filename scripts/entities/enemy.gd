@@ -42,24 +42,34 @@ const TEMPLATES: Array[Dictionary] = [
 
 
 static func make_random(floor_num: int) -> Enemy:
-	var e: Enemy = Enemy.new()
 	var pool: Array[Dictionary] = []
 	for tmpl: Dictionary in TEMPLATES:
 		if floor_num >= tmpl["min_floor"] and (tmpl["max_floor"] == -1 or floor_num <= tmpl["max_floor"]):
 			pool.append(tmpl)
 	if pool.is_empty():
-		pool = TEMPLATES  # fallback: use all if nothing matches
-	var t: Dictionary = pool[randi() % pool.size()]
+		pool = TEMPLATES
+	return _build(pool[randi() % pool.size()], floor_num)
+
+
+static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
+	for tmpl: Dictionary in TEMPLATES:
+		if tmpl["name"] == enemy_name:
+			return _build(tmpl, floor_num)
+	return make_random(floor_num)
+
+
+static func _build(t: Dictionary, floor_num: int) -> Enemy:
+	var e: Enemy = Enemy.new()
 	var bonus: int = floor_num - 1
-	e.enemy_name  = t["name"]
-	e.lv          = max(1, floor_num + randi() % 2)
-	e.str         = t["str"] + bonus
-	e.def         = t["def"] + bonus
-	e.mag         = t["mag"] + bonus
-	e.agl         = t["agl"]
-	e.exp_to_next = 0  # enemies don't level up
-	e.exp_reward  = t["exp"] * floor_num
-	e.gold_reward   = (t["gold"] + randi() % 5) * floor_num
+	e.enemy_name      = t["name"]
+	e.lv              = max(1, floor_num + randi() % 2)
+	e.str             = t["str"] + bonus
+	e.def             = t["def"] + bonus
+	e.mag             = t["mag"] + bonus
+	e.agl             = t["agl"]
+	e.exp_to_next     = 0
+	e.exp_reward      = t["exp"] * floor_num
+	e.gold_reward     = (t["gold"] + randi() % 5) * floor_num
 	e.status_attack   = t.get("status_attack", "")
 	e.weakness        = t.get("weakness", "")
 	e.negotiable      = t.get("negotiable", true)
