@@ -249,7 +249,7 @@ func _make_buy_row(item: Dictionary, price: int) -> HBoxContainer:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = item["name"]
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = _gear_tooltip(item) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
+	name_lbl.tooltip_text = GearTooltip.build(item, player) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
@@ -335,7 +335,7 @@ func _make_sell_row(item: Dictionary) -> HBoxContainer:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = _gear_tooltip(item) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
+	name_lbl.tooltip_text = GearTooltip.build(item, player) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
@@ -373,50 +373,3 @@ func _owned_qty(item_id: String) -> int:
 	if player.equipped_armor.get("id", "") == item_id:
 		total += 1
 	return total
-
-
-# ── Gear tooltip helpers ──────────────────────────────────────────────────────
-
-func _gear_tooltip(item: Dictionary) -> String:
-	var p: PlayerCharacter = player
-	var lines: Array[String] = []
-
-	var desc: String = item.get("desc", "")
-	if not desc.is_empty():
-		lines.append(desc)
-		lines.append("")
-
-	match item["type"]:
-		"weapon":
-			var new_str: int = p.str + item.get("str_bonus", 0)
-			var new_mag: int = p.mag + item.get("mag_bonus", 0)
-			var new_agl: int = p.agl + p.equipped_armor.get("agl_pen", 0) + item.get("agl_pen", 0)
-			lines.append(_cmp_line("STR", p.effective_str(), new_str))
-			if new_mag != p.effective_mag() or item.get("mag_bonus", 0) != 0:
-				lines.append(_cmp_line("MAG", p.effective_mag(), new_mag))
-			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
-				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
-		"armor":
-			var new_def: int = p.def + item.get("def_bonus", 0)
-			var new_agl: int = p.agl + p.equipped_weapon.get("agl_pen", 0) + item.get("agl_pen", 0)
-			lines.append(_cmp_line("DEF", p.effective_def(), new_def))
-			if new_agl != p.effective_agl() or item.get("agl_pen", 0) != 0:
-				lines.append(_cmp_line("AGL", p.effective_agl(), new_agl))
-			var w: String = item.get("weakness", "")
-			if w != "":
-				lines.append("Weakness: %s" % w.capitalize())
-			var r: String = item.get("reflect_element", "")
-			if r != "":
-				lines.append("Reflects: %s" % r.capitalize())
-			var a: String = item.get("absorb_element", "")
-			if a != "":
-				lines.append("Absorbs: %s" % a.capitalize())
-
-	return "\n".join(lines)
-
-
-func _cmp_line(stat: String, cur: int, nxt: int) -> String:
-	var diff: int = nxt - cur
-	if diff == 0:
-		return "%s  %d" % [stat, nxt]
-	return "%s  %d → %d  (%s%d)" % [stat, cur, nxt, ("+" if diff > 0 else ""), diff]

@@ -1,0 +1,122 @@
+class_name CombatNegReason extends RefCounted
+
+var _s
+var _talk_trust:  int = 0
+var _talk_rounds: int = 0
+
+
+func _init(scene) -> void:
+	_s = scene
+
+
+func start() -> void:
+	_talk_trust  = 0
+	_talk_rounds = 2
+	_s._hide_actions()
+	_s._right_back_btn.hide()
+	_show_submenu()
+
+
+func _show_submenu() -> void:
+	_s._right_title.text = "NEGOTIATE  %d/4" % _talk_trust
+	_s._right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
+	for child: Node in _s._right_list.get_children():
+		child.queue_free()
+
+	_s._right_list.add_child(_s._dim_label("Round %d of 2" % (3 - _talk_rounds)))
+
+	var opts: Array[Array] = [
+		["Survival", "\"Not worth it.\""],
+		["Logic",    "\"Think it over.\""],
+		["Gain",     "\"You'll gain nothing.\""],
+	]
+	for opt: Array in opts:
+		var btn: Button = Button.new()
+		var key: String = opt[0] as String
+		btn.text                = opt[1] as String
+		btn.custom_minimum_size = Vector2(0, 28)
+		btn.pressed.connect(func() -> void: await _resolve(key))
+		_s._right_list.add_child(btn)
+
+
+func _resolve(approach: String) -> void:
+	var personality_match: bool = false
+	match _s.enemy.talk_personality:
+		"cowardly": personality_match = (approach == "Survival")
+		"proud":    personality_match = (approach == "Logic")
+		"greedy":   personality_match = (approach == "Gain")
+		"lonely":   personality_match = (approach == "Logic")
+
+	var gain: int = randi() % 4 + (2 if personality_match else 0) - _s.enemy.talk_difficulty
+	gain          = max(0, gain)
+	_talk_trust  += gain
+	_talk_rounds -= 1
+
+	var reaction: String
+	if gain >= 3:   reaction = _good_reaction()
+	elif gain >= 1: reaction = _neutral_reaction()
+	else:           reaction = _bad_reaction()
+	_s._log("[color=aqua]%s[/color]" % reaction)
+
+	if _talk_trust >= 4:
+		_s._show_main_actions()
+		_s._set_buttons(false)
+		_s.player.gold += _s.enemy.gold_reward / 2
+		_s._log("[color=lime]%s backs down. You pocket %d gold.[/color]" % [
+				_s.enemy.enemy_name, _s.enemy.gold_reward / 2])
+		await _s.get_tree().create_timer(1.5).timeout
+		if is_instance_valid(_s):
+			_s._end_combat("talk")
+		return
+
+	if _talk_rounds <= 0:
+		_s._show_main_actions()
+		_s._set_buttons(false)
+		_s._log("[color=red]%s: \"Enough words!\"[/color]" % _s.enemy.enemy_name)
+		var p_hp_before: int = _s.player.hp
+		var e_msg: String    = _s._apply_enemy_turn()
+		_s._refresh_hp()
+		if _s.player.hp < p_hp_before:
+			_s._shake_portrait(_s._player_portrait)
+		_s._log(e_msg)
+		if not _s.player.is_alive():
+			await _s.get_tree().create_timer(1.8).timeout
+			if is_instance_valid(_s):
+				_s._end_combat("lose")
+			return
+		await _s.get_tree().create_timer(1.1).timeout
+		if is_instance_valid(_s):
+			_s._set_buttons(true)
+			_s._refresh_button_states()
+		return
+
+	await _s.get_tree().create_timer(0.7).timeout
+	if is_instance_valid(_s):
+		_show_submenu()
+
+
+func _good_reaction() -> String:
+	match _s.enemy.talk_personality:
+		"cowardly": return "%s: \"Hmm... fair point. Maybe this isn't worth the trouble.\"" % _s.enemy.enemy_name
+		"proud":    return "%s: \"You argue well. I'll think on it.\"" % _s.enemy.enemy_name
+		"greedy":   return "%s: \"...You're right. What do I gain from this?\"" % _s.enemy.enemy_name
+		"lonely":   return "%s: \"That... actually makes sense.\"" % _s.enemy.enemy_name
+	return "%s considers your words." % _s.enemy.enemy_name
+
+
+func _neutral_reaction() -> String:
+	match _s.enemy.talk_personality:
+		"cowardly": return "%s: \"You have a point... but I'm not convinced yet.\"" % _s.enemy.enemy_name
+		"proud":    return "%s: \"Keep going. I'm listening.\"" % _s.enemy.enemy_name
+		"greedy":   return "%s: \"Interesting. Tell me more.\"" % _s.enemy.enemy_name
+		"lonely":   return "%s: \"...Maybe. Keep talking.\"" % _s.enemy.enemy_name
+	return "%s hesitates." % _s.enemy.enemy_name
+
+
+func _bad_reaction() -> String:
+	match _s.enemy.talk_personality:
+		"cowardly": return "%s: \"Nice try, but I'm not buying it.\"" % _s.enemy.enemy_name
+		"proud":    return "%s: \"Your argument is weak.\"" % _s.enemy.enemy_name
+		"greedy":   return "%s: \"Words are cheap.\"" % _s.enemy.enemy_name
+		"lonely":   return "%s: \"That's not what I want to hear.\"" % _s.enemy.enemy_name
+	return "%s is unmoved." % _s.enemy.enemy_name
