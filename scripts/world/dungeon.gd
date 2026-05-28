@@ -21,6 +21,7 @@ func build(level: Level) -> void:
 	if level.exit_pos.x >= 0 and level.exit_wall_pos.x >= 0:
 		_add_exit_marker(level.exit_wall_pos, level.exit_pos)
 	_add_chests(level)
+	_add_trap_markers(level)
 	if level.store_entry_pos.x >= 0:
 		_add_store_marker(level.store_wall_pos, level.store_entry_pos)
 	if level.rest_entry_pos.x >= 0:
@@ -238,6 +239,47 @@ func _add_rest_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	light.position     = Vector3(px, py, pz)
 	add_child(light)
 	_add_wall_label("INN", Vector3(px, WALL_HEIGHT * 0.95, pz), dir, Color(1.0, 0.70, 0.25))
+
+
+# Colored floor overlay for each trap cell so the player can see them.
+# spike = red, poison_vent = green, binding_rune = purple.
+func _add_trap_markers(level: Level) -> void:
+	for pos: Variant in level.trap_cells.keys():
+		var trap_type: String = level.trap_cells[pos] as String
+		var gp: Vector2i      = pos as Vector2i
+		var wx: float = gp.x * CELL_SIZE
+		var wz: float = gp.y * CELL_SIZE
+
+		var col: Color
+		var light_col: Color
+		match trap_type:
+			"spike":
+				col       = Color(0.72, 0.08, 0.08)
+				light_col = Color(1.0,  0.25, 0.25)
+			"poison_vent":
+				col       = Color(0.12, 0.62, 0.15)
+				light_col = Color(0.35, 1.0,  0.40)
+			"binding_rune":
+				col       = Color(0.42, 0.08, 0.78)
+				light_col = Color(0.65, 0.35, 1.0)
+			_:
+				col       = Color(0.50, 0.50, 0.50)
+				light_col = Color(0.80, 0.80, 0.80)
+
+		var mat: StandardMaterial3D = StandardMaterial3D.new()
+		mat.albedo_color            = col
+		mat.emission_enabled        = true
+		mat.emission                = col
+		mat.emission_energy_multiplier = 1.6
+		# Thin slab sitting just on top of the floor surface
+		_add_box(Vector3(wx, 0.01, wz), Vector3(CELL_SIZE * 0.85, 0.02, CELL_SIZE * 0.85), mat)
+
+		var light: OmniLight3D = OmniLight3D.new()
+		light.light_color  = light_col
+		light.light_energy = 0.8
+		light.omni_range   = 2.5
+		light.position     = Vector3(wx, 0.4, wz)
+		add_child(light)
 
 
 # Removes the 3D chest visual when the player picks it up.

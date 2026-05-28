@@ -46,3 +46,7 @@ var store_entry_pos: Vector2i = Vector2i(-1, -1)
 # Inn entrance: same layout as the store.
 var rest_wall_pos:  Vector2i = Vector2i(-1, -1)
 var rest_entry_pos: Vector2i = Vector2i(-1, -1)
+
+# Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
+# Erased by main.gd after the player triggers one.
+var trap_cells: Dictionary = {}

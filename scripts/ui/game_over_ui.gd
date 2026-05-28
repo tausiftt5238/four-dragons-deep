@@ -3,7 +3,6 @@
 # chooses to try again. Emits try_again when the button is pressed.
 class_name GameOverUI extends Control
 
-signal try_again
 signal load_game
 
 
@@ -45,34 +44,28 @@ func _build() -> void:
 	sub.add_theme_color_override("font_color", Color(0.60, 0.45, 0.45))
 	vbox.add_child(sub)
 
-	vbox.add_child(HSeparator.new())
-
-	var note: Label = Label.new()
-	note.text = "You wake at the entrance, wounds tended\nby some unseen hand."
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.add_theme_color_override("font_color", Color(0.55, 0.50, 0.50))
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(note)
+	#vbox.add_child(HSeparator.new())
+#
+	#var note: Label = Label.new()
+	#note.text = "You wake at the entrance, wounds tended\nby some unseen hand."
+	#note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	#note.add_theme_color_override("font_color", Color(0.55, 0.50, 0.50))
+	#note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	#vbox.add_child(note)
 
 	var btn_row: HBoxContainer = HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_row.add_theme_constant_override("separation", 14)
 	vbox.add_child(btn_row)
-
-	var btn: Button = Button.new()
-	btn.text = "Try Again"
-	btn.custom_minimum_size = Vector2(130, 38)
-	btn.pressed.connect(func(): try_again.emit())
-	btn_row.add_child(btn)
 
 	var any_save: bool = false
 	for i: int in range(1, 4):
 		if not SaveSystem.slot_info(i).is_empty():
 			any_save = true
 			break
-	if any_save:
-		var load_btn: Button = Button.new()
-		load_btn.text = "Load Game"
-		load_btn.custom_minimum_size = Vector2(130, 38)
-		load_btn.pressed.connect(func(): load_game.emit())
-		btn_row.add_child(load_btn)
+
+	var load_btn: Button = Button.new()
+	load_btn.text = "Load Game"
+	load_btn.custom_minimum_size = Vector2(160, 38)
+	load_btn.disabled = not any_save
+	load_btn.pressed.connect(func(): load_game.emit())
+	btn_row.add_child(load_btn)

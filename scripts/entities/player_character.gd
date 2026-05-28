@@ -20,6 +20,9 @@ var recruited: Array[String] = []
 # Enemy names encountered at least once in combat (bestiary unlock).
 var encountered_enemies: Array[String] = []
 
+# Passive skills gained at level-up.
+var passive_skills: Array[String] = []
+
 # Inventory: Array of item dicts. Consumables stack via the qty field.
 var inventory: Array[Dictionary] = []
 

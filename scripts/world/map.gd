@@ -24,6 +24,7 @@ func _ready() -> void:
 	_place_chests()
 	_place_store()
 	_place_rest()
+	_place_traps()
 
 
 # Generates a 20x20 maze with loops and variable-size rooms.
@@ -201,6 +202,28 @@ func _place_rest() -> void:
 	var pair: Dictionary = _random_frontier_wall(excluded)
 	rest_wall_pos  = pair["wall"] as Vector2i
 	rest_entry_pos = pair["floor"] as Vector2i
+
+
+func _place_traps() -> void:
+	const COUNT: int = 3
+	var occupied: Dictionary = {
+		player_start: true, exit_pos: true, exit_wall_pos: true,
+		store_wall_pos: true, store_entry_pos: true,
+		rest_wall_pos: true, rest_entry_pos: true,
+	}
+	for cp: Variant in chest_items.keys():
+		occupied[cp] = true
+	var types: Array[String] = ["spike", "poison_vent", "binding_rune"]
+	var placed: int = 0
+	var attempts: int = 0
+	while placed < COUNT and attempts < 60:
+		attempts += 1
+		var pos: Vector2i = _random_reachable_cell(maze, player_start)
+		if occupied.has(pos):
+			continue
+		occupied[pos] = true
+		trap_cells[pos] = types[randi() % types.size()]
+		placed += 1
 
 
 func _random_loot() -> Dictionary:

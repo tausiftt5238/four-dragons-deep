@@ -36,7 +36,8 @@ var store_open: bool = false
 var rest_open:  bool = false
 var save_open:  bool = false
 
-var _encounters_enabled: bool = true
+var _encounters_enabled:       bool = true
+var _pending_congratulations:  bool = false
 var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
 var store_layer:   CanvasLayer
@@ -290,6 +291,8 @@ func _check_portal() -> void:
 	floor_label.text = "Floor %d" % floor_num
 	visited_by_map.erase(current_level.next_scene)
 	_load_level(current_level.next_scene, true)
+	if floor_num % 5 == 0:
+		_start_boss_combat()
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
@@ -379,8 +382,10 @@ func _input(event: InputEvent) -> void:
 	if moved:
 		_sync_player()
 		_check_step_poison()
+		_check_trap()
 		if player_char.is_alive() and not _check_chest():
-			_check_encounter()
+			if not _check_encounter():
+				_check_random_event()
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────
@@ -394,24 +399,32 @@ func _update_encounter_debug_label() -> void:
 		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
 
 
-func _check_encounter() -> void:
+func _check_encounter() -> bool:
 	if _encounters_enabled and randi() % 5 == 0:
 		_start_combat()
+		return true
+	return false
 
 
 func _start_combat() -> void:
+	_launch_combat(Enemy.make_random(floor_num))
+
+
+func _start_boss_combat() -> void:
+	if floor_num == 20:
+		_pending_congratulations = true
+	_launch_combat(Enemy.make_boss(floor_num))
+
+
+func _launch_combat(foe: Enemy) -> void:
 	in_combat = true
 	hud_layer.visible = false
-
-	var foe: Enemy = Enemy.make_random(floor_num)
 	add_child(foe)
 	if foe.enemy_name not in player_char.encountered_enemies:
 		player_char.encountered_enemies.append(foe.enemy_name)
-
 	var combat_layer: CanvasLayer = CanvasLayer.new()
-	combat_layer.layer = 20  # Above the HUD
+	combat_layer.layer = 20
 	add_child(combat_layer)
-
 	var packed: PackedScene = load("res://scenes/combat.tscn") as PackedScene
 	var scene: CombatScene = packed.instantiate() as CombatScene
 	scene.player = player_char
@@ -424,23 +437,28 @@ func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> 
 	var exp_reward:  int        = foe.exp_reward
 	var gold_reward: int        = foe.gold_reward
 	var item_drop:   Dictionary = foe.roll_drop()
+	if item_drop.is_empty() and "scavenger" in player_char.passive_skills and randi() % 2 == 0:
+		item_drop = foe.roll_drop()
 	foe.queue_free()
 	combat_layer.queue_free()
 
 	match result:
-		"win":
+		"win", "talk":
 			player_char.gold += gold_reward
-			if not item_drop.is_empty():
+			if result == "win" and not item_drop.is_empty():
 				player_char.add_item(item_drop)
 			var before: Dictionary = _player_snapshot()
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
-			_show_combat_result(exp_reward, gold_reward, item_drop,
+			var shown_drop: Dictionary = item_drop if result == "win" else {}
+			_show_combat_result(exp_reward, gold_reward, shown_drop,
 				before if leveled else {}, after if leveled else {})
 		"lose":
+			_pending_congratulations = false
 			_show_game_over()
-		"flee", "talk":
+		"flee":
+			_pending_congratulations = false
 			_resume_from_overlay()
 
 
@@ -463,6 +481,21 @@ func _show_combat_result(exp: int, gold: int, item: Dictionary,
 func _resume_from_overlay() -> void:
 	hud_layer.visible = true
 	in_combat = false
+	if _pending_congratulations:
+		_pending_congratulations = false
+		_show_congratulations()
+
+
+func _show_congratulations() -> void:
+	in_combat = true
+	hud_layer.visible = false
+	var ui: CongratulationsUI = CongratulationsUI.new()
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		hud_layer.visible = true
+		in_combat = false
+	)
+	_get_overlay_layer().add_child(ui)
 
 
 func _player_snapshot() -> Dictionary:
@@ -495,17 +528,6 @@ func _show_level_up(before: Dictionary, after: Dictionary) -> void:
 
 func _show_game_over() -> void:
 	var ui: GameOverUI = GameOverUI.new()
-	ui.try_again.connect(func():
-		ui.queue_free()
-		player_char.active_statuses.clear()
-		player_char.heal(player_char.max_hp)
-		player_char.restore_mp(player_char.max_mp)
-		player_pos    = current_level.player_start
-		player_facing = current_level.player_start_facing
-		_sync_player()
-		_snap_cam_yaw()
-		_resume_from_overlay()
-	)
 	ui.load_game.connect(func():
 		ui.queue_free()
 		in_combat = false
@@ -546,6 +568,133 @@ func _check_step_poison() -> void:
 	_show_hud_popup("Poison  -%d HP" % dmg, Color(0.55, 0.90, 0.30))
 	if not player_char.is_alive():
 		_show_game_over()
+
+
+func _check_trap() -> void:
+	if not current_level.trap_cells.has(player_pos):
+		return
+	var trap_type: String = current_level.trap_cells[player_pos] as String
+	current_level.trap_cells.erase(player_pos)
+	match trap_type:
+		"spike":
+			var dmg: int = max(1, int(player_char.max_hp * 0.15))
+			player_char.take_damage(dmg)
+			_show_hud_popup("Spike Trap!  -%d HP" % dmg, Color(0.90, 0.30, 0.30))
+			if not player_char.is_alive():
+				_show_game_over()
+		"poison_vent":
+			if not player_char.has_status(Status.POISON):
+				player_char.apply_status(Status.POISON)
+			_show_hud_popup("Poison Vent!  Poisoned!", Color(0.55, 0.90, 0.30))
+		"binding_rune":
+			if not player_char.has_status(Status.IMMOBILIZE):
+				player_char.apply_status(Status.IMMOBILIZE)
+			_show_hud_popup("Binding Rune!  Immobilized!", Color(0.70, 0.50, 1.0))
+
+
+# ── Random dungeon events ─────────────────────────────────────────────────────
+
+func _check_random_event() -> void:
+	if randi() % 8 != 0:
+		return
+	in_combat = true
+	hud_layer.visible = false
+	match randi() % 5:
+		0: _event_coin_pouch()
+		1: _event_healing_spring()
+		2: _event_supply_cache()
+		3: _event_ancient_altar()
+		4: _event_mysterious_fog()
+
+
+func _show_event(ui: DungeonEventUI) -> void:
+	_get_overlay_layer().add_child(ui)
+
+
+func _event_coin_pouch() -> void:
+	var gold: int = 10 + randi() % 41
+	player_char.gold += gold
+	var ui: DungeonEventUI = DungeonEventUI.new()
+	ui.title       = "Coin Pouch"
+	ui.description = "You find a coin pouch on the ground.\nGained %d gold!" % gold
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_resume_from_overlay()
+	)
+	_show_event(ui)
+
+
+func _event_healing_spring() -> void:
+	var heal_amt: int = max(1, int(player_char.max_hp * 0.20))
+	player_char.heal(heal_amt)
+	var ui: DungeonEventUI = DungeonEventUI.new()
+	ui.title       = "Healing Spring"
+	ui.description = "A hidden spring bubbles up from the stone.\nRestored %d HP!" % heal_amt
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_resume_from_overlay()
+	)
+	_show_event(ui)
+
+
+func _event_supply_cache() -> void:
+	var item: Dictionary = Item.health_potion()
+	if current_level.has_method("_random_loot"):
+		item = current_level.call("_random_loot") as Dictionary
+	player_char.add_item(item)
+	var ui: DungeonEventUI = DungeonEventUI.new()
+	ui.title       = "Supply Cache"
+	ui.description = "You find a hidden stash in the wall.\nFound: %s!" % item["name"]
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_resume_from_overlay()
+	)
+	_show_event(ui)
+
+
+func _event_ancient_altar() -> void:
+	var hp_cost: int  = max(1, int(player_char.max_hp * 0.15))
+	var exp_gain: int = 30 + floor_num * 10
+	var pray_cb: Callable = func():
+		player_char.take_damage(hp_cost)
+		if player_char.is_alive():
+			player_char.gain_exp(exp_gain)
+	var ui: DungeonEventUI = DungeonEventUI.new()
+	ui.title       = "Ancient Altar"
+	ui.description = "A glowing altar offers power in exchange\nfor a blood sacrifice.\n(-%d HP for +%d EXP)" % [hp_cost, exp_gain]
+	ui.choices     = [
+		{label="Pray",   callback=pray_cb},
+		{label="Ignore", callback=func(): pass},
+	]
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		if not player_char.is_alive():
+			in_combat = false
+			_show_game_over()
+		else:
+			_resume_from_overlay()
+	)
+	_show_event(ui)
+
+
+func _event_mysterious_fog() -> void:
+	var inhale_cb: Callable = func():
+		match randi() % 3:
+			0: player_char.heal(int(player_char.max_hp * 0.30))
+			1: player_char.apply_status(Status.POISON)
+			2: player_char.apply_status(Status.SILENCE)
+	var ui: DungeonEventUI = DungeonEventUI.new()
+	ui.title       = "Mysterious Fog"
+	ui.description = "A strange purple fog fills the corridor.\nDo you inhale it or hold your breath?"
+	ui.choices     = [
+		{label="Inhale",      callback=inhale_cb},
+		{label="Hold Breath", callback=func(): pass},
+	]
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_resume_from_overlay()
+	)
+	_show_event(ui)
 
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
@@ -700,6 +849,7 @@ func _gather_save_data() -> Dictionary:
 			known_spells        = p.known_spells,
 			recruited           = p.recruited,
 			encountered_enemies = p.encountered_enemies,
+			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
 			equipped_weapon = p.equipped_weapon,
@@ -715,6 +865,7 @@ func _gather_save_data() -> Dictionary:
 			rest_wall   = [current_level.rest_wall_pos.x,   current_level.rest_wall_pos.y],
 			rest_entry  = [current_level.rest_entry_pos.x,  current_level.rest_entry_pos.y],
 			chest_items = SaveSystem.pack_chest_items(current_level.chest_items),
+			trap_cells  = _pack_trap_cells(current_level.trap_cells),
 		},
 		visited = visited_serial,
 	}
@@ -773,6 +924,7 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.rest_entry_pos = Vector2i(int(re[0]), int(re[1]))
 	current_level.next_scene      = scene_path
 	current_level.chest_items     = SaveSystem.unpack_chest_items(map_data["chest_items"] as Dictionary)
+	current_level.trap_cells      = _unpack_trap_cells(map_data.get("trap_cells", {}) as Dictionary)
 
 	dungeon = Dungeon.new()
 	add_child(dungeon)
@@ -824,6 +976,9 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.encountered_enemies.clear()
 	player_char.encountered_enemies.assign(pdata.get("encountered_enemies", []) as Array)
 
+	player_char.passive_skills.clear()
+	player_char.passive_skills.assign(pdata.get("passive_skills", []) as Array)
+
 	player_char.active_statuses.clear()
 	player_char.active_statuses.assign(pdata["active_statuses"] as Array)
 
@@ -832,6 +987,22 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
 	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
+
+
+func _pack_trap_cells(cells: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	for k: Variant in cells.keys():
+		var v: Vector2i = k as Vector2i
+		result["%d,%d" % [v.x, v.y]] = cells[k]
+	return result
+
+
+func _unpack_trap_cells(data: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	for k: Variant in data.keys():
+		var parts: Array = (k as String).split(",")
+		result[Vector2i(int(parts[0]), int(parts[1]))] = data[k]
+	return result
 
 
 func _on_node_added(node: Node) -> void:

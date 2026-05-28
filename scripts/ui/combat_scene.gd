@@ -450,9 +450,12 @@ func _show_item_submenu() -> void:
 	for item: Dictionary in player.inventory:
 		if item["type"] == "consumable":
 			found = true
+			var is_throwable: bool = item.has("inflicts_status") \
+				or (item.has("element") and item.get("dmg", 0) > 0)
 			var btn: Button = Button.new()
 			btn.text                = "%s  x%d" % [item["name"], item.get("qty", 1)]
 			btn.custom_minimum_size = Vector2(0, 28)
+			btn.disabled            = not is_throwable and not player.can_use_item(item)
 			btn.pressed.connect(_on_use_item.bind(item))
 			_right_list.add_child(btn)
 
@@ -596,7 +599,7 @@ func _on_use_item(item: Dictionary) -> void:
 
 
 func _dispatch_round(action: String) -> void:
-	if enemy.agl > player.effective_agl():
+	if "quick" not in player.passive_skills and enemy.agl > player.effective_agl():
 		await _round_enemy_first(action)
 	else:
 		await _round_player_first(action)
@@ -673,6 +676,11 @@ func _do_end_of_round() -> void:
 		await get_tree().create_timer(1.8).timeout
 		_end_combat("win")
 		return
+	if "meditate" in player.passive_skills:
+		var mp_gain: int = min(2, player.max_mp - player.mp)
+		if mp_gain > 0:
+			player.mp += mp_gain
+			_refresh_hp()
 	await get_tree().create_timer(1.1).timeout
 	if is_instance_valid(self):
 		_set_buttons(true)
@@ -702,8 +710,15 @@ func _apply_player_action(action: String) -> String:
 	match action:
 		"Attack":
 			var dmg: int = max(1, player.effective_str() - enemy.def / 2 + randi() % 3)
+			if "last_stand" in player.passive_skills and player.hp * 4 < player.max_hp:
+				dmg *= 2
 			enemy.take_damage(dmg)
-			return "You strike!  [color=orange]%s takes %d damage.[/color]" % [enemy.enemy_name, dmg]
+			var vamp_tag: String = ""
+			if "vampiric" in player.passive_skills:
+				var heal_amt: int = max(1, dmg / 5)
+				player.heal(heal_amt)
+				vamp_tag = "  [color=lime]Vampiric: +%d HP.[/color]" % heal_amt
+			return "You strike!  [color=orange]%s takes %d damage.[/color]%s" % [enemy.enemy_name, dmg, vamp_tag]
 		"Defend":
 			_defending = true
 			return "[color=cyan]You brace yourself. DEF doubled until next hit.[/color]"
@@ -737,6 +752,8 @@ func _cast_spell(spell_id: String) -> String:
 
 	# damage spell — apply elemental weakness / reflect / absorb
 	var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
+	if "scholar" in player.passive_skills:
+		dmg = int(dmg * 1.25)
 	var element: String = data.get("element", "")
 	var weak_tag: String = ""
 	if element != "":
@@ -823,18 +840,31 @@ func _apply_enemy_turn() -> String:
 		return "[color=red]%s uses %s for %d damage![/color]%s" % [
 			enemy.enemy_name, enemy.attack_element.capitalize(), elem_dmg, weak_tag]
 
-	# 30% chance of status attack if enemy has one and player lacks the status
-	if enemy.status_attack != "" and not player.has_status(enemy.status_attack) and randi() % 10 < 3:
+	# Status attack chance scales with enemy level relative to player — weaker enemies rarely inflict
+	var status_chance: int = clampi(15 + (enemy.lv - player.lv) * 3, 5, 40)
+	if enemy.status_attack != "" and not player.has_status(enemy.status_attack) and randi() % 100 < status_chance:
 		var sdata: Dictionary = Status.get_data(enemy.status_attack)
 		var dmg: int = max(1, enemy.str / 2 - eff_def / 3 + randi() % 2)
 		player.take_damage(dmg)
-		player.apply_status(enemy.status_attack)
-		return "[color=red]%s attacks for %d and inflicts %s![/color]" % [
-			enemy.enemy_name, dmg, sdata.get("name", enemy.status_attack)]
+		var resist: bool = "resilience" in player.passive_skills and randi() % 4 == 0
+		if not resist:
+			player.apply_status(enemy.status_attack)
+		var resist_tag: String = "  [color=lime]Resilience resists %s![/color]" % sdata.get("name", enemy.status_attack) if resist else ""
+		var msg: String = "[color=red]%s attacks for %d and inflicts %s![/color]%s" % [
+			enemy.enemy_name, dmg, sdata.get("name", enemy.status_attack), resist_tag]
+		return msg + _check_counter()
 
 	var dmg: int = max(1, enemy.str - eff_def / 2 + randi() % 3)
 	player.take_damage(dmg)
-	return "[color=red]%s attacks you for %d damage![/color]" % [enemy.enemy_name, dmg]
+	return "[color=red]%s attacks you for %d damage![/color]" % [enemy.enemy_name, dmg] + _check_counter()
+
+
+func _check_counter() -> String:
+	if "counter" not in player.passive_skills or not player.is_alive() or randi() % 4 != 0:
+		return ""
+	var dmg: int = max(1, player.effective_str() - enemy.def / 2)
+	enemy.take_damage(dmg)
+	return "\n[color=orange]Counter! You strike back for %d damage![/color]" % dmg
 
 
 func _do_flee() -> void:

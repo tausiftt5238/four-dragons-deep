@@ -19,7 +19,7 @@ func build() -> void:
 
 	for enemy_name: String in _m.player.encountered_enemies:
 		var tmpl: Dictionary = {}
-		for t: Dictionary in Enemy.TEMPLATES:
+		for t: Dictionary in Enemy.all_templates():
 			if t["name"] == enemy_name:
 				tmpl = t
 				break
