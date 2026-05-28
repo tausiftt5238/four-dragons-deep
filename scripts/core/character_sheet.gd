@@ -16,14 +16,18 @@ var max_hp:      int = 0
 var mp:          int = 0
 var max_mp:      int = 0
 
+# Accumulated ±20% variance from per-level HP/MP rolls.
+var _hp_bonus: int = 0
+var _mp_bonus: int = 0
+
 
 func compute_max_hp() -> void:
-	max_hp = lv * 10 + def * 3
+	max_hp = lv * 10 + def * 3 + _hp_bonus
 	hp = max_hp
 
 
 func compute_max_mp() -> void:
-	max_mp = lv * 4 + mag * 3
+	max_mp = lv * 4 + mag * 3 + _mp_bonus
 	mp = max_mp
 
 
@@ -52,10 +56,12 @@ func gain_exp(amount: int) -> void:
 
 
 func _level_up() -> void:
-	lv += 1
-	exp_to_next = int(exp_to_next * 1.5)
 	var old_max_hp: int = max_hp
 	var old_max_mp: int = max_mp
+	lv += 1
+	exp_to_next = int(exp_to_next * randf_range(1.3, 1.7))
+	_hp_bonus += roundi(10.0 * randf_range(0.8, 1.2)) - 10
+	_mp_bonus += roundi(4.0 * randf_range(0.8, 1.2)) - 4
 	compute_max_hp()
 	compute_max_mp()
 	hp = min(max_hp, hp + (max_hp - old_max_hp))

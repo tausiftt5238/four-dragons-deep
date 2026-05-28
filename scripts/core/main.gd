@@ -574,7 +574,6 @@ func _check_trap() -> void:
 	if not current_level.trap_cells.has(player_pos):
 		return
 	var trap_type: String = current_level.trap_cells[player_pos] as String
-	current_level.trap_cells.erase(player_pos)
 	match trap_type:
 		"spike":
 			var dmg: int = max(1, int(player_char.max_hp * 0.15))
@@ -845,6 +844,7 @@ func _gather_save_data() -> Dictionary:
 			lv = p.lv, str = p.str, def = p.def, mag = p.mag, agl = p.agl,
 			exp = p.exp, exp_to_next = p.exp_to_next,
 			hp = p.hp, max_hp = p.max_hp, mp = p.mp, max_mp = p.max_mp,
+			hp_bonus = p._hp_bonus, mp_bonus = p._mp_bonus,
 			gold = p.gold,
 			known_spells        = p.known_spells,
 			recruited           = p.recruited,
@@ -965,6 +965,8 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.max_hp      = int(pdata["max_hp"])
 	player_char.mp          = int(pdata["mp"])
 	player_char.max_mp      = int(pdata["max_mp"])
+	player_char._hp_bonus   = int(pdata.get("hp_bonus", 0))
+	player_char._mp_bonus   = int(pdata.get("mp_bonus", 0))
 	player_char.gold        = int(pdata["gold"])
 
 	player_char.known_spells.clear()

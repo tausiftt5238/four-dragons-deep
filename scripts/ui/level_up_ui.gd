@@ -221,6 +221,7 @@ func _on_confirm() -> void:
 func _show_skill_picker() -> void:
 	for c: Node in _vbox.get_children():
 		c.queue_free()
+	_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	var header: Label = Label.new()
 	header.text = "✦   choose a skill   ✦"

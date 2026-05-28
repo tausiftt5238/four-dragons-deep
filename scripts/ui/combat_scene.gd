@@ -52,7 +52,7 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.06, 0.04, 0.10, 1.0)
+	bg.color = Color(0.04, 0.02, 0.08, 0.78)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -100,8 +100,8 @@ func _build_enemy_area(parent: Control) -> void:
 		icon.texture  = load("res://icon.svg") as Texture2D
 		icon.modulate = Color(0.95, 0.28, 0.28)
 	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size   = Vector2(130, 130)
-	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon.size_flags_horizontal = Control.SIZE_FILL
+	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	area.add_child(icon)
 	_enemy_portrait = icon
 
@@ -541,10 +541,15 @@ func _apply_summon(summon_name: String) -> String:
 	if tmpl.is_empty():
 		return "[color=gray]%s didn't respond.[/color]" % summon_name
 	var str_val: int = int(tmpl.get("str", 3))
-	var dmg: int     = max(1, str_val + player.lv / 2 - enemy.def / 2 + randi() % 4)
+	var dmg: int     = _apply_variance(str_val + player.lv / 2 - enemy.def / 2)
+	var crit: bool   = _roll_crit()
+	if crit:
+		dmg = int(dmg * 1.75)
+	dmg = max(1, dmg)
 	enemy.take_damage(dmg)
-	return "[color=lime]%s charges in and deals %d damage to %s![/color]" % [
-		summon_name, dmg, enemy.enemy_name]
+	var crit_tag: String = " [CRITICAL!]" if crit else ""
+	return "[color=lime]%s charges in and deals %d damage to %s!%s[/color]" % [
+		summon_name, dmg, enemy.enemy_name, crit_tag]
 
 
 func _on_talk(approach: String) -> void:
@@ -698,6 +703,15 @@ func _do_poison_ticks() -> String:
 	return "\n".join(msgs)
 
 
+# ── Damage helpers ────────────────────────────────────────────────────────────
+
+func _apply_variance(dmg: int) -> int:
+	return max(1, roundi(dmg * randf_range(0.8, 1.2)))
+
+func _roll_crit() -> bool:
+	return randi() % 10 == 0
+
+
 # ── Individual action logic ───────────────────────────────────────────────────
 
 func _apply_player_action(action: String) -> String:
@@ -709,16 +723,21 @@ func _apply_player_action(action: String) -> String:
 		return _use_item_by_id(action.substr(5))
 	match action:
 		"Attack":
-			var dmg: int = max(1, player.effective_str() - enemy.def / 2 + randi() % 3)
+			var dmg: int = _apply_variance(player.effective_str() - enemy.def / 2)
+			var crit: bool = _roll_crit()
+			if crit:
+				dmg = int(dmg * 1.75)
 			if "last_stand" in player.passive_skills and player.hp * 4 < player.max_hp:
 				dmg *= 2
+			dmg = max(1, dmg)
 			enemy.take_damage(dmg)
 			var vamp_tag: String = ""
 			if "vampiric" in player.passive_skills:
 				var heal_amt: int = max(1, dmg / 5)
 				player.heal(heal_amt)
 				vamp_tag = "  [color=lime]Vampiric: +%d HP.[/color]" % heal_amt
-			return "You strike!  [color=orange]%s takes %d damage.[/color]%s" % [enemy.enemy_name, dmg, vamp_tag]
+			var crit_tag: String = "  [color=yellow][CRITICAL!][/color]" if crit else ""
+			return "You strike!%s  [color=orange]%s takes %d damage.[/color]%s" % [crit_tag, enemy.enemy_name, dmg, vamp_tag]
 		"Defend":
 			_defending = true
 			return "[color=cyan]You brace yourself. DEF doubled until next hit.[/color]"
@@ -751,9 +770,14 @@ func _cast_spell(spell_id: String) -> String:
 		return "[color=lime]You cast %s! Restored %d HP.[/color]" % [data["name"], player.hp - before]
 
 	# damage spell — apply elemental weakness / reflect / absorb
-	var dmg: int = max(1, player.effective_mag() * 2 - enemy.def / 3 + randi() % 4)
+	var dmg: int = _apply_variance(player.effective_mag() * 2 - enemy.def / 3)
+	var crit: bool = _roll_crit()
+	if crit:
+		dmg = int(dmg * 1.75)
 	if "scholar" in player.passive_skills:
 		dmg = int(dmg * 1.25)
+	dmg = max(1, dmg)
+	var crit_tag: String = "  [color=yellow][CRITICAL!][/color]" if crit else ""
 	var element: String = data.get("element", "")
 	var weak_tag: String = ""
 	if element != "":
@@ -769,8 +793,8 @@ func _cast_spell(spell_id: String) -> String:
 			dmg *= 2
 			weak_tag = "  [color=yellow]WEAKNESS![/color]"
 	enemy.take_damage(dmg)
-	return "You cast %s!%s  [color=violet]%s takes %d magic damage.[/color]" % [
-		data["name"], weak_tag, enemy.enemy_name, dmg]
+	return "You cast %s!%s%s  [color=violet]%s takes %d magic damage.[/color]" % [
+		data["name"], crit_tag, weak_tag, enemy.enemy_name, dmg]
 
 
 func _use_item_by_id(item_id: String) -> String:
@@ -820,7 +844,11 @@ func _apply_enemy_turn() -> String:
 
 	# 30% chance of elemental attack if enemy has one
 	if enemy.attack_element != "" and randi() % 10 < 3:
-		var elem_dmg: int = max(1, enemy.mag * 2 - eff_def / 3 + randi() % 3)
+		var elem_dmg: int = _apply_variance(enemy.mag * 2 - eff_def / 3)
+		var elem_crit: bool = _roll_crit()
+		if elem_crit:
+			elem_dmg = int(elem_dmg * 1.75)
+		elem_dmg = max(1, elem_dmg)
 		var armor_absorb: String  = player.equipped_armor.get("absorb_element", "")
 		var armor_reflect: String = player.equipped_armor.get("reflect_element", "")
 		var player_weakness: String = player.equipped_armor.get("weakness", "")
@@ -837,14 +865,16 @@ func _apply_enemy_turn() -> String:
 			elem_dmg *= 2
 			weak_tag = "  [color=yellow]WEAKNESS![/color]"
 		player.take_damage(elem_dmg)
-		return "[color=red]%s uses %s for %d damage![/color]%s" % [
-			enemy.enemy_name, enemy.attack_element.capitalize(), elem_dmg, weak_tag]
+		var elem_crit_tag: String = "  [color=yellow][CRITICAL!][/color]" if elem_crit else ""
+		return "[color=red]%s uses %s for %d damage![/color]%s%s" % [
+			enemy.enemy_name, enemy.attack_element.capitalize(), elem_dmg, elem_crit_tag, weak_tag]
 
 	# Status attack chance scales with enemy level relative to player — weaker enemies rarely inflict
 	var status_chance: int = clampi(15 + (enemy.lv - player.lv) * 3, 5, 40)
 	if enemy.status_attack != "" and not player.has_status(enemy.status_attack) and randi() % 100 < status_chance:
 		var sdata: Dictionary = Status.get_data(enemy.status_attack)
-		var dmg: int = max(1, enemy.str / 2 - eff_def / 3 + randi() % 2)
+		var dmg: int = _apply_variance(enemy.str / 2 - eff_def / 3)
+		dmg = max(1, dmg)
 		player.take_damage(dmg)
 		var resist: bool = "resilience" in player.passive_skills and randi() % 4 == 0
 		if not resist:
@@ -854,17 +884,27 @@ func _apply_enemy_turn() -> String:
 			enemy.enemy_name, dmg, sdata.get("name", enemy.status_attack), resist_tag]
 		return msg + _check_counter()
 
-	var dmg: int = max(1, enemy.str - eff_def / 2 + randi() % 3)
+	var dmg: int = _apply_variance(enemy.str - eff_def / 2)
+	var crit: bool = _roll_crit()
+	if crit:
+		dmg = int(dmg * 1.75)
+	dmg = max(1, dmg)
 	player.take_damage(dmg)
-	return "[color=red]%s attacks you for %d damage![/color]" % [enemy.enemy_name, dmg] + _check_counter()
+	var crit_tag: String = "  [color=yellow][CRITICAL!][/color]" if crit else ""
+	return "[color=red]%s attacks you for %d damage![/color]%s" % [enemy.enemy_name, dmg, crit_tag] + _check_counter()
 
 
 func _check_counter() -> String:
 	if "counter" not in player.passive_skills or not player.is_alive() or randi() % 4 != 0:
 		return ""
-	var dmg: int = max(1, player.effective_str() - enemy.def / 2)
+	var dmg: int = _apply_variance(player.effective_str() - enemy.def / 2)
+	var crit: bool = _roll_crit()
+	if crit:
+		dmg = int(dmg * 1.75)
+	dmg = max(1, dmg)
 	enemy.take_damage(dmg)
-	return "\n[color=orange]Counter! You strike back for %d damage![/color]" % dmg
+	var crit_tag: String = " [CRITICAL!]" if crit else ""
+	return "\n[color=orange]Counter! You strike back for %d damage!%s[/color]" % [dmg, crit_tag]
 
 
 func _do_flee() -> void:
