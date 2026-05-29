@@ -36,6 +36,7 @@ var _buttons: Dictionary = {}
 var _right_title:    Label
 var _right_back_btn: Button
 var _right_list:     VBoxContainer
+var _back_target:    Callable
 
 
 
@@ -282,7 +283,7 @@ func _build_submenu_col(parent: Control) -> void:
 
 	_right_back_btn = Button.new()
 	_right_back_btn.text = "< Back"
-	_right_back_btn.pressed.connect(_show_main_actions)
+	_right_back_btn.pressed.connect(_on_back_pressed)
 	_right_back_btn.hide()
 	header.add_child(_right_back_btn)
 
@@ -395,6 +396,16 @@ func _refresh_button_states() -> void:
 
 # ── Submenus ──────────────────────────────────────────────────────────────────
 
+func _set_back(cb: Callable) -> void:
+	_back_target = cb
+	_right_back_btn.show()
+
+
+func _on_back_pressed() -> void:
+	if _back_target.is_valid():
+		_back_target.call()
+
+
 func _show_actions() -> void:
 	_action_vbox.modulate.a = 1.0
 	for btn: Button in _buttons.values():
@@ -418,7 +429,7 @@ func _show_main_actions() -> void:
 
 func _show_magic_submenu() -> void:
 	_hide_actions()
-	_right_back_btn.show()
+	_set_back(_show_main_actions)
 	_right_title.text = "MAGIC"
 	_right_title.add_theme_color_override("font_color", Color(0.80, 0.50, 1.0))
 	for child: Node in _right_list.get_children():
@@ -440,7 +451,7 @@ func _show_magic_submenu() -> void:
 
 func _show_item_submenu() -> void:
 	_hide_actions()
-	_right_back_btn.show()
+	_set_back(_show_main_actions)
 	_right_title.text = "ITEMS"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.40))
 	for child: Node in _right_list.get_children():
@@ -465,7 +476,7 @@ func _show_item_submenu() -> void:
 
 func _show_talk_submenu() -> void:
 	_hide_actions()
-	_right_back_btn.show()
+	_set_back(_show_main_actions)
 	_right_title.text = "TALK"
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
 	for child: Node in _right_list.get_children():
@@ -490,7 +501,7 @@ func _show_talk_submenu() -> void:
 
 func _show_summon_submenu() -> void:
 	_hide_actions()
-	_right_back_btn.show()
+	_set_back(_show_main_actions)
 	_right_title.text = "SUMMON"
 	_right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.55))
 	for child: Node in _right_list.get_children():

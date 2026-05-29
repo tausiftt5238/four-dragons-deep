@@ -10,7 +10,7 @@ func _init(scene) -> void:
 
 func start() -> void:
 	_s._hide_actions()
-	_s._right_back_btn.hide()
+	_s._set_back(_s._show_talk_submenu)
 	_s._right_title.text = "BRIBE"
 	_s._right_title.add_theme_color_override("font_color", Color(1.0, 0.75, 0.2))
 	for child: Node in _s._right_list.get_children():
@@ -73,14 +73,14 @@ func _resolve(choice: String) -> void:
 					_demand_item["name"], _s.enemy.enemy_name])
 			await _s.get_tree().create_timer(1.5).timeout
 			if is_instance_valid(_s):
-				_s._end_combat("talk")
+				_s._end_combat("bribe")
 		"gold":
 			_s.player.gold -= _s.enemy.gold_reward
 			_s._log("[color=lime]You pay %d gold.\n%s counts it and backs away.[/color]" % [
 					_s.enemy.gold_reward, _s.enemy.enemy_name])
 			await _s.get_tree().create_timer(1.5).timeout
 			if is_instance_valid(_s):
-				_s._end_combat("talk")
+				_s._end_combat("bribe")
 		"refuse":
 			_s._log("[color=red]%s: \"Wrong answer!\"[/color]" % _s.enemy.enemy_name)
 			var p_hp_before: int = _s.player.hp

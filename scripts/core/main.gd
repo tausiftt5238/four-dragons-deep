@@ -38,6 +38,10 @@ var save_open:  bool = false
 
 var _encounters_enabled:       bool = true
 var _pending_congratulations:  bool = false
+
+var _swipe_start:  Vector2 = Vector2.ZERO
+var _swipe_active: bool    = false
+const _SWIPE_MIN:  float   = 60.0
 var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
 var store_layer:   CanvasLayer
@@ -66,6 +70,21 @@ var visited: Dictionary = {}
 # Both are freed and rebuilt on every portal transition.
 var current_level: Level
 var dungeon: Dungeon
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if not in_combat:
+			if save_open:
+				_close_save_layer()
+			elif store_open:
+				_close_store()
+			elif rest_open:
+				_close_rest()
+			elif menu_open:
+				_close_menu()
+			else:
+				_open_menu()
 
 
 func _ready() -> void:
@@ -209,6 +228,23 @@ func _setup_minimap() -> void:
 	_update_encounter_debug_label()
 	layer.add_child(_encounter_debug_lbl)
 
+	var menu_btn: Button = Button.new()
+	menu_btn.text          = "MENU"
+	menu_btn.anchor_left   = 0.0
+	menu_btn.anchor_right  = 0.0
+	menu_btn.anchor_top    = 0.0
+	menu_btn.anchor_bottom = 0.0
+	menu_btn.offset_left   = 10.0
+	menu_btn.offset_right  = 75.0
+	menu_btn.offset_top    = 8.0
+	menu_btn.offset_bottom = 65.0
+	menu_btn.pressed.connect(_on_menu_btn_pressed)
+	layer.add_child(menu_btn)
+
+	# Push debug label below the MENU button
+	_encounter_debug_lbl.offset_top    = 70.0
+	_encounter_debug_lbl.offset_bottom = 94.0
+
 
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
 # Called after every level load because maps can differ in dimensions.
@@ -311,9 +347,93 @@ func _shake_camera() -> void:
 	tween.tween_property(cam, "position", cam_base_pos, step)
 
 
+func _action_forward() -> void:
+	var nxt: Vector2i = player_pos + DIR_OFFSET[player_facing]
+	if _is_open(nxt.x, nxt.y):
+		player_pos = nxt
+		_post_move()
+	elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
+		_check_portal()
+	elif nxt == current_level.store_wall_pos and player_pos == current_level.store_entry_pos:
+		_open_store()
+	elif nxt == current_level.rest_wall_pos and player_pos == current_level.rest_entry_pos:
+		_open_rest()
+	else:
+		_shake_camera()
+
+
+func _action_back() -> void:
+	var nxt: Vector2i = player_pos - DIR_OFFSET[player_facing]
+	if _is_open(nxt.x, nxt.y):
+		player_pos = nxt
+		_post_move()
+	else:
+		_shake_camera()
+
+
+func _action_turn_left() -> void:
+	player_facing = (player_facing + 3) % 4
+	_tween_turn(PI / 2.0)
+	minimap_ctrl.player_facing = player_facing
+	minimap_ctrl.queue_redraw()
+
+
+func _action_turn_right() -> void:
+	player_facing = (player_facing + 1) % 4
+	_tween_turn(-PI / 2.0)
+	minimap_ctrl.player_facing = player_facing
+	minimap_ctrl.queue_redraw()
+
+
+func _post_move() -> void:
+	_sync_player()
+	_check_step_poison()
+	_check_trap()
+	if player_char.is_alive() and not _check_chest():
+		if not _check_encounter():
+			_check_random_event()
+
+
+func _handle_swipe(delta: Vector2) -> void:
+	if in_combat or menu_open or store_open or rest_open or save_open:
+		return
+	if delta.length() < _SWIPE_MIN:
+		return
+	if abs(delta.x) > abs(delta.y):
+		if delta.x > 0:
+			_action_turn_right()
+		else:
+			_action_turn_left()
+	else:
+		if delta.y < 0:
+			_action_forward()
+		else:
+			_action_back()
+
+
+func _on_menu_btn_pressed() -> void:
+	if in_combat or store_open or rest_open or save_open:
+		return
+	if menu_open:
+		_close_menu()
+	else:
+		_open_menu()
+
+
 func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_swipe_start  = event.position
+			_swipe_active = true
+		else:
+			if _swipe_active:
+				_handle_swipe(event.position - _swipe_start)
+			_swipe_active = false
+		return
+
 	if not (event is InputEventKey and event.pressed):
 		return
+
 	if event.keycode == KEY_Q and not in_combat:
 		_encounters_enabled = not _encounters_enabled
 		_update_encounter_debug_label()
@@ -345,47 +465,19 @@ func _input(event: InputEvent) -> void:
 			else:
 				_open_menu()
 		return
+
 	if in_combat or menu_open or store_open or rest_open or save_open:
 		return
-	var moved: bool = false
+
 	match event.keycode:
-		KEY_UP:
-			var nxt: Vector2i = player_pos + DIR_OFFSET[player_facing]
-			if _is_open(nxt.x, nxt.y):
-				player_pos = nxt
-				moved = true
-			elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
-				_check_portal()
-			elif nxt == current_level.store_wall_pos and player_pos == current_level.store_entry_pos:
-				_open_store()
-			elif nxt == current_level.rest_wall_pos and player_pos == current_level.rest_entry_pos:
-				_open_rest()
-			else:
-				_shake_camera()
-		KEY_DOWN:
-			var nxt: Vector2i = player_pos - DIR_OFFSET[player_facing]
-			if _is_open(nxt.x, nxt.y):
-				player_pos = nxt
-				moved = true
-			else:
-				_shake_camera()
-		KEY_LEFT:
-			player_facing = (player_facing + 3) % 4
-			_tween_turn(PI / 2.0)
-			minimap_ctrl.player_facing = player_facing
-			minimap_ctrl.queue_redraw()
-		KEY_RIGHT:
-			player_facing = (player_facing + 1) % 4
-			_tween_turn(-PI / 2.0)
-			minimap_ctrl.player_facing = player_facing
-			minimap_ctrl.queue_redraw()
-	if moved:
-		_sync_player()
-		_check_step_poison()
-		_check_trap()
-		if player_char.is_alive() and not _check_chest():
-			if not _check_encounter():
-				_check_random_event()
+		KEY_UP, KEY_W:
+			_action_forward()
+		KEY_DOWN, KEY_S:
+			_action_back()
+		KEY_LEFT, KEY_A:
+			_action_turn_left()
+		KEY_RIGHT, KEY_D:
+			_action_turn_right()
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────
@@ -453,6 +545,13 @@ func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> 
 			var leveled: bool = after["lv"] > before["lv"]
 			var shown_drop: Dictionary = item_drop if result == "win" else {}
 			_show_combat_result(exp_reward, gold_reward, shown_drop,
+				before if leveled else {}, after if leveled else {})
+		"bribe":
+			var before: Dictionary = _player_snapshot()
+			player_char.gain_exp(exp_reward)
+			var after: Dictionary = _player_snapshot()
+			var leveled: bool = after["lv"] > before["lv"]
+			_show_combat_result(exp_reward, 0, {},
 				before if leveled else {}, after if leveled else {})
 		"lose":
 			_pending_congratulations = false
@@ -532,6 +631,9 @@ func _show_game_over() -> void:
 		ui.queue_free()
 		in_combat = false
 		_open_load_menu()
+	)
+	ui.main_menu.connect(func():
+		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
 	_get_overlay_layer().add_child(ui)
 
@@ -1014,7 +1116,12 @@ func _on_node_added(node: Node) -> void:
 		(node as Label).add_theme_font_override("font", _UI_FONT)
 		(node as Label).uppercase = true
 	elif node is Button:
-		(node as Button).add_theme_font_override("font", _UI_FONT)
-		(node as Button).text = (node as Button).text.to_upper()
+		var btn := node as Button
+		btn.add_theme_font_override("font", _UI_FONT)
+		btn.add_theme_font_size_override("font_size", 20)
+		btn.text = btn.text.to_upper()
+		var cur: Vector2 = btn.custom_minimum_size
+		if cur.y > 0:
+			btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))
 	elif node is Control:
 		(node as Control).add_theme_font_override("font", _UI_FONT)

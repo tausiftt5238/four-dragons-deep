@@ -13,11 +13,11 @@ func start() -> void:
 	_talk_fear   = 0
 	_talk_rounds = 2
 	_s._hide_actions()
-	_s._right_back_btn.hide()
 	_show_submenu()
 
 
 func _show_submenu() -> void:
+	_s._set_back(_s._show_talk_submenu)
 	var threshold: int = 3 + _s.enemy.talk_difficulty
 	_s._right_title.text = "THREATEN  %d/%d" % [_talk_fear, threshold]
 	_s._right_title.add_theme_color_override("font_color", Color(1.0, 0.40, 0.20))
@@ -41,6 +41,7 @@ func _show_submenu() -> void:
 
 
 func _resolve(approach: String) -> void:
+	_s._right_back_btn.hide()
 	var threshold: int   = 3 + _s.enemy.talk_difficulty
 	var gain: int        = 0
 	var insta_fail: bool = false

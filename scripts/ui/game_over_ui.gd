@@ -4,6 +4,7 @@
 class_name GameOverUI extends Control
 
 signal load_game
+signal main_menu
 
 
 func _ready() -> void:
@@ -69,3 +70,9 @@ func _build() -> void:
 	load_btn.disabled = not any_save
 	load_btn.pressed.connect(func(): load_game.emit())
 	btn_row.add_child(load_btn)
+
+	var main_menu_btn: Button = Button.new()
+	main_menu_btn.text = "Main Menu"
+	main_menu_btn.custom_minimum_size = Vector2(160, 38)
+	main_menu_btn.pressed.connect(func(): main_menu.emit())
+	btn_row.add_child(main_menu_btn)

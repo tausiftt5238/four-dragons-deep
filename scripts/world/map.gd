@@ -4,15 +4,24 @@ extends Level
 
 
 func _ready() -> void:
+	wall_texture  = load("res://resources/mapAsset/level_1_wall_1.png")
+	floor_texture = load("res://resources/mapAsset/level_1_floor_1.png")
+	next_scene    = "res://scenes/map.tscn"
+
+	var parent_floor: Variant = get_parent().get("floor_num") if get_parent() else null
+	var floor_num: int = int(parent_floor) if parent_floor != null else 0
+	if floor_num > 0 and floor_num % 5 == 0:
+		_setup_boss_floor()
+	else:
+		_setup_normal_floor()
+
+
+func _setup_normal_floor() -> void:
 	maze = _generate_maze()
 
-	# Warm stone palette
 	wall_color  = Color(0.42, 0.32, 0.22)
 	floor_color = Color(0.22, 0.20, 0.16)
 	ceil_color  = Color(0.16, 0.16, 0.20)
-
-	wall_texture  = load("res://resources/mapAsset/level_1_wall_1.png")
-	floor_texture = load("res://resources/mapAsset/level_1_floor_1.png")
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
@@ -20,11 +29,62 @@ func _ready() -> void:
 	var exit_pair: Dictionary = _random_frontier_wall({player_start: true})
 	exit_wall_pos = exit_pair["wall"]
 	exit_pos      = exit_pair["floor"]
-	next_scene    = "res://scenes/map.tscn"
 	_place_chests()
 	_place_store()
 	_place_rest()
 	_place_traps()
+
+
+func _setup_boss_floor() -> void:
+	maze = _generate_corridor()
+
+	# Ominous dark palette for boss arenas
+	wall_color  = Color(0.18, 0.06, 0.06)
+	floor_color = Color(0.10, 0.06, 0.06)
+	ceil_color  = Color(0.07, 0.04, 0.04)
+
+	player_start        = Vector2i(1, 1)
+	player_start_facing = 1  # East — face down the corridor
+	entry_pos           = Vector2i(1, 1)
+	entry_facing        = 1  # East
+
+	# Exit at the far east end
+	exit_pos      = Vector2i(17, 1)
+	exit_wall_pos = Vector2i(18, 1)
+
+	# 2 chests along the corridor
+	var corridor_candidates: Array[Vector2i] = []
+	for x: int in range(3, 16):
+		corridor_candidates.append(Vector2i(x, 1))
+	corridor_candidates.shuffle()
+	for i: int in range(min(2, corridor_candidates.size())):
+		chest_items[corridor_candidates[i]] = _random_loot()
+
+	# 2 traps along the corridor, avoiding chests and endpoints
+	var trap_occupied: Dictionary = {Vector2i(1, 1): true, Vector2i(17, 1): true}
+	for cp: Variant in chest_items.keys():
+		trap_occupied[cp] = true
+	var trap_candidates: Array[Vector2i] = []
+	for x: int in range(3, 17):
+		if not trap_occupied.has(Vector2i(x, 1)):
+			trap_candidates.append(Vector2i(x, 1))
+	trap_candidates.shuffle()
+	var trap_types: Array[String] = ["spike", "poison_vent", "binding_rune"]
+	for i: int in range(min(2, trap_candidates.size())):
+		trap_cells[trap_candidates[i]] = trap_types[randi() % trap_types.size()]
+
+
+func _generate_corridor() -> Array[Array]:
+	const SIZE: int = 20
+	var grid: Array[Array] = []
+	for _i: int in range(SIZE):
+		var row: Array = []
+		row.resize(SIZE)
+		row.fill(1)
+		grid.append(row)
+	for x: int in range(1, 19):
+		(grid[1] as Array)[x] = 0
+	return grid
 
 
 # Generates a 20x20 maze with loops and variable-size rooms.

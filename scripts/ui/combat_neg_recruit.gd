@@ -13,11 +13,11 @@ func start() -> void:
 	_talk_trust  = 0
 	_talk_rounds = 2
 	_s._hide_actions()
-	_s._right_back_btn.hide()
 	_show_submenu()
 
 
 func _show_submenu() -> void:
+	_s._set_back(_s._show_talk_submenu)
 	_s._right_title.text = "RECRUIT  %d/4" % _talk_trust
 	_s._right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.60))
 	for child: Node in _s._right_list.get_children():
@@ -40,6 +40,7 @@ func _show_submenu() -> void:
 
 
 func _resolve(approach: String) -> void:
+	_s._right_back_btn.hide()
 	var personality_match: bool = false
 	match _s.enemy.talk_personality:
 		"cowardly": personality_match = (approach == "Safety")

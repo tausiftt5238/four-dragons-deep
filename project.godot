@@ -14,6 +14,7 @@ config/name="first-person-dungeon-crawler"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+config/quit_on_go_back=false
 
 [physics]
 

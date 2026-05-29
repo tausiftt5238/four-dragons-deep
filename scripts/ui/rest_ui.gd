@@ -4,12 +4,13 @@ signal rest_closed
 
 var player: PlayerCharacter
 
-var _hp_label:   Label
-var _mp_label:   Label
-var _gold_label: Label
-var _heal_btn:   Button
-var _mp_btn:     Button
-var _msg_label:  Label
+var _hp_label:    Label
+var _mp_label:    Label
+var _gold_label:  Label
+var _heal_btn:    Button
+var _mp_btn:      Button
+var _cure_btn:    Button
+var _msg_label:   Label
 
 
 func _ready() -> void:
@@ -74,6 +75,11 @@ func _build_ui() -> void:
 	_mp_btn.pressed.connect(_on_recover_mp)
 	vbox.add_child(_mp_btn)
 
+	_cure_btn = Button.new()
+	_cure_btn.custom_minimum_size = Vector2(0, 36)
+	_cure_btn.pressed.connect(_on_cure_ailments)
+	vbox.add_child(_cure_btn)
+
 	vbox.add_child(HSeparator.new())
 
 	_msg_label = Label.new()
@@ -96,6 +102,10 @@ func _mp_cost() -> int:
 	return (player.max_mp - player.mp) * 5
 
 
+func _cure_cost() -> int:
+	return player.active_statuses.size() * 50
+
+
 func _refresh() -> void:
 	_hp_label.text   = "HP:    %d / %d" % [player.hp,  player.max_hp]
 	_mp_label.text   = "MP:    %d / %d" % [player.mp,  player.max_mp]
@@ -103,6 +113,7 @@ func _refresh() -> void:
 
 	var hp_cost: int = _hp_cost()
 	var mp_cost: int = _mp_cost()
+	var cure_cost: int = _cure_cost()
 
 	if hp_cost > 0:
 		_heal_btn.text     = "Heal HP  —  %d gold" % hp_cost
@@ -117,6 +128,13 @@ func _refresh() -> void:
 	else:
 		_mp_btn.text     = "MP is full"
 		_mp_btn.disabled = true
+
+	if cure_cost > 0:
+		_cure_btn.text     = "Cure Ailments  —  %d gold" % cure_cost
+		_cure_btn.disabled = player.gold < cure_cost
+	else:
+		_cure_btn.text     = "No Ailments"
+		_cure_btn.disabled = true
 
 	_msg_label.text = ""
 
@@ -134,4 +152,12 @@ func _on_recover_mp() -> void:
 	player.gold -= cost
 	player.restore_mp(player.max_mp - player.mp)
 	_msg_label.text = "MP fully restored."
+	_refresh()
+
+
+func _on_cure_ailments() -> void:
+	var cost: int = _cure_cost()
+	player.gold -= cost
+	player.active_statuses.clear()
+	_msg_label.text = "All ailments cured."
 	_refresh()
