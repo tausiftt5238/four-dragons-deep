@@ -1,6 +1,6 @@
 # GearTooltip
 # Shared static helpers for gear comparison tooltip text.
-# Used by MenuUI and StoreUI to avoid duplicating this logic.
+# Used by MenuUI to avoid duplicating this logic.
 class_name GearTooltip
 
 

@@ -75,8 +75,7 @@ func _resolve(approach: String) -> void:
 			return
 		await _s.get_tree().create_timer(1.1).timeout
 		if is_instance_valid(_s):
-			_s._set_buttons(true)
-			_s._refresh_button_states()
+			await _s._talk_attempt_failed()
 		return
 
 	_talk_fear   += gain
@@ -89,7 +88,7 @@ func _resolve(approach: String) -> void:
 		_s._log("[color=lime]%s backs down![/color]" % _s.enemy.enemy_name)
 		await _s.get_tree().create_timer(1.5).timeout
 		if is_instance_valid(_s):
-			_s._end_combat("talk")
+			await _s._foe_departs("talk")
 		return
 
 	_s._log("[color=orange]%s[/color]" % _defiant_reaction(gain))
@@ -111,8 +110,7 @@ func _resolve(approach: String) -> void:
 			return
 		await _s.get_tree().create_timer(1.1).timeout
 		if is_instance_valid(_s):
-			_s._set_buttons(true)
-			_s._refresh_button_states()
+			await _s._talk_attempt_failed()
 		return
 
 	await _s.get_tree().create_timer(0.7).timeout

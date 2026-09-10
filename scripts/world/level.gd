@@ -12,9 +12,13 @@ var wall_color: Color  = Color(0.42, 0.32, 0.22)
 var floor_color: Color = Color(0.22, 0.20, 0.16)
 var ceil_color: Color  = Color(0.16, 0.16, 0.20)
 
-# Optional pixel-art textures. When set, dungeon.gd uses these instead of plain colour.
-var wall_texture: Texture2D  = null
-var floor_texture: Texture2D = null
+# Wireframe palette. The dungeon is drawn as edges, so these are the line
+# colour and the translucent fill behind it — see Dungeon._build_geometry.
+var wire_color: Color      = Color(0.55, 0.88, 1.00)
+var wire_floor_color: Color = Color(0.35, 0.60, 0.75)
+var wire_fill_color: Color = Color(0.02, 0.02, 0.05)
+# 0.0 = see straight through every wall, 1.0 = solid. Tuned per level.
+var wire_fill_alpha: float = 0.55
 
 # Where the player spawns when this map is first loaded (start of the game).
 var player_start: Vector2i        = Vector2i(1, 1)
@@ -37,15 +41,6 @@ var next_scene: String     = ""
 # Treasure chests: grid position → item Dictionary.
 # Entries are erased by main.gd when the player picks them up.
 var chest_items: Dictionary = {}
-
-# Store entrance: the wall cell the player walks into, and the open floor cell
-# in front of it where the glowing marker is placed.
-var store_wall_pos:  Vector2i = Vector2i(-1, -1)
-var store_entry_pos: Vector2i = Vector2i(-1, -1)
-
-# Inn entrance: same layout as the store.
-var rest_wall_pos:  Vector2i = Vector2i(-1, -1)
-var rest_entry_pos: Vector2i = Vector2i(-1, -1)
 
 # Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
 # Erased by main.gd after the player triggers one.

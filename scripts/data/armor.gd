@@ -8,10 +8,12 @@ class_name Armor
 
 static func make(id: String, name: String, desc: String,
 		def_bonus: int, floor: int, agl_pen: int = 0, weakness: String = "",
-		reflect_element: String = "", absorb_element: String = "") -> Dictionary:
+		reflect_element: String = "", absorb_element: String = "",
+		resist_element: String = "") -> Dictionary:
 	return {id=id, name=name, type="armor", desc=desc,
 			def_bonus=def_bonus, agl_pen=agl_pen, floor=floor, qty=1,
-			weakness=weakness, reflect_element=reflect_element, absorb_element=absorb_element}
+			weakness=weakness, reflect_element=reflect_element,
+			absorb_element=absorb_element, resist_element=resist_element}
 
 
 # ── Predefined armors ─────────────────────────────────────────────────────────
@@ -23,7 +25,8 @@ static func leather_vest() -> Dictionary:
 	return make("leather_vest", "Leather Vest", "Light protection.", 3, 1, 0, "fire")
 
 static func chain_mail() -> Dictionary:
-	return make("chain_mail", "Chain Mail", "Solid protection.", 6, 2, -1, "thunder")
+	return make("chain_mail", "Chain Mail", "Turns blades, draws lightning.",
+			6, 2, -1, "thunder", "", "", Affinity.PHYS)
 
 static func plate_armor() -> Dictionary:
 	return make("plate_armor", "Plate Armor", "Heavy protection.", 10, 3, -2, "ice", "fire")

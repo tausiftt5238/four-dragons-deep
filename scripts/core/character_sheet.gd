@@ -20,6 +20,22 @@ var max_mp:      int = 0
 var _hp_bonus: int = 0
 var _mp_bonus: int = 0
 
+# Elemental affinity chart: element -> Affinity state. An element that is
+# absent is Affinity.NORMAL. "phys" is a valid key, so ordinary attacks are
+# scored on the same chart as magic.
+var affinities: Dictionary = {}
+
+# Set when this combatant chose Defend; cleared the next time it is struck.
+var defending: bool = false
+
+
+# The affinity state this combatant has toward an element. Subclasses override
+# to layer equipment on top of their innate chart.
+func affinity_of(element: String) -> String:
+	if element == "":
+		return Affinity.NORMAL
+	return affinities.get(element, Affinity.NORMAL) as String
+
 
 func compute_max_hp() -> void:
 	max_hp = lv * 10 + def * 3 + _hp_bonus

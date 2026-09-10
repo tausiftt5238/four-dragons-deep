@@ -32,11 +32,18 @@ var hud_layer: CanvasLayer       # CanvasLayer holding the minimap; hidden durin
 var player_char: PlayerCharacter  # RPG stats — persists across encounters and floors
 var in_combat:  bool = false
 var menu_open:  bool = false
-var store_open: bool = false
-var rest_open:  bool = false
 var save_open:  bool = false
 
 var _encounters_enabled:       bool = true
+
+# Demons walking this floor. They step when the player steps; sharing a cell
+# with one starts a battle.
+var roamers: Array[Roamer] = []
+# The roamer whose battle is running, so the outcome can be applied to it.
+var _active_roamer: Roamer = null
+# Steps taken since the last replacement, so a cleared floor slowly refills.
+var _steps_since_spawn: int = 0
+const _RESPAWN_STEPS: int = 25
 var _pending_congratulations:  bool = false
 
 var _swipe_start:  Vector2 = Vector2.ZERO
@@ -44,8 +51,6 @@ var _swipe_active: bool    = false
 const _SWIPE_MIN:  float   = 60.0
 var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
-var store_layer:   CanvasLayer
-var rest_layer:    CanvasLayer
 var save_layer:    CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
@@ -77,10 +82,6 @@ func _notification(what: int) -> void:
 		if not in_combat:
 			if save_open:
 				_close_save_layer()
-			elif store_open:
-				_close_store()
-			elif rest_open:
-				_close_rest()
 			elif menu_open:
 				_close_menu()
 			else:
@@ -109,7 +110,8 @@ func _ready() -> void:
 		GameBoot.pending_slot = 0
 		call_deferred("_do_load", slot)
 	else:
-		player_pos = current_level.store_entry_pos
+		player_pos    = current_level.player_start
+		player_facing = current_level.player_start_facing
 		_sync_player()
 		_snap_cam_yaw()
 
@@ -157,12 +159,11 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	minimap_ctrl.maze      = current_level.maze
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
-	minimap_ctrl.store_pos = current_level.store_wall_pos
-	minimap_ctrl.rest_pos  = current_level.rest_wall_pos
 	_resize_minimap()
 
 	_sync_player()
 	_snap_cam_yaw()
+	_spawn_roamers()
 
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -354,10 +355,6 @@ func _action_forward() -> void:
 		_post_move()
 	elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
 		_check_portal()
-	elif nxt == current_level.store_wall_pos and player_pos == current_level.store_entry_pos:
-		_open_store()
-	elif nxt == current_level.rest_wall_pos and player_pos == current_level.rest_entry_pos:
-		_open_rest()
 	else:
 		_shake_camera()
 
@@ -389,13 +386,22 @@ func _post_move() -> void:
 	_sync_player()
 	_check_step_poison()
 	_check_trap()
-	if player_char.is_alive() and not _check_chest():
-		if not _check_encounter():
-			_check_random_event()
+	if not player_char.is_alive():
+		return
+	var found: bool = _check_chest()
+	# Walking into a roamer counts before it gets its own step, which is also
+	# what stops the two swapping straight through one another.
+	if _engage_roamer_here():
+		return
+	_step_roamers()
+	if _engage_roamer_here():
+		return
+	if not found:
+		_check_random_event()
 
 
 func _handle_swipe(delta: Vector2) -> void:
-	if in_combat or menu_open or store_open or rest_open or save_open:
+	if in_combat or menu_open or save_open:
 		return
 	if delta.length() < _SWIPE_MIN:
 		return
@@ -412,7 +418,7 @@ func _handle_swipe(delta: Vector2) -> void:
 
 
 func _on_menu_btn_pressed() -> void:
-	if in_combat or store_open or rest_open or save_open:
+	if in_combat or save_open:
 		return
 	if menu_open:
 		_close_menu()
@@ -439,34 +445,30 @@ func _input(event: InputEvent) -> void:
 		_update_encounter_debug_label()
 		return
 
-	if event.keycode == KEY_F5 and not in_combat and not store_open and not save_open:
+	if event.keycode == KEY_F5 and not in_combat and not save_open:
 		if menu_open:
 			_close_menu()
 		_open_save_menu()
 		return
 
-	if event.keycode == KEY_F9 and not in_combat and not store_open and not save_open:
+	if event.keycode == KEY_F9 and not in_combat and not save_open:
 		if menu_open:
 			_close_menu()
 		_open_load_menu()
 		return
 
-	# ESC: close save picker → close store → close menu → open menu. Blocked during combat.
+	# ESC: close save picker → close menu → open menu. Blocked during combat.
 	if event.keycode == KEY_ESCAPE:
 		if not in_combat:
 			if save_open:
 				_close_save_layer()
-			elif store_open:
-				_close_store()
-			elif rest_open:
-				_close_rest()
 			elif menu_open:
 				_close_menu()
 			else:
 				_open_menu()
 		return
 
-	if in_combat or menu_open or store_open or rest_open or save_open:
+	if in_combat or menu_open or save_open:
 		return
 
 	match event.keycode:
@@ -484,55 +486,154 @@ func _input(event: InputEvent) -> void:
 
 func _update_encounter_debug_label() -> void:
 	if _encounters_enabled:
-		_encounter_debug_lbl.text = "[DEBUG] Encounters: ON"
+		_encounter_debug_lbl.text = "[DEBUG] Roamers: ON"
 		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.45, 0.90, 0.45))
 	else:
-		_encounter_debug_lbl.text = "[DEBUG] Encounters: OFF"
+		_encounter_debug_lbl.text = "[DEBUG] Roamers: OFF"
 		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
 
 
-func _check_encounter() -> bool:
-	if _encounters_enabled and randi() % 5 == 0:
-		_start_combat()
-		return true
+# ── Roaming demons ───────────────────────────────────────────────────────────
+
+# How many demons a floor carries. Boss corridors carry none — the boss is the
+# encounter, and a 1-cell-wide corridor gives you nowhere to dodge.
+func _roamer_target() -> int:
+	if floor_num % 5 == 0:
+		return 0
+	return mini(3 + floor_num / 4, 6)
+
+
+func _spawn_roamers() -> void:
+	for r: Roamer in roamers:
+		if is_instance_valid(r):
+			r.queue_free()
+	roamers.clear()
+	_active_roamer = null
+	_steps_since_spawn = 0
+	for _i: int in range(_roamer_target()):
+		_spawn_roamer()
+
+
+# Places one demon on a random open cell well clear of the player.
+func _spawn_roamer() -> void:
+	var cell: Vector2i = _far_open_cell(6)
+	if cell.x < 0:
+		return
+	var r: Roamer = Roamer.new()
+	r.cell = cell
+	add_child(r)
+	roamers.append(r)
+
+
+# A random open cell at least min_dist away from the player, or (-1,-1) if the
+# floor is too cramped to find one.
+func _far_open_cell(min_dist: int) -> Vector2i:
+	var candidates: Array[Vector2i] = []
+	for row: int in range(current_level.maze.size()):
+		var row_data: Array = current_level.maze[row]
+		for col: int in range(row_data.size()):
+			if row_data[col] != 0:
+				continue
+			var c: Vector2i = Vector2i(col, row)
+			if absi(c.x - player_pos.x) + absi(c.y - player_pos.y) < min_dist:
+				continue
+			if c == current_level.exit_pos:
+				continue
+			candidates.append(c)
+	if candidates.is_empty():
+		return Vector2i(-1, -1)
+	return candidates[randi() % candidates.size()]
+
+
+func _step_roamers() -> void:
+	if not _encounters_enabled:
+		return
+	for r: Roamer in roamers:
+		if is_instance_valid(r):
+			r.move_to(r.choose_step(player_pos, _is_open))
+
+	_steps_since_spawn += 1
+	if _steps_since_spawn >= _RESPAWN_STEPS and roamers.size() < _roamer_target():
+		_steps_since_spawn = 0
+		_spawn_roamer()
+
+
+# Starts a battle if a roamer is standing where the player is. Returns true if
+# one did, so the caller knows to stop.
+func _engage_roamer_here() -> bool:
+	if not _encounters_enabled:
+		return false
+	for r: Roamer in roamers:
+		if is_instance_valid(r) and r.cell == player_pos:
+			_active_roamer = r
+			_launch_combat(Enemy.make_group(floor_num))
+			return true
 	return false
 
 
 func _start_combat() -> void:
-	_launch_combat(Enemy.make_random(floor_num))
+	_launch_combat(Enemy.make_group(floor_num))
 
 
 func _start_boss_combat() -> void:
 	if floor_num == 20:
 		_pending_congratulations = true
-	_launch_combat(Enemy.make_boss(floor_num))
+	# Bosses come alone; their own icon count is what makes them a fight.
+	var solo: Array[Enemy] = [Enemy.make_boss(floor_num)]
+	_launch_combat(solo)
 
 
-func _launch_combat(foe: Enemy) -> void:
+func _launch_combat(group: Array[Enemy]) -> void:
 	in_combat = true
 	hud_layer.visible = false
-	add_child(foe)
-	if foe.enemy_name not in player_char.encountered_enemies:
-		player_char.encountered_enemies.append(foe.enemy_name)
+	for foe: Enemy in group:
+		add_child(foe)
+		if foe.enemy_name not in player_char.encountered_enemies:
+			player_char.encountered_enemies.append(foe.enemy_name)
 	var combat_layer: CanvasLayer = CanvasLayer.new()
 	combat_layer.layer = 20
 	add_child(combat_layer)
 	var packed: PackedScene = load("res://scenes/combat.tscn") as PackedScene
 	var scene: CombatScene = packed.instantiate() as CombatScene
 	scene.player = player_char
-	scene.enemy  = foe
-	scene.combat_ended.connect(_on_combat_ended.bind(foe, combat_layer))
+	# The scene removes negotiated demons from its own list, so hand it a copy
+	# and keep the full roster here for the reward tally.
+	scene.foes = group.duplicate()
+	scene.combat_ended.connect(_on_combat_ended.bind(group, combat_layer))
 	combat_layer.add_child(scene)
 
 
-func _on_combat_ended(result: String, foe: Enemy, combat_layer: CanvasLayer) -> void:
-	var exp_reward:  int        = foe.exp_reward
-	var gold_reward: int        = foe.gold_reward
-	var item_drop:   Dictionary = foe.roll_drop()
-	if item_drop.is_empty() and "scavenger" in player_char.passive_skills and randi() % 2 == 0:
-		item_drop = foe.roll_drop()
-	foe.queue_free()
+# Rewards are summed over the whole encounter: anything killed pays experience,
+# gold and a drop roll; anything talked down pays experience and gold only.
+func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasLayer) -> void:
+	var exp_reward:  int = 0
+	var gold_reward: int = 0
+	var item_drop:   Dictionary = {}
+	for foe: Enemy in group:
+		exp_reward  += foe.exp_reward
+		gold_reward += foe.gold_reward
+		if not foe.is_alive() and item_drop.is_empty():
+			item_drop = foe.roll_drop()
+			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
+					and randi() % 2 == 0:
+				item_drop = foe.roll_drop()
+	for foe: Enemy in group:
+		foe.queue_free()
 	combat_layer.queue_free()
+
+	# The demon you fought is the one you met. Beating or talking it down clears
+	# it off the floor; slipping away leaves it out there, moved on.
+	var met: Roamer = _active_roamer
+	_active_roamer = null
+	if is_instance_valid(met):
+		if result == "flee":
+			var spot: Vector2i = _far_open_cell(5)
+			if spot.x >= 0:
+				met.teleport_to(spot)
+		elif result != "lose":
+			roamers.erase(met)
+			met.queue_free()
+			_steps_since_spawn = 0
 
 	match result:
 		"win", "talk":
@@ -831,55 +932,7 @@ func _close_menu() -> void:
 	menu_open = false
 
 
-func _open_store() -> void:
-	store_open = true
-	hud_layer.visible = false
 
-	if not is_instance_valid(store_layer):
-		store_layer = CanvasLayer.new()
-		store_layer.layer = 15
-		add_child(store_layer)
-
-	var packed: PackedScene = load("res://scenes/store.tscn") as PackedScene
-	var store: StoreUI = packed.instantiate() as StoreUI
-	store.player    = player_char
-	store.floor_num = floor_num
-	store.store_closed.connect(_close_store)
-	store_layer.add_child(store)
-
-
-func _close_store() -> void:
-	if is_instance_valid(store_layer):
-		for child: Node in store_layer.get_children():
-			child.queue_free()
-	hud_layer.visible = true
-	store_open = false
-
-
-func _open_rest() -> void:
-	rest_open = true
-	hud_layer.visible = false
-
-	if not is_instance_valid(rest_layer):
-		rest_layer = CanvasLayer.new()
-		rest_layer.layer = 15
-		add_child(rest_layer)
-
-	var ui: RestUI = RestUI.new()
-	ui.player = player_char
-	ui.rest_closed.connect(_close_rest)
-	rest_layer.add_child(ui)
-
-
-func _close_rest() -> void:
-	if is_instance_valid(rest_layer):
-		for child: Node in rest_layer.get_children():
-			child.queue_free()
-	hud_layer.visible = true
-	rest_open = false
-
-
-# ── Save / Load ───────────────────────────────────────────────────────────────
 
 func _open_save_menu() -> void:
 	save_open = true
@@ -962,29 +1015,22 @@ func _gather_save_data() -> Dictionary:
 			maze        = current_level.maze,
 			exit_wall   = [current_level.exit_wall_pos.x,   current_level.exit_wall_pos.y],
 			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
-			store_wall  = [current_level.store_wall_pos.x,  current_level.store_wall_pos.y],
-			store_entry = [current_level.store_entry_pos.x, current_level.store_entry_pos.y],
-			rest_wall   = [current_level.rest_wall_pos.x,   current_level.rest_wall_pos.y],
-			rest_entry  = [current_level.rest_entry_pos.x,  current_level.rest_entry_pos.y],
 			chest_items = SaveSystem.pack_chest_items(current_level.chest_items),
 			trap_cells  = _pack_trap_cells(current_level.trap_cells),
+			roamers     = _pack_roamers(),
 		},
 		visited = visited_serial,
 	}
 
 
 func _restore_save(data: Dictionary) -> void:
-	in_combat  = false
-	menu_open  = false
-	store_open = false
+	in_combat = false
+	menu_open = false
 	if is_instance_valid(overlay_layer):
 		for c: Node in overlay_layer.get_children():
 			c.queue_free()
 	if is_instance_valid(menu_layer):
 		for c: Node in menu_layer.get_children():
-			c.queue_free()
-	if is_instance_valid(store_layer):
-		for c: Node in store_layer.get_children():
 			c.queue_free()
 
 	_apply_player_data(data["player"] as Dictionary)
@@ -1014,19 +1060,12 @@ func _restore_save(data: Dictionary) -> void:
 
 	var ew: Array  = map_data["exit_wall"]   as Array
 	var ep: Array  = map_data["exit_pos"]    as Array
-	var sw: Array  = map_data["store_wall"]  as Array
-	var se: Array  = map_data["store_entry"] as Array
 	current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
 	current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
-	current_level.store_wall_pos  = Vector2i(int(sw[0]), int(sw[1]))
-	current_level.store_entry_pos = Vector2i(int(se[0]), int(se[1]))
-	var rw: Array = map_data["rest_wall"]  as Array
-	var re: Array = map_data["rest_entry"] as Array
-	current_level.rest_wall_pos  = Vector2i(int(rw[0]), int(rw[1]))
-	current_level.rest_entry_pos = Vector2i(int(re[0]), int(re[1]))
 	current_level.next_scene      = scene_path
 	current_level.chest_items     = SaveSystem.unpack_chest_items(map_data["chest_items"] as Dictionary)
 	current_level.trap_cells      = _unpack_trap_cells(map_data.get("trap_cells", {}) as Dictionary)
+	_pending_roamers              = map_data.get("roamers", []) as Array
 
 	dungeon = Dungeon.new()
 	add_child(dungeon)
@@ -1042,8 +1081,6 @@ func _restore_save(data: Dictionary) -> void:
 	minimap_ctrl.maze      = current_level.maze
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
-	minimap_ctrl.store_pos = current_level.store_wall_pos
-	minimap_ctrl.rest_pos  = current_level.rest_wall_pos
 	_resize_minimap()
 
 	var pos_arr: Array = data["player_pos"] as Array
@@ -1052,6 +1089,9 @@ func _restore_save(data: Dictionary) -> void:
 
 	_sync_player()
 	_snap_cam_yaw()
+	# Player position is set above, so the roamers land relative to where the
+	# save actually left them.
+	_restore_roamers()
 	hud_layer.visible = true
 
 
@@ -1091,6 +1131,33 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
 	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
+
+
+# Roamer positions are saved so a reload does not shuffle the floor's threats.
+var _pending_roamers: Array = []
+
+
+func _pack_roamers() -> Array:
+	var out: Array = []
+	for r: Roamer in roamers:
+		if is_instance_valid(r):
+			out.append(SaveSystem.vec2i_key(r.cell))
+	return out
+
+
+func _restore_roamers() -> void:
+	for r: Roamer in roamers:
+		if is_instance_valid(r):
+			r.queue_free()
+	roamers.clear()
+	_active_roamer = null
+	_steps_since_spawn = 0
+	for key: Variant in _pending_roamers:
+		var rm: Roamer = Roamer.new()
+		rm.cell = SaveSystem.key_vec2i(key as String)
+		add_child(rm)
+		roamers.append(rm)
+	_pending_roamers = []
 
 
 func _pack_trap_cells(cells: Dictionary) -> Dictionary:

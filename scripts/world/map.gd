@@ -4,9 +4,7 @@ extends Level
 
 
 func _ready() -> void:
-	wall_texture  = load("res://resources/mapAsset/level_1_wall_1.png")
-	floor_texture = load("res://resources/mapAsset/level_1_floor_1.png")
-	next_scene    = "res://scenes/map.tscn"
+	next_scene = "res://scenes/map.tscn"
 
 	var parent_floor: Variant = get_parent().get("floor_num") if get_parent() else null
 	var floor_num: int = int(parent_floor) if parent_floor != null else 0
@@ -19,9 +17,8 @@ func _ready() -> void:
 func _setup_normal_floor() -> void:
 	maze = _generate_maze()
 
-	wall_color  = Color(0.42, 0.32, 0.22)
-	floor_color = Color(0.22, 0.20, 0.16)
-	ceil_color  = Color(0.16, 0.16, 0.20)
+	wire_color       = Color(0.55, 0.88, 1.00)
+	wire_floor_color = Color(0.32, 0.55, 0.70)
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
@@ -30,18 +27,15 @@ func _setup_normal_floor() -> void:
 	exit_wall_pos = exit_pair["wall"]
 	exit_pos      = exit_pair["floor"]
 	_place_chests()
-	_place_store()
-	_place_rest()
 	_place_traps()
 
 
 func _setup_boss_floor() -> void:
 	maze = _generate_corridor()
 
-	# Ominous dark palette for boss arenas
-	wall_color  = Color(0.18, 0.06, 0.06)
-	floor_color = Color(0.10, 0.06, 0.06)
-	ceil_color  = Color(0.07, 0.04, 0.04)
+	# Boss corridors burn red.
+	wire_color       = Color(1.00, 0.34, 0.30)
+	wire_floor_color = Color(0.62, 0.18, 0.18)
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 1  # East — face down the corridor
@@ -243,33 +237,12 @@ func _random_frontier_wall(excluded_floors: Dictionary) -> Dictionary:
 	return candidates[randi() % candidates.size()]
 
 
-func _place_store() -> void:
-	var excluded: Dictionary = {player_start: true, exit_pos: true, exit_wall_pos: true}
-	for cp: Variant in chest_items.keys():
-		excluded[cp] = true
-	var pair: Dictionary = _random_frontier_wall(excluded)
-	store_wall_pos  = pair["wall"] as Vector2i
-	store_entry_pos = pair["floor"] as Vector2i
-
-
-func _place_rest() -> void:
-	var excluded: Dictionary = {
-		player_start: true, exit_pos: true, exit_wall_pos: true,
-		store_wall_pos: true, store_entry_pos: true,
-	}
-	for cp: Variant in chest_items.keys():
-		excluded[cp] = true
-	var pair: Dictionary = _random_frontier_wall(excluded)
-	rest_wall_pos  = pair["wall"] as Vector2i
-	rest_entry_pos = pair["floor"] as Vector2i
 
 
 func _place_traps() -> void:
 	const COUNT: int = 3
 	var occupied: Dictionary = {
 		player_start: true, exit_pos: true, exit_wall_pos: true,
-		store_wall_pos: true, store_entry_pos: true,
-		rest_wall_pos: true, rest_entry_pos: true,
 	}
 	for cp: Variant in chest_items.keys():
 		occupied[cp] = true

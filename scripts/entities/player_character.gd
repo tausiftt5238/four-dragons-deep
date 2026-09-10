@@ -14,8 +14,14 @@ var equipped_armor:  Dictionary = {}
 # Learnable spell IDs. Looked up in Spell.DATA for display and cost.
 var known_spells: Array[String] = []
 
-# Enemy names successfully recruited via the Talk > Threaten critical path.
+# Demons bound to the detective and callable through Summon.
 var recruited: Array[String] = []
+
+# Nobody walks into their first case empty-handed. One demon is already bound,
+# which is also what makes the opening floors survivable — a lone detective
+# against a pack of three loses on action economy no matter how well he reads
+# the affinity chart.
+const STARTING_DEMON: String = "Fairy"
 
 # Enemy names encountered at least once in combat (bestiary unlock).
 var encountered_enemies: Array[String] = []
@@ -39,6 +45,28 @@ func _ready() -> void:
 	compute_max_mp()
 
 	known_spells = ["fire"]
+	recruited    = [STARTING_DEMON]
+
+	# He is human. No resistances of his own, and the cold gets through —
+	# which is what makes putting him in front of anything a real decision.
+	affinities = {Affinity.PHYS: Affinity.NORMAL, "ice": Affinity.WEAK}
+
+
+# Armor is layered over the innate chart: an absorbing or reflecting piece wins
+# outright, a resisting piece cancels an innate weakness, and a vulnerable
+# piece opens one up.
+func affinity_of(element: String) -> String:
+	if element == "":
+		return Affinity.NORMAL
+	if equipped_armor.get("absorb_element", "") == element:
+		return Affinity.DRAIN
+	if equipped_armor.get("reflect_element", "") == element:
+		return Affinity.REPEL
+	if equipped_armor.get("resist_element", "") == element:
+		return Affinity.RESIST
+	if equipped_armor.get("weakness", "") == element:
+		return Affinity.WEAK
+	return affinities.get(element, Affinity.NORMAL) as String
 
 
 # ── Effective stats (base + equipment bonuses) ────────────────────────────────

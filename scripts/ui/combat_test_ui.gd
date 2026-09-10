@@ -8,6 +8,8 @@ const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as F
 
 var _stats: Dictionary = {lv=1, str=5, def=4, mag=2, agl=3}
 var _floor: int = 1
+var _group_size: int = 4
+var _group_lbl: Label
 var _selected_enemy: String = ""
 
 var _stat_lbls:   Dictionary = {}   # key -> Label showing current value
@@ -223,6 +225,8 @@ func _build_fight_row() -> void:
 	row.custom_minimum_size = Vector2(0, 56)
 	(_setup_root as VBoxContainer).add_child(row)
 
+	row.add_child(_make_group_spinner())
+
 	var btn: Button = Button.new()
 	btn.text = "FIGHT!"
 	btn.custom_minimum_size = Vector2(220, 42)
@@ -233,6 +237,45 @@ func _build_fight_row() -> void:
 
 
 # ── Spinners ──────────────────────────────────────────────────────────────────
+
+# How many copies of the selected demon to field, so 4-v-4 can be tried here.
+func _make_group_spinner() -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+
+	var lbl: Label = Label.new()
+	lbl.text = "PACK"
+	lbl.custom_minimum_size = Vector2(44, 0)
+	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(lbl)
+
+	var minus: Button = Button.new()
+	minus.text = "-"
+	minus.custom_minimum_size = Vector2(26, 26)
+	minus.pressed.connect(func():
+		_group_size = max(1, _group_size - 1)
+		_group_lbl.text = str(_group_size)
+	)
+	row.add_child(minus)
+
+	_group_lbl = Label.new()
+	_group_lbl.text = str(_group_size)
+	_group_lbl.custom_minimum_size = Vector2(34, 0)
+	_group_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_group_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_group_lbl)
+
+	var plus: Button = Button.new()
+	plus.text = "+"
+	plus.custom_minimum_size = Vector2(26, 26)
+	plus.pressed.connect(func():
+		_group_size = min(4, _group_size + 1)
+		_group_lbl.text = str(_group_size)
+	)
+	row.add_child(plus)
+
+	return row
+
 
 func _make_stat_spinner(key: String, min_val: int, max_val: int) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
@@ -384,15 +427,19 @@ func _on_fight() -> void:
 	test_player.compute_max_hp()
 	test_player.compute_max_mp()
 
-	var foe: Enemy = Enemy.make_from_name(_selected_enemy, _floor)
-	add_child(foe)
+	var group: Array[Enemy] = []
+	for _i: int in range(_group_size):
+		var foe: Enemy = Enemy.make_from_name(_selected_enemy, _floor)
+		add_child(foe)
+		group.append(foe)
 
 	var packed: PackedScene = load("res://scenes/combat.tscn") as PackedScene
 	var scene: CombatScene  = packed.instantiate() as CombatScene
 	scene.player = test_player
-	scene.enemy  = foe
+	scene.foes   = group.duplicate()
 	scene.combat_ended.connect(func(result: String) -> void:
-		foe.queue_free()
+		for f: Enemy in group:
+			f.queue_free()
 		test_player.queue_free()
 		_show_result(result)
 	)
