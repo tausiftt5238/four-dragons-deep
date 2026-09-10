@@ -19,6 +19,7 @@ func _setup_normal_floor() -> void:
 
 	wire_color       = Color(0.55, 0.88, 1.00)
 	wire_floor_color = Color(0.32, 0.55, 0.70)
+	wire_fill_color  = Color(0.075, 0.085, 0.115)
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
@@ -26,7 +27,6 @@ func _setup_normal_floor() -> void:
 	var exit_pair: Dictionary = _random_frontier_wall({player_start: true})
 	exit_wall_pos = exit_pair["wall"]
 	exit_pos      = exit_pair["floor"]
-	_place_chests()
 	_place_traps()
 
 
@@ -36,6 +36,7 @@ func _setup_boss_floor() -> void:
 	# Boss corridors burn red.
 	wire_color       = Color(1.00, 0.34, 0.30)
 	wire_floor_color = Color(0.62, 0.18, 0.18)
+	wire_fill_color  = Color(0.115, 0.052, 0.052)
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 1  # East — face down the corridor
@@ -46,18 +47,8 @@ func _setup_boss_floor() -> void:
 	exit_pos      = Vector2i(17, 1)
 	exit_wall_pos = Vector2i(18, 1)
 
-	# 2 chests along the corridor
-	var corridor_candidates: Array[Vector2i] = []
-	for x: int in range(3, 16):
-		corridor_candidates.append(Vector2i(x, 1))
-	corridor_candidates.shuffle()
-	for i: int in range(min(2, corridor_candidates.size())):
-		chest_items[corridor_candidates[i]] = _random_loot()
-
-	# 2 traps along the corridor, avoiding chests and endpoints
+	# 2 traps along the corridor, clear of both ends
 	var trap_occupied: Dictionary = {Vector2i(1, 1): true, Vector2i(17, 1): true}
-	for cp: Variant in chest_items.keys():
-		trap_occupied[cp] = true
 	var trap_candidates: Array[Vector2i] = []
 	for x: int in range(3, 17):
 		if not trap_occupied.has(Vector2i(x, 1)):
@@ -181,27 +172,7 @@ func _random_reachable_cell(grid: Array[Array], start: Vector2i) -> Vector2i:
 	return reachable[randi() % reachable.size()] as Vector2i
 
 
-# Scatters 4–5 treasure chests at random reachable cells, avoiding the
-# player start and portal exit. Each chest holds one random item.
-func _place_chests() -> void:
-	const COUNT: int = 5
-	var occupied: Dictionary = {exit_pos: true}
-	var attempts: int = 0
-	var placed:   int = 0
-	while placed < COUNT and attempts < 60:
-		attempts += 1
-		var pos: Vector2i = _random_reachable_cell(maze, player_start)
-		if occupied.has(pos):
-			continue
-		occupied[pos] = true
-		chest_items[pos] = _random_loot()
-		placed += 1
 
-
-# Flood-fills from player_start and returns a random {wall, floor} pair where
-# floor is a reachable open cell not in excluded_floors, and wall is an
-# interior wall cell orthogonally adjacent to floor.
-# Guaranteed to find a result in any well-formed 20×20 maze.
 func _random_frontier_wall(excluded_floors: Dictionary) -> Dictionary:
 	const DIRS: Array[Vector2i] = [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
 	var rows: int = maze.size()
@@ -244,8 +215,6 @@ func _place_traps() -> void:
 	var occupied: Dictionary = {
 		player_start: true, exit_pos: true, exit_wall_pos: true,
 	}
-	for cp: Variant in chest_items.keys():
-		occupied[cp] = true
 	var types: Array[String] = ["spike", "poison_vent", "binding_rune"]
 	var placed: int = 0
 	var attempts: int = 0
@@ -259,22 +228,3 @@ func _place_traps() -> void:
 		placed += 1
 
 
-func _random_loot() -> Dictionary:
-	var roll: int = randi() % 100
-	if   roll < 16: return Item.health_potion()
-	elif roll < 28: return Item.hi_potion()
-	elif roll < 38: return Item.ether()
-	elif roll < 44: return Item.antidote()
-	elif roll < 49: return Item.stimulant()
-	elif roll < 53: return Item.echo_gem()
-	elif roll < 56: return Item.elixir_motion()
-	elif roll < 63: return Item.scroll_venom()
-	elif roll < 69: return Item.scroll_shock()
-	elif roll < 74: return Item.scroll_mute()
-	elif roll < 78: return Item.scroll_bind()
-	elif roll < 84: return Weapon.iron_sword()
-	elif roll < 89: return Weapon.battle_axe()
-	elif roll < 93: return Weapon.magic_rod()
-	elif roll < 97: return Armor.leather_vest()
-	elif roll < 99: return Armor.chain_mail()
-	else:           return Armor.plate_armor()

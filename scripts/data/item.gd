@@ -92,6 +92,49 @@ static func scroll_blizzara() -> Dictionary:
 			"Teaches the Blizzara ice spell.", 4)
 
 
+# ── Support scrolls ───────────────────────────────────────────────────────────
+
+static func scroll_whet() -> Dictionary:
+	return scroll("scroll_whet", "Scroll of Whet", "whet", "Whet",
+			"Teaches Whet — raises the party's attack.", 2)
+
+static func scroll_ward() -> Dictionary:
+	return scroll("scroll_ward", "Scroll of Ward", "ward", "Ward",
+			"Teaches Ward — raises the party's defence.", 2)
+
+static func scroll_quicken() -> Dictionary:
+	return scroll("scroll_quicken", "Scroll of Quicken", "quicken", "Quicken",
+			"Teaches Quicken — raises the party's agility.", 3)
+
+static func scroll_stoke() -> Dictionary:
+	return scroll("scroll_stoke", "Scroll of Stoke", "stoke", "Stoke",
+			"Teaches Stoke — raises the party's magic.", 3)
+
+static func scroll_damp() -> Dictionary:
+	return scroll("scroll_damp", "Scroll of Damp", "damp", "Damp",
+			"Teaches Damp — lowers every enemy's magic.", 4)
+
+static func scroll_blunt() -> Dictionary:
+	return scroll("scroll_blunt", "Scroll of Blunt", "blunt", "Blunt",
+			"Teaches Blunt — lowers every enemy's attack.", 3)
+
+static func scroll_sunder() -> Dictionary:
+	return scroll("scroll_sunder", "Scroll of Sunder", "sunder", "Sunder",
+			"Teaches Sunder — lowers every enemy's defence.", 4)
+
+static func scroll_mire() -> Dictionary:
+	return scroll("scroll_mire", "Scroll of Mire", "mire", "Mire",
+			"Teaches Mire — lowers every enemy's agility.", 4)
+
+static func scroll_purge() -> Dictionary:
+	return scroll("scroll_purge", "Scroll of Purge", "purge", "Purge",
+			"Teaches Purge — strips every enemy buff.", 5)
+
+static func scroll_steady() -> Dictionary:
+	return scroll("scroll_steady", "Scroll of Steady", "steady", "Steady",
+			"Teaches Steady — clears the party's debuffs.", 5)
+
+
 # ── Predefined offensive throwables ──────────────────────────────────────────
 
 static func venom_flask() -> Dictionary:
@@ -127,4 +170,8 @@ static func drop_table() -> Array[Dictionary]:
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
 		fire_bomb(), ice_shard(), thunder_bead(),
 		scroll_fira(), scroll_thundara(), scroll_blizzara(),
+		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
+		scroll_damp(),
+		scroll_blunt(), scroll_sunder(), scroll_mire(),
+		scroll_purge(), scroll_steady(),
 	]

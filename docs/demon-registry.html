@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Affliction Registry</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400&family=Karla:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:      #eceef1;
+    --panel:      #f7f8fa;
+    --ink:        #15181e;
+    --ink-2:      #464c58;
+    --ink-3:      #737b87;
+    --rule:       #d1d7de;
+    --rule-soft:  #e2e6eb;
+    --accent:     #0d6577;
+    --accent-2:   #0a4b58;
+
+    --weak:    #93590a;  --weak-bg:   #f8e9cd;
+    --resist:  #2c5688;  --resist-bg: #dde8f4;
+    --null:    #646a73;  --null-bg:   #e3e5e9;
+    --repel:   #74399f;  --repel-bg:  #ecdff8;
+    --drain:   #1c6f3f;  --drain-bg:  #d8eee1;
+    --none-bg: transparent;
+
+    --shadow: 0 1px 0 rgba(20, 26, 34, .04);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #090b0f;
+      --panel:      #10141a;
+      --ink:        #dae3e9;
+      --ink-2:      #949fa9;
+      --ink-3:      #69747e;
+      --rule:       #212932;
+      --rule-soft:  #191f26;
+      --accent:     #55d5ee;
+      --accent-2:   #8ce6f8;
+
+      --weak:    #ffcf52;  --weak-bg:   #372c07;
+      --resist:  #86b4ea;  --resist-bg: #13233a;
+      --null:    #8d959e;  --null-bg:   #1b1f25;
+      --repel:   #d093ff;  --repel-bg:  #2a1640;
+      --drain:   #62dc8e;  --drain-bg:  #0d2c1b;
+
+      --shadow: none;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #090b0f;
+    --panel:      #10141a;
+    --ink:        #dae3e9;
+    --ink-2:      #949fa9;
+    --ink-3:      #69747e;
+    --rule:       #212932;
+    --rule-soft:  #191f26;
+    --accent:     #55d5ee;
+    --accent-2:   #8ce6f8;
+
+    --weak:    #ffcf52;  --weak-bg:   #372c07;
+    --resist:  #86b4ea;  --resist-bg: #13233a;
+    --null:    #8d959e;  --null-bg:   #1b1f25;
+    --repel:   #d093ff;  --repel-bg:  #2a1640;
+    --drain:   #62dc8e;  --drain-bg:  #0d2c1b;
+
+    --shadow: none;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { background: var(--paper); }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Karla", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 24px 96px;
+  }
+
+  /* ── Masthead ─────────────────────────────────────────────── */
+
+  .masthead {
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    padding: 22px 0 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-family: "Spectral", Georgia, serif;
+    font-weight: 800;
+    font-size: clamp(34px, 6vw, 56px);
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-family: "Spectral", Georgia, serif;
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .standfirst em { color: var(--ink); font-style: italic; }
+
+  /* ── Legend ───────────────────────────────────────────────── */
+
+  .legend {
+    margin-top: 34px;
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    padding: 20px 22px 22px;
+    box-shadow: var(--shadow);
+  }
+
+  .legend h2, .matrix h2, .note h2 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-left: 3px solid currentColor;
+  }
+
+  .legend-item .st {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .1em;
+  }
+
+  .legend-item .cost {
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.4;
+  }
+
+  .li-weak   { color: var(--weak);   background: var(--weak-bg); }
+  .li-resist { color: var(--resist); background: var(--resist-bg); }
+  .li-null   { color: var(--null);   background: var(--null-bg); }
+  .li-repel  { color: var(--repel);  background: var(--repel-bg); }
+  .li-drain  { color: var(--drain);  background: var(--drain-bg); }
+
+  /* ── Tier sections ────────────────────────────────────────── */
+
+  .tier {
+    margin-top: 54px;
+  }
+
+  .tier-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    flex-wrap: wrap;
+  }
+
+  .tier-num {
+    font-family: "Spectral", Georgia, serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: .02em;
+  }
+
+  .tier-name {
+    font-family: "Spectral", Georgia, serif;
+    font-size: 21px;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+  }
+
+  .tier-floors {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Entry ────────────────────────────────────────────────── */
+
+  .entry {
+    padding: 26px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    display: grid;
+    grid-template-columns: 1fr 268px;
+    gap: 12px 34px;
+    align-items: start;
+  }
+
+  .entry:last-child { border-bottom: none; }
+
+  .ident { grid-column: 1; }
+
+  .ident h3 {
+    font-family: "Spectral", Georgia, serif;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    margin: 0 0 5px;
+    line-height: 1.1;
+  }
+
+  .subline {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .align {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .sep { color: var(--rule); }
+
+  .body { grid-column: 1; display: flex; flex-direction: column; gap: 11px; }
+
+  .desc {
+    margin: 0;
+    max-width: 64ch;
+    font-size: 16.5px;
+    line-height: 1.62;
+  }
+
+  .tell {
+    margin: 0;
+    max-width: 64ch;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    padding-left: 13px;
+    border-left: 2px solid var(--accent);
+  }
+
+  .tell b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 1px;
+  }
+
+  /* Affinity chart — identical geometry on every entry so a reader can
+     scan straight down the column for one element. */
+  .chart {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--rule);
+    background: var(--panel);
+  }
+
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 9px 2px 10px;
+    border-right: 1px solid var(--rule-soft);
+    text-align: center;
+  }
+
+  .cell:last-child { border-right: none; }
+
+  .el {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    color: var(--ink-3);
+  }
+
+  .st {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    padding: 2px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .s-weak   { color: var(--weak);   background: var(--weak-bg); }
+  .s-resist { color: var(--resist); background: var(--resist-bg); }
+  .s-null   { color: var(--null);   background: var(--null-bg); }
+  .s-repel  { color: var(--repel);  background: var(--repel-bg); }
+  .s-drain  { color: var(--drain);  background: var(--drain-bg); }
+  .s-none   { color: var(--ink-3);  background: transparent; }
+
+  .atk {
+    grid-column: 2;
+    grid-row: 3;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .05em;
+    color: var(--ink-3);
+    text-align: right;
+    margin: 6px 0 0;
+    text-transform: uppercase;
+  }
+
+  /* ── Matrix & notes ───────────────────────────────────────── */
+
+  .matrix, .note {
+    margin-top: 54px;
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+
+  .table-scroll { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 620px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 10px 12px 10px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  tbody th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: var(--ink);
+    width: 84px;
+  }
+
+  td { color: var(--ink-2); line-height: 1.5; }
+  td.hit { color: var(--weak); }
+  td.punish { color: var(--repel); }
+
+  .note p {
+    max-width: 68ch;
+    margin: 0 0 12px;
+    font-size: 15.5px;
+  }
+
+  .note p:last-child { margin-bottom: 0; }
+
+  .note code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    background: var(--null-bg);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  .rule-list {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 16px;
+    display: grid;
+    gap: 7px;
+    max-width: 68ch;
+  }
+
+  .rule-list li {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 12px;
+    font-size: 15px;
+    align-items: baseline;
+  }
+
+  .rule-list b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  footer {
+    margin-top: 44px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 760px) {
+    .entry {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .chart { grid-column: 1; grid-row: auto; }
+    .body  { grid-column: 1; }
+    .atk   { grid-column: 1; grid-row: auto; text-align: left; margin-top: 0; }
+    .ident h3 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Roster draft · 20 entries · nothing borrowed from worship</p>
+    <h1>The Affliction Registry</h1>
+    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to — they are invented whole, and shaped as <em>afflictions</em>: things that nest in a mind and can be diagnosed from the outside. Every entry's appearance is written to give away its affinity chart, so a player who looks carefully can work out what to hit it with before spending a turn finding out.</p>
+  </header>
+
+  <section class="legend">
+    <h2>Affinity states, and what each costs in press turns</h2>
+    <div class="legend-grid">
+      <div class="legend-item li-weak">
+        <span class="st">WEAK</span>
+        <span class="cost">Double damage. Costs half an icon — the reason to scout.</span>
+      </div>
+      <div class="legend-item li-resist">
+        <span class="st">RESIST</span>
+        <span class="cost">Half damage. Still a full icon. Wasteful, not fatal.</span>
+      </div>
+      <div class="legend-item li-null">
+        <span class="st">NULL</span>
+        <span class="cost">No damage, and it costs two icons. Punishing.</span>
+      </div>
+      <div class="legend-item li-repel">
+        <span class="st">REPEL</span>
+        <span class="cost">Thrown back at the caster. Your phase ends on the spot.</span>
+      </div>
+      <div class="legend-item li-drain">
+        <span class="st">DRAIN</span>
+        <span class="cost">It heals for the damage. Your phase ends on the spot.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ TIER I ══════════════════════════════════════════════ -->
+  <section class="tier">
+    <div class="tier-head">
+      <span class="tier-num">I</span>
+      <h2 class="tier-name">Small habits</h2>
+      <span class="tier-floors">Floors 1–2 · 1 icon</span>
+    </div>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Nagwort</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 1</span><span class="sep">/</span><span>Inflicts: —</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Knee-high and hunched, woven entirely out of chewed fingernails and pulled hair. It always stands facing away from you, and only turns when you look at something else. Rooms it has been in smell like a cold bathroom.</p>
+        <p class="tell"><b>Tell</b> It is made of keratin. Anything dry enough to hold that shape goes up.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Thrum</h3>
+        <p class="subline"><span class="align">Neutral · Dark</span><span class="sep">/</span><span>Talk: Survival · diff 1</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A human outline packed out of grey moths, all beating out of sync. Blades pass straight through and it re-forms a foot to the left. The sound it makes is the one you hear when a room goes completely quiet.</p>
+        <p class="tell"><b>Tell</b> It has no body to cut, and it is a cloud of small wings. One charge earths the whole swarm at once.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Kindleweep</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 1</span><span class="sep">/</span><span>Inflicts: —</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Child-sized and made of wet ash. It strikes itself over and over trying to catch, never manages it, and sobs steam between attempts. When there is a flame anywhere in the room it stops and reaches toward it — including yours.</p>
+        <p class="tell"><b>Tell</b> It is visibly reaching for your torch. Do not give it what it is asking for.</p>
+      </div>
+      <p class="atk">Attacks with Fire</p>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Sillage</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 2</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">The shape of a woman who has just left the room, held up by nothing but her own perfume. She is only ever there in the corner of your eye; looking straight at her thins her out until she is a smell and a suggestion.</p>
+        <p class="tell"><b>Tell</b> There is nothing there to hit — swinging at her wastes two icons. She is suspended in the air, so charge the air.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Gristlebone</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 2</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A knot of knuckles and joints with no limbs in between, walking on eight small hands. It pops and cracks without stopping, the sound of someone flexing their fingers directly behind you.</p>
+        <p class="tell"><b>Tell</b> All joint and no flesh — a blade finds nothing to part. Brittle things break in the cold.</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ══ TIER II ═════════════════════════════════════════════ -->
+  <section class="tier">
+    <div class="tier-head">
+      <span class="tier-num">II</span>
+      <h2 class="tier-name">Things wearing someone</h2>
+      <span class="tier-floors">Floors 2–4 · 1 icon</span>
+    </div>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Hollowmarrow</h3>
+        <p class="subline"><span class="align">Neutral · Dark</span><span class="sep">/</span><span>Talk: Survival · diff 2</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Very tall, very thin, skin stretched over an absence. Where the organs should sit there is a draft instead, and when it turns toward you, you can see your own breath.</p>
+        <p class="tell"><b>Tell</b> Your breath fogs in front of it. Cold is its own supply.</p>
+      </div>
+      <p class="atk">Attacks with Ice</p>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>The Tallyman</h3>
+        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A bookkeeper with far too many fingers, each one ending in a stylus. He scores marks into his own forearms while he watches you, and both forearms are already full. He is not counting what you own. He is counting what you have not done.</p>
+        <p class="tell"><b>Tell</b> He is a clerk, not a fighter — thin arms, soft hands. You do not buy him off; you show him the sum is wrong.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Cinderjaw</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 2</span><span class="sep">/</span><span>Inflicts: —</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Dog-shaped, except the lower jaw is a hanging furnace door that will not close. It pants embers onto the floor as it circles, and the heat comes off it in a shimmer you can see through.</p>
+        <p class="tell"><b>Tell</b> The air above it bends. It is carrying its own fire and would be glad of more.</p>
+      </div>
+      <p class="atk">Attacks with Fire</p>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Static Choir</h3>
+        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-repel">REPEL</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Three faces sharing one throat, each singing a note a quarter-tone off the others. Near it the air tastes of copper and your fillings ache. It will hold the chord for as long as you let it.</p>
+        <p class="tell"><b>Tell</b> Copper in your mouth before it has done anything. Send current at that and it comes straight back.</p>
+      </div>
+      <p class="atk">Attacks with Thunder</p>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Meatlace</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A lattice of tendon strung corner to corner across a doorway like a web, dragging itself along by contracting. There is nothing behind it doing the thinking. It is hungry and it is in the way, and those are the same fact.</p>
+        <p class="tell"><b>Tell</b> Dry sinew stretched thin. It has no mouth to talk with, so do not waste the icon trying.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Grinner</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 2</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">It is wearing the clothes of whoever's mind you are standing in, and their face, except there is nothing above the mouth. Just a smile that has been widened by hand, well past the point where a mouth is supposed to stop.</p>
+        <p class="tell"><b>Tell</b> Whatever else it is, it is walking around in a body. Bodies come apart.</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ══ TIER III ════════════════════════════════════════════ -->
+  <section class="tier">
+    <div class="tier-head">
+      <span class="tier-num">III</span>
+      <h2 class="tier-name">Settled in</h2>
+      <span class="tier-floors">Floors 3–5 · 1–2 icons</span>
+    </div>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Verdigrease</h3>
+        <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Poison</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-drain">DRAIN</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Something that was shaped like an angel once and has gone green with corrosion since, wings oxidised shut into one solid sheet. It weeps a caustic slick that eats the floor under it, and holds a posture of blessing it can no longer complete.</p>
+        <p class="tell"><b>Tell</b> It is copper all the way through, and copper is what you run current down. Corrosion burns.</p>
+      </div>
+      <p class="atk">Attacks with Thunder</p>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>The Understudy</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 2</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">It wears the face of someone the victim lost, and it wears it badly — proportions a few percent wrong, blinking a half-second too slow, the seams visible along the jaw where the face was fitted. It wants very much for you to accept it anyway.</p>
+        <p class="tell"><b>Tell</b> You can see the seams. Anything held together that poorly comes apart under a blade, and anything that wants to be loved will listen if you tell it that it is.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Ossuara</h3>
+        <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize · 2 icons</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-null">NULL</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A cathedral of ribs walking on femur stilts. In the vault where a heart would hang there is a nest of small skulls, and all of them are singing, and none of them is singing the same thing.</p>
+        <p class="tell"><b>Tell</b> It is architecture. Cold does nothing to stone or bone; weight brings both down.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Fenwrack</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 3</span><span class="sep">/</span><span>Inflicts: Poison</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Waterlogged so far past a shape that the shape is only a habit now. It drags a net behind it holding everything it has ever drowned, and none of that is finished drowning.</p>
+        <p class="tell"><b>Tell</b> Your torch guts and gutters when it comes near. Soaked things do not burn — but they conduct beautifully.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Sootmother</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Poison · 2 icons</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Swollen, packed solid with chimney soot, and breathing out infants made of smoke that come apart before they reach the floor. She does this continuously. She does not appear to have noticed that they do not land.</p>
+        <p class="tell"><b>Tell</b> She came out of a flue and she is still warm. Cold is the only thing in the room she has not already survived.</p>
+      </div>
+      <p class="atk">Attacks with Fire</p>
+    </article>
+  </section>
+
+  <!-- ══ TIER IV ═════════════════════════════════════════════ -->
+  <section class="tier">
+    <div class="tier-head">
+      <span class="tier-num">IV</span>
+      <h2 class="tier-name">Load-bearing</h2>
+      <span class="tier-floors">Floors 4+ · 2 icons</span>
+    </div>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Coldsmith</h3>
+        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">He works a forge that runs backwards — it takes the heat out of whatever is put in. His hands are frostbitten black to the wrist and he does not favour them. The piece on the anvil is always the same piece, and it is never finished.</p>
+        <p class="tell"><b>Tell</b> The forge is drawing warmth out of the room, including yours. Fire is what he does for a living, backwards. Current is not.</p>
+      </div>
+      <p class="atk">Attacks with Ice</p>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Gallowglass</h3>
+        <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-repel">REPEL</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A hanged silhouette assembled out of window glass, turning slowly on nothing. The reflections held in it are of rooms you have not walked into yet, and in some of them you are already there.</p>
+        <p class="tell"><b>Tell</b> It is glass. Hitting glass is how you get cut. Do that and your phase is over on the spot.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>The Long Patient</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A body under a sheet on a gurney, parked at the far end of the corridor — and at the far end of whichever corridor you turn down to get away from it. There are too many feet under the sheet. The sheet has never once moved.</p>
+        <p class="tell"><b>Tell</b> Whatever is under there is not where the sheet is. Striking it accomplishes nothing at all, twice over.</p>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="ident">
+        <h3>Mourncoil</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+        <div class="cell"><span class="el">ICE</span><span class="st s-repel">REPEL</span></div>
+        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A column of black hair and mourning veil wound tight into a spiral two storeys high. Somewhere inside it a woman is still turning, and has been turning for a very long time, and the spiral is what she has turned into.</p>
+        <p class="tell"><b>Tell</b> It is dry cloth and dry hair, packed tight — and everything about it is already cold. Adding more comes back at you.</p>
+      </div>
+      <p class="atk">Attacks with Ice</p>
+    </article>
+  </section>
+
+  <!-- ══ MATRIX ══════════════════════════════════════════════ -->
+  <section class="matrix">
+    <h2>Coverage — who each element opens, and who punishes it</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Element</th>
+            <th scope="col">Opens (weak)</th>
+            <th scope="col">Punishes (null / repel / drain)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">PHYS</th>
+            <td class="hit">Tallyman, Grinner, Understudy, Ossuara</td>
+            <td class="punish">Sillage, Long Patient (null) · Gallowglass (repel)</td>
+          </tr>
+          <tr>
+            <th scope="row">FIRE</th>
+            <td class="hit">Nagwort, Hollowmarrow, Meatlace, Verdigrease, Long Patient, Mourncoil</td>
+            <td class="punish">Fenwrack, Coldsmith (null) · Kindleweep, Cinderjaw, Sootmother (drain)</td>
+          </tr>
+          <tr>
+            <th scope="row">ICE</th>
+            <td class="hit">Kindleweep, Gristlebone, Cinderjaw, Static Choir, Sootmother</td>
+            <td class="punish">Ossuara (null) · Mourncoil (repel) · Hollowmarrow, Coldsmith, Long Patient (drain)</td>
+          </tr>
+          <tr>
+            <th scope="row">THUNDER</th>
+            <td class="hit">Thrum, Sillage, Fenwrack, Coldsmith, Gallowglass</td>
+            <td class="punish">Static Choir (repel) · Verdigrease (drain)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ NOTES ═══════════════════════════════════════════════ -->
+  <section class="note">
+    <h2>Three things baked into the roster</h2>
+
+    <p><b>Alignment tells you which Talk option lands.</b> It is not flavour — it maps one-to-one onto the four negotiation personalities already in the code, with no exceptions anywhere in these twenty. Learn the rule once and every demon's alignment is a hint:</p>
+
+    <ul class="rule-list">
+      <li><b>Law</b><span>Answers to <strong>Logic</strong>. Argue that the arithmetic is wrong.</span></li>
+      <li><b>Chaos</b><span>Answers to <strong>Gain</strong>. Ask what it actually gets out of this.</span></li>
+      <li><b>Neutral · Light</b><span>Answers to <strong>Flatter</strong> or <strong>Safety</strong>. It wants to be wanted.</span></li>
+      <li><b>Neutral · Dark</b><span>Answers to <strong>Survival</strong>. It would rather not be here either.</span></li>
+    </ul>
+
+    <p><b>Talk difficulty stops at 3 on purpose.</b> The trust formula is <code>max(0, randi()%4 + 2 − difficulty)</code> against a threshold of 4 over two rounds, so at difficulty 4 a single round can never gain more than 1 and recruitment becomes arithmetically impossible. Difficulty 3 is already a 6% coin-flip. Three demons here refuse outright instead — a mindless thing that will not talk is honest, an impossible check is not.</p>
+
+    <p><b>Every appearance gives away its chart.</b> Soaked things do not burn. Glass cuts the hand that strikes it. A thing reaching for your torch should not be handed fire. This is what makes the roster diagnosable rather than memorisable — the player reads the room, not the wiki.</p>
+  </section>
+
+  <footer>Draft one · 20 of 20 · bosses not yet written</footer>
+
+</div>
+</body>
+</html>

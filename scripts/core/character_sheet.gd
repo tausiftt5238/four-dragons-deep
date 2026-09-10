@@ -28,6 +28,63 @@ var affinities: Dictionary = {}
 # Set when this combatant chose Defend; cleared the next time it is struck.
 var defending: bool = false
 
+# ── Buff and debuff stages ────────────────────────────────────────────────────
+#
+# Nocturne-style: attack, defence and agility each sit on a stage from -CAP to
+# +CAP, and every stage is worth BUFF_STEP either way. Stages are per battle —
+# nothing carries out of a fight — and they stack, so four rounds of stacking
+# is a real strategy rather than a rounding error.
+const BUFF_CAP:  int   = 4
+const BUFF_STEP: float = 0.15
+
+const STAT_ATK: String = "atk"
+const STAT_MAG: String = "mag"
+const STAT_DEF: String = "def"
+const STAT_AGL: String = "agl"
+# Attack and magic are separate axes here, unlike Nocturne where one buff
+# covers both — a caster and a fighter stack different things.
+const STAT_KEYS: Array[String] = ["atk", "mag", "def", "agl"]
+
+var stages: Dictionary = {"atk": 0, "mag": 0, "def": 0, "agl": 0}
+
+
+func stage(key: String) -> int:
+	return int(stages.get(key, 0))
+
+
+# Applies a shift and returns what actually landed — 0 when already capped, so
+# the caller can say "it is already as sharp as it gets" rather than lying.
+func shift_stage(key: String, delta: int) -> int:
+	var before: int = stage(key)
+	var after: int = clampi(before + delta, -BUFF_CAP, BUFF_CAP)
+	stages[key] = after
+	return after - before
+
+
+func stage_mult(key: String) -> float:
+	return 1.0 + BUFF_STEP * float(stage(key))
+
+
+func clear_buffs() -> void:
+	for key: String in STAT_KEYS:
+		if stage(key) > 0:
+			stages[key] = 0
+
+
+func clear_debuffs() -> void:
+	for key: String in STAT_KEYS:
+		if stage(key) < 0:
+			stages[key] = 0
+
+
+func reset_stages() -> void:
+	stages = {"atk": 0, "mag": 0, "def": 0, "agl": 0}
+
+
+# Agility as it counts in a fight. PlayerCharacter overrides to fold in gear.
+func battle_agility() -> int:
+	return agl
+
 
 # The affinity state this combatant has toward an element. Subclasses override
 # to layer equipment on top of their innate chart.

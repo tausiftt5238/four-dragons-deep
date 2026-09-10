@@ -23,6 +23,19 @@ static var DATA: Dictionary = {
 	"cure":     {name="Cure",     mp=6,  type="heal", heal=30,   desc="Restores 30 HP."},
 	"cura":     {name="Cura",     mp=15, type="heal", heal=80,   desc="Restores 80 HP."},
 	"curaga":   {name="Curaga",   mp=30, type="heal", heal=9999, desc="Fully restores HP."},
+	# ── Buffs: the whole party at once ────────────────────────────────────────
+	"whet":     {name="Whet",     mp=8,  type="buff", heal=0, stat="atk", delta=1,  scope="party", desc="Sharpens the party's attacks."},
+	"ward":     {name="Ward",     mp=8,  type="buff", heal=0, stat="def", delta=1,  scope="party", desc="Hardens the party's guard."},
+	"quicken":  {name="Quicken",  mp=8,  type="buff", heal=0, stat="agl", delta=1,  scope="party", desc="Quickens the party — lands and dodges more."},
+	"stoke":    {name="Stoke",    mp=8,  type="buff", heal=0, stat="mag", delta=1,  scope="party", desc="Feeds the party's magic — stronger spells and heals."},
+	# ── Debuffs: every enemy at once ──────────────────────────────────────────
+	"blunt":    {name="Blunt",    mp=10, type="buff", heal=0, stat="atk", delta=-1, scope="foes",  desc="Dulls every enemy's attacks."},
+	"sunder":   {name="Sunder",   mp=10, type="buff", heal=0, stat="def", delta=-1, scope="foes",  desc="Breaks every enemy's guard."},
+	"mire":     {name="Mire",     mp=10, type="buff", heal=0, stat="agl", delta=-1, scope="foes",  desc="Slows every enemy — they miss more."},
+	"damp":     {name="Damp",     mp=10, type="buff", heal=0, stat="mag", delta=-1, scope="foes",  desc="Smothers every enemy's magic."},
+	# ── Stripping what the other side stacked ─────────────────────────────────
+	"purge":    {name="Purge",    mp=12, type="dispel", heal=0, mode="buffs",   scope="foes",  desc="Strips every enemy buff."},
+	"steady":   {name="Steady",   mp=12, type="dispel", heal=0, mode="debuffs", scope="party", desc="Clears the party's debuffs."},
 	# ── Ailments ──────────────────────────────────────────────────────────────
 	"venom":    {name="Venom",    mp=4,  type="ailment", heal=0, status="poison",     desc="Poisons the enemy."},
 	"shock":    {name="Shock",    mp=6,  type="ailment", heal=0, status="paralyzed",  desc="Paralyzes the enemy."},

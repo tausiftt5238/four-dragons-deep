@@ -24,6 +24,10 @@ var icons: int = 1
 # when a group holds more than one of the same kind.
 var battle_tag: String = ""
 
+# A support spell this demon leans on, by Spell.DATA id. Empty means it only
+# knows how to hit things.
+var support_skill: String = ""
+
 
 # Name as it should appear in the battle log and on the enemy row.
 func display_name() -> String:
@@ -62,23 +66,23 @@ const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 3+ ---
 	{name="Treant",         str=6,  def=6,  mag=0,  agl=1, exp=45,  gold=14, status_attack="immobilize", weakness="fire",    min_floor=3, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/Treant.png", phys="resist"},
 	{name="Orc",            str=7,  def=4,  mag=0,  agl=2, exp=38,  gold=12, status_attack="",           weakness="ice",     min_floor=3, max_floor=5,  negotiable=true,  talk_difficulty=3, personality="proud",    wants="throwable", sprite="res://resources/enemySprites/Orc.png"},
-	{name="Fairy",          str=2,  def=2,  mag=6,  agl=7, exp=42,  gold=14, status_attack="silence",    weakness="thunder", min_floor=3, max_floor=-1, negotiable=true,  talk_difficulty=3, personality="lonely",   wants="potion",    sprite="res://resources/enemySprites/Fairy.png",         attack_element="thunder", absorb_element="thunder", phys="weak"},
+	{name="Fairy",          str=2,  def=2,  mag=6,  agl=7, exp=42,  gold=14, status_attack="silence",    weakness="thunder", min_floor=3, max_floor=-1, negotiable=true,  talk_difficulty=3, personality="lonely",   wants="potion",    sprite="res://resources/enemySprites/Fairy.png",         attack_element="thunder", absorb_element="thunder", phys="weak", support="mire"},
 	{name="Elder Treant",   str=7,  def=7,  mag=0,  agl=1, exp=55,  gold=17, status_attack="immobilize", weakness="fire",    min_floor=3, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="res://resources/enemySprites/TreantB.png", phys="resist", icons=2},
-	{name="Orc Warchief",   str=8,  def=5,  mag=0,  agl=2, exp=46,  gold=15, status_attack="",           weakness="ice",     min_floor=3, max_floor=5,  negotiable=true,  talk_difficulty=4, personality="proud",    wants="throwable", sprite="res://resources/enemySprites/OrcB.png", icons=2},
-	{name="Dark Fairy",     str=3,  def=3,  mag=7,  agl=8, exp=50,  gold=17, status_attack="silence",    weakness="thunder", min_floor=3, max_floor=-1, negotiable=true,  talk_difficulty=3, personality="lonely",   wants="potion",    sprite="res://resources/enemySprites/FairyB.png",        attack_element="thunder", absorb_element="thunder", phys="weak"},
+	{name="Orc Warchief",   str=8,  def=5,  mag=0,  agl=2, exp=46,  gold=15, status_attack="",           weakness="ice",     min_floor=3, max_floor=5,  negotiable=true,  talk_difficulty=4, personality="proud",    wants="throwable", sprite="res://resources/enemySprites/OrcB.png", icons=2, support="whet"},
+	{name="Dark Fairy",     str=3,  def=3,  mag=7,  agl=8, exp=50,  gold=17, status_attack="silence",    weakness="thunder", min_floor=3, max_floor=-1, negotiable=true,  talk_difficulty=3, personality="lonely",   wants="potion",    sprite="res://resources/enemySprites/FairyB.png",        attack_element="thunder", absorb_element="thunder", phys="weak", support="mire"},
 	# --- Floor 4+ ---
 	{name="Ogre",           str=9,  def=5,  mag=0,  agl=1, exp=55,  gold=18, status_attack="",           weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4, personality="proud",    wants="any",       sprite="res://resources/enemySprites/Ogre.png", icons=2},
-	{name="Wizard",         str=2,  def=2,  mag=8,  agl=4, exp=52,  gold=16, status_attack="silence",    weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=3, personality="proud",    wants="potion",    sprite="res://resources/enemySprites/Wizard.png",        attack_element="fire",    reflect_element="fire", phys="weak"},
-	{name="Stone Ogre",     str=10, def=6,  mag=0,  agl=1, exp=65,  gold=22, status_attack="",           weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=5, personality="proud",    wants="any",       sprite="res://resources/enemySprites/OgreB.png", icons=2},
-	{name="Dark Wizard",    str=3,  def=3,  mag=9,  agl=4, exp=62,  gold=20, status_attack="silence",    weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4, personality="proud",    wants="potion",    sprite="res://resources/enemySprites/WizardB.png",       attack_element="fire",    reflect_element="fire", phys="weak"},
+	{name="Wizard",         str=2,  def=2,  mag=8,  agl=4, exp=52,  gold=16, status_attack="silence",    weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=3, personality="proud",    wants="potion",    sprite="res://resources/enemySprites/Wizard.png",        attack_element="fire",    reflect_element="fire", phys="weak", support="whet"},
+	{name="Stone Ogre",     str=10, def=6,  mag=0,  agl=1, exp=65,  gold=22, status_attack="",           weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=5, personality="proud",    wants="any",       sprite="res://resources/enemySprites/OgreB.png", icons=2, support="ward"},
+	{name="Dark Wizard",    str=3,  def=3,  mag=9,  agl=4, exp=62,  gold=20, status_attack="silence",    weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4, personality="proud",    wants="potion",    sprite="res://resources/enemySprites/WizardB.png",       attack_element="fire",    reflect_element="fire", phys="weak", support="stoke"},
 ]
 
 # Boss templates — one per 5-floor milestone, cycling every 4 bosses.
 const BOSS_TEMPLATES: Array[Dictionary] = [
-	{name="Shadow Knight", str=12, def=8,  mag=2,  agl=3, exp=200, gold=80,  status_attack="immobilize", weakness="thunder", min_floor=5,  max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=3},
-	{name="Bone Sorcerer", str=5,  def=6,  mag=14, agl=4, exp=280, gold=110, status_attack="silence",    weakness="ice",     min_floor=10, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", attack_element="fire", icons=3},
-	{name="Iron Titan",    str=16, def=12, mag=0,  agl=1, exp=360, gold=140, status_attack="paralyzed",  weakness="thunder", min_floor=15, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=4},
-	{name="Void Drake",    str=14, def=10, mag=12, agl=5, exp=450, gold=180, status_attack="",           weakness="ice",     min_floor=20, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", attack_element="thunder", icons=4},
+	{name="Shadow Knight", str=12, def=8,  mag=2,  agl=3, exp=200, gold=80,  status_attack="immobilize", weakness="thunder", min_floor=5,  max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=3, support="ward"},
+	{name="Bone Sorcerer", str=5,  def=6,  mag=14, agl=4, exp=280, gold=110, status_attack="silence",    weakness="ice",     min_floor=10, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", attack_element="fire", icons=3, support="stoke"},
+	{name="Iron Titan",    str=16, def=12, mag=0,  agl=1, exp=360, gold=140, status_attack="paralyzed",  weakness="thunder", min_floor=15, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=4, support="ward"},
+	{name="Void Drake",    str=14, def=10, mag=12, agl=5, exp=450, gold=180, status_attack="",           weakness="ice",     min_floor=20, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", attack_element="thunder", icons=4, support="damp"},
 ]
 
 
@@ -156,7 +160,9 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
 	e.icons           = int(t.get("icons", 3))
+	e.support_skill   = t.get("support", "")
 	e.compute_max_hp()
+	e.compute_max_mp()
 	return e
 
 
@@ -198,8 +204,22 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
 	e.icons           = int(t.get("icons", 1))
+	e.support_skill   = t.get("support", "")
 	e.compute_max_hp()
+	e.compute_max_mp()
 	return e
+
+
+# What one cast of its element costs. Scales with the demon's own magic, so a
+# strong caster gets a bigger pool and a bigger bill rather than infinite uses.
+func skill_cost() -> int:
+	if attack_element == "":
+		return 0
+	return maxi(6, mag)
+
+
+func can_afford_skill() -> bool:
+	return attack_element != "" and mp >= skill_cost()
 
 
 # Returns a random item drop, or an empty dict if nothing drops (65% no-drop).

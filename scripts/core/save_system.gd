@@ -63,14 +63,4 @@ static func unpack_visited(a: Array) -> Dictionary:
 		out[key_vec2i(s as String)] = true
 	return out
 
-static func pack_chest_items(d: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for k: Variant in d.keys():
-		out[vec2i_key(k as Vector2i)] = d[k]
-	return out
 
-static func unpack_chest_items(d: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for k: Variant in d.keys():
-		out[key_vec2i(k as String)] = d[k]
-	return out

@@ -11,8 +11,71 @@ var gold: int = 200
 var equipped_weapon: Dictionary = {}
 var equipped_armor:  Dictionary = {}
 
-# Learnable spell IDs. Looked up in Spell.DATA for display and cost.
+# Every spell he has learned. Looked up in Spell.DATA for display and cost.
 var known_spells: Array[String] = []
+
+# The spells he actually carries into a battle. Knowing a spell and having it
+# to hand are different things — the loadout is the choice, and it is made in
+# the menu rather than mid-fight.
+# Six entries is what the battle menu shows without scrolling, and Attack is
+# always one of them — so five spells, and six items on their own belt.
+const SPELL_SLOTS: int = 5
+var equipped_spells: Array[String] = []
+
+# Item ids on the belt. Only these reach a battle; the rest stay in the pack.
+const ITEM_SLOTS: int = 6
+var equipped_items: Array[String] = []
+
+
+func is_equipped(spell_id: String) -> bool:
+	return spell_id in equipped_spells
+
+
+func has_free_slot() -> bool:
+	return equipped_spells.size() < SPELL_SLOTS
+
+
+# Returns false when every slot is already taken.
+func equip_spell(spell_id: String) -> bool:
+	if is_equipped(spell_id) or not has_free_slot():
+		return false
+	equipped_spells.append(spell_id)
+	return true
+
+
+func unequip_spell(spell_id: String) -> void:
+	equipped_spells.erase(spell_id)
+
+
+func is_item_equipped(item_id: String) -> bool:
+	return item_id in equipped_items
+
+
+func has_free_item_slot() -> bool:
+	return equipped_items.size() < ITEM_SLOTS
+
+
+func equip_item(item_id: String) -> bool:
+	if is_item_equipped(item_id) or not has_free_item_slot():
+		return false
+	equipped_items.append(item_id)
+	return true
+
+
+func unequip_item(item_id: String) -> void:
+	equipped_items.erase(item_id)
+
+
+# The belt as it stands right now: equipped ids that are still in the pack,
+# in slot order. This is exactly what the battle menu offers.
+func belt() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for item_id: String in equipped_items:
+		for item: Dictionary in inventory:
+			if item["id"] == item_id and int(item.get("qty", 0)) > 0:
+				out.append(item)
+				break
+	return out
 
 # Demons bound to the detective and callable through Summon.
 var recruited: Array[String] = []
@@ -44,8 +107,10 @@ func _ready() -> void:
 	compute_max_hp()
 	compute_max_mp()
 
-	known_spells = ["fire"]
-	recruited    = [STARTING_DEMON]
+	known_spells    = ["fire"]
+	equipped_spells = ["fire"]
+	equipped_items  = []
+	recruited       = [STARTING_DEMON]
 
 	# He is human. No resistances of his own, and the cold gets through —
 	# which is what makes putting him in front of anything a real decision.
@@ -84,6 +149,10 @@ func effective_agl() -> int:
 	return agl + equipped_weapon.get("agl_pen", 0) + equipped_armor.get("agl_pen", 0)
 
 
+func battle_agility() -> int:
+	return effective_agl()
+
+
 # ── Inventory management ──────────────────────────────────────────────────────
 
 func add_item(item: Dictionary, count: int = 1) -> void:
@@ -94,6 +163,10 @@ func add_item(item: Dictionary, count: int = 1) -> void:
 				return
 	item["qty"] = count
 	inventory.append(item)
+	# A new consumable takes a free belt slot on its own, so the early game
+	# never needs a trip to the menu before the potion is usable.
+	if item["type"] == "consumable":
+		equip_item(item["id"] as String)
 
 
 func remove_item(item: Dictionary, count: int = 1) -> void:
@@ -155,7 +228,10 @@ func use_item(item: Dictionary) -> String:
 				return "You already know %s." % item.get("spell_name", spell_id)
 			known_spells.append(spell_id)
 			remove_item(item, 1)
-			return "Learned %s!" % item.get("spell_name", spell_id)
+			if equip_spell(spell_id):
+				return "Learned %s!" % item.get("spell_name", spell_id)
+			return "Learned %s! Equip it in the menu — all %d slots are full." % [
+					item.get("spell_name", spell_id), SPELL_SLOTS]
 	return ""
 
 

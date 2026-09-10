@@ -13,8 +13,7 @@ func start() -> void:
 	_s._set_back(_s._show_talk_submenu)
 	_s._right_title.text = "BRIBE"
 	_s._right_title.add_theme_color_override("font_color", Color(1.0, 0.75, 0.2))
-	for child: Node in _s._right_list.get_children():
-		child.queue_free()
+	_s._submenu_clear()
 
 	var wants: String = _s.enemy.bribe_wants
 	var demand: Dictionary = {}
@@ -42,25 +41,25 @@ func start() -> void:
 				_s.enemy.enemy_name, demand["name"], gold_cost])
 		var give_btn: Button = Button.new()
 		give_btn.text                = "Give %s" % demand["name"]
-		give_btn.custom_minimum_size = Vector2(0, 28)
+		give_btn.custom_minimum_size = Vector2(0, 32)
 		give_btn.pressed.connect(func() -> void: await _resolve("give"))
-		_s._right_list.add_child(give_btn)
+		_s._submenu_add(give_btn)
 	else:
 		_s._log("[color=orange]%s: \"Pay me %d gold or face my wrath!\"[/color]" % [
 				_s.enemy.enemy_name, gold_cost])
 
 	var gold_btn: Button = Button.new()
 	gold_btn.text                = "Pay %d Gold" % gold_cost
-	gold_btn.custom_minimum_size = Vector2(0, 28)
+	gold_btn.custom_minimum_size = Vector2(0, 32)
 	gold_btn.disabled            = _s.player.gold < gold_cost
 	gold_btn.pressed.connect(func() -> void: await _resolve("gold"))
-	_s._right_list.add_child(gold_btn)
+	_s._submenu_add(gold_btn)
 
 	var refuse_btn: Button = Button.new()
 	refuse_btn.text                = "Refuse"
-	refuse_btn.custom_minimum_size = Vector2(0, 28)
+	refuse_btn.custom_minimum_size = Vector2(0, 32)
 	refuse_btn.pressed.connect(func() -> void: await _resolve("refuse"))
-	_s._right_list.add_child(refuse_btn)
+	_s._submenu_add(refuse_btn)
 
 
 func _resolve(choice: String) -> void:

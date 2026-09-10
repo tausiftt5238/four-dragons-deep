@@ -16,9 +16,11 @@ var ceil_color: Color  = Color(0.16, 0.16, 0.20)
 # colour and the translucent fill behind it — see Dungeon._build_geometry.
 var wire_color: Color      = Color(0.55, 0.88, 1.00)
 var wire_floor_color: Color = Color(0.35, 0.60, 0.75)
-var wire_fill_color: Color = Color(0.02, 0.02, 0.05)
-# 0.0 = see straight through every wall, 1.0 = solid. Tuned per level.
-var wire_fill_alpha: float = 0.55
+# Walls are opaque, and the fill has to sit clearly above the background or a
+# wall face and the empty void render as the same black — which is exactly what
+# makes "am I facing a wall?" unanswerable.
+var wire_fill_color: Color = Color(0.075, 0.085, 0.115)
+var wire_fill_alpha: float = 1.0
 
 # Where the player spawns when this map is first loaded (start of the game).
 var player_start: Vector2i        = Vector2i(1, 1)
@@ -37,10 +39,6 @@ var exit_wall_pos: Vector2i = Vector2i(-1, -1)
 
 # Path to the scene file loaded when the player steps through the portal.
 var next_scene: String     = ""
-
-# Treasure chests: grid position → item Dictionary.
-# Entries are erased by main.gd when the player picks them up.
-var chest_items: Dictionary = {}
 
 # Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
 # Erased by main.gd after the player triggers one.

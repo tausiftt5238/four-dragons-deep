@@ -47,28 +47,30 @@ var _force_target: CharacterSheet = null
 var _log_label:      RichTextLabel
 var _log_first_line: bool = true
 
-var _player_name_lbl: Label
-var _player_lv_lbl:  Label
-var _player_hp_bar:  ProgressBar
-var _player_hp_lbl:  Label
-var _player_mp_bar:  ProgressBar
-var _player_mp_lbl:  Label
-var _player_sts_lbl: Label
-
+# The detective's portrait, kept as its own reference because the CombatNeg*
+# handlers shake it directly.
 var _player_portrait: TextureRect
 
 var _icon_lbl:     Label   # player-side press-turn icons
 var _foe_icon_lbl: Label   # enemy-side press-turn icons
-var _party_box:    VBoxContainer
-var _party_rows:   Array[Dictionary] = []   # {member, name_lbl, bar, val_lbl}
+var _party_box:   HBoxContainer
+# One slot per party member, mirroring _foe_rows so both sides read the same.
+var _party_slots: Array[Dictionary] = []
 
 
-var _action_vbox: VBoxContainer
+# The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
+# of them; a submenu drops its entries into the same cells, so slot 3 is in the
+# same place whichever is showing. Both menus are capped at MENU_SLOTS, which
+# is why nothing here ever needs to scroll.
+const MENU_SLOTS: int = 6
+var _action_bar: HBoxContainer
+var _sub_bar:    HBoxContainer
+var _sub_slots:  Array[MarginContainer] = []
+var _actor_banner: Label
 var _buttons: Dictionary = {}
 
 var _right_title:    Label
 var _right_back_btn: Button
-var _right_list:     VBoxContainer
 var _back_target:    Callable
 
 
@@ -79,11 +81,15 @@ func _ready() -> void:
 		foes = [enemy]      # single-foe callers still work unchanged
 	_assign_battle_tags()
 	enemy = foes[0]
-	party = [player]
+	_form_party()
+	for member: CharacterSheet in party:
+		member.reset_stages()
+	for foe: Enemy in foes:
+		foe.reset_stages()
 	_press     = PressTurn.new()
 	_foe_press = PressTurn.new()
 	_build_ui()
-	_rebuild_party_rows()
+	_rebuild_party_slots()
 	_refresh_hp()
 	_negotiation = CombatNegotiation.new(self)
 	_log("[color=yellow]%s[/color]" % _encounter_line())
@@ -105,38 +111,14 @@ func _build_ui() -> void:
 
 	_build_log_strip(root)
 	_build_enemy_area(root)
-	_build_icon_strip(root)
-	_build_bottom_bar(root)
+	_build_party_area(root)
+	_build_menu_panel(root)
+	# Added to the scene rather than the column so it floats over the corner.
+	_build_icon_overlay()
 
 
 # The press-turn readout. Both sides are always visible so the player can see a
 # phase about to snowball against them, not just their own banked halves.
-func _build_icon_strip(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 30)
-	panel.size_flags_vertical = Control.SIZE_SHRINK_END
-	parent.add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	for side: String in ["margin_left", "margin_right"]:
-		m.add_theme_constant_override(side, 12)
-	panel.add_child(m)
-
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	m.add_child(row)
-
-	_icon_lbl = Label.new()
-	_icon_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_icon_lbl.add_theme_color_override("font_color", Color(0.55, 0.95, 1.0))
-	row.add_child(_icon_lbl)
-
-	_foe_icon_lbl = Label.new()
-	_foe_icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_foe_icon_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_foe_icon_lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
-	row.add_child(_foe_icon_lbl)
-
 
 func _build_log_strip(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
@@ -145,8 +127,10 @@ func _build_log_strip(parent: Control) -> void:
 	parent.add_child(panel)
 
 	var m: MarginContainer = MarginContainer.new()
-	for s: String in ["margin_left","margin_right","margin_top","margin_bottom"]:
+	for s: String in ["margin_left", "margin_top", "margin_bottom"]:
 		m.add_theme_constant_override(s, 8)
+	# Wide enough that a long log line never runs under the press-turn corner.
+	m.add_theme_constant_override("margin_right", 196)
 	panel.add_child(m)
 
 	_log_label = RichTextLabel.new()
@@ -158,240 +142,12 @@ func _build_log_strip(parent: Control) -> void:
 
 
 
-func _build_bottom_bar(parent: Control) -> void:
-	var sep: HSeparator = HSeparator.new()
-	parent.add_child(sep)
 
-	var hbox: HBoxContainer = HBoxContainer.new()
-	hbox.size_flags_vertical = Control.SIZE_SHRINK_END
-	hbox.add_theme_constant_override("separation", 0)
-	parent.add_child(hbox)
-
-	_build_player_col(hbox)
-	_add_vsep(hbox)
-	_build_action_col(hbox)
-	_add_vsep(hbox)
-	_build_submenu_col(hbox)
-
-
-func _add_vsep(parent: Control) -> void:
-	parent.add_child(VSeparator.new())
-
-
-func _build_player_col(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 1.0
-	parent.add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for s: String in ["margin_left","margin_right","margin_top","margin_bottom"]:
-		m.add_theme_constant_override(s, 10)
-	panel.add_child(m)
-
-	var col: VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
-	m.add_child(col)
-
-	var hbox: HBoxContainer = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 10)
-	col.add_child(hbox)
-
-	var portrait: TextureRect = TextureRect.new()
-	portrait.texture             = load("res://icon.svg") as Texture2D
-	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.custom_minimum_size = Vector2(72, 72)
-	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	portrait.modulate            = Color(0.55, 0.60, 0.78)
-	hbox.add_child(portrait)
-	_player_portrait = portrait
-
-	var stats: VBoxContainer = VBoxContainer.new()
-	stats.add_theme_constant_override("separation", 4)
-	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
-	hbox.add_child(stats)
-
-	_player_name_lbl = Label.new()
-	_player_name_lbl.text = PlayerCharacter.DISPLAY_NAME.to_upper()
-	stats.add_child(_player_name_lbl)
-
-	_player_lv_lbl = Label.new()
-	_player_lv_lbl.add_theme_color_override("font_color", Color(0.60, 0.60, 0.85))
-	stats.add_child(_player_lv_lbl)
-
-	stats.add_child(_make_stat_row("HP",
-		Color(0.35, 0.85, 0.35), Color(0.15, 0.65, 0.15), Color(0.45, 0.85, 0.45),
-		func(b: ProgressBar) -> void: _player_hp_bar = b,
-		func(l: Label)       -> void: _player_hp_lbl = l))
-
-	stats.add_child(_make_stat_row("MP",
-		Color(0.40, 0.55, 1.0), Color(0.20, 0.30, 0.90), Color(0.55, 0.65, 1.0),
-		func(b: ProgressBar) -> void: _player_mp_bar = b,
-		func(l: Label)       -> void: _player_mp_lbl = l))
-
-	_player_sts_lbl = Label.new()
-	_player_sts_lbl.add_theme_color_override("font_color", Color(0.90, 0.78, 0.30))
-	_player_sts_lbl.add_theme_font_size_override("font_size", 11)
-	stats.add_child(_player_sts_lbl)
-
-	_party_box = VBoxContainer.new()
-	_party_box.add_theme_constant_override("separation", 3)
-	col.add_child(_party_box)
 
 
 # ── Party roster ──────────────────────────────────────────────────────────────
 
 # One compact row per bound demon, rebuilt whenever the party changes.
-func _rebuild_party_rows() -> void:
-	for child: Node in _party_box.get_children():
-		child.queue_free()
-	_party_rows.clear()
-
-	for i: int in range(1, party.size()):
-		var member: CharacterSheet = party[i]
-		var row: HBoxContainer = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 5)
-
-		var name_lbl: Label = Label.new()
-		name_lbl.custom_minimum_size = Vector2(96, 0)
-		name_lbl.add_theme_font_size_override("font_size", 11)
-		row.add_child(name_lbl)
-
-		var bar: ProgressBar = _make_bar(member.max_hp)
-		bar.custom_minimum_size = Vector2(0, 9)
-		bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.30, 0.70, 0.45)))
-		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(bar)
-
-		var val_lbl: Label = Label.new()
-		val_lbl.custom_minimum_size = Vector2(58, 0)
-		val_lbl.add_theme_font_size_override("font_size", 11)
-		val_lbl.add_theme_color_override("font_color", Color(0.55, 0.80, 0.65))
-		row.add_child(val_lbl)
-
-		_party_box.add_child(row)
-		_party_rows.append({member = member, name_lbl = name_lbl,
-				bar = bar, val_lbl = val_lbl})
-
-
-func _refresh_party_rows() -> void:
-	for i: int in range(_party_rows.size()):
-		var r: Dictionary = _party_rows[i]
-		var member: CharacterSheet = r["member"] as CharacterSheet
-		var name_lbl: Label = r["name_lbl"] as Label
-		var bar: ProgressBar = r["bar"] as ProgressBar
-		var is_actor: bool = (party[_actor_idx] == member) if _actor_idx < party.size() else false
-		var label_text: String = (member as Enemy).enemy_name.to_upper()
-		name_lbl.text = ("> " if is_actor else "  ") + label_text
-		if not member.is_alive():
-			name_lbl.add_theme_color_override("font_color", Color(0.40, 0.30, 0.30))
-		elif is_actor:
-			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
-		else:
-			name_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.70))
-		bar.max_value = member.max_hp
-		bar.value     = member.hp
-		(r["val_lbl"] as Label).text = "%d/%d" % [member.hp, member.max_hp]
-
-
-func _make_stat_row(tag: String,
-		tag_color: Color, bar_color: Color, val_color: Color,
-		set_bar: Callable, set_lbl: Callable) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
-
-	var tag_lbl: Label = Label.new()
-	tag_lbl.text               = tag
-	tag_lbl.custom_minimum_size = Vector2(22, 0)
-	tag_lbl.add_theme_color_override("font_color", tag_color)
-	row.add_child(tag_lbl)
-
-	var bar: ProgressBar = _make_bar(1)
-	bar.add_theme_stylebox_override("fill", _bar_fill(bar_color))
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(bar)
-	set_bar.call(bar)
-
-	var val: Label = Label.new()
-	val.custom_minimum_size = Vector2(68, 0)
-	val.add_theme_color_override("font_color", val_color)
-	row.add_child(val)
-	set_lbl.call(val)
-
-	return row
-
-
-func _build_action_col(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 1.0
-	parent.add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for s: String in ["margin_left","margin_right","margin_top","margin_bottom"]:
-		m.add_theme_constant_override(s, 10)
-	panel.add_child(m)
-
-	_action_vbox = VBoxContainer.new()
-	_action_vbox.add_theme_constant_override("separation", 4)
-	_action_vbox.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_action_vbox.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
-	m.add_child(_action_vbox)
-
-	for action: String in ["Attack", "Skill", "Magic", "Item", "Defend", "Talk", "Summon", "Flee"]:
-		var btn: Button = Button.new()
-		btn.text                = action
-		btn.custom_minimum_size = Vector2(140, 30)
-		btn.pressed.connect(_on_action.bind(action))
-		_action_vbox.add_child(btn)
-		_buttons[action] = btn
-
-
-func _build_submenu_col(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 1.0
-	parent.add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for s: String in ["margin_left","margin_right","margin_top","margin_bottom"]:
-		m.add_theme_constant_override(s, 10)
-	panel.add_child(m)
-
-	var vbox: VBoxContainer = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 5)
-	m.add_child(vbox)
-
-	var header: HBoxContainer = HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	vbox.add_child(header)
-
-	_right_back_btn = Button.new()
-	_right_back_btn.text = "< Back"
-	_right_back_btn.pressed.connect(_on_back_pressed)
-	_right_back_btn.hide()
-	header.add_child(_right_back_btn)
-
-	_right_title = Label.new()
-	_right_title.text = "—"
-	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.50))
-	header.add_child(_right_title)
-
-	vbox.add_child(HSeparator.new())
-
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(scroll)
-
-	_right_list = VBoxContainer.new()
-	_right_list.add_theme_constant_override("separation", 4)
-	_right_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_right_list)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -445,20 +201,6 @@ func _uppercase_text(text: String) -> String:
 
 
 
-func _refresh_icons() -> void:
-	if _press == null or _foe_press == null:
-		return
-	if _press.has_turns():
-		_icon_lbl.text = "PRESS  %s      %s'S TURN" % [
-				_press.icons_string(), _actor_name().to_upper()]
-	else:
-		_icon_lbl.text = "PRESS  —"
-	if _foe_press.has_turns():
-		_foe_icon_lbl.text = "%s  %s" % [enemy.enemy_name.to_upper(),
-				_foe_press.icons_string()]
-	else:
-		_foe_icon_lbl.text = "%s  —" % enemy.enemy_name.to_upper()
-
 
 func _format_statuses(statuses: Array[String]) -> String:
 	if statuses.is_empty():
@@ -487,47 +229,7 @@ func _on_back_pressed() -> void:
 		_back_target.call()
 
 
-func _show_actions() -> void:
-	_action_vbox.modulate.a = 1.0
-	for btn: Button in _buttons.values():
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
-
-func _hide_actions() -> void:
-	_action_vbox.modulate.a = 0.0
-	for btn: Button in _buttons.values():
-		btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-
-func _show_main_actions() -> void:
-	_show_actions()
-	_right_back_btn.hide()
-	_right_title.text = "—"
-	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.50))
-	for child: Node in _right_list.get_children():
-		child.queue_free()
-
-
-func _show_magic_submenu() -> void:
-	_hide_actions()
-	_set_back(_show_main_actions)
-	_right_title.text = "MAGIC"
-	_right_title.add_theme_color_override("font_color", Color(0.80, 0.50, 1.0))
-	for child: Node in _right_list.get_children():
-		child.queue_free()
-
-	if player.known_spells.is_empty():
-		_right_list.add_child(_dim_label("No spells known."))
-		return
-
-	for spell_id: String in player.known_spells:
-		var data: Dictionary = Spell.DATA.get(spell_id, {name = spell_id, mp = 8})
-		var btn: Button = Button.new()
-		btn.text                = "%s  (%d MP)" % [data["name"], data["mp"]]
-		btn.custom_minimum_size = Vector2(0, 28)
-		btn.disabled            = player.mp < data["mp"]
-		btn.pressed.connect(_on_cast_spell.bind(spell_id))
-		_right_list.add_child(btn)
 
 
 func _show_item_submenu() -> void:
@@ -535,24 +237,20 @@ func _show_item_submenu() -> void:
 	_set_back(_show_main_actions)
 	_right_title.text = "ITEMS"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.40))
-	for child: Node in _right_list.get_children():
-		child.queue_free()
+	_submenu_clear()
 
-	var found: bool = false
-	for item: Dictionary in player.inventory:
-		if item["type"] == "consumable":
-			found = true
-			var is_throwable: bool = item.has("inflicts_status") \
-				or (item.has("element") and item.get("dmg", 0) > 0)
-			var btn: Button = Button.new()
-			btn.text                = "%s  x%d" % [item["name"], item.get("qty", 1)]
-			btn.custom_minimum_size = Vector2(0, 28)
-			btn.disabled            = not is_throwable and not player.can_use_item(item)
-			btn.pressed.connect(_on_use_item.bind(item))
-			_right_list.add_child(btn)
-
-	if not found:
-		_right_list.add_child(_dim_label("No items."))
+	var belt: Array[Dictionary] = player.belt()
+	if belt.is_empty():
+		_submenu_add(_dim_label("Nothing on your belt."))
+		return
+	for item: Dictionary in belt:
+		var is_throwable: bool = item.has("inflicts_status") \
+			or (item.has("element") and item.get("dmg", 0) > 0)
+		var btn: Button = _big_button(item["name"] as String,
+				"x%d" % int(item.get("qty", 1)),
+				not is_throwable and not player.can_use_item(item))
+		btn.pressed.connect(_on_use_item.bind(item))
+		_submenu_add(btn)
 
 
 func _show_talk_submenu() -> void:
@@ -560,8 +258,7 @@ func _show_talk_submenu() -> void:
 	_set_back(_show_main_actions)
 	_right_title.text = "TALK  %s" % enemy.display_name().to_upper()
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
-	for child: Node in _right_list.get_children():
-		child.queue_free()
+	_submenu_clear()
 
 	var opts: Array[Array] = [
 		["Reason",   "Negotiate"],
@@ -570,14 +267,10 @@ func _show_talk_submenu() -> void:
 		["Recruit",  "Recruit"],
 	]
 	for opt: Array in opts:
-		var btn: Button = Button.new()
-		btn.text                = opt[1] as String
-		btn.custom_minimum_size = Vector2(0, 28)
-		if opt[0] == "Recruit" and enemy.enemy_name in player.recruited:
-			btn.text     = "Recruit (have)"
-			btn.disabled = true
+		var have: bool = (opt[0] == "Recruit" and enemy.enemy_name in player.recruited)
+		var btn: Button = _big_button(opt[1] as String, "bound" if have else "", have)
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
-		_right_list.add_child(btn)
+		_submenu_add(btn)
 
 
 
@@ -753,34 +446,6 @@ func _do_end_of_round() -> void:
 
 # ── Player-side actions ───────────────────────────────────────────────────────
 
-func _on_action(action: String) -> void:
-	match action:
-		"Magic":
-			_show_magic_submenu()
-			return
-		"Item":
-			_show_item_submenu()
-			return
-		"Talk":
-			_with_target(func() -> void:
-				if not enemy.negotiable:
-					_log("[color=gray]%s won't listen.[/color]" % enemy.display_name())
-					_show_main_actions()
-					_set_buttons(true)
-					_refresh_button_states()
-					return
-				_show_talk_submenu())
-			return
-		"Summon":
-			_show_summon_submenu()
-			return
-		"Flee":
-			_set_buttons(false)
-			await _do_flee()
-			return
-
-	_with_target(func() -> void: await _commit_action(action))
-
 
 func _commit_action(action: String) -> void:
 	_show_main_actions()
@@ -790,21 +455,6 @@ func _commit_action(action: String) -> void:
 	await _after_action(res["cost"] as String)
 
 
-func _on_cast_spell(spell_id: String) -> void:
-	# Healing needs no target; anything thrown at the line-up does.
-	var data: Dictionary = Spell.DATA.get(spell_id, {})
-	if data.get("type", "dmg") == "heal":
-		await _commit_spell(spell_id)
-		return
-	_with_target(func() -> void: await _commit_spell(spell_id))
-
-
-func _commit_spell(spell_id: String) -> void:
-	_show_main_actions()
-	_set_buttons(false)
-	var res: Dictionary = _cast_spell(spell_id)
-	_log(res["msg"] as String)
-	await _after_action(res["cost"] as String)
 
 
 func _on_use_item(item: Dictionary) -> void:
@@ -843,32 +493,7 @@ func _resolve_action(action: String) -> Dictionary:
 	return {msg = "", cost = PressTurn.COST_FULL}
 
 
-func _resolve_attack() -> Dictionary:
-	var actor: CharacterSheet = _actor()
-	var atk: int = player.effective_str() if _actor_is_player() else actor.str
-	if _actor_is_player() and "last_stand" in player.passive_skills \
-			and player.hp * 4 < player.max_hp:
-		atk *= 2
-	var crit: bool = CombatMath.roll_crit()
-	var res: Dictionary = CombatMath.resolve(atk - enemy.def / 2, Affinity.PHYS, enemy, crit)
-	return _land_hit(res, Affinity.PHYS, "%s strikes!" % _actor_name())
 
-
-# A bound demon's own element. This is the whole reason to carry a varied
-# roster rather than the three strongest things you have met.
-func _resolve_skill() -> Dictionary:
-	var actor: Enemy = _actor() as Enemy
-	var element: String = actor.attack_element
-	if element == "":
-		return {msg = "[color=gray]%s has nothing to call on.[/color]" % actor.enemy_name,
-				cost = PressTurn.COST_FULL}
-	var crit: bool = CombatMath.roll_crit()
-	var res: Dictionary = CombatMath.resolve(actor.mag * 2 - enemy.def / 3, element, enemy, crit)
-	return _land_hit(res, element, "%s calls up %s!" % [
-			actor.enemy_name, Affinity.element_name(element)])
-
-
-# Applies a resolved hit to the enemy and turns the outcome into an icon cost.
 func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
@@ -882,8 +507,9 @@ func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
 					prefix, enemy.display_name(), dmg], cost = PressTurn.COST_LOST}
 		"repel":
 			actor.take_damage(dmg)
-			if actor == player:
-				_shake_portrait(_player_portrait)
+			var actor_pr: TextureRect = _member_portrait(actor)
+			if actor_pr != null:
+				_shake_portrait(actor_pr)
 			return {msg = "%s  [color=#d070ff]Repelled! %s takes %d damage![/color]" % [
 					prefix, _member_name(actor), dmg], cost = PressTurn.COST_LOST}
 		"null":
@@ -908,40 +534,6 @@ func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
 			dmg, extra, downed],
 			cost = CombatMath.cost_for(outcome, crit)}
 
-
-func _cast_spell(spell_id: String) -> Dictionary:
-	var data: Dictionary = Spell.DATA.get(spell_id, {name = "Spell", mp = 8})
-	var mp_cost: int = data.get("mp", 8)
-	if player.mp < mp_cost:
-		return {msg = "[color=gray]Not enough MP![/color]", cost = PressTurn.COST_FULL}
-	player.mp -= mp_cost
-
-	var spell_type: String = data.get("type", "dmg")
-
-	if spell_type == "ailment":
-		var target_status: String = data.get("status", "")
-		if target_status == "" or enemy.has_status(target_status):
-			return {msg = "[color=gray]Nothing happened.[/color]", cost = PressTurn.COST_FULL}
-		enemy.apply_status(target_status)
-		return {msg = "You cast %s!  [color=violet]%s is now %s.[/color]" % [
-				data["name"], enemy.enemy_name,
-				Status.get_data(target_status).get("name", target_status)],
-				cost = PressTurn.COST_FULL}
-
-	if spell_type == "heal":
-		var heal_amt: int = data.get("heal", 30)
-		var before: int = player.hp
-		player.heal(max(1, heal_amt + player.effective_mag()))
-		return {msg = "[color=lime]You cast %s! Restored %d HP.[/color]" % [
-				data["name"], player.hp - before], cost = PressTurn.COST_FULL}
-
-	var element: String = data.get("element", "")
-	var base: int = player.effective_mag() * 2 - enemy.def / 3
-	if "scholar" in player.passive_skills:
-		base = int(base * 1.25)
-	var crit: bool = CombatMath.roll_crit()
-	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit)
-	return _land_hit(res, element, "You cast %s!" % data["name"])
 
 
 # ── Enemy side ────────────────────────────────────────────────────────────────
@@ -1015,19 +607,16 @@ func _show_summon_submenu() -> void:
 	_set_back(_show_main_actions)
 	_right_title.text = "SUMMON"
 	_right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.55))
-	for child: Node in _right_list.get_children():
-		child.queue_free()
+	_submenu_clear()
 
 	var options: Array[String] = _available_summons()
 	if options.is_empty():
-		_right_list.add_child(_dim_label("Nothing left to call."))
+		_submenu_add(_dim_label("Nothing left to call."))
 		return
 	for summon_name: String in options:
-		var btn: Button = Button.new()
-		btn.text                = summon_name
-		btn.custom_minimum_size = Vector2(0, 28)
+		var btn: Button = _big_button(summon_name, "bind", false)
 		btn.pressed.connect(_on_summon.bind(summon_name))
-		_right_list.add_child(btn)
+		_submenu_add(btn)
 
 
 # Binding costs a full icon and the demon joins at the detective's own level.
@@ -1038,7 +627,7 @@ func _on_summon(summon_name: String) -> void:
 	var demon: Enemy = Enemy.make_from_name(summon_name, max(1, player.lv))
 	add_child(demon)
 	party.append(demon)
-	_rebuild_party_rows()
+	_rebuild_party_slots()
 	_log("[color=#7fe0a0]%s answers the call.[/color]" % demon.enemy_name)
 	await _after_action(PressTurn.COST_FULL)
 
@@ -1047,6 +636,22 @@ func _on_summon(summon_name: String) -> void:
 
 
 # ── Button state ──────────────────────────────────────────────────────────────
+
+
+# ── The party ─────────────────────────────────────────────────────────────────
+
+# His bound demons are already on the field when the battle opens — they are
+# his party, not something he builds after the first enemy phase. Each one
+# carries its own press-turn icon, so who he has bound decides how many actions
+# he gets. Summon is left for filling a slot that opens up mid-fight.
+func _form_party() -> void:
+	party = [player]
+	for demon_name: String in player.recruited:
+		if party.size() >= MAX_PARTY:
+			break
+		var demon: Enemy = Enemy.make_from_name(demon_name, maxi(1, player.lv))
+		add_child(demon)
+		party.append(demon)
 
 
 # ── The enemy line-up ─────────────────────────────────────────────────────────
@@ -1093,7 +698,8 @@ func _ensure_target() -> void:
 
 func _build_enemy_area(parent: Control) -> void:
 	var area: HBoxContainer = HBoxContainer.new()
-	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	area.size_flags_vertical       = Control.SIZE_EXPAND_FILL
+	area.size_flags_stretch_ratio  = 1.0
 	area.alignment = BoxContainer.ALIGNMENT_CENTER
 	area.add_theme_constant_override("separation", 6)
 	parent.add_child(area)
@@ -1154,8 +760,13 @@ func _build_foe_column(foe: Enemy) -> Control:
 	hp_lbl.add_theme_color_override("font_color", Color(0.90, 0.60, 0.60))
 	col.add_child(hp_lbl)
 
+	var stage_lbl: Label = Label.new()
+	stage_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stage_lbl.add_theme_font_size_override("font_size", 10)
+	col.add_child(stage_lbl)
+
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
-			bar = bar, hp_lbl = hp_lbl, marker = marker})
+			bar = bar, hp_lbl = hp_lbl, stage_lbl = stage_lbl, marker = marker})
 	return col
 
 
@@ -1180,43 +791,18 @@ func _with_target(cb: Callable) -> void:
 	_set_back(_show_main_actions)
 	_right_title.text = "TARGET"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
-	for child: Node in _right_list.get_children():
-		child.queue_free()
+	_submenu_clear()
 	for foe: Enemy in living:
-		var btn: Button = Button.new()
-		btn.text                = "%s   %d/%d" % [foe.display_name(), foe.hp, foe.max_hp]
-		btn.custom_minimum_size = Vector2(0, 28)
+		var btn: Button = _big_button(foe.display_name(),
+				"%d / %d" % [foe.hp, foe.max_hp], false)
 		btn.pressed.connect(func() -> void:
 			enemy = foe
 			_refresh_hp()
 			cb.call())
-		_right_list.add_child(btn)
+		_submenu_add(btn)
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
-
-func _refresh_hp() -> void:
-	_player_lv_lbl.text = "LV %d" % player.lv
-
-	_player_hp_bar.max_value = player.max_hp
-	_player_hp_bar.value     = player.hp
-	_player_hp_lbl.text      = "%d/%d" % [player.hp, player.max_hp]
-
-	_player_mp_bar.max_value = player.max_mp
-	_player_mp_bar.value     = player.mp
-	_player_mp_lbl.text      = "%d/%d" % [player.mp, player.max_mp]
-
-	_player_sts_lbl.text = _format_statuses(player.active_statuses)
-
-	var hero_acting: bool = _actor_is_player() and _press != null and _press.has_turns()
-	_player_name_lbl.text = ("> " if hero_acting else "") \
-			+ PlayerCharacter.DISPLAY_NAME.to_upper()
-	_player_name_lbl.add_theme_color_override("font_color",
-			Color(1.0, 0.92, 0.45) if hero_acting else Color(0.85, 0.85, 1.0))
-
-	_refresh_foe_rows()
-	_refresh_party_rows()
-	_refresh_icons()
 
 
 func _refresh_foe_rows() -> void:
@@ -1240,6 +826,14 @@ func _refresh_foe_rows() -> void:
 		(bar.get_parent() as Control).visible = alive
 		var hp_lbl: Label = r["hp_lbl"] as Label
 		hp_lbl.text = "%d / %d" % [foe.hp, foe.max_hp] if alive else "DOWN"
+
+		var stage_lbl: Label = r["stage_lbl"] as Label
+		stage_lbl.text = _format_stages(foe) if alive else ""
+		# Green when the stack favours them, amber when it favours you.
+		var net: int = foe.stage(CharacterSheet.STAT_ATK) \
+				+ foe.stage(CharacterSheet.STAT_DEF) + foe.stage(CharacterSheet.STAT_AGL)
+		stage_lbl.add_theme_color_override("font_color",
+				Color(1.0, 0.55, 0.35) if net > 0 else Color(0.55, 0.90, 0.70))
 
 
 # ── Phase flow ────────────────────────────────────────────────────────────────
@@ -1343,56 +937,6 @@ func _do_poison_ticks() -> String:
 
 # ── Enemy actions ─────────────────────────────────────────────────────────────
 
-func _enemy_act(actor: Enemy) -> Dictionary:
-	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
-		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
-				cost = PressTurn.COST_FULL}
-
-	var element: String = Affinity.PHYS
-	var base: int = actor.str
-	if actor.attack_element != "" and randi() % 10 < 4:
-		element = actor.attack_element
-		base    = actor.mag * 2
-
-	var target: CharacterSheet = _pick_target(element)
-	var eff_def: int = _defense_of(target) * (2 if target.defending else 1)
-	target.defending = false
-
-	var crit: bool = CombatMath.roll_crit()
-	var res: Dictionary = CombatMath.resolve(base - eff_def / 2, element, target, crit)
-	var outcome: String = res["outcome"] as String
-	var dmg: int        = res["dmg"] as int
-	var tname: String   = _member_name(target)
-	var ename: String   = actor.display_name()
-	var verb: String    = "attacks" if element == Affinity.PHYS \
-			else "uses %s on" % Affinity.element_name(element)
-
-	match outcome:
-		"drain":
-			target.heal(dmg)
-			return {msg = "[color=lime]%s %s %s — absorbed! %s recovers %d HP.[/color]" % [
-					ename, verb, tname, tname, dmg], cost = PressTurn.COST_LOST}
-		"repel":
-			actor.take_damage(dmg)
-			var pr: TextureRect = _foe_portrait(actor)
-			if pr != null:
-				_shake_portrait(pr)
-			return {msg = "[color=#d070ff]%s %s %s — repelled! %s takes %d damage.[/color]" % [
-					ename, verb, tname, ename, dmg], cost = PressTurn.COST_LOST}
-		"null":
-			return {msg = "[color=#999999]%s %s %s — no effect.[/color]" % [ename, verb, tname],
-					cost = PressTurn.COST_MISS}
-
-	target.take_damage(dmg)
-	if target == player:
-		_shake_portrait(_player_portrait)
-	var msg: String = "[color=red]%s %s %s for %d damage.[/color]%s%s" % [
-			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit),
-			_try_enemy_status(actor, target)]
-	if target == player:
-		msg += _check_counter()
-	return {msg = msg, cost = CombatMath.cost_for(outcome, crit)}
-
 
 # ── Fleeing ───────────────────────────────────────────────────────────────────
 
@@ -1437,16 +981,956 @@ func _foe_departs(reason: String) -> void:
 
 # ── Button state ──────────────────────────────────────────────────────────────
 
+
+# ── Actions ───────────────────────────────────────────────────────────────────
+
+func _on_action(action: String) -> void:
+	match action:
+		"Skills":
+			_show_skills_submenu()
+			return
+		"Item":
+			_show_item_submenu()
+			return
+		"Talk":
+			_with_target(func() -> void:
+				if not enemy.negotiable:
+					_log("[color=gray]%s won't listen.[/color]" % enemy.display_name())
+					_prompt_actor()
+					return
+				_show_talk_submenu())
+			return
+		"Summon":
+			_show_summon_submenu()
+			return
+		"Defend":
+			# Bracing is not aimed at anybody — no target step.
+			await _commit_action(action)
+			return
+		"Flee":
+			_set_buttons(false)
+			await _do_flee()
+			return
+
+	_with_target(func() -> void: await _commit_action(action))
+
+
+# Everything the acting member can swing lives in one list: the plain attack
+# first, then whatever they carry. For the detective that is his equipped
+# spells; for a bound demon it is its own element.
+
+
+
+# ── Button state ──────────────────────────────────────────────────────────────
+
+# Talk, Item, Summon and Flee are the detective's alone. On a demon's turn they
+# are hidden rather than greyed — there is not much room on a phone, and a row
+# of dead buttons reads as a bug.
 func _refresh_button_states() -> void:
-	var is_p: bool  = _actor_is_player()
-	var actor: CharacterSheet = _actor()
-	_buttons["Attack"].disabled = actor.has_status(Status.IMMOBILIZE)
-	_buttons["Skill"].disabled  = is_p or (actor as Enemy).attack_element == ""
-	_buttons["Magic"].disabled  = not is_p or player.has_status(Status.SILENCE) \
-			or player.known_spells.is_empty()
+	var is_p: bool = _actor_is_player()
+	for key: String in ["Item", "Talk", "Summon", "Flee"]:
+		(_buttons[key] as Button).visible = is_p
+
+	_buttons["Skills"].disabled = false
+	_buttons["Defend"].disabled = false
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	_buttons["Summon"].disabled = not is_p or party.size() >= MAX_PARTY \
 			or _available_summons().is_empty()
 	_buttons["Flee"].disabled   = not is_p
+
+
+# ── The party line-up ─────────────────────────────────────────────────────────
+
+# The player's side is built the same way as the enemy's — a row of portraits
+# with a name and a bar under each — so the two halves of the screen read as
+# one fight rather than as a roster facing a picture.
+func _build_party_area(parent: Control) -> void:
+	var panel: PanelContainer = PanelContainer.new()
+	# Same stretch ratio as the enemy row, so the two sides get equal height.
+	panel.size_flags_vertical      = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 1.0
+	parent.add_child(panel)
+
+	var m: MarginContainer = MarginContainer.new()
+	for side: String in ["margin_left", "margin_right"]:
+		m.add_theme_constant_override(side, 8)
+	for side2: String in ["margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(side2, 5)
+	panel.add_child(m)
+
+	_party_box = HBoxContainer.new()
+	_party_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_party_box.add_theme_constant_override("separation", 6)
+	m.add_child(_party_box)
+
+
+
+
+# A coat-and-hat silhouette standing in until the detective has real art. Drawn
+# rather than loaded because the engine icon at portrait size reads as a bug.
+# Flat shapes only — a shading trick here turned the whole figure into a cross.
+static func _hero_placeholder() -> ImageTexture:
+	const W: int = 48
+	const H: int = 64
+	var img: Image = Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var coat: Color = Color(0.28, 0.33, 0.47, 1.0)
+	var skin: Color = Color(0.52, 0.57, 0.72, 1.0)
+
+	for y: int in range(H):
+		for x: int in range(W):
+			var col: Color = Color(0, 0, 0, 0)
+			if y >= 5 and y < 15 and x >= 17 and x < 31:
+				col = coat                                   # crown
+			elif y >= 15 and y < 19 and x >= 7 and x < 41:
+				col = coat                                   # brim
+			elif y >= 19 and y < 31 and Vector2(x - 24, y - 25).length() < 6.2:
+				col = skin                                   # face under the brim
+			elif y >= 31 and y < 35 and x >= 22 and x < 27:
+				col = coat                                   # collar
+			elif y >= 35:
+				var t: float = float(y - 35) / float(H - 35)
+				if absf(x - 24.0) < lerpf(9.0, 18.0, t):
+					col = coat                               # coat, flaring out
+			if col.a > 0.0:
+				img.set_pixel(x, y, col)
+	return ImageTexture.create_from_image(img)
+
+
+func _member_portrait(member: CharacterSheet) -> TextureRect:
+	for slot: Dictionary in _party_slots:
+		if slot["member"] == member:
+			return slot["portrait"] as TextureRect
+	return null
+
+
+# ── The menu ──────────────────────────────────────────────────────────────────
+
+# Actions and submenus share one column: a submenu replaces the action list
+# instead of sitting beside it, which is most of the width back on a phone.
+
+
+
+
+# ── Refresh ───────────────────────────────────────────────────────────────────
+
+func _refresh_hp() -> void:
+	if _actor_banner != null:
+		if _press != null and _press.has_turns():
+			_actor_banner.text = "%s'S TURN" % _actor_name().to_upper()
+			_actor_banner.add_theme_color_override("font_color",
+					Color(1.0, 0.92, 0.45) if _actor_is_player()
+					else Color(0.62, 1.0, 0.78))
+		else:
+			_actor_banner.text = "ENEMY PHASE"
+			_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+
+	_refresh_party_slots()
+	_refresh_foe_rows()
+	_refresh_icons()
+
+
+
+# ── Press-turn corner ─────────────────────────────────────────────────────────
+
+# Both sides' icons live in the top-right corner, out of the fight rather than
+# wedged between the two line-ups.
+func _build_icon_overlay() -> void:
+	var panel: PanelContainer = PanelContainer.new()
+	panel.anchor_left   = 1.0
+	panel.anchor_right  = 1.0
+	panel.anchor_top    = 0.0
+	panel.anchor_bottom = 0.0
+	panel.offset_left   = -186.0
+	panel.offset_right  = -10.0
+	panel.offset_top    = 8.0
+	panel.offset_bottom = 66.0
+	panel.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	add_child(panel)
+
+	var m: MarginContainer = MarginContainer.new()
+	for side: String in ["margin_left", "margin_right"]:
+		m.add_theme_constant_override(side, 10)
+	for side2: String in ["margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(side2, 5)
+	panel.add_child(m)
+
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+	m.add_child(col)
+
+	_icon_lbl = Label.new()
+	_icon_lbl.add_theme_color_override("font_color", Color(0.55, 0.95, 1.0))
+	col.add_child(_icon_lbl)
+
+	_foe_icon_lbl = Label.new()
+	_foe_icon_lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+	col.add_child(_foe_icon_lbl)
+
+
+func _refresh_icons() -> void:
+	if _press == null or _foe_press == null:
+		return
+	_icon_lbl.text = "YOU  %s" % (_press.icons_string() if _press.has_turns() else "\u2014")
+	_foe_icon_lbl.text = "FOE  %s" % (
+			_foe_press.icons_string() if _foe_press.has_turns() else "\u2014")
+
+
+# ── Skills ────────────────────────────────────────────────────────────────────
+
+func _show_skills_submenu() -> void:
+	_hide_actions()
+	_set_back(_show_main_actions)
+	_right_title.text = "SKILLS  %s" % _actor_name().to_upper()
+	_right_title.add_theme_color_override("font_color", Color(0.80, 0.62, 1.0))
+	_submenu_clear()
+
+	var actor: CharacterSheet = _actor()
+
+	_submenu_add(_make_skill_button("Attack", "Attack",
+			Affinity.element_name(Affinity.PHYS), "\u2014",
+			actor.has_status(Status.IMMOBILIZE)))
+
+	if _actor_is_player():
+		if player.equipped_spells.is_empty():
+			_submenu_add(_dim_label("No spells equipped."))
+			return
+		var silenced: bool = player.has_status(Status.SILENCE)
+		for spell_id: String in player.equipped_spells:
+			var data: Dictionary = Spell.get_data(spell_id)
+			if data.is_empty():
+				continue
+			var element: String = data.get("element", "")
+			var tag: String = Affinity.element_name(element) if element != "" \
+					else (data.get("type", "dmg") as String).capitalize()
+			var cost: int = int(data.get("mp", 0))
+			_submenu_add(_make_skill_button("Magic:" + spell_id,
+					data["name"] as String, tag, "%d MP" % cost,
+					silenced or player.mp < cost))
+		return
+
+	var demon: Enemy = actor as Enemy
+	if demon.attack_element == "":
+		return
+	var demon_cost: int = demon.skill_cost()
+	_submenu_add(_make_skill_button("Skill",
+			"%s Strike" % Affinity.element_name(demon.attack_element),
+			Affinity.element_name(demon.attack_element),
+			"%d MP" % demon_cost,
+			demon.has_status(Status.SILENCE) or demon.mp < demon_cost))
+
+
+# A bound demon's own element, paid for out of its own pool.
+func _resolve_skill() -> Dictionary:
+	var actor: Enemy = _actor() as Enemy
+	var element: String = actor.attack_element
+	if element == "":
+		return {msg = "[color=gray]%s has nothing to call on.[/color]" % actor.display_name(),
+				cost = PressTurn.COST_FULL}
+	var price: int = actor.skill_cost()
+	if actor.mp < price:
+		return {msg = "[color=gray]%s: not enough MP![/color]" % actor.display_name(),
+				cost = PressTurn.COST_FULL}
+	actor.mp -= price
+	var power: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
+	var crit: bool = CombatMath.roll_crit()
+	var res: Dictionary = CombatMath.resolve(int(power * 2.0) - _guarded_def(enemy),
+			element, enemy, crit)
+	return _land_hit(res, element, "%s calls up %s!" % [
+			actor.display_name(), Affinity.element_name(element)])
+
+
+# ── Enemy actions ─────────────────────────────────────────────────────────────
+
+
+# ── The menu ──────────────────────────────────────────────────────────────────
+
+# Top-level actions run across the bottom as an icon bar — six thumb targets in
+# a row rather than a stack where Flee sits on the screen edge. Submenus are
+# lists of variable-length text, so those stay vertical and replace the bar.
+
+
+
+# ── Action icons ──────────────────────────────────────────────────────────────
+
+# Small flat glyphs drawn in code — six shapes is less weight than six PNGs,
+# and they stay legible against the wireframe palette. Labels sit under them:
+# a shield and a speech bubble are guessable, Summon and Skills are not.
+static func _action_icon(action: String) -> ImageTexture:
+	const N: int = 26
+	var img: Image = Image.create(N, N, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c: Color = Color(0.86, 0.88, 0.94, 1.0)
+
+	match action:
+		"Skills":                                   # a blade with a crossguard
+			# Three parallel strokes — a one-pixel diagonal reads as a scratch.
+			_px_line(img, 7, 18, 19, 6, c)
+			_px_line(img, 8, 19, 20, 7, c)
+			_px_line(img, 6, 17, 18, 5, c)
+			_px_line(img, 19, 5, 21, 7, c)
+			_px_line(img, 4, 14, 11, 21, c)
+			_px_line(img, 5, 13, 12, 20, c)
+			_px_rect(img, 2, 20, 6, 24, c)
+		"Item":                                     # a flask
+			_px_rect(img, 10, 3, 16, 6, c)
+			_px_line(img, 11, 6, 6, 17, c)
+			_px_line(img, 15, 6, 20, 17, c)
+			_px_line(img, 6, 17, 20, 17, c)
+			_px_rect(img, 7, 17, 19, 21, c)
+		"Defend":                                   # a shield
+			_px_rect(img, 5, 4, 21, 7, c)
+			_px_line(img, 5, 4, 5, 12, c)
+			_px_line(img, 20, 4, 20, 12, c)
+			_px_line(img, 5, 12, 13, 22, c)
+			_px_line(img, 20, 12, 13, 22, c)
+		"Talk":                                     # a speech bubble
+			_px_rect(img, 3, 4, 23, 6, c)
+			_px_rect(img, 3, 15, 23, 17, c)
+			_px_line(img, 3, 4, 3, 16, c)
+			_px_line(img, 22, 4, 22, 16, c)
+			_px_line(img, 8, 17, 7, 23, c)
+			_px_line(img, 7, 23, 13, 17, c)
+		"Summon":                                   # a sigil: ring plus star
+			_px_ring(img, 13.0, 13.0, 10.0, c)
+			var pts: Array[Vector2] = []
+			for i: int in range(5):
+				var a: float = -PI / 2.0 + float(i) * TAU / 5.0
+				pts.append(Vector2(13.0 + cos(a) * 8.0, 13.0 + sin(a) * 8.0))
+			for i2: int in range(5):
+				var q: Vector2 = pts[i2]
+				var r: Vector2 = pts[(i2 + 2) % 5]
+				_px_line(img, int(q.x), int(q.y), int(r.x), int(r.y), c)
+		"Flee":                                     # a double chevron
+			_px_line(img, 6, 5, 14, 13, c)
+			_px_line(img, 14, 13, 6, 21, c)
+			_px_line(img, 13, 5, 21, 13, c)
+			_px_line(img, 21, 13, 13, 21, c)
+	return ImageTexture.create_from_image(img)
+
+
+static func _px_set(img: Image, x: int, y: int, c: Color) -> void:
+	if x >= 0 and y >= 0 and x < img.get_width() and y < img.get_height():
+		img.set_pixel(x, y, c)
+
+
+static func _px_line(img: Image, x0: int, y0: int, x1: int, y1: int, c: Color) -> void:
+	var dx: int = absi(x1 - x0)
+	var dy: int = -absi(y1 - y0)
+	var sx: int = 1 if x0 < x1 else -1
+	var sy: int = 1 if y0 < y1 else -1
+	var err: int = dx + dy
+	var x: int = x0
+	var y: int = y0
+	while true:
+		_px_set(img, x, y, c)
+		if x == x1 and y == y1:
+			return
+		var e2: int = err * 2
+		if e2 >= dy:
+			err += dy
+			x += sx
+		if e2 <= dx:
+			err += dx
+			y += sy
+
+
+static func _px_rect(img: Image, x0: int, y0: int, x1: int, y1: int, c: Color) -> void:
+	for y: int in range(y0, y1 + 1):
+		for x: int in range(x0, x1 + 1):
+			_px_set(img, x, y, c)
+
+
+static func _px_ring(img: Image, cx: float, cy: float, r: float, c: Color) -> void:
+	for y: int in range(img.get_height()):
+		for x: int in range(img.get_width()):
+			var d: float = Vector2(float(x) - cx, float(y) - cy).length()
+			if absf(d - r) < 0.9:
+				_px_set(img, x, y, c)
+
+
+# A thumb-sized submenu entry: title on top, the detail that decides the choice
+# underneath. Built from child Labels because a Button's own text is one line.
+
+func _make_skill_button(action: String, label: String, element: String,
+		cost: String, disabled: bool) -> Button:
+	var btn: Button = _big_button(label, "%s   %s" % [element, cost], disabled)
+	btn.pressed.connect(func() -> void: await _on_skill_chosen(action))
+	return btn
+
+
+# Always MAX_PARTY columns, filled or not. Sizing the row to the head count
+# would shuffle everyone sideways the moment a demon is bound or falls.
+func _rebuild_party_slots() -> void:
+	for child: Node in _party_box.get_children():
+		child.queue_free()
+	_party_slots.clear()
+	for i: int in range(MAX_PARTY):
+		var member: CharacterSheet = party[i] if i < party.size() else null
+		_party_box.add_child(_build_party_slot(member))
+
+
+func _build_party_slot(member: CharacterSheet) -> Control:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_stretch_ratio = 1.0
+	col.add_theme_constant_override("separation", 2)
+
+	if member == null:
+		# An empty slot still holds its ground so the filled ones never move.
+		var spacer: Control = Control.new()
+		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		col.add_child(spacer)
+		var empty_lbl: Label = Label.new()
+		empty_lbl.text                 = "\u2014"
+		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_lbl.add_theme_font_size_override("font_size", 12)
+		empty_lbl.add_theme_color_override("font_color", Color(0.28, 0.28, 0.34))
+		col.add_child(empty_lbl)
+		_party_slots.append({member = null})
+		return col
+
+	var is_hero: bool = (member == player)
+
+	var icon: TextureRect = TextureRect.new()
+	icon.expand_mode           = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size   = Vector2(0, 54)
+	icon.size_flags_horizontal = Control.SIZE_FILL
+	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	if is_hero:
+		icon.texture     = _hero_placeholder()
+		_player_portrait = icon
+	else:
+		var demon: Enemy = member as Enemy
+		if demon.sprite_path != "":
+			icon.texture        = load(demon.sprite_path) as Texture2D
+			icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		else:
+			icon.texture  = load("res://icon.svg") as Texture2D
+			icon.modulate = Color(0.55, 0.85, 0.65)
+	col.add_child(icon)
+
+	var marker: Label = Label.new()
+	marker.text                 = "\u25b2"
+	marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	marker.add_theme_font_size_override("font_size", 11)
+	marker.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
+	col.add_child(marker)
+
+	var name_lbl: Label = Label.new()
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	col.add_child(name_lbl)
+
+	var bar_wrap: MarginContainer = MarginContainer.new()
+	for side: String in ["margin_left", "margin_right"]:
+		bar_wrap.add_theme_constant_override(side, 6)
+	col.add_child(bar_wrap)
+
+	var bars: VBoxContainer = VBoxContainer.new()
+	bars.add_theme_constant_override("separation", 2)
+	bar_wrap.add_child(bars)
+
+	var hp_bar: ProgressBar = _make_bar(member.max_hp)
+	hp_bar.custom_minimum_size = Vector2(0, 9)
+	hp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.30, 0.74, 0.34)))
+	bars.add_child(hp_bar)
+
+	var mp_bar: ProgressBar = _make_bar(maxi(1, member.max_mp))
+	mp_bar.custom_minimum_size = Vector2(0, 6)
+	mp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.32, 0.46, 0.95)))
+	bars.add_child(mp_bar)
+
+	var val_lbl: Label = Label.new()
+	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val_lbl.add_theme_font_size_override("font_size", 11)
+	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
+	col.add_child(val_lbl)
+
+	var sts_lbl: Label = Label.new()
+	sts_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sts_lbl.add_theme_font_size_override("font_size", 10)
+	sts_lbl.add_theme_color_override("font_color", Color(0.90, 0.78, 0.30))
+	col.add_child(sts_lbl)
+
+	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
+			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl,
+			sts_lbl = sts_lbl, marker = marker})
+	return col
+
+
+func _refresh_party_slots() -> void:
+	var acting: CharacterSheet = _actor() if _press != null and _press.has_turns() else null
+	for slot: Dictionary in _party_slots:
+		var member: CharacterSheet = slot["member"] as CharacterSheet
+		if member == null:
+			continue
+		var alive: bool    = member.is_alive()
+		var is_hero: bool  = (member == player)
+		var is_actor: bool = (member == acting) and alive
+
+		(slot["marker"] as Label).visible = is_actor
+		(slot["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
+
+		var name_lbl: Label = slot["name_lbl"] as Label
+		name_lbl.text = _member_name(member).to_upper()
+		if is_hero:
+			name_lbl.text += "  LV%d" % member.lv
+		if not alive:
+			name_lbl.add_theme_color_override("font_color", Color(0.40, 0.32, 0.32))
+		elif is_actor:
+			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
+		elif is_hero:
+			name_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 1.0))
+		else:
+			name_lbl.add_theme_color_override("font_color", Color(0.62, 0.92, 0.74))
+
+		var hp_bar: ProgressBar = slot["hp_bar"] as ProgressBar
+		hp_bar.max_value = member.max_hp
+		hp_bar.value     = member.hp
+		(hp_bar.get_parent() as Control).visible = alive
+
+		var val_lbl: Label = slot["val_lbl"] as Label
+		if not alive:
+			val_lbl.text = "DOWN"
+			val_lbl.add_theme_color_override("font_color", Color(0.55, 0.38, 0.38))
+		else:
+			val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
+			var mp_bar: ProgressBar = slot["mp_bar"] as ProgressBar
+			mp_bar.max_value = maxi(1, member.max_mp)
+			mp_bar.value     = member.mp
+			val_lbl.text = "%d/%d   %d MP" % [member.hp, member.max_hp, member.mp]
+
+		var tags: Array[String] = []
+		var ail: String = _format_statuses(member.active_statuses)
+		if ail != "":
+			tags.append(ail)
+		var stg: String = _format_stages(member)
+		if stg != "":
+			tags.append(stg)
+		(slot["sts_lbl"] as Label).text = "  ".join(tags)
+
+
+# ── The menu strip ────────────────────────────────────────────────────────────
+
+func _build_menu_panel(parent: Control) -> void:
+	var panel: PanelContainer = PanelContainer.new()
+	panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	panel.custom_minimum_size = Vector2(0, 132)
+	parent.add_child(panel)
+
+	var m: MarginContainer = MarginContainer.new()
+	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(side, 8)
+	panel.add_child(m)
+
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	m.add_child(col)
+
+	var header: HBoxContainer = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
+	col.add_child(header)
+
+	_right_back_btn = Button.new()
+	_right_back_btn.text = "< Back"
+	_right_back_btn.custom_minimum_size = Vector2(72, 26)
+	_right_back_btn.pressed.connect(_on_back_pressed)
+	_right_back_btn.hide()
+	header.add_child(_right_back_btn)
+
+	_actor_banner = Label.new()
+	_actor_banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_actor_banner.add_theme_font_size_override("font_size", 16)
+	_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
+	header.add_child(_actor_banner)
+
+	_right_title = Label.new()
+	_right_title.text = "\u2014"
+	_right_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
+	header.add_child(_right_title)
+
+	col.add_child(HSeparator.new())
+
+	var body: MarginContainer = MarginContainer.new()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(body)
+
+	# Both rows live in the same cell, one visible at a time, and both divide
+	# the width into the same MENU_SLOTS columns.
+	_action_bar = _make_slot_row()
+	body.add_child(_action_bar)
+
+	for action: String in ["Skills", "Item", "Defend", "Talk", "Summon", "Flee"]:
+		var btn: Button = Button.new()
+		btn.icon                    = _action_icon(action)
+		btn.text                    = action.to_upper()
+		btn.icon_alignment          = HORIZONTAL_ALIGNMENT_CENTER
+		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		btn.add_theme_font_size_override("font_size", 11)
+		btn.add_theme_constant_override("h_separation", 0)
+		# Without this a Button's minimum width grows to fit its label, so
+		# SUMMON would claim a wider column than TALK and the six slots would
+		# stop being six equal slots.
+		btn.clip_text             = true
+		btn.custom_minimum_size   = Vector2(0, 74)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(_on_action.bind(action))
+		_action_bar.add_child(btn)
+		_buttons[action] = btn
+
+	_sub_bar = _make_slot_row()
+	_sub_bar.hide()
+	body.add_child(_sub_bar)
+
+	for _i: int in range(MENU_SLOTS):
+		var slot: MarginContainer = MarginContainer.new()
+		slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
+		slot.size_flags_stretch_ratio = 1.0
+		_sub_bar.add_child(slot)
+		_sub_slots.append(slot)
+
+
+func _make_slot_row() -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
+	row.add_theme_constant_override("separation", 6)
+	return row
+
+
+func _show_actions() -> void:
+	_action_bar.show()
+	_sub_bar.hide()
+
+
+func _hide_actions() -> void:
+	_action_bar.hide()
+	_sub_bar.show()
+
+
+func _show_main_actions() -> void:
+	_show_actions()
+	_right_back_btn.hide()
+	_right_title.text = "\u2014"
+	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
+	_submenu_clear()
+
+
+# Detaches immediately rather than waiting on queue_free, so the very next
+# _submenu_add sees the slots as empty.
+func _submenu_clear() -> void:
+	for slot: MarginContainer in _sub_slots:
+		for child: Node in slot.get_children():
+			slot.remove_child(child)
+			child.queue_free()
+
+
+# Drops one entry into the next free slot. Both menus are capped at MENU_SLOTS,
+# so overflow is a bug rather than something to scroll past.
+func _submenu_add(control: Control) -> void:
+	for slot: MarginContainer in _sub_slots:
+		if slot.get_child_count() == 0:
+			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			slot.add_child(control)
+			return
+	push_warning("combat submenu overflowed %d slots" % MENU_SLOTS)
+	control.queue_free()
+
+
+# A slot-sized submenu entry: title on top, the detail that decides the choice
+# underneath. Built from child Labels because a Button's own text is one line.
+func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
+	var btn: Button = Button.new()
+	btn.custom_minimum_size = Vector2(0, 74)
+	btn.disabled = disabled
+
+	var box: VBoxContainer = VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.alignment    = BoxContainer.ALIGNMENT_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 1)
+	# Child labels do not inherit a Button's disabled tint, so dim them by hand.
+	box.modulate = Color(1, 1, 1, 0.38) if disabled else Color(1, 1, 1, 1)
+	btn.add_child(box)
+
+	var title_lbl: Label = Label.new()
+	title_lbl.text                 = title
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	title_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+	box.add_child(title_lbl)
+
+	if subtitle != "":
+		var sub_lbl: Label = Label.new()
+		sub_lbl.text                 = subtitle
+		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sub_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+		sub_lbl.add_theme_font_size_override("font_size", 10)
+		sub_lbl.add_theme_color_override("font_color", Color(0.66, 0.68, 0.78))
+		sub_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+		box.add_child(sub_lbl)
+
+	return btn
+
+
+# ── Casting ───────────────────────────────────────────────────────────────────
+
+func _on_skill_chosen(action: String) -> void:
+	# Healing, buffs and dispels choose no target — buffs take the whole party,
+	# debuffs take every enemy. Only the things aimed at one body ask.
+	if action.begins_with("Magic:"):
+		var data: Dictionary = Spell.get_data(action.substr(6))
+		var kind: String = data.get("type", "dmg") as String
+		if kind == "heal" or kind == "buff" or kind == "dispel":
+			await _commit_action(action)
+			return
+	_with_target(func() -> void: await _commit_action(action))
+
+
+func _cast_spell(spell_id: String) -> Dictionary:
+	var data: Dictionary = Spell.DATA.get(spell_id, {name = "Spell", mp = 8})
+	var mp_cost: int = data.get("mp", 8)
+	if player.mp < mp_cost:
+		return {msg = "[color=gray]Not enough MP![/color]", cost = PressTurn.COST_FULL}
+	player.mp -= mp_cost
+
+	var spell_type: String = data.get("type", "dmg")
+
+	if spell_type == "buff":
+		return _apply_stage_spell(data)
+
+	if spell_type == "dispel":
+		return _apply_dispel(data)
+
+	if spell_type == "ailment":
+		var target_status: String = data.get("status", "")
+		if target_status == "" or enemy.has_status(target_status):
+			return {msg = "[color=gray]Nothing happened.[/color]", cost = PressTurn.COST_FULL}
+		enemy.apply_status(target_status)
+		return {msg = "You cast %s!  [color=violet]%s is now %s.[/color]" % [
+				data["name"], enemy.display_name(),
+				Status.get_data(target_status).get("name", target_status)],
+				cost = PressTurn.COST_FULL}
+
+	if spell_type == "heal":
+		var heal_amt: int = data.get("heal", 30)
+		var before: int = player.hp
+		var bonus: int = int(float(player.effective_mag())
+				* player.stage_mult(CharacterSheet.STAT_MAG))
+		player.heal(max(1, heal_amt + bonus))
+		return {msg = "[color=lime]You cast %s! Restored %d HP.[/color]" % [
+				data["name"], player.hp - before], cost = PressTurn.COST_FULL}
+
+	var element: String = data.get("element", "")
+	var power: float = float(player.effective_mag()) \
+			* player.stage_mult(CharacterSheet.STAT_MAG)
+	var base: int = int(power * 2.0) - _guarded_def(enemy)
+	if "scholar" in player.passive_skills:
+		base = int(base * 1.25)
+	var crit: bool = CombatMath.roll_crit()
+	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit)
+	return _land_hit(res, element, "You cast %s!" % data["name"])
+
+
+# Buffs stack across the party, debuffs across the enemy line. Reporting how
+# many actually moved is what tells the player they have hit the cap.
+func _apply_stage_spell(data: Dictionary) -> Dictionary:
+	var stat: String = data.get("stat", CharacterSheet.STAT_ATK) as String
+	var delta: int   = int(data.get("delta", 1))
+	var on_party: bool = (data.get("scope", "party") == "party")
+
+	var moved: int = 0
+	var total: int = 0
+	if on_party:
+		for member: CharacterSheet in _living_party():
+			total += 1
+			if member.shift_stage(stat, delta) != 0:
+				moved += 1
+	else:
+		for foe: Enemy in _living_foes():
+			total += 1
+			if foe.shift_stage(stat, delta) != 0:
+				moved += 1
+
+	var who: String = "the party" if on_party else "every enemy"
+	if moved == 0:
+		return {msg = "[color=gray]You cast %s — %s is already at the limit.[/color]" % [
+				data["name"], who], cost = PressTurn.COST_FULL}
+	var tint: String = "aqua" if delta > 0 else "orange"
+	return {msg = "[color=%s]You cast %s!  %s %s on %d of %d.[/color]" % [
+			tint, data["name"], _stat_name(stat),
+			"rises" if delta > 0 else "falls", moved, total],
+			cost = PressTurn.COST_FULL}
+
+
+func _apply_dispel(data: Dictionary) -> Dictionary:
+	var strip_buffs: bool = (data.get("mode", "buffs") == "buffs")
+	var on_party: bool    = (data.get("scope", "foes") == "party")
+	var touched: int = 0
+	var pool: Array[CharacterSheet] = []
+	if on_party:
+		pool.assign(_living_party())
+	else:
+		for foe: Enemy in _living_foes():
+			pool.append(foe)
+	for member: CharacterSheet in pool:
+		var had: bool = false
+		for key: String in CharacterSheet.STAT_KEYS:
+			if (strip_buffs and member.stage(key) > 0) or (not strip_buffs and member.stage(key) < 0):
+				had = true
+		if not had:
+			continue
+		if strip_buffs:
+			member.clear_buffs()
+		else:
+			member.clear_debuffs()
+		touched += 1
+	if touched == 0:
+		return {msg = "[color=gray]You cast %s — there was nothing to clear.[/color]" % data["name"],
+				cost = PressTurn.COST_FULL}
+	return {msg = "[color=aqua]You cast %s!  Cleared %d.[/color]" % [data["name"], touched],
+			cost = PressTurn.COST_FULL}
+
+
+static func _stat_name(stat: String) -> String:
+	match stat:
+		CharacterSheet.STAT_ATK: return "Attack"
+		CharacterSheet.STAT_MAG: return "Magic"
+		CharacterSheet.STAT_DEF: return "Defence"
+		CharacterSheet.STAT_AGL: return "Agility"
+	return stat
+
+
+# Defence as it counts right now: the stat, the guard stance, and the stage.
+func _guarded_def(target: CharacterSheet) -> int:
+	var base: float = float(_defense_of(target)) * target.stage_mult(CharacterSheet.STAT_DEF)
+	if target.defending:
+		base *= 2.0
+	return int(base / 2.0)
+
+
+# ── Physical swings ───────────────────────────────────────────────────────────
+
+func _resolve_attack() -> Dictionary:
+	var actor: CharacterSheet = _actor()
+	if not CombatMath.lands(actor, enemy):
+		return {msg = "[color=#9aa0aa]%s swings at %s and misses![/color]" % [
+				_actor_name(), enemy.display_name()], cost = PressTurn.COST_MISS}
+	var atk: float = float(player.effective_str() if _actor_is_player() else actor.str)
+	atk *= actor.stage_mult(CharacterSheet.STAT_ATK)
+	if _actor_is_player() and "last_stand" in player.passive_skills \
+			and player.hp * 4 < player.max_hp:
+		atk *= 2.0
+	var crit: bool = CombatMath.roll_crit()
+	var res: Dictionary = CombatMath.resolve(int(atk) - _guarded_def(enemy),
+			Affinity.PHYS, enemy, crit)
+	return _land_hit(res, Affinity.PHYS, "%s strikes!" % _actor_name())
+
+
+# ── Enemy actions ─────────────────────────────────────────────────────────────
+
+func _enemy_act(actor: Enemy) -> Dictionary:
+	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
+		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
+				cost = PressTurn.COST_FULL}
+
+	# Support first: a demon that can stack a buff will, while it still has
+	# room and the MP to pay for it.
+	if actor.support_skill != "" and randi() % 10 < 3:
+		var sup: Dictionary = Spell.get_data(actor.support_skill)
+		if not sup.is_empty() and actor.mp >= int(sup.get("mp", 8)):
+			var stat: String = sup.get("stat", CharacterSheet.STAT_ATK) as String
+			var delta: int   = int(sup.get("delta", 1))
+			var on_party: bool = (sup.get("scope", "party") == "party")
+			var moved: int = 0
+			if on_party:
+				for f: Enemy in _living_foes():
+					if f.shift_stage(stat, delta) != 0:
+						moved += 1
+			else:
+				for m: CharacterSheet in _living_party():
+					if m.shift_stage(stat, delta) != 0:
+						moved += 1
+			if moved > 0:
+				actor.mp -= int(sup.get("mp", 8))
+				return {msg = "[color=%s]%s casts %s! %s %s on %d.[/color]" % [
+						"orange" if delta > 0 else "aqua", actor.display_name(),
+						sup["name"], _stat_name(stat),
+						"rises" if delta > 0 else "falls", moved],
+						cost = PressTurn.COST_FULL}
+
+	var element: String = Affinity.PHYS
+	var base: float = float(actor.str)
+	var dry: String = ""
+	if actor.attack_element != "" and randi() % 10 < 4:
+		if actor.can_afford_skill():
+			actor.mp -= actor.skill_cost()
+			element = actor.attack_element
+			base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
+		else:
+			dry = "[color=gray]%s: not enough MP![/color]\n" % actor.display_name()
+
+	var target: CharacterSheet = _pick_target(element)
+
+	# Only a swing can miss. Whatever it calls up always arrives.
+	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
+		target.defending = false
+		return {msg = dry + "[color=#9aa0aa]%s lunges at %s and misses![/color]" % [
+				actor.display_name(), _member_name(target)], cost = PressTurn.COST_MISS}
+
+	if element == Affinity.PHYS:
+		base *= actor.stage_mult(CharacterSheet.STAT_ATK)
+	var eff_def: int = _guarded_def(target)
+	target.defending = false
+
+	var crit: bool = CombatMath.roll_crit()
+	var res: Dictionary = CombatMath.resolve(int(base) - eff_def, element, target, crit)
+	var outcome: String = res["outcome"] as String
+	var dmg: int        = res["dmg"] as int
+	var tname: String   = _member_name(target)
+	var ename: String   = actor.display_name()
+	var verb: String    = "attacks" if element == Affinity.PHYS \
+			else "uses %s on" % Affinity.element_name(element)
+
+	match outcome:
+		"drain":
+			target.heal(dmg)
+			return {msg = dry + "[color=lime]%s %s %s — absorbed! %s recovers %d HP.[/color]" % [
+					ename, verb, tname, tname, dmg], cost = PressTurn.COST_LOST}
+		"repel":
+			actor.take_damage(dmg)
+			var pr: TextureRect = _foe_portrait(actor)
+			if pr != null:
+				_shake_portrait(pr)
+			return {msg = dry + "[color=#d070ff]%s %s %s — repelled! %s takes %d damage.[/color]" % [
+					ename, verb, tname, ename, dmg], cost = PressTurn.COST_LOST}
+		"null":
+			return {msg = dry + "[color=#999999]%s %s %s — no effect.[/color]" % [ename, verb, tname],
+					cost = PressTurn.COST_MISS}
+
+	target.take_damage(dmg)
+	var hit_pr: TextureRect = _member_portrait(target)
+	if hit_pr != null:
+		_shake_portrait(hit_pr)
+	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s%s" % [
+			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit),
+			_try_enemy_status(actor, target)]
+	if target == player:
+		msg += _check_counter()
+	return {msg = msg, cost = CombatMath.cost_for(outcome, crit)}
+
+
+# A compact readout of what is stacked on someone: "ATK+2 AGL-1".
+static func _format_stages(member: CharacterSheet) -> String:
+	var parts: Array[String] = []
+	for key: String in CharacterSheet.STAT_KEYS:
+		var st: int = member.stage(key)
+		if st != 0:
+			parts.append("%s%+d" % [key.to_upper(), st])
+	return "  ".join(parts)
 

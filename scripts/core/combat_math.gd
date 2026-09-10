@@ -40,6 +40,21 @@ static func resolve(base: int, element: String, target: CharacterSheet,
 	return {dmg = dmg, outcome = "hit", crit = crit}
 
 
+# Does a physical swing connect? Magic never misses — that is the Nocturne rule,
+# and it keeps the affinity chart reliable while leaving agility to decide the
+# things agility should decide. A miss costs two icons, so a slowed party bleeds
+# turns rather than damage.
+static func lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
+	var atk: float = maxf(1.0, float(attacker.battle_agility())
+			* attacker.stage_mult(CharacterSheet.STAT_AGL))
+	var eva: float = maxf(1.0, float(target.battle_agility())
+			* target.stage_mult(CharacterSheet.STAT_AGL))
+	# Ratio-based so it behaves the same at level 2 and level 20: even agility
+	# lands 95%, and four stages either way swings it roughly 95% <-> 55%.
+	var chance: float = clampf(0.95 * (atk / (atk + eva)) * 2.0, 0.30, 0.99)
+	return randf() < chance
+
+
 # Which press-turn cost an outcome carries. Repel/drain/null are checked before
 # the critical bonus so a reflected critical still ends the phase.
 static func cost_for(outcome: String, crit: bool) -> String:

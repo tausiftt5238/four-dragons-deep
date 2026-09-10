@@ -24,6 +24,13 @@ var turn_tween: Tween
 var floor_num: int = 1
 var floor_label: Label
 
+# The camera hangs off a rig at the cell centre. The rig carries the position
+# and the yaw; the camera sits a little way back along its own +Z, so turning
+# swings the viewpoint around the cell instead of pivoting on the lens. Standing
+# dead centre put a faced wall so close that its edges fell outside the frame.
+const CAM_PULLBACK: float = 0.40
+const CAM_FOV:      float = 90.0
+var cam_rig: Node3D
 var cam: Camera3D
 var torch: OmniLight3D
 var minimap_ctrl: Minimap
@@ -54,8 +61,8 @@ var menu_layer:    CanvasLayer
 var save_layer:    CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
-var _chest_popup:       Label   # brief "Found X!" label in the HUD
-var _chest_popup_tween: Tween
+var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
+var _hud_popup_tween: Tween
 
 # Canonical camera position — stored so _shake_camera always snaps back to the
 # correct grid position even when called during a shake-in-progress.
@@ -177,8 +184,13 @@ func _setup_player_nodes() -> void:
 	torch.omni_range   = 9.0
 	add_child(torch)
 
+	cam_rig = Node3D.new()
+	add_child(cam_rig)
+
 	cam = Camera3D.new()
-	add_child(cam)
+	cam.fov      = CAM_FOV
+	cam.position = Vector3(0.0, 0.0, CAM_PULLBACK)
+	cam_rig.add_child(cam)
 
 
 # Creates the CanvasLayer and Minimap control, anchored to the top-right corner.
@@ -204,17 +216,17 @@ func _setup_minimap() -> void:
 	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layer.add_child(floor_label)
 
-	_chest_popup = Label.new()
-	_chest_popup.anchor_left   = 0.0
-	_chest_popup.anchor_right  = 1.0
-	_chest_popup.anchor_top    = 1.0
-	_chest_popup.anchor_bottom = 1.0
-	_chest_popup.offset_top    = -80.0
-	_chest_popup.offset_bottom = -46.0
-	_chest_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_chest_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
-	_chest_popup.modulate.a = 0.0
-	layer.add_child(_chest_popup)
+	_hud_popup = Label.new()
+	_hud_popup.anchor_left   = 0.0
+	_hud_popup.anchor_right  = 1.0
+	_hud_popup.anchor_top    = 1.0
+	_hud_popup.anchor_bottom = 1.0
+	_hud_popup.offset_top    = -80.0
+	_hud_popup.offset_bottom = -46.0
+	_hud_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hud_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
+	_hud_popup.modulate.a = 0.0
+	layer.add_child(_hud_popup)
 
 	_encounter_debug_lbl = Label.new()
 	_encounter_debug_lbl.anchor_left   = 0.0
@@ -285,8 +297,8 @@ func _sync_player() -> void:
 		EYE_HEIGHT,
 		player_pos.y * Dungeon.CELL_SIZE
 	)
-	cam_base_pos   = pos
-	cam.position   = pos
+	cam_base_pos     = pos
+	cam_rig.position = pos
 	torch.position = pos + Vector3(0.0, 0.3, 0.0)
 	_mark_visited()
 	minimap_ctrl.player_pos    = player_pos
@@ -297,7 +309,7 @@ func _sync_player() -> void:
 # Snaps camera rotation to the current facing with no animation. Used on level load.
 func _snap_cam_yaw() -> void:
 	cam_yaw = FACING_ROT[player_facing]
-	cam.rotation = Vector3(0.0, cam_yaw, 0.0)
+	cam_rig.rotation = Vector3(0.0, cam_yaw, 0.0)
 
 
 # Smoothly rotates the camera by delta_yaw radians. Kills any in-progress turn first.
@@ -306,7 +318,7 @@ func _tween_turn(delta_yaw: float) -> void:
 	if turn_tween:
 		turn_tween.kill()
 	turn_tween = create_tween()
-	turn_tween.tween_property(cam, "rotation:y", cam_yaw, 0.12)
+	turn_tween.tween_property(cam_rig, "rotation:y", cam_yaw, 0.12)
 
 
 # Returns true if (col, row) is within bounds and not a wall.
@@ -344,8 +356,8 @@ func _shake_camera() -> void:
 			randf_range(-intensity, intensity),
 			0.0
 		)
-		tween.tween_property(cam, "position", cam_base_pos + offset, step)
-	tween.tween_property(cam, "position", cam_base_pos, step)
+		tween.tween_property(cam_rig, "position", cam_base_pos + offset, step)
+	tween.tween_property(cam_rig, "position", cam_base_pos, step)
 
 
 func _action_forward() -> void:
@@ -388,16 +400,12 @@ func _post_move() -> void:
 	_check_trap()
 	if not player_char.is_alive():
 		return
-	var found: bool = _check_chest()
 	# Walking into a roamer counts before it gets its own step, which is also
 	# what stops the two swapping straight through one another.
 	if _engage_roamer_here():
 		return
 	_step_roamers()
-	if _engage_roamer_here():
-		return
-	if not found:
-		_check_random_event()
+	_engage_roamer_here()
 
 
 func _handle_swipe(delta: Vector2) -> void:
@@ -739,28 +747,17 @@ func _show_game_over() -> void:
 	_get_overlay_layer().add_child(ui)
 
 
-# ── Chest system ──────────────────────────────────────────────────────────────
-
-func _check_chest() -> bool:
-	if not current_level.chest_items.has(player_pos):
-		return false
-	var item: Dictionary = (current_level.chest_items[player_pos] as Dictionary).duplicate()
-	current_level.chest_items.erase(player_pos)
-	dungeon.remove_chest(player_pos)
-	player_char.add_item(item)
-	_show_hud_popup("Found:  " + item["name"] + "!")
-	return true
 
 
 func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> void:
-	_chest_popup.text = text
-	_chest_popup.add_theme_color_override("font_color", color)
-	_chest_popup.modulate.a = 1.0
-	if is_instance_valid(_chest_popup_tween):
-		_chest_popup_tween.kill()
-	_chest_popup_tween = create_tween()
-	_chest_popup_tween.tween_interval(1.8)
-	_chest_popup_tween.tween_property(_chest_popup, "modulate:a", 0.0, 0.6)
+	_hud_popup.text = text
+	_hud_popup.add_theme_color_override("font_color", color)
+	_hud_popup.modulate.a = 1.0
+	if is_instance_valid(_hud_popup_tween):
+		_hud_popup_tween.kill()
+	_hud_popup_tween = create_tween()
+	_hud_popup_tween.tween_interval(1.8)
+	_hud_popup_tween.tween_property(_hud_popup, "modulate:a", 0.0, 0.6)
 
 
 func _check_step_poison() -> void:
@@ -794,109 +791,12 @@ func _check_trap() -> void:
 			_show_hud_popup("Binding Rune!  Immobilized!", Color(0.70, 0.50, 1.0))
 
 
-# ── Random dungeon events ─────────────────────────────────────────────────────
-
-func _check_random_event() -> void:
-	if randi() % 8 != 0:
-		return
-	in_combat = true
-	hud_layer.visible = false
-	match randi() % 5:
-		0: _event_coin_pouch()
-		1: _event_healing_spring()
-		2: _event_supply_cache()
-		3: _event_ancient_altar()
-		4: _event_mysterious_fog()
 
 
-func _show_event(ui: DungeonEventUI) -> void:
-	_get_overlay_layer().add_child(ui)
 
 
-func _event_coin_pouch() -> void:
-	var gold: int = 10 + randi() % 41
-	player_char.gold += gold
-	var ui: DungeonEventUI = DungeonEventUI.new()
-	ui.title       = "Coin Pouch"
-	ui.description = "You find a coin pouch on the ground.\nGained %d gold!" % gold
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		_resume_from_overlay()
-	)
-	_show_event(ui)
 
 
-func _event_healing_spring() -> void:
-	var heal_amt: int = max(1, int(player_char.max_hp * 0.20))
-	player_char.heal(heal_amt)
-	var ui: DungeonEventUI = DungeonEventUI.new()
-	ui.title       = "Healing Spring"
-	ui.description = "A hidden spring bubbles up from the stone.\nRestored %d HP!" % heal_amt
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		_resume_from_overlay()
-	)
-	_show_event(ui)
-
-
-func _event_supply_cache() -> void:
-	var item: Dictionary = Item.health_potion()
-	if current_level.has_method("_random_loot"):
-		item = current_level.call("_random_loot") as Dictionary
-	player_char.add_item(item)
-	var ui: DungeonEventUI = DungeonEventUI.new()
-	ui.title       = "Supply Cache"
-	ui.description = "You find a hidden stash in the wall.\nFound: %s!" % item["name"]
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		_resume_from_overlay()
-	)
-	_show_event(ui)
-
-
-func _event_ancient_altar() -> void:
-	var hp_cost: int  = max(1, int(player_char.max_hp * 0.15))
-	var exp_gain: int = 30 + floor_num * 10
-	var pray_cb: Callable = func():
-		player_char.take_damage(hp_cost)
-		if player_char.is_alive():
-			player_char.gain_exp(exp_gain)
-	var ui: DungeonEventUI = DungeonEventUI.new()
-	ui.title       = "Ancient Altar"
-	ui.description = "A glowing altar offers power in exchange\nfor a blood sacrifice.\n(-%d HP for +%d EXP)" % [hp_cost, exp_gain]
-	ui.choices     = [
-		{label="Pray",   callback=pray_cb},
-		{label="Ignore", callback=func(): pass},
-	]
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		if not player_char.is_alive():
-			in_combat = false
-			_show_game_over()
-		else:
-			_resume_from_overlay()
-	)
-	_show_event(ui)
-
-
-func _event_mysterious_fog() -> void:
-	var inhale_cb: Callable = func():
-		match randi() % 3:
-			0: player_char.heal(int(player_char.max_hp * 0.30))
-			1: player_char.apply_status(Status.POISON)
-			2: player_char.apply_status(Status.SILENCE)
-	var ui: DungeonEventUI = DungeonEventUI.new()
-	ui.title       = "Mysterious Fog"
-	ui.description = "A strange purple fog fills the corridor.\nDo you inhale it or hold your breath?"
-	ui.choices     = [
-		{label="Inhale",      callback=inhale_cb},
-		{label="Hold Breath", callback=func(): pass},
-	]
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		_resume_from_overlay()
-	)
-	_show_event(ui)
 
 
 # ── Menu ─────────────────────────────────────────────────────────────────────
@@ -1002,6 +902,8 @@ func _gather_save_data() -> Dictionary:
 			hp_bonus = p._hp_bonus, mp_bonus = p._mp_bonus,
 			gold = p.gold,
 			known_spells        = p.known_spells,
+			equipped_spells     = p.equipped_spells,
+			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
 			encountered_enemies = p.encountered_enemies,
 			passive_skills      = p.passive_skills,
@@ -1015,7 +917,6 @@ func _gather_save_data() -> Dictionary:
 			maze        = current_level.maze,
 			exit_wall   = [current_level.exit_wall_pos.x,   current_level.exit_wall_pos.y],
 			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
-			chest_items = SaveSystem.pack_chest_items(current_level.chest_items),
 			trap_cells  = _pack_trap_cells(current_level.trap_cells),
 			roamers     = _pack_roamers(),
 		},
@@ -1063,7 +964,6 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
 	current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
 	current_level.next_scene      = scene_path
-	current_level.chest_items     = SaveSystem.unpack_chest_items(map_data["chest_items"] as Dictionary)
 	current_level.trap_cells      = _unpack_trap_cells(map_data.get("trap_cells", {}) as Dictionary)
 	_pending_roamers              = map_data.get("roamers", []) as Array
 
@@ -1113,6 +1013,19 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.known_spells.clear()
 	player_char.known_spells.assign(pdata["known_spells"] as Array)
+	# Saves written before loadouts existed carry no equipped list; fall back to
+	# the first few known spells so those saves still have something to cast.
+	player_char.equipped_items.clear()
+	if pdata.has("equipped_items"):
+		player_char.equipped_items.assign(pdata["equipped_items"] as Array)
+
+	player_char.equipped_spells.clear()
+	if pdata.has("equipped_spells"):
+		player_char.equipped_spells.assign(pdata["equipped_spells"] as Array)
+	else:
+		for spell_id: String in player_char.known_spells:
+			if not player_char.equip_spell(spell_id):
+				break
 
 	player_char.recruited.clear()
 	player_char.recruited.assign(pdata.get("recruited", []) as Array)

@@ -20,10 +20,9 @@ func _show_submenu() -> void:
 	_s._set_back(_s._show_talk_submenu)
 	_s._right_title.text = "RECRUIT  %d/4" % _talk_trust
 	_s._right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.60))
-	for child: Node in _s._right_list.get_children():
-		child.queue_free()
+	_s._submenu_clear()
 
-	_s._right_list.add_child(_s._dim_label("Round %d of 2" % (3 - _talk_rounds)))
+	_s._submenu_add(_s._dim_label("Round %d of 2" % (3 - _talk_rounds)))
 
 	var opts: Array[Array] = [
 		["Flatter", "\"You're incredible!\""],
@@ -34,9 +33,9 @@ func _show_submenu() -> void:
 		var btn: Button = Button.new()
 		var key: String = opt[0] as String
 		btn.text                = opt[1] as String
-		btn.custom_minimum_size = Vector2(0, 28)
+		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(func() -> void: await _resolve(key))
-		_s._right_list.add_child(btn)
+		_s._submenu_add(btn)
 
 
 func _resolve(approach: String) -> void:
