@@ -11,7 +11,7 @@ signal save_requested
 var player: PlayerCharacter
 var floor_num: int = 1
 
-var _tab: String = "bind"
+var _tab: String = "rest"
 var _content: VBoxContainer
 var _status: Label
 var _gold_lbl: Label
@@ -64,7 +64,8 @@ func _build() -> void:
 	var tabs: HBoxContainer = HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	col.add_child(tabs)
-	for pair: Array in [["bind", "Bind a demon"], ["buy", "Supplies"], ["save", "Record the run"]]:
+	for pair: Array in [["rest", "Rest"], ["bind", "Bind a demon"],
+			["buy", "Supplies"], ["save", "Record the run"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -99,6 +100,7 @@ func _switch(tab: String) -> void:
 		child.queue_free()
 	_gold_lbl.text = "GOLD:  %d" % player.gold
 	match tab:
+		"rest": _build_rest()
 		"bind": _build_bind()
 		"buy":  _build_buy()
 		"save": _build_save()
@@ -110,6 +112,107 @@ func _refresh() -> void:
 
 func _set_status(msg: String) -> void:
 	_status.text = msg
+
+
+# ── Rest ──────────────────────────────────────────────────────────────────────
+#
+# Paid, and priced on what is actually missing, so limping into an orb with one
+# HP costs real money while topping off after a scratch costs almost nothing.
+# Free healing at two or three orbs a floor would make attrition meaningless.
+
+static func hp_price(p: PlayerCharacter) -> int:
+	var missing: int = p.max_hp - p.hp
+	return 0 if missing <= 0 else maxi(10, roundi(missing * 0.8))
+
+
+static func mp_price(p: PlayerCharacter) -> int:
+	var missing: int = p.max_mp - p.mp
+	return 0 if missing <= 0 else maxi(10, missing * 2)
+
+
+const CURE_PRICE: int = 40
+
+
+func _build_rest() -> void:
+	_content.add_child(_note(
+		"The orb will mend what it can, for a price. Your demons come back whole on their own."))
+
+	var vitals: Label = Label.new()
+	vitals.text = "HP  %d / %d        MP  %d / %d" % [
+			player.hp, player.max_hp, player.mp, player.max_mp]
+	vitals.add_theme_color_override("font_color",
+			CombatScene.hp_tint(player.hp, player.max_hp))
+	_content.add_child(vitals)
+
+	if not player.active_statuses.is_empty():
+		var names: Array[String] = []
+		for st: String in player.active_statuses:
+			names.append(Status.get_data(st).get("name", st) as String)
+		var ail: Label = Label.new()
+		ail.text = "Afflicted:  %s" % "  ".join(names)
+		ail.add_theme_color_override("font_color", Color(0.90, 0.78, 0.30))
+		_content.add_child(ail)
+
+	_content.add_child(HSeparator.new())
+
+	_content.add_child(_rest_row("Mend wounds", "Restores every point of HP.",
+			hp_price(player), player.hp >= player.max_hp,
+			func() -> void:
+				player.hp = player.max_hp
+				_set_status("Your wounds close.")))
+
+	_content.add_child(_rest_row("Refill the well", "Restores every point of MP.",
+			mp_price(player), player.mp >= player.max_mp,
+			func() -> void:
+				player.mp = player.max_mp
+				_set_status("The well is full again.")))
+
+	_content.add_child(_rest_row("Draw off the poison", "Clears every ailment.",
+			CURE_PRICE, player.active_statuses.is_empty(),
+			func() -> void:
+				player.active_statuses.clear()
+				_set_status("Whatever was in you is gone.")))
+
+
+func _rest_row(title: String, desc: String, price: int, nothing_to_do: bool,
+		apply: Callable) -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+
+	var name_lbl: Label = Label.new()
+	name_lbl.text = title
+	name_lbl.custom_minimum_size = Vector2(190, 0)
+	name_lbl.add_theme_color_override("font_color",
+		Color(0.50, 0.52, 0.58) if nothing_to_do else Color(0.85, 0.85, 0.92))
+	row.add_child(name_lbl)
+
+	var desc_lbl: Label = Label.new()
+	desc_lbl.text = desc
+	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_lbl.add_theme_color_override("font_color", Color(0.66, 0.66, 0.74))
+	row.add_child(desc_lbl)
+
+	var price_lbl: Label = Label.new()
+	price_lbl.text = "—" if nothing_to_do else "%d g" % price
+	price_lbl.custom_minimum_size = Vector2(80, 0)
+	price_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+	row.add_child(price_lbl)
+
+	var btn: Button = Button.new()
+	btn.custom_minimum_size = Vector2(96, 28)
+	btn.text = "Nothing to do" if nothing_to_do else "Pay"
+	btn.disabled = nothing_to_do or player.gold < price
+	if not nothing_to_do:
+		btn.pressed.connect(func() -> void:
+			if player.gold < price:
+				_set_status("Not enough gold.")
+			else:
+				player.gold -= price
+				apply.call()
+			_refresh()
+		)
+	row.add_child(btn)
+	return row
 
 
 # ── Binding ───────────────────────────────────────────────────────────────────

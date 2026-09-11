@@ -118,7 +118,6 @@
     font-size: clamp(34px, 6vw, 56px);
     line-height: 1.02;
     letter-spacing: -.02em;
-    margin: 0;
     text-wrap: balance;
   }
 
@@ -128,7 +127,6 @@
     line-height: 1.55;
     color: var(--ink-2);
     max-width: 62ch;
-    margin: 0;
   }
 
   .standfirst em { color: var(--ink); font-style: italic; }
@@ -212,7 +210,6 @@
     font-family: "Spectral", Georgia, serif;
     font-size: 21px;
     font-weight: 600;
-    margin: 0;
     flex: 1;
   }
 
@@ -270,14 +267,12 @@
   .body { grid-column: 1; display: flex; flex-direction: column; gap: 11px; }
 
   .desc {
-    margin: 0;
     max-width: 64ch;
     font-size: 16.5px;
     line-height: 1.62;
   }
 
   .tell {
-    margin: 0;
     max-width: 64ch;
     font-size: 14.5px;
     line-height: 1.55;
@@ -469,191 +464,191 @@
     .atk   { grid-column: 1; grid-row: auto; text-align: left; margin-top: 0; }
     .ident h3 { font-size: 24px; }
   }
+
+  .tier-blurb {
+    margin: 10px 0 0;
+    max-width: 72ch;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header class="masthead">
-    <p class="eyebrow">Roster draft · 20 entries · nothing borrowed from worship</p>
+    <p class="eyebrow">Roster draft two · 20 entries · re-tiered · nothing borrowed from worship</p>
     <h1>The Affliction Registry</h1>
-    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to — they are invented whole, and shaped as <em>afflictions</em>: things that nest in a mind and can be diagnosed from the outside. Every entry's appearance is written to give away its affinity chart, so a player who looks carefully can work out what to hit it with before spending a turn finding out.</p>
+    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to. Every entry's appearance gives away its affinity chart — and this draft orders them so that <em>each tier is answerable with the kit you actually have when you reach it</em>, which the first draft got wrong.</p>
   </header>
 
   <section class="legend">
     <h2>Affinity states, and what each costs in press turns</h2>
     <div class="legend-grid">
-      <div class="legend-item li-weak">
-        <span class="st">WEAK</span>
-        <span class="cost">Double damage. Costs half an icon — the reason to scout.</span>
-      </div>
-      <div class="legend-item li-resist">
-        <span class="st">RESIST</span>
-        <span class="cost">Half damage. Still a full icon. Wasteful, not fatal.</span>
-      </div>
-      <div class="legend-item li-null">
-        <span class="st">NULL</span>
-        <span class="cost">No damage, and it costs two icons. Punishing.</span>
-      </div>
-      <div class="legend-item li-repel">
-        <span class="st">REPEL</span>
-        <span class="cost">Thrown back at the caster. Your phase ends on the spot.</span>
-      </div>
-      <div class="legend-item li-drain">
-        <span class="st">DRAIN</span>
-        <span class="cost">It heals for the damage. Your phase ends on the spot.</span>
-      </div>
+      <div class="legend-item li-weak"><span class="st">WEAK</span><span class="cost">Double damage, half an icon — unless the target is guarding, which denies both.</span></div>
+      <div class="legend-item li-resist"><span class="st">RESIST</span><span class="cost">Half damage, still a full icon. Wasteful, not fatal.</span></div>
+      <div class="legend-item li-null"><span class="st">NULL</span><span class="cost">No damage, and it costs two icons. Punishing.</span></div>
+      <div class="legend-item li-repel"><span class="st">REPEL</span><span class="cost">Thrown back at the caster. Your phase ends on the spot.</span></div>
+      <div class="legend-item li-drain"><span class="st">DRAIN</span><span class="cost">It heals for the damage. Your phase ends on the spot.</span></div>
     </div>
   </section>
 
-  <!-- ══ TIER I ══════════════════════════════════════════════ -->
   <section class="tier">
     <div class="tier-head">
       <span class="tier-num">I</span>
-      <h2 class="tier-name">Small habits</h2>
-      <span class="tier-floors">Floors 1–2 · 1 icon</span>
+      <h2 class="tier-name">What the first floor has</h2>
+      <span class="tier-floors">Floors 1–2 · LV 2–4 · 5% ailments · 1 icon</span>
     </div>
-
+    <p class="tier-blurb">Every one of these answers to a blade or to Fire, and not one of them nulls, repels or drains anything. The first floor teaches; it does not punish.</p>
     <article class="entry">
       <div class="ident">
         <h3>Nagwort</h3>
-        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 1</span><span class="sep">/</span><span>Inflicts: —</span></p>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Gain · diff 1</span><span class="sep">/</span><span>Inflicts: —</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">Knee-high and hunched, woven entirely out of chewed fingernails and pulled hair. It always stands facing away from you, and only turns when you look at something else. Rooms it has been in smell like a cold bathroom.</p>
-        <p class="tell"><b>Tell</b> It is made of keratin. Anything dry enough to hold that shape goes up.</p>
+        <p class="tell"><b>Tell</b> Small, dry, and made of keratin. A blade finds it and so does a flame — the first thing you meet has no answer to either.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Thrum</h3>
-        <p class="subline"><span class="align">Neutral · Dark</span><span class="sep">/</span><span>Talk: Survival · diff 1</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+        <p class="subline"><span class="align">Neutral · Dark</span><span class="sep">/</span><span>Survival · diff 1</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">A human outline packed out of grey moths, all beating out of sync. Blades pass straight through and it re-forms a foot to the left. The sound it makes is the one you hear when a room goes completely quiet.</p>
-        <p class="tell"><b>Tell</b> It has no body to cut, and it is a cloud of small wings. One charge earths the whole swarm at once.</p>
+        <p class="tell"><b>Tell</b> There is no body to cut. But it is a thousand dry wings, and moths have never been able to leave a flame alone.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
-        <h3>Kindleweep</h3>
-        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 1</span><span class="sep">/</span><span>Inflicts: —</span></p>
+        <h3>The Tallyman</h3>
+        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
-        <p class="desc">Child-sized and made of wet ash. It strikes itself over and over trying to catch, never manages it, and sobs steam between attempts. When there is a flame anywhere in the room it stops and reaches toward it — including yours.</p>
-        <p class="tell"><b>Tell</b> It is visibly reaching for your torch. Do not give it what it is asking for.</p>
-      </div>
-      <p class="atk">Attacks with Fire</p>
-    </article>
-
-    <article class="entry">
-      <div class="ident">
-        <h3>Sillage</h3>
-        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 2</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
-      </div>
-      <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
-      </div>
-      <div class="body">
-        <p class="desc">The shape of a woman who has just left the room, held up by nothing but her own perfume. She is only ever there in the corner of your eye; looking straight at her thins her out until she is a smell and a suggestion.</p>
-        <p class="tell"><b>Tell</b> There is nothing there to hit — swinging at her wastes two icons. She is suspended in the air, so charge the air.</p>
+        <p class="desc">A bookkeeper with far too many fingers, each one ending in a stylus. He scores marks into his own forearms while he watches you, and both forearms are already full. He is not counting what you own. He is counting what you have not done.</p>
+        <p class="tell"><b>Tell</b> A clerk, not a fighter — thin arms, soft hands, and a body made mostly of paper. You do not buy him off; you show him the sum is wrong.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
-        <h3>Gristlebone</h3>
-        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 2</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+        <h3>Grinner</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Gain · diff 2</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
-        <p class="desc">A knot of knuckles and joints with no limbs in between, walking on eight small hands. It pops and cracks without stopping, the sound of someone flexing their fingers directly behind you.</p>
-        <p class="tell"><b>Tell</b> All joint and no flesh — a blade finds nothing to part. Brittle things break in the cold.</p>
+        <p class="desc">It is wearing the clothes of whoever's mind you are standing in, and their face, except there is nothing above the mouth. Just a smile that has been widened by hand, well past the point where a mouth is supposed to stop.</p>
+        <p class="tell"><b>Tell</b> Whatever else it is, it is walking around in a body. Bodies come apart.</p>
+      </div>
+    </article>
+    <article class="entry">
+      <div class="ident">
+        <h3>The Understudy</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Flatter · diff 2</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">It wears the face of someone the victim lost, and it wears it badly — proportions a few percent wrong, blinking a half-second too slow, the seams visible along the jaw where the face was fitted. It wants very much for you to accept it anyway.</p>
+        <p class="tell"><b>Tell</b> You can see the seams. Anything held together that poorly comes apart under a blade, and anything that wants to be loved will listen if you tell it that it is.</p>
       </div>
     </article>
   </section>
 
-  <!-- ══ TIER II ═════════════════════════════════════════════ -->
   <section class="tier">
     <div class="tier-head">
       <span class="tier-num">II</span>
-      <h2 class="tier-name">Things wearing someone</h2>
-      <span class="tier-floors">Floors 2–4 · 1 icon</span>
+      <h2 class="tier-name">Where an element starts to matter</h2>
+      <span class="tier-floors">Floors 2–3 · LV 5–7 · 12% ailments · 1 icon</span>
     </div>
-
+    <p class="tier-blurb">Ice becomes the answer to half of these, and the first drains appear — the wrong element now costs the phase rather than just a turn.</p>
+    <article class="entry">
+      <div class="ident">
+        <h3>Gristlebone</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Gain · diff 2</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A knot of knuckles and joints with no limbs in between, walking on eight small hands. It pops and cracks without stopping, the sound of someone flexing their fingers directly behind you.</p>
+        <p class="tell"><b>Tell</b> It is nothing but joints, and a joint is the one place a blade always knows what to do. Cold means nothing to bare bone.</p>
+      </div>
+    </article>
+    <article class="entry">
+      <div class="ident">
+        <h3>Meatlace</h3>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A lattice of tendon strung corner to corner across a doorway like a web, dragging itself along by contracting. There is nothing behind it doing the thinking. It is hungry and it is in the way, and those are the same fact.</p>
+        <p class="tell"><b>Tell</b> Dry sinew stretched thin. It has no mouth to talk with, so do not waste the icon trying.</p>
+      </div>
+    </article>
     <article class="entry">
       <div class="ident">
         <h3>Hollowmarrow</h3>
-        <p class="subline"><span class="align">Neutral · Dark</span><span class="sep">/</span><span>Talk: Survival · diff 2</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
+        <p class="subline"><span class="align">Neutral · Dark</span><span class="sep">/</span><span>Survival · diff 2</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">Very tall, very thin, skin stretched over an absence. Where the organs should sit there is a draft instead, and when it turns toward you, you can see your own breath.</p>
-        <p class="tell"><b>Tell</b> Your breath fogs in front of it. Cold is its own supply.</p>
+        <p class="tell"><b>Tell</b> Your breath fogs in front of it. Cold is its own supply — the first demon that punishes the wrong guess.</p>
       </div>
       <p class="atk">Attacks with Ice</p>
     </article>
-
-    <article class="entry">
-      <div class="ident">
-        <h3>The Tallyman</h3>
-        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
-      </div>
-      <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
-      </div>
-      <div class="body">
-        <p class="desc">A bookkeeper with far too many fingers, each one ending in a stylus. He scores marks into his own forearms while he watches you, and both forearms are already full. He is not counting what you own. He is counting what you have not done.</p>
-        <p class="tell"><b>Tell</b> He is a clerk, not a fighter — thin arms, soft hands. You do not buy him off; you show him the sum is wrong.</p>
-      </div>
-    </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Cinderjaw</h3>
-        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 2</span><span class="sep">/</span><span>Inflicts: —</span></p>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Gain · diff 2</span><span class="sep">/</span><span>Inflicts: —</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">Dog-shaped, except the lower jaw is a hanging furnace door that will not close. It pants embers onto the floor as it circles, and the heat comes off it in a shimmer you can see through.</p>
@@ -661,147 +656,90 @@
       </div>
       <p class="atk">Attacks with Fire</p>
     </article>
-
     <article class="entry">
       <div class="ident">
-        <h3>Static Choir</h3>
-        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+        <h3>Kindleweep</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Flatter · diff 1</span><span class="sep">/</span><span>Inflicts: —</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-repel">REPEL</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
-        <p class="desc">Three faces sharing one throat, each singing a note a quarter-tone off the others. Near it the air tastes of copper and your fillings ache. It will hold the chord for as long as you let it.</p>
-        <p class="tell"><b>Tell</b> Copper in your mouth before it has done anything. Send current at that and it comes straight back.</p>
+        <p class="desc">Child-sized and made of wet ash. It strikes itself over and over trying to catch, never manages it, and sobs steam between attempts. When there is a flame anywhere in the room it stops and reaches toward it — including yours.</p>
+        <p class="tell"><b>Tell</b> It is visibly reaching for your torch. Do not give it what it is asking for.</p>
       </div>
-      <p class="atk">Attacks with Thunder</p>
-    </article>
-
-    <article class="entry">
-      <div class="ident">
-        <h3>Meatlace</h3>
-        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
-      </div>
-      <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
-      </div>
-      <div class="body">
-        <p class="desc">A lattice of tendon strung corner to corner across a doorway like a web, dragging itself along by contracting. There is nothing behind it doing the thinking. It is hungry and it is in the way, and those are the same fact.</p>
-        <p class="tell"><b>Tell</b> Dry sinew stretched thin. It has no mouth to talk with, so do not waste the icon trying.</p>
-      </div>
-    </article>
-
-    <article class="entry">
-      <div class="ident">
-        <h3>Grinner</h3>
-        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 2</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
-      </div>
-      <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
-      </div>
-      <div class="body">
-        <p class="desc">It is wearing the clothes of whoever's mind you are standing in, and their face, except there is nothing above the mouth. Just a smile that has been widened by hand, well past the point where a mouth is supposed to stop.</p>
-        <p class="tell"><b>Tell</b> Whatever else it is, it is walking around in a body. Bodies come apart.</p>
-      </div>
+      <p class="atk">Attacks with Fire</p>
     </article>
   </section>
 
-  <!-- ══ TIER III ════════════════════════════════════════════ -->
   <section class="tier">
     <div class="tier-head">
       <span class="tier-num">III</span>
-      <h2 class="tier-name">Settled in</h2>
-      <span class="tier-floors">Floors 3–5 · 1–2 icons</span>
+      <h2 class="tier-name">All four, and the first nulls</h2>
+      <span class="tier-floors">Floors 3–4 · LV 8–11 · 18% ailments · 1–2 icons</span>
     </div>
-
+    <p class="tier-blurb">Every element opens something here and every element is refused by something. This is the tier the bestiary is for.</p>
     <article class="entry">
       <div class="ident">
-        <h3>Verdigrease</h3>
-        <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Poison</span></p>
+        <h3>Sillage</h3>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Flatter · diff 2</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
-        <p class="desc">Something that was shaped like an angel once and has gone green with corrosion since, wings oxidised shut into one solid sheet. It weeps a caustic slick that eats the floor under it, and holds a posture of blessing it can no longer complete.</p>
-        <p class="tell"><b>Tell</b> It is copper all the way through, and copper is what you run current down. Corrosion burns.</p>
-      </div>
-      <p class="atk">Attacks with Thunder</p>
-    </article>
-
-    <article class="entry">
-      <div class="ident">
-        <h3>The Understudy</h3>
-        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 2</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
-      </div>
-      <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
-      </div>
-      <div class="body">
-        <p class="desc">It wears the face of someone the victim lost, and it wears it badly — proportions a few percent wrong, blinking a half-second too slow, the seams visible along the jaw where the face was fitted. It wants very much for you to accept it anyway.</p>
-        <p class="tell"><b>Tell</b> You can see the seams. Anything held together that poorly comes apart under a blade, and anything that wants to be loved will listen if you tell it that it is.</p>
+        <p class="desc">The shape of a woman who has just left the room, held up by nothing but her own perfume. She is only ever there in the corner of your eye; looking straight at her thins her out until she is a smell and a suggestion.</p>
+        <p class="tell"><b>Tell</b> There is nothing there to hit — swinging at her wastes two icons. She is suspended in the air, so charge the air.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Ossuara</h3>
         <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize · 2 icons</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-null">NULL</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">A cathedral of ribs walking on femur stilts. In the vault where a heart would hang there is a nest of small skulls, and all of them are singing, and none of them is singing the same thing.</p>
         <p class="tell"><b>Tell</b> It is architecture. Cold does nothing to stone or bone; weight brings both down.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Fenwrack</h3>
-        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Talk: Gain · diff 3</span><span class="sep">/</span><span>Inflicts: Poison</span></p>
+        <p class="subline"><span class="align">Chaos · Dark</span><span class="sep">/</span><span>Gain · diff 3</span><span class="sep">/</span><span>Inflicts: Poison</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">Waterlogged so far past a shape that the shape is only a habit now. It drags a net behind it holding everything it has ever drowned, and none of that is finished drowning.</p>
         <p class="tell"><b>Tell</b> Your torch guts and gutters when it comes near. Soaked things do not burn — but they conduct beautifully.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Sootmother</h3>
-        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Poison · 2 icons</span></p>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Poison · 2 icons</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">Swollen, packed solid with chimney soot, and breathing out infants made of smoke that come apart before they reach the floor. She does this continuously. She does not appear to have noticed that they do not land.</p>
@@ -809,26 +747,59 @@
       </div>
       <p class="atk">Attacks with Fire</p>
     </article>
+    <article class="entry">
+      <div class="ident">
+        <h3>Verdigrease</h3>
+        <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Poison</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-drain">DRAIN</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Something that was shaped like an angel once and has gone green with corrosion since, wings oxidised shut into one solid sheet. It weeps a caustic slick that eats the floor under it, and holds a posture of blessing it can no longer complete.</p>
+        <p class="tell"><b>Tell</b> It is copper all the way through, and copper is what you run current down. Corrosion burns.</p>
+      </div>
+      <p class="atk">Attacks with Thunder</p>
+    </article>
   </section>
 
-  <!-- ══ TIER IV ═════════════════════════════════════════════ -->
   <section class="tier">
     <div class="tier-head">
       <span class="tier-num">IV</span>
       <h2 class="tier-name">Load-bearing</h2>
-      <span class="tier-floors">Floors 4+ · 2 icons</span>
+      <span class="tier-floors">Floors 4+ · LV 12–15 · 25% ailments · 2 icons</span>
     </div>
-
+    <p class="tier-blurb">Three of the five throw something back at you. Guessing here does not cost damage, it costs the phase.</p>
+    <article class="entry">
+      <div class="ident">
+        <h3>Static Choir</h3>
+        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-repel">REPEL</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Three faces sharing one throat, each singing a note a quarter-tone off the others. Near it the air tastes of copper and your fillings ache. It will hold the chord for as long as you let it.</p>
+        <p class="tell"><b>Tell</b> Copper in your mouth before it has done anything. Send current at that and it comes straight back.</p>
+      </div>
+      <p class="atk">Attacks with Thunder</p>
+    </article>
     <article class="entry">
       <div class="ident">
         <h3>Coldsmith</h3>
-        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Talk: Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
+        <p class="subline"><span class="align">Law · Neutral</span><span class="sep">/</span><span>Logic · diff 3</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">He works a forge that runs backwards — it takes the heat out of whatever is put in. His hands are frostbitten black to the wrist and he does not favour them. The piece on the anvil is always the same piece, and it is never finished.</p>
@@ -836,51 +807,48 @@
       </div>
       <p class="atk">Attacks with Ice</p>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Gallowglass</h3>
         <p class="subline"><span class="align">Law · Dark</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Paralyze</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-repel">REPEL</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-repel">REPEL</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">A hanged silhouette assembled out of window glass, turning slowly on nothing. The reflections held in it are of rooms you have not walked into yet, and in some of them you are already there.</p>
         <p class="tell"><b>Tell</b> It is glass. Hitting glass is how you get cut. Do that and your phase is over on the spot.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>The Long Patient</h3>
-        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">A body under a sheet on a gurney, parked at the far end of the corridor — and at the far end of whichever corridor you turn down to get away from it. There are too many feet under the sheet. The sheet has never once moved.</p>
         <p class="tell"><b>Tell</b> Whatever is under there is not where the sheet is. Striking it accomplishes nothing at all, twice over.</p>
       </div>
     </article>
-
     <article class="entry">
       <div class="ident">
         <h3>Mourncoil</h3>
-        <p class="subline"><span class="align">Neutral · Light</span><span class="sep">/</span><span>Talk: Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+        <p class="subline"><span class="align">Neutral · Neutral</span><span class="sep">/</span><span>Flatter · diff 3</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
       </div>
       <div class="chart">
-        <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
-        <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
-        <div class="cell"><span class="el">ICE</span><span class="st s-repel">REPEL</span></div>
-        <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-repel">REPEL</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
       </div>
       <div class="body">
         <p class="desc">A column of black hair and mourning veil wound tight into a spiral two storeys high. Somewhere inside it a woman is still turning, and has been turning for a very long time, and the spiral is what she has turned into.</p>
@@ -890,63 +858,32 @@
     </article>
   </section>
 
-  <!-- ══ MATRIX ══════════════════════════════════════════════ -->
   <section class="matrix">
-    <h2>Coverage — who each element opens, and who punishes it</h2>
+    <h2>What each tier opens, and what it refuses</h2>
     <div class="table-scroll">
       <table>
         <thead>
-          <tr>
-            <th scope="col">Element</th>
-            <th scope="col">Opens (weak)</th>
-            <th scope="col">Punishes (null / repel / drain)</th>
-          </tr>
+          <tr><th scope="col">Tier</th><th scope="col">Weak to</th><th scope="col">Punishing states</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <th scope="row">PHYS</th>
-            <td class="hit">Tallyman, Grinner, Understudy, Ossuara</td>
-            <td class="punish">Sillage, Long Patient (null) · Gallowglass (repel)</td>
-          </tr>
-          <tr>
-            <th scope="row">FIRE</th>
-            <td class="hit">Nagwort, Hollowmarrow, Meatlace, Verdigrease, Long Patient, Mourncoil</td>
-            <td class="punish">Fenwrack, Coldsmith (null) · Kindleweep, Cinderjaw, Sootmother (drain)</td>
-          </tr>
-          <tr>
-            <th scope="row">ICE</th>
-            <td class="hit">Kindleweep, Gristlebone, Cinderjaw, Static Choir, Sootmother</td>
-            <td class="punish">Ossuara (null) · Mourncoil (repel) · Hollowmarrow, Coldsmith, Long Patient (drain)</td>
-          </tr>
-          <tr>
-            <th scope="row">THUNDER</th>
-            <td class="hit">Thrum, Sillage, Fenwrack, Coldsmith, Gallowglass</td>
-            <td class="punish">Static Choir (repel) · Verdigrease (drain)</td>
-          </tr>
+          <tr><th scope="row">I</th><td class="hit">PHYS 4   FIRE 3   ICE 0   THUNDER 0</td><td class="punish">nothing</td></tr>
+          <tr><th scope="row">II</th><td class="hit">PHYS 1   FIRE 2   ICE 2   THUNDER 0</td><td class="punish">ICE drain, FIRE drain, FIRE drain</td></tr>
+          <tr><th scope="row">III</th><td class="hit">PHYS 1   FIRE 1   ICE 1   THUNDER 2</td><td class="punish">PHYS null, ICE null, FIRE null, FIRE drain, THUNDER drain</td></tr>
+          <tr><th scope="row">IV</th><td class="hit">PHYS 0   FIRE 2   ICE 1   THUNDER 2</td><td class="punish">THUNDER repel, FIRE null, ICE drain, PHYS repel, PHYS null, ICE drain, ICE repel</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- ══ NOTES ═══════════════════════════════════════════════ -->
   <section class="note">
-    <h2>Three things baked into the roster</h2>
-
-    <p><b>Alignment tells you which Talk option lands.</b> It is not flavour — it maps one-to-one onto the four negotiation personalities already in the code, with no exceptions anywhere in these twenty. Learn the rule once and every demon's alignment is a hint:</p>
-
-    <ul class="rule-list">
-      <li><b>Law</b><span>Answers to <strong>Logic</strong>. Argue that the arithmetic is wrong.</span></li>
-      <li><b>Chaos</b><span>Answers to <strong>Gain</strong>. Ask what it actually gets out of this.</span></li>
-      <li><b>Neutral · Light</b><span>Answers to <strong>Flatter</strong> or <strong>Safety</strong>. It wants to be wanted.</span></li>
-      <li><b>Neutral · Dark</b><span>Answers to <strong>Survival</strong>. It would rather not be here either.</span></li>
-    </ul>
-
-    <p><b>Talk difficulty stops at 3 on purpose.</b> The trust formula is <code>max(0, randi()%4 + 2 − difficulty)</code> against a threshold of 4 over two rounds, so at difficulty 4 a single round can never gain more than 1 and recruitment becomes arithmetically impossible. Difficulty 3 is already a 6% coin-flip. Three demons here refuse outright instead — a mindless thing that will not talk is honest, an impossible check is not.</p>
-
-    <p><b>Every appearance gives away its chart.</b> Soaked things do not burn. Glass cuts the hand that strikes it. A thing reaching for your torch should not be handed fire. This is what makes the roster diagnosable rather than memorisable — the player reads the room, not the wiki.</p>
+    <h2>Why the order is the design</h2>
+    <p><b>A tier is only balanced if it is balanced against what the player is holding.</b> The first draft of this roster had an even spread <em>overall</em> — four phys, six fire, five ice, five thunder — and read as balanced. Tallied per tier it was not: floor one had <em>zero</em> demons weak to a blade, one weak to Fire, and contained both a fire drain and a phys null. The detective starts with a blade and Fire. The first floor punished both of the only two things he owns.</p>
+    <p><b>So the punishing states are staged rather than sprinkled.</b> Tier I has none at all. Tier II introduces drains. Tier III introduces nulls. Tier IV is where things throw your own attack back at you. Each tier stays answerable with the kit you plausibly have by the time you reach it.</p>
+    <p><b>Alignment still tells you which Talk option lands</b>, one-to-one with no exceptions: Law answers to <strong>Logic</strong>, Chaos to <strong>Gain</strong>, Neutral·Light to <strong>Flatter</strong>, Neutral·Dark to <strong>Survival</strong>.</p>
+    <p><b>Talk difficulty still stops at 3.</b> At 4 a single round can never gain more than one point against a threshold of four, so recruitment becomes arithmetically impossible. Three demons refuse outright instead, which is honest where an unreachable check is not.</p>
   </section>
 
-  <footer>Draft one · 20 of 20 · bosses not yet written</footer>
+  <footer>Draft two · 20 of 20 · re-tiered so each floor answers to the kit you have · bosses not yet written</footer>
 
 </div>
 </body>
