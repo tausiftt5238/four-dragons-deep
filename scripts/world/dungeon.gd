@@ -17,6 +17,7 @@ func build(level: Level) -> void:
 	if level.exit_pos.x >= 0 and level.exit_wall_pos.x >= 0:
 		_add_exit_marker(level.exit_wall_pos, level.exit_pos)
 	_add_trap_markers(level)
+	_add_orbs(level)
 	_setup_environment()
 
 
@@ -225,6 +226,62 @@ func _add_wall_label(text: String, pos: Vector3, dir: Vector2i, color: Color) ->
 	lbl.scale.x          = -1.0
 	add_child(lbl)
 
+
+
+# A save orb: a pale, slowly turning shard hanging at eye height. Cold white so
+# it never reads as one of the burning things walking the floor.
+func _add_orbs(level: Level) -> void:
+	for pos: Vector2i in level.orb_cells:
+		_add_orb(pos)
+
+
+func _add_orb(pos: Vector2i) -> void:
+	var root: Node3D = Node3D.new()
+	root.position = Vector3(pos.x * CELL_SIZE, 1.0, pos.y * CELL_SIZE)
+	add_child(root)
+
+	var core_mat: StandardMaterial3D = StandardMaterial3D.new()
+	core_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	core_mat.albedo_color = Color(0.86, 0.96, 1.0)
+	core_mat.emission_enabled = true
+	core_mat.emission = Color(0.70, 0.92, 1.0)
+	core_mat.emission_energy_multiplier = 2.2
+
+	var core: MeshInstance3D = MeshInstance3D.new()
+	var shard: SphereMesh = SphereMesh.new()
+	shard.radius = 0.16
+	shard.height = 0.52
+	shard.radial_segments = 6
+	shard.rings = 3
+	core.mesh = shard
+	core.material_override = core_mat
+	root.add_child(core)
+
+	var halo_mat: StandardMaterial3D = StandardMaterial3D.new()
+	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	halo_mat.blend_mode   = BaseMaterial3D.BLEND_MODE_ADD
+	halo_mat.cull_mode    = BaseMaterial3D.CULL_FRONT
+	halo_mat.albedo_color = Color(0.55, 0.85, 1.0, 0.22)
+	var halo: MeshInstance3D = MeshInstance3D.new()
+	var halo_mesh: SphereMesh = SphereMesh.new()
+	halo_mesh.radius = 0.34
+	halo_mesh.height = 0.68
+	halo_mesh.radial_segments = 12
+	halo_mesh.rings = 6
+	halo.mesh = halo_mesh
+	halo.material_override = halo_mat
+	root.add_child(halo)
+
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color  = Color(0.65, 0.88, 1.0)
+	light.light_energy = 1.8
+	light.omni_range   = 5.0
+	root.add_child(light)
+
+	# A slow turn, so it reads as alive from down a corridor.
+	var spin: Tween = create_tween().set_loops()
+	spin.tween_property(core, "rotation:y", TAU, 6.0).from(0.0)
 
 
 # Colored floor overlay for each trap cell so the player can see them.

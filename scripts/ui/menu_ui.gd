@@ -4,7 +4,6 @@
 class_name MenuUI extends Control
 
 signal menu_closed
-signal save_requested
 signal load_requested
 
 
@@ -52,7 +51,7 @@ func _build_shell() -> void:
 	sidebar.custom_minimum_size = Vector2(138, 0)
 	hbox.add_child(sidebar)
 
-	for tab_id: String in ["stats", "items", "equipment", "magic", "bestiary"]:
+	for tab_id: String in ["stats", "party", "items", "equipment", "magic", "bestiary"]:
 		var btn: Button = Button.new()
 		btn.text        = tab_id.capitalize()
 		btn.toggle_mode = true
@@ -67,13 +66,6 @@ func _build_shell() -> void:
 	sidebar.add_child(spacer)
 
 	sidebar.add_child(HSeparator.new())
-
-	var save_btn: Button = Button.new()
-	save_btn.text = "Save  [F5]"
-	save_btn.custom_minimum_size   = Vector2(0, 32)
-	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save_btn.pressed.connect(func(): save_requested.emit())
-	sidebar.add_child(save_btn)
 
 	var load_btn: Button = Button.new()
 	load_btn.text = "Load  [F9]"
@@ -135,6 +127,7 @@ func _switch_tab(tab_id: String) -> void:
 		"stats":     _tabs.build_stats()
 		"items":     _tabs.build_items()
 		"equipment": _tabs.build_equipment()
+		"party":     _tabs.build_party()
 		"magic":     _tabs.build_magic()
 		"bestiary":  _tabs.build_bestiary()
 

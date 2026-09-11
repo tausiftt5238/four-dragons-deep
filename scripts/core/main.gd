@@ -40,17 +40,27 @@ var player_char: PlayerCharacter  # RPG stats — persists across encounters and
 var in_combat:  bool = false
 var menu_open:  bool = false
 var save_open:  bool = false
+var orb_open:   bool = false
 
 var _encounters_enabled:       bool = true
 
 # Demons walking this floor. They step when the player steps; sharing a cell
 # with one starts a battle.
 var roamers: Array[Roamer] = []
-# The roamer whose battle is running, so the outcome can be applied to it.
-var _active_roamer: Roamer = null
+# Every roamer that walked into this battle. They chase, so more than one can
+# land on the same cell — taking only the first left the others sitting on top
+# of the player, which read as the sphere never disappearing.
+var _engaged: Array[Roamer] = []
 # Steps taken since the last replacement, so a cleared floor slowly refills.
 var _steps_since_spawn: int = 0
 const _RESPAWN_STEPS: int = 25
+
+# The floor's warden and whether it has been beaten. The door stays shut until
+# it has, so every maze floor has one thing that must be found.
+var _warden: Roamer = null
+var _has_key: bool  = false
+# Set once the boss at the end of the corridor is down.
+var _boss_beaten: bool = false
 var _pending_congratulations:  bool = false
 
 var _swipe_start:  Vector2 = Vector2.ZERO
@@ -59,6 +69,7 @@ const _SWIPE_MIN:  float   = 60.0
 var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
 var save_layer:    CanvasLayer
+var orb_layer:     CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
 var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
@@ -89,6 +100,8 @@ func _notification(what: int) -> void:
 		if not in_combat:
 			if save_open:
 				_close_save_layer()
+			elif orb_open:
+				_close_orb()
 			elif menu_open:
 				_close_menu()
 			else:
@@ -166,6 +179,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	minimap_ctrl.maze      = current_level.maze
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
+	_sync_minimap_palette()
 	_resize_minimap()
 
 	_sync_player()
@@ -259,6 +273,17 @@ func _setup_minimap() -> void:
 	_encounter_debug_lbl.offset_bottom = 94.0
 
 
+# The map is drawn in the dungeon's own colours: wall faces lifted enough to
+# read at 10 px a cell, floor the same void the walls stand in.
+func _sync_minimap_palette() -> void:
+	# All three come off the level's wire hue, so the map turns red in a boss
+	# corridor along with the walls. Floor has to stay clearly above the
+	# unexplored black or a walked corridor reads as fog.
+	minimap_ctrl.wall_color   = current_level.wire_color.darkened(0.62)
+	minimap_ctrl.floor_color  = current_level.wire_color.darkened(0.86)
+	minimap_ctrl.border_color = current_level.wire_color
+
+
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
 # Called after every level load because maps can differ in dimensions.
 func _resize_minimap() -> void:
@@ -281,12 +306,13 @@ func _resize_minimap() -> void:
 
 # ── Per-frame / movement ─────────────────────────────────────────────────────
 
-# Marks the 3×3 area around the player as visited.
-# The extra ring reveals adjacent walls so the player always has context.
+# Marks the cell underfoot and the four it touches. Diagonals stay dark — the
+# old 3x3 handed over the corners of junctions before you had reached them,
+# which drew most of the maze from a corridor.
 func _mark_visited() -> void:
-	for dy in range(-1, 2):
-		for dx in range(-1, 2):
-			visited[player_pos + Vector2i(dx, dy)] = true
+	visited[player_pos] = true
+	for off: Vector2i in DIR_OFFSET:
+		visited[player_pos + off] = true
 
 
 # Moves camera, torch, and minimap marker to match the current player state.
@@ -334,14 +360,23 @@ func _is_open(col: int, row: int) -> bool:
 # Checks whether the player is standing on the portal tile and, if so,
 # transitions to the next level. Called after every successful move.
 func _check_portal() -> void:
+	# On the last floor the far end of the corridor is the boss, not a door.
+	if floor_num >= Level.FLOOR_COUNT:
+		if not _boss_beaten:
+			_start_boss_combat()
+		return
+
+	if not _has_key:
+		_show_hud_popup("The door is sealed. Find the warden.", Color(0.75, 0.55, 1.0))
+		_shake_camera()
+		return
+
 	if current_level.next_scene == "":
 		return
 	floor_num += 1
 	floor_label.text = "Floor %d" % floor_num
 	visited_by_map.erase(current_level.next_scene)
 	_load_level(current_level.next_scene, true)
-	if floor_num % 5 == 0:
-		_start_boss_combat()
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
@@ -405,11 +440,14 @@ func _post_move() -> void:
 	if _engage_roamer_here():
 		return
 	_step_roamers()
-	_engage_roamer_here()
+	if _engage_roamer_here():
+		return
+	if player_pos in current_level.orb_cells:
+		_open_orb()
 
 
 func _handle_swipe(delta: Vector2) -> void:
-	if in_combat or menu_open or save_open:
+	if in_combat or menu_open or save_open or orb_open:
 		return
 	if delta.length() < _SWIPE_MIN:
 		return
@@ -426,7 +464,7 @@ func _handle_swipe(delta: Vector2) -> void:
 
 
 func _on_menu_btn_pressed() -> void:
-	if in_combat or save_open:
+	if in_combat or save_open or orb_open:
 		return
 	if menu_open:
 		_close_menu()
@@ -453,13 +491,7 @@ func _input(event: InputEvent) -> void:
 		_update_encounter_debug_label()
 		return
 
-	if event.keycode == KEY_F5 and not in_combat and not save_open:
-		if menu_open:
-			_close_menu()
-		_open_save_menu()
-		return
-
-	if event.keycode == KEY_F9 and not in_combat and not save_open:
+	if event.keycode == KEY_F9 and not in_combat and not save_open and not orb_open:
 		if menu_open:
 			_close_menu()
 		_open_load_menu()
@@ -506,9 +538,9 @@ func _update_encounter_debug_label() -> void:
 # How many demons a floor carries. Boss corridors carry none — the boss is the
 # encounter, and a 1-cell-wide corridor gives you nowhere to dodge.
 func _roamer_target() -> int:
-	if floor_num % 5 == 0:
+	if floor_num >= Level.FLOOR_COUNT:
 		return 0
-	return mini(3 + floor_num / 4, 6)
+	return mini(5 + floor_num, 8)
 
 
 func _spawn_roamers() -> void:
@@ -516,21 +548,113 @@ func _spawn_roamers() -> void:
 		if is_instance_valid(r):
 			r.queue_free()
 	roamers.clear()
-	_active_roamer = null
+	_engaged.clear()
 	_steps_since_spawn = 0
-	for _i: int in range(_roamer_target()):
-		_spawn_roamer()
+	# One territory each, so they never end up in the same corner of the maze.
+	var zones: Array[Rect2i] = _build_zones()
+	zones.shuffle()
+	var target: int = _roamer_target()
+	for z: Rect2i in zones:
+		if roamers.size() >= target:
+			break
+		_spawn_roamer_in(z)
+	_spawn_warden()
 
 
-# Places one demon on a random open cell well clear of the player.
-func _spawn_roamer() -> void:
-	var cell: Vector2i = _far_open_cell(6)
-	if cell.x < 0:
+# One stationary demon per maze floor, holding the key.
+func _spawn_warden() -> void:
+	_warden = null
+	_has_key = false
+	if current_level == null or current_level.warden_pos.x < 0:
+		_has_key = true      # the corridor has no warden and no locked door
+		return
+	var w: Roamer = Roamer.new()
+	w.warden = true
+	w.cell = current_level.warden_pos
+	add_child(w)
+	roamers.append(w)
+	_warden = w
+	minimap_ctrl.warden_pos = w.cell
+	minimap_ctrl.queue_redraw()
+
+
+# Carves the floor into a grid of territories. Anything smaller than a couple
+# of cells is not worth patrolling, so tiny slivers are simply skipped later.
+const ZONE_DIV: int = 3
+
+func _build_zones() -> Array[Rect2i]:
+	var out: Array[Rect2i] = []
+	if current_level == null or current_level.maze.is_empty():
+		return out
+	var rows: int = current_level.maze.size()
+	var cols: int = (current_level.maze[0] as Array).size()
+	var zw: int = maxi(1, cols / ZONE_DIV)
+	var zh: int = maxi(1, rows / ZONE_DIV)
+	for zy: int in range(ZONE_DIV):
+		for zx: int in range(ZONE_DIV):
+			var x0: int = zx * zw
+			var y0: int = zy * zh
+			var w: int = (cols - x0) if zx == ZONE_DIV - 1 else zw
+			var h: int = (rows - y0) if zy == ZONE_DIV - 1 else zh
+			if w > 0 and h > 0:
+				out.append(Rect2i(x0, y0, w, h))
+	return out
+
+
+# The cells of one territory that are open, clear of the player, and not
+# already held by something else.
+func _free_cells_in(zone: Rect2i, min_dist: int) -> Array[Vector2i]:
+	var taken: Dictionary = _occupied_cells()
+	var out: Array[Vector2i] = []
+	for row: int in range(zone.position.y, zone.position.y + zone.size.y):
+		for col: int in range(zone.position.x, zone.position.x + zone.size.x):
+			var c: Vector2i = Vector2i(col, row)
+			if not _is_open(c.x, c.y) or taken.has(c):
+				continue
+			if c == current_level.exit_pos or c == current_level.warden_pos:
+				continue
+			if absi(c.x - player_pos.x) + absi(c.y - player_pos.y) < min_dist:
+				continue
+			out.append(c)
+	return out
+
+
+func _occupied_cells() -> Dictionary:
+	var taken: Dictionary = {}
+	for r: Roamer in roamers:
+		if is_instance_valid(r):
+			taken[r.cell] = true
+	return taken
+
+
+# Places one demon inside a territory, and hands it that territory to keep to.
+func _spawn_roamer_in(zone: Rect2i) -> void:
+	var options: Array[Vector2i] = _free_cells_in(zone, 6)
+	if options.is_empty():
+		options = _free_cells_in(zone, 3)
+	if options.is_empty():
 		return
 	var r: Roamer = Roamer.new()
-	r.cell = cell
+	r.cell = options[randi() % options.size()]
+	r.zone = zone
 	add_child(r)
 	roamers.append(r)
+
+
+# Refills a territory that has fallen empty, rather than piling another demon
+# into one that is already patrolled.
+func _spawn_roamer() -> void:
+	var held: Dictionary = {}
+	for r: Roamer in roamers:
+		if is_instance_valid(r) and not r.warden:
+			held[r.zone] = true
+	var empty: Array[Rect2i] = []
+	for z: Rect2i in _build_zones():
+		if not held.has(z):
+			empty.append(z)
+	if empty.is_empty():
+		return
+	_spawn_roamer_in(empty[randi() % empty.size()])
 
 
 # A random open cell at least min_dist away from the player, or (-1,-1) if the
@@ -556,9 +680,12 @@ func _far_open_cell(min_dist: int) -> Vector2i:
 func _step_roamers() -> void:
 	if not _encounters_enabled:
 		return
+	# Everyone sees where everyone else is standing, so two never share a cell.
 	for r: Roamer in roamers:
 		if is_instance_valid(r):
-			r.move_to(r.choose_step(player_pos, _is_open))
+			var taken: Dictionary = _occupied_cells()
+			taken.erase(r.cell)
+			r.move_to(r.choose_step(player_pos, _is_open, taken))
 
 	_steps_since_spawn += 1
 	if _steps_since_spawn >= _RESPAWN_STEPS and roamers.size() < _roamer_target():
@@ -571,12 +698,21 @@ func _step_roamers() -> void:
 func _engage_roamer_here() -> bool:
 	if not _encounters_enabled:
 		return false
+	var here: Array[Roamer] = []
 	for r: Roamer in roamers:
 		if is_instance_valid(r) and r.cell == player_pos:
-			_active_roamer = r
-			_launch_combat(Enemy.make_group(floor_num))
-			return true
-	return false
+			here.append(r)
+	if here.is_empty():
+		return false
+
+	# Off the floor the instant the battle opens, rather than after it resolves.
+	# They are only hidden, not freed — escaping has to put them back.
+	_engaged = here
+	for e: Roamer in here:
+		roamers.erase(e)
+		e.visible = false
+	_launch_combat(Enemy.make_group(floor_num))
+	return true
 
 
 func _start_combat() -> void:
@@ -584,8 +720,7 @@ func _start_combat() -> void:
 
 
 func _start_boss_combat() -> void:
-	if floor_num == 20:
-		_pending_congratulations = true
+	_pending_congratulations = true
 	# Bosses come alone; their own icon count is what makes them a fight.
 	var solo: Array[Enemy] = [Enemy.make_boss(floor_num)]
 	_launch_combat(solo)
@@ -614,6 +749,13 @@ func _launch_combat(group: Array[Enemy]) -> void:
 # Rewards are summed over the whole encounter: anything killed pays experience,
 # gold and a drop roll; anything talked down pays experience and gold only.
 func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasLayer) -> void:
+	# Read before the scene is freed: anything bound that fell is gone for good,
+	# and the player has to be told somewhere they will see it.
+	var lost: Array[String] = []
+	for child: Node in combat_layer.get_children():
+		if child is CombatScene:
+			lost = (child as CombatScene).lost_demons.duplicate()
+
 	var exp_reward:  int = 0
 	var gold_reward: int = 0
 	var item_drop:   Dictionary = {}
@@ -629,19 +771,45 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		foe.queue_free()
 	combat_layer.queue_free()
 
-	# The demon you fought is the one you met. Beating or talking it down clears
-	# it off the floor; slipping away leaves it out there, moved on.
-	var met: Roamer = _active_roamer
-	_active_roamer = null
-	if is_instance_valid(met):
-		if result == "flee":
-			var spot: Vector2i = _far_open_cell(5)
-			if spot.x >= 0:
-				met.teleport_to(spot)
-		elif result != "lose":
-			roamers.erase(met)
-			met.queue_free()
+	# Whatever walked into the fight is already off the floor. Winning or talking
+	# your way out keeps it that way; slipping away puts them back, moved on.
+	var met: Array[Roamer] = _engaged
+	_engaged = []
+	var beat_warden: bool = false
+	for e: Roamer in met:
+		if not is_instance_valid(e):
+			continue
+		var was_warden: bool = (e == _warden)
+		if result == "lose":
+			e.visible = true
+			roamers.append(e)
+		elif result == "flee":
+			e.visible = true
+			roamers.append(e)
+			# The warden is a fixed objective, so escaping never relocates it.
+			if not was_warden:
+				var spot: Vector2i = _far_open_cell(5)
+				if spot.x >= 0:
+					e.teleport_to(spot)
+		else:
+			e.queue_free()
 			_steps_since_spawn = 0
+			if was_warden:
+				beat_warden = true
+
+	if beat_warden:
+		_warden  = null
+		_has_key = true
+		minimap_ctrl.warden_pos = Vector2i(-1, -1)
+		minimap_ctrl.queue_redraw()
+		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
+
+	# On the last floor an encounter with no roamer behind it is the boss.
+	if result != "lose" and floor_num >= Level.FLOOR_COUNT and met.is_empty():
+		_boss_beaten = true
+
+	if not lost.is_empty() and result != "lose":
+		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
 
 	match result:
 		"win", "talk":
@@ -668,6 +836,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		"flee":
 			_pending_congratulations = false
 			_resume_from_overlay()
+
 
 
 func _show_combat_result(exp: int, gold: int, item: Dictionary,
@@ -813,10 +982,6 @@ func _open_menu() -> void:
 	var menu: MenuUI = MenuUI.new()
 	menu.player = player_char
 	menu.menu_closed.connect(_close_menu)
-	menu.save_requested.connect(func():
-		_close_menu()
-		_open_save_menu()
-	)
 	menu.load_requested.connect(func():
 		_close_menu()
 		_open_load_menu()
@@ -832,6 +997,34 @@ func _close_menu() -> void:
 	menu_open = false
 
 
+
+
+# ── Save orbs ────────────────────────────────────────────────────────────────
+
+func _open_orb() -> void:
+	orb_open = true
+	hud_layer.visible = false
+	if not is_instance_valid(orb_layer):
+		orb_layer = CanvasLayer.new()
+		orb_layer.layer = 15
+		add_child(orb_layer)
+	var ui: OrbUI = OrbUI.new()
+	ui.player    = player_char
+	ui.floor_num = floor_num
+	ui.closed.connect(_close_orb)
+	ui.save_requested.connect(func() -> void:
+		_close_orb()
+		_open_save_menu()
+	)
+	orb_layer.add_child(ui)
+
+
+func _close_orb() -> void:
+	if is_instance_valid(orb_layer):
+		for child: Node in orb_layer.get_children():
+			child.queue_free()
+	hud_layer.visible = true
+	orb_open = false
 
 
 func _open_save_menu() -> void:
@@ -905,7 +1098,9 @@ func _gather_save_data() -> Dictionary:
 			equipped_spells     = p.equipped_spells,
 			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
+			active_demons       = p.active_demons,
 			encountered_enemies = p.encountered_enemies,
+			analyzed            = p.analyzed,
 			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
@@ -919,6 +1114,9 @@ func _gather_save_data() -> Dictionary:
 			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
 			trap_cells  = _pack_trap_cells(current_level.trap_cells),
 			roamers     = _pack_roamers(),
+			orbs        = _pack_orbs(),
+			warden      = SaveSystem.vec2i_key(current_level.warden_pos),
+			has_key     = _has_key,
 		},
 		visited = visited_serial,
 	}
@@ -966,6 +1164,12 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.next_scene      = scene_path
 	current_level.trap_cells      = _unpack_trap_cells(map_data.get("trap_cells", {}) as Dictionary)
 	_pending_roamers              = map_data.get("roamers", []) as Array
+	current_level.orb_cells.clear()
+	for key: Variant in (map_data.get("orbs", []) as Array):
+		current_level.orb_cells.append(SaveSystem.key_vec2i(key as String))
+	current_level.warden_pos      = SaveSystem.key_vec2i(
+			map_data.get("warden", "-1,-1") as String)
+	_pending_has_key              = bool(map_data.get("has_key", true))
 
 	dungeon = Dungeon.new()
 	add_child(dungeon)
@@ -981,6 +1185,7 @@ func _restore_save(data: Dictionary) -> void:
 	minimap_ctrl.maze      = current_level.maze
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
+	_sync_minimap_palette()
 	_resize_minimap()
 
 	var pos_arr: Array = data["player_pos"] as Array
@@ -1030,8 +1235,20 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.recruited.clear()
 	player_char.recruited.assign(pdata.get("recruited", []) as Array)
 
+	player_char.active_demons.clear()
+	if pdata.has("active_demons"):
+		player_char.active_demons.assign(pdata["active_demons"] as Array)
+	else:
+		# Saves from before the party screen existed: walk in with the first few.
+		for demon_name: String in player_char.recruited:
+			if not player_char.activate_demon(demon_name):
+				break
+
 	player_char.encountered_enemies.clear()
 	player_char.encountered_enemies.assign(pdata.get("encountered_enemies", []) as Array)
+
+	player_char.analyzed.clear()
+	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
 
 	player_char.passive_skills.clear()
 	player_char.passive_skills.assign(pdata.get("passive_skills", []) as Array)
@@ -1050,6 +1267,13 @@ func _apply_player_data(pdata: Dictionary) -> void:
 var _pending_roamers: Array = []
 
 
+func _pack_orbs() -> Array:
+	var out: Array = []
+	for c: Vector2i in current_level.orb_cells:
+		out.append(SaveSystem.vec2i_key(c))
+	return out
+
+
 func _pack_roamers() -> Array:
 	var out: Array = []
 	for r: Roamer in roamers:
@@ -1058,12 +1282,16 @@ func _pack_roamers() -> Array:
 	return out
 
 
+var _pending_has_key: bool = true
+
+
 func _restore_roamers() -> void:
 	for r: Roamer in roamers:
 		if is_instance_valid(r):
 			r.queue_free()
 	roamers.clear()
-	_active_roamer = null
+	_engaged.clear()
+	_warden = null
 	_steps_since_spawn = 0
 	for key: Variant in _pending_roamers:
 		var rm: Roamer = Roamer.new()
@@ -1071,6 +1299,18 @@ func _restore_roamers() -> void:
 		add_child(rm)
 		roamers.append(rm)
 	_pending_roamers = []
+
+	_has_key = _pending_has_key
+	minimap_ctrl.warden_pos = Vector2i(-1, -1)
+	if not _has_key and current_level.warden_pos.x >= 0:
+		var w: Roamer = Roamer.new()
+		w.warden = true
+		w.cell = current_level.warden_pos
+		add_child(w)
+		roamers.append(w)
+		_warden = w
+		minimap_ctrl.warden_pos = w.cell
+	minimap_ctrl.queue_redraw()
 
 
 func _pack_trap_cells(cells: Dictionary) -> Dictionary:

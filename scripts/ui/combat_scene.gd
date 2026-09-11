@@ -29,6 +29,10 @@ var _foe_turn_idx: int = 0
 # Demons removed by a successful negotiation rather than killed.
 var _departed: Array[Enemy] = []
 
+# Bound demons that fell in this battle. Read by Main before the scene is
+# freed, so the loss can be reported where the player will actually see it.
+var lost_demons: Array[String] = []
+
 # The detective plus every demon he has bound this battle. Index 0 is always
 # the detective; _actor is the member currently holding the turn.
 const MAX_PARTY: int = 4
@@ -160,6 +164,34 @@ func _make_bar(max_val: int) -> ProgressBar:
 	bar.show_percentage     = false
 	bar.custom_minimum_size = Vector2(0, 14)
 	return bar
+
+
+# Health reads the same wherever it appears: green while it is fine, orange
+# under half, red under a fifth. Styleboxes are shared rather than rebuilt every
+# refresh, which happens several times a turn.
+const HP_OK:   Color = Color(0.30, 0.74, 0.34)
+const HP_LOW:  Color = Color(0.95, 0.60, 0.15)
+const HP_DIRE: Color = Color(0.88, 0.18, 0.18)
+
+static var _hp_styles: Dictionary = {}
+
+
+static func hp_tint(current: int, maximum: int) -> Color:
+	var frac: float = float(current) / float(maxi(1, maximum))
+	if frac <= 0.2:
+		return HP_DIRE
+	if frac <= 0.5:
+		return HP_LOW
+	return HP_OK
+
+
+func _apply_hp_bar(bar: ProgressBar, current: int, maximum: int) -> void:
+	var tint: Color = hp_tint(current, maximum)
+	if not _hp_styles.has(tint):
+		var box: StyleBoxFlat = StyleBoxFlat.new()
+		box.bg_color = tint
+		_hp_styles[tint] = box
+	bar.add_theme_stylebox_override("fill", _hp_styles[tint] as StyleBoxFlat)
 
 
 func _bar_fill(color: Color) -> StyleBoxFlat:
@@ -359,7 +391,18 @@ func _check_counter() -> String:
 
 
 
+# A bound demon that goes down is gone for good — struck off the rolodex, not
+# just out of this fight. Getting it back means buying it again at an orb, which
+# is the whole reason the compendium is there.
 func _end_combat(result: String) -> void:
+	lost_demons.clear()
+	for i: int in range(1, party.size()):
+		var demon: Enemy = party[i] as Enemy
+		if demon.is_alive():
+			continue
+		lost_demons.append(demon.enemy_name)
+		player.recruited.erase(demon.enemy_name)
+		player.deactivate_demon(demon.enemy_name)
 	combat_ended.emit(result)
 	queue_free()
 
@@ -403,6 +446,10 @@ func _next_living(from_idx: int) -> int:
 # One icon per living party member. A demon bound during this phase does not
 # add its icon until the next one, which is what stops summoning from looping.
 func _begin_player_phase() -> void:
+	# A brace covers the enemy phase it was raised against and expires here,
+	# rather than being spent on the first hit that lands.
+	for member: CharacterSheet in party:
+		member.defending = false
 	_press.begin(_living_party().size())
 	_actor_idx = 0 if party[0].is_alive() else _next_living(0)
 	_prompt_actor()
@@ -484,6 +531,8 @@ func _resolve_action(action: String) -> Dictionary:
 	match action:
 		"Attack":
 			return _resolve_attack()
+		"Analyze":
+			return _resolve_analyze()
 		"Skill":
 			return _resolve_skill()
 		"Defend":
@@ -498,6 +547,7 @@ func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
 	var crit: bool      = res["crit"] as bool
+	var muted: bool     = bool(res.get("suppressed", false))
 	var actor: CharacterSheet = _actor()
 
 	match outcome:
@@ -530,9 +580,9 @@ func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
 	if not enemy.is_alive():
 		downed = "  [color=lime]%s goes down![/color]" % enemy.display_name()
 	return {msg = "%s%s  [color=orange]%s takes %d damage.[/color]%s%s" % [
-			prefix, CombatMath.outcome_tag(outcome, crit), enemy.display_name(),
+			prefix, CombatMath.outcome_tag(outcome, crit, muted), enemy.display_name(),
 			dmg, extra, downed],
-			cost = CombatMath.cost_for(outcome, crit)}
+			cost = CombatMath.cost_for(outcome, crit, muted)}
 
 
 
@@ -564,7 +614,7 @@ func _defense_of(member: CharacterSheet) -> int:
 func _try_enemy_status(actor: Enemy, target: CharacterSheet) -> String:
 	if actor.status_attack == "" or target.has_status(actor.status_attack):
 		return ""
-	var chance: int = clampi(15 + (actor.lv - player.lv) * 3, 5, 40)
+	var chance: int = actor.ailment_chance
 	if randi() % 100 >= chance:
 		return ""
 	var sname: String = Status.get_data(actor.status_attack).get("name", actor.status_attack)
@@ -602,6 +652,10 @@ func _available_summons() -> Array[String]:
 	return out
 
 
+func _remember_recruit(demon_name: String) -> void:
+	player.remember_recruit(demon_name)
+
+
 func _show_summon_submenu() -> void:
 	_hide_actions()
 	_set_back(_show_main_actions)
@@ -624,7 +678,7 @@ func _show_summon_submenu() -> void:
 func _on_summon(summon_name: String) -> void:
 	_show_main_actions()
 	_set_buttons(false)
-	var demon: Enemy = Enemy.make_from_name(summon_name, max(1, player.lv))
+	var demon: Enemy = Enemy.make_from_name(summon_name)
 	add_child(demon)
 	party.append(demon)
 	_rebuild_party_slots()
@@ -646,10 +700,10 @@ func _on_summon(summon_name: String) -> void:
 # he gets. Summon is left for filling a slot that opens up mid-fight.
 func _form_party() -> void:
 	party = [player]
-	for demon_name: String in player.recruited:
+	for demon_name: String in player.active_demons:
 		if party.size() >= MAX_PARTY:
 			break
-		var demon: Enemy = Enemy.make_from_name(demon_name, maxi(1, player.lv))
+		var demon: Enemy = Enemy.make_from_name(demon_name)
 		add_child(demon)
 		party.append(demon)
 
@@ -744,14 +798,13 @@ func _build_foe_column(foe: Enemy) -> Control:
 	name_lbl.add_theme_font_size_override("font_size", 13)
 	col.add_child(name_lbl)
 
-	var bar_wrap: MarginContainer = MarginContainer.new()
-	for side: String in ["margin_left", "margin_right"]:
-		bar_wrap.add_theme_constant_override(side, 14)
+	# Centred and width-capped: a lone demon used to stretch its bar across the
+	# whole screen, which read as a boss rather than a rat.
+	var bar_wrap: CenterContainer = CenterContainer.new()
 	col.add_child(bar_wrap)
 
 	var bar: ProgressBar = _make_bar(foe.max_hp)
-	bar.custom_minimum_size = Vector2(0, 10)
-	bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.82, 0.12, 0.12)))
+	bar.custom_minimum_size = Vector2(160, 10)
 	bar_wrap.add_child(bar)
 
 	var hp_lbl: Label = Label.new()
@@ -809,6 +862,14 @@ func _refresh_foe_rows() -> void:
 	var multiple: bool = _living_foes().size() > 1
 	for r: Dictionary in _foe_rows:
 		var foe: Enemy = r["foe"] as Enemy
+		if foe in _departed:
+			(r["marker"] as Label).visible = false
+			(r["portrait"] as TextureRect).modulate.a = 0.0
+			(r["name_lbl"] as Label).text = ""
+			((r["bar"] as ProgressBar).get_parent() as Control).visible = false
+			(r["hp_lbl"] as Label).text = "GONE"
+			(r["stage_lbl"] as Label).text = ""
+			continue
 		var alive: bool = foe.is_alive()
 		var targeted: bool = (foe == enemy) and alive
 		(r["marker"] as Label).visible = targeted and multiple
@@ -823,12 +884,25 @@ func _refresh_foe_rows() -> void:
 		var bar: ProgressBar = r["bar"] as ProgressBar
 		bar.max_value = foe.max_hp
 		bar.value     = foe.hp
-		(bar.get_parent() as Control).visible = alive
+		_apply_hp_bar(bar, foe.hp, foe.max_hp)
+		var wrap: Control = bar.get_parent() as Control
+		# Never wider than a comfortable read, never wider than its own column.
+		bar.custom_minimum_size.x = minf(maxf(wrap.size.x, 120.0) * 0.82, 190.0)
+		wrap.visible = alive
 		var hp_lbl: Label = r["hp_lbl"] as Label
 		hp_lbl.text = "%d / %d" % [foe.hp, foe.max_hp] if alive else "DOWN"
+		hp_lbl.add_theme_color_override("font_color",
+				hp_tint(foe.hp, foe.max_hp) if alive else Color(0.55, 0.38, 0.38))
 
 		var stage_lbl: Label = r["stage_lbl"] as Label
-		stage_lbl.text = _format_stages(foe) if alive else ""
+		var bits: Array[String] = []
+		var chart: String = _foe_chart_text(foe)
+		if chart != "":
+			bits.append(chart)
+		var stg: String = _format_stages(foe)
+		if stg != "":
+			bits.append(stg)
+		stage_lbl.text = "   ".join(bits) if alive else ""
 		# Green when the stack favours them, amber when it favours you.
 		var net: int = foe.stage(CharacterSheet.STAT_ATK) \
 				+ foe.stage(CharacterSheet.STAT_DEF) + foe.stage(CharacterSheet.STAT_AGL)
@@ -961,15 +1035,9 @@ func _do_flee() -> void:
 func _foe_departs(reason: String) -> void:
 	var leaving: Enemy = enemy
 	foes.erase(leaving)
-	for r: Dictionary in _foe_rows:
-		if r["foe"] == leaving:
-			(r["portrait"] as TextureRect).modulate.a = 0.0
-			(r["name_lbl"] as Label).text = ""
-			((r["bar"] as ProgressBar).get_parent() as Control).visible = false
-			(r["hp_lbl"] as Label).text = "GONE"
-			(r["marker"] as Label).visible = false
 	_departed.append(leaving)
 	_ensure_target()
+	_refresh_hp()
 	if foes.is_empty():
 		await get_tree().create_timer(0.4).timeout
 		if is_instance_valid(self):
@@ -1193,6 +1261,9 @@ func _show_skills_submenu() -> void:
 			actor.has_status(Status.IMMOBILIZE)))
 
 	if _actor_is_player():
+		# Free, always carried, and the only way to see a chart before spending
+		# turns finding it out the hard way.
+		_submenu_add(_make_skill_button("Analyze", "Analyze", "Read", "\u2014", false))
 		if player.equipped_spells.is_empty():
 			_submenu_add(_dim_label("No spells equipped."))
 			return
@@ -1236,7 +1307,7 @@ func _resolve_skill() -> Dictionary:
 	var power: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
 	var crit: bool = CombatMath.roll_crit()
 	var res: Dictionary = CombatMath.resolve(int(power * 2.0) - _guarded_def(enemy),
-			element, enemy, crit)
+			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s calls up %s!" % [
 			actor.display_name(), Affinity.element_name(element)])
 
@@ -1435,7 +1506,6 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 
 	var hp_bar: ProgressBar = _make_bar(member.max_hp)
 	hp_bar.custom_minimum_size = Vector2(0, 9)
-	hp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.30, 0.74, 0.34)))
 	bars.add_child(hp_bar)
 
 	var mp_bar: ProgressBar = _make_bar(maxi(1, member.max_mp))
@@ -1490,6 +1560,7 @@ func _refresh_party_slots() -> void:
 		var hp_bar: ProgressBar = slot["hp_bar"] as ProgressBar
 		hp_bar.max_value = member.max_hp
 		hp_bar.value     = member.hp
+		_apply_hp_bar(hp_bar, member.hp, member.max_hp)
 		(hp_bar.get_parent() as Control).visible = alive
 
 		var val_lbl: Label = slot["val_lbl"] as Label
@@ -1497,7 +1568,7 @@ func _refresh_party_slots() -> void:
 			val_lbl.text = "DOWN"
 			val_lbl.add_theme_color_override("font_color", Color(0.55, 0.38, 0.38))
 		else:
-			val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
+			val_lbl.add_theme_color_override("font_color", hp_tint(member.hp, member.max_hp))
 			var mp_bar: ProgressBar = slot["mp_bar"] as ProgressBar
 			mp_bar.max_value = maxi(1, member.max_mp)
 			mp_bar.value     = member.mp
@@ -1692,6 +1763,19 @@ func _on_skill_chosen(action: String) -> void:
 	_with_target(func() -> void: await _commit_action(action))
 
 
+# Once read, a demon wears its chart under its name for the rest of the fight.
+func _foe_chart_text(foe: Enemy) -> String:
+	if not player.has_analyzed(foe.enemy_name):
+		return ""
+	var parts: Array[String] = []
+	for element: String in Affinity.ELEMENTS:
+		var state: String = foe.affinity_of(element)
+		if state != Affinity.NORMAL:
+			parts.append("%s%s" % [Affinity.element_name(element).substr(0, 1).to_upper(),
+					Affinity.label(state).substr(0, 1)])
+	return " ".join(parts)
+
+
 func _cast_spell(spell_id: String) -> Dictionary:
 	var data: Dictionary = Spell.DATA.get(spell_id, {name = "Spell", mp = 8})
 	var mp_cost: int = data.get("mp", 8)
@@ -1733,7 +1817,7 @@ func _cast_spell(spell_id: String) -> Dictionary:
 	if "scholar" in player.passive_skills:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit()
-	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit)
+	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "You cast %s!" % data["name"])
 
 
@@ -1816,6 +1900,31 @@ func _guarded_def(target: CharacterSheet) -> int:
 
 # ── Physical swings ───────────────────────────────────────────────────────────
 
+# Reads the target's chart, writes it into the bestiary for good, and prints it
+# into the log. Costs a turn, which is the whole tension: scouting is an action
+# you are not spending on damage.
+func _resolve_analyze() -> Dictionary:
+	var already: bool = player.has_analyzed(enemy.enemy_name)
+	player.record_analysis(enemy.enemy_name)
+	var chart: String = _affinity_line(enemy)
+	var lead: String = "You read %s again." if already else "You read %s."
+	return {msg = "[color=#9ad0ff]%s  %s[/color]" % [lead % enemy.display_name(), chart],
+			cost = PressTurn.COST_FULL}
+
+
+# "PHYS weak · FIRE drain · ICE null" — every element that is not ordinary.
+static func _affinity_line(sheet: CharacterSheet) -> String:
+	var parts: Array[String] = []
+	for element: String in Affinity.ELEMENTS:
+		var state: String = sheet.affinity_of(element)
+		if state != Affinity.NORMAL:
+			parts.append("%s %s" % [Affinity.element_name(element).to_upper(),
+					Affinity.label(state)])
+	if parts.is_empty():
+		return "no affinities at all."
+	return "  ".join(parts)
+
+
 func _resolve_attack() -> Dictionary:
 	var actor: CharacterSheet = _actor()
 	if not CombatMath.lands(actor, enemy):
@@ -1828,7 +1937,7 @@ func _resolve_attack() -> Dictionary:
 		atk *= 2.0
 	var crit: bool = CombatMath.roll_crit()
 	var res: Dictionary = CombatMath.resolve(int(atk) - _guarded_def(enemy),
-			Affinity.PHYS, enemy, crit)
+			Affinity.PHYS, enemy, crit, enemy.defending)
 	return _land_hit(res, Affinity.PHYS, "%s strikes!" % _actor_name())
 
 
@@ -1877,21 +1986,23 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 
 	var target: CharacterSheet = _pick_target(element)
 
-	# Only a swing can miss. Whatever it calls up always arrives.
+	# Only a swing can miss. Whatever it calls up always arrives. A miss does not
+	# spend the target's brace — it never had to absorb anything.
 	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
-		target.defending = false
 		return {msg = dry + "[color=#9aa0aa]%s lunges at %s and misses![/color]" % [
 				actor.display_name(), _member_name(target)], cost = PressTurn.COST_MISS}
 
 	if element == Affinity.PHYS:
 		base *= actor.stage_mult(CharacterSheet.STAT_ATK)
+	var guarding: bool = target.defending
 	var eff_def: int = _guarded_def(target)
-	target.defending = false
 
 	var crit: bool = CombatMath.roll_crit()
-	var res: Dictionary = CombatMath.resolve(int(base) - eff_def, element, target, crit)
+	var res: Dictionary = CombatMath.resolve(int(base) - eff_def, element, target,
+			crit, guarding)
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
+	var muted: bool     = bool(res.get("suppressed", false))
 	var tname: String   = _member_name(target)
 	var ename: String   = actor.display_name()
 	var verb: String    = "attacks" if element == Affinity.PHYS \
@@ -1918,11 +2029,11 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	if hit_pr != null:
 		_shake_portrait(hit_pr)
 	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s%s" % [
-			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit),
+			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted),
 			_try_enemy_status(actor, target)]
 	if target == player:
 		msg += _check_counter()
-	return {msg = msg, cost = CombatMath.cost_for(outcome, crit)}
+	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}
 
 
 # A compact readout of what is stacked on someone: "ATK+2 AGL-1".

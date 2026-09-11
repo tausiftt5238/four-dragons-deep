@@ -21,6 +21,16 @@ const DIRS: Array[Vector2i] = [
 
 var cell: Vector2i = Vector2i.ZERO
 
+# A warden holds its ground and holds the floor's key. It is drawn cold and
+# larger so it never reads as one of the drifting ones.
+var warden: bool = false
+
+# The patch of the maze this one keeps to, in grid coordinates. Roamers never
+# leave their own territory and never step onto a cell another one holds, so
+# they stay spread across the floor instead of collecting into a mob around the
+# player. An empty rect means unbounded (the warden, which never moves anyway).
+var zone: Rect2i = Rect2i()
+
 # Where it came from, so a wandering roamer does not simply oscillate.
 var _prev_cell: Vector2i = Vector2i(-999, -999)
 var _bob_phase: float = 0.0
@@ -45,11 +55,15 @@ func _process(delta: float) -> void:
 # ── Look ──────────────────────────────────────────────────────────────────────
 
 func _build_visual() -> void:
+	var scale_up: float = 1.45 if warden else 1.0
+	var hot: Color  = Color(0.62, 0.42, 1.0) if warden else Color(1.0, 0.55, 0.16)
+	var glow: Color = Color(0.70, 0.45, 1.0) if warden else Color(1.0, 0.55, 0.20)
+
 	# The core reads as an absence, not an object — it is darker than the walls.
 	var core: MeshInstance3D = MeshInstance3D.new()
 	var core_mesh: SphereMesh = SphereMesh.new()
-	core_mesh.radius = 0.30
-	core_mesh.height = 0.60
+	core_mesh.radius = 0.30 * scale_up
+	core_mesh.height = 0.60 * scale_up
 	core_mesh.radial_segments = 16
 	core_mesh.rings = 8
 	core.mesh = core_mesh
@@ -62,8 +76,8 @@ func _build_visual() -> void:
 	# A thin shell of heat sitting just off the core.
 	_halo = MeshInstance3D.new()
 	var halo_mesh: SphereMesh = SphereMesh.new()
-	halo_mesh.radius = 0.355
-	halo_mesh.height = 0.71
+	halo_mesh.radius = 0.355 * scale_up
+	halo_mesh.height = 0.71 * scale_up
 	halo_mesh.radial_segments = 16
 	halo_mesh.rings = 8
 	_halo.mesh = halo_mesh
@@ -73,20 +87,20 @@ func _build_visual() -> void:
 	halo_mat.blend_mode    = BaseMaterial3D.BLEND_MODE_ADD
 	halo_mat.cull_mode     = BaseMaterial3D.CULL_FRONT
 	# Sits just off the core so it reads as a hot rim, not a cloud around it.
-	halo_mat.albedo_color  = Color(1.0, 0.55, 0.16, 0.34)
+	halo_mat.albedo_color  = Color(hot.r, hot.g, hot.b, 0.34)
 	_halo.material_override = halo_mat
 	add_child(_halo)
 
-	add_child(_build_fire())
+	add_child(_build_fire(scale_up))
 
 	var light: OmniLight3D = OmniLight3D.new()
-	light.light_color  = Color(1.0, 0.55, 0.20)
-	light.light_energy = 1.6
-	light.omni_range   = 4.5
+	light.light_color  = glow
+	light.light_energy = 2.1 if warden else 1.6
+	light.omni_range   = 6.0 if warden else 4.5
 	add_child(light)
 
 
-func _build_fire() -> CPUParticles3D:
+func _build_fire(scale_up: float = 1.0) -> CPUParticles3D:
 	var fire: CPUParticles3D = CPUParticles3D.new()
 	# Many small embers rather than a few big puffs — large soft quads stacked
 	# additively average out into a brown smear instead of reading as flame.
@@ -95,7 +109,7 @@ func _build_fire() -> CPUParticles3D:
 	fire.local_coords = true
 
 	fire.emission_shape        = CPUParticles3D.EMISSION_SHAPE_SPHERE_SURFACE
-	fire.emission_sphere_radius = 0.33
+	fire.emission_sphere_radius = 0.33 * scale_up
 	fire.direction  = Vector3(0.0, 1.0, 0.0)
 	fire.spread     = 38.0
 	fire.gravity    = Vector3(0.0, 0.85, 0.0)
@@ -114,15 +128,22 @@ func _build_fire() -> CPUParticles3D:
 	fire.scale_amount_curve = shrink
 
 	var ramp: Gradient = Gradient.new()
-	ramp.set_color(0, Color(1.00, 0.97, 0.80, 1.0))
-	ramp.set_offset(1, 0.30)
-	ramp.set_color(1, Color(1.00, 0.58, 0.10, 0.95))
-	ramp.add_point(0.65, Color(0.92, 0.24, 0.03, 0.55))
-	ramp.add_point(1.0, Color(0.30, 0.04, 0.01, 0.0))
+	if warden:
+		ramp.set_color(0, Color(0.92, 0.86, 1.00, 1.0))
+		ramp.set_offset(1, 0.30)
+		ramp.set_color(1, Color(0.62, 0.40, 1.00, 0.95))
+		ramp.add_point(0.65, Color(0.36, 0.16, 0.72, 0.55))
+		ramp.add_point(1.0, Color(0.10, 0.03, 0.24, 0.0))
+	else:
+		ramp.set_color(0, Color(1.00, 0.97, 0.80, 1.0))
+		ramp.set_offset(1, 0.30)
+		ramp.set_color(1, Color(1.00, 0.58, 0.10, 0.95))
+		ramp.add_point(0.65, Color(0.92, 0.24, 0.03, 0.55))
+		ramp.add_point(1.0, Color(0.30, 0.04, 0.01, 0.0))
 	fire.color_ramp = ramp
 
 	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2(0.13, 0.13)
+	quad.size = Vector2(0.13, 0.13) * scale_up
 	fire.mesh = quad
 
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
@@ -157,19 +178,30 @@ func _world_of(c: Vector2i) -> Vector3:
 	return Vector3(c.x * CELL_SIZE, HOVER_Y, c.y * CELL_SIZE)
 
 
-# Picks the next cell. Close to the player it closes the distance; otherwise it
-# wanders, preferring not to double straight back on itself.
-func choose_step(player_cell: Vector2i, is_open: Callable) -> Vector2i:
+func in_zone(c: Vector2i) -> bool:
+	if zone.size.x <= 0 or zone.size.y <= 0:
+		return true
+	return zone.has_point(c)
+
+
+# Picks the next cell. Inside its own territory it closes on the player;
+# otherwise it wanders, preferring not to double straight back on itself.
+# `occupied` holds every cell another roamer is standing on.
+func choose_step(player_cell: Vector2i, is_open: Callable,
+		occupied: Dictionary = {}) -> Vector2i:
+	if warden:
+		return cell
 	var options: Array[Vector2i] = []
 	for d: Vector2i in DIRS:
 		var n: Vector2i = cell + d
-		if bool(is_open.call(n.x, n.y)):
+		if bool(is_open.call(n.x, n.y)) and in_zone(n) and not occupied.has(n):
 			options.append(n)
 	if options.is_empty():
 		return cell
 
+	# It only gives chase within its own patch; step outside and it lets you go.
 	var dist: int = absi(cell.x - player_cell.x) + absi(cell.y - player_cell.y)
-	if dist <= CHASE_RANGE:
+	if in_zone(player_cell) and dist <= CHASE_RANGE:
 		var best: Vector2i = options[0]
 		var best_d: int    = 1 << 30
 		for o: Vector2i in options:

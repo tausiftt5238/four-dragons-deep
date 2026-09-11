@@ -1,3 +1,7 @@
+# MenuTabBestiary
+# The record of what has been met. Meeting something files its name; only
+# Analyze, spent as a turn in battle, fills in what it is made of — so this is
+# the list to check before choosing a loadout, not a free encyclopaedia.
 class_name MenuTabBestiary extends RefCounted
 
 var _m
@@ -61,21 +65,15 @@ func _make_bestiary_entry(tmpl: Dictionary) -> HBoxContainer:
 	floor_str += "+" if max_fl == -1 else "–%d" % max_fl
 	_add_info_line(info, floor_str, Color(0.60, 0.60, 0.60))
 
-	var weakness: String = tmpl.get("weakness", "")
-	if weakness != "":
-		_add_info_line(info, "Weak: %s" % weakness.capitalize(), Color(0.40, 0.85, 1.0))
+	if _m.player.has_analyzed(tmpl["name"] as String):
+		_add_chart(info, tmpl)
+	else:
+		_add_info_line(info, "Affinities unread — Analyze it in battle.",
+			Color(0.52, 0.52, 0.58))
 
 	var atk_elem: String = tmpl.get("attack_element", "")
 	if atk_elem != "":
 		_add_info_line(info, "Attacks with: %s" % atk_elem.capitalize(), Color(1.0, 0.60, 0.25))
-
-	var refl: String = tmpl.get("reflect_element", "")
-	if refl != "":
-		_add_info_line(info, "Reflects: %s" % refl.capitalize(), Color(0.70, 0.90, 1.0))
-
-	var absorb: String = tmpl.get("absorb_element", "")
-	if absorb != "":
-		_add_info_line(info, "Absorbs: %s" % absorb.capitalize(), Color(0.35, 1.0, 0.55))
 
 	var status_atk: String = tmpl.get("status_attack", "")
 	if status_atk != "":
@@ -90,6 +88,25 @@ func _make_bestiary_entry(tmpl: Dictionary) -> HBoxContainer:
 		_add_info_line(info, "[RECRUITED]", Color(0.30, 1.0, 0.55))
 
 	return row
+
+
+# One row per element, coloured by what it means — the same colours the battle
+# log uses, so the two read as the same information.
+func _add_chart(parent: VBoxContainer, tmpl: Dictionary) -> void:
+	var demon: Enemy = Enemy.make_from_name(tmpl["name"] as String, 1)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	for element: String in Affinity.ELEMENTS:
+		var state: String = demon.affinity_of(element)
+		var cell: Label = Label.new()
+		cell.text = "%s %s" % [Affinity.element_name(element).to_upper(),
+				Affinity.label(state)]
+		cell.custom_minimum_size = Vector2(112, 0)
+		cell.add_theme_font_size_override("font_size", 12)
+		cell.add_theme_color_override("font_color", Affinity.color(state))
+		row.add_child(cell)
+	demon.free()
+	parent.add_child(row)
 
 
 func _add_info_line(parent: VBoxContainer, text: String, color: Color) -> void:

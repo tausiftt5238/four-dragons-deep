@@ -4,6 +4,9 @@
 # Each map script extends this and sets the fields in _ready().
 class_name Level extends Node3D
 
+# The whole run: two mazes, then a corridor with the boss at the end of it.
+const FLOOR_COUNT: int = 3
+
 # 2D maze layout: 1 = wall, 0 = open floor.
 var maze: Array[Array] = []
 
@@ -39,6 +42,14 @@ var exit_wall_pos: Vector2i = Vector2i(-1, -1)
 
 # Path to the scene file loaded when the player steps through the portal.
 var next_scene: String     = ""
+
+# The warden: one stationary demon that holds this floor's key. The door on
+# does not open until it is beaten. (-1,-1) on the boss floor, which has none.
+var warden_pos: Vector2i = Vector2i(-1, -1)
+
+# Save orbs. Standing on one opens the orb: the only place a run can be saved,
+# and the only place gold buys anything.
+var orb_cells: Array[Vector2i] = []
 
 # Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
 # Erased by main.gd after the player triggers one.

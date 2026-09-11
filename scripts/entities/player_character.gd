@@ -19,7 +19,7 @@ var known_spells: Array[String] = []
 # the menu rather than mid-fight.
 # Six entries is what the battle menu shows without scrolling, and Attack is
 # always one of them — so five spells, and six items on their own belt.
-const SPELL_SLOTS: int = 5
+const SPELL_SLOTS: int = 4
 var equipped_spells: Array[String] = []
 
 # Item ids on the belt. Only these reach a battle; the rest stay in the pack.
@@ -77,17 +77,66 @@ func belt() -> Array[Dictionary]:
 				break
 	return out
 
-# Demons bound to the detective and callable through Summon.
+# Every demon he has bound. The rolodex.
 var recruited: Array[String] = []
 
-# Nobody walks into their first case empty-handed. One demon is already bound,
+# The ones he actually walks in with, in slot order. Chosen in the menu before
+# a fight rather than assembled mid-battle — CombatScene.MAX_PARTY - 1 of them,
+# since the detective takes the first slot himself.
+const ACTIVE_SLOTS: int = 3
+var active_demons: Array[String] = []
+
+
+func is_active(demon_name: String) -> bool:
+	return demon_name in active_demons
+
+
+func has_free_demon_slot() -> bool:
+	return active_demons.size() < ACTIVE_SLOTS
+
+
+func activate_demon(demon_name: String) -> bool:
+	if is_active(demon_name) or not has_free_demon_slot() \
+			or demon_name not in recruited:
+		return false
+	active_demons.append(demon_name)
+	return true
+
+
+func deactivate_demon(demon_name: String) -> void:
+	active_demons.erase(demon_name)
+
+
+# Newly bound demons take a free slot on their own, so a first recruit is
+# usable without a trip to the menu.
+func remember_recruit(demon_name: String) -> void:
+	if demon_name not in recruited:
+		recruited.append(demon_name)
+	activate_demon(demon_name)
+
+# Nobody walks into their first case empty-handed. A first-floor demon, not a
+# strong one — since demons never level, a powerful gift would stay powerful and
+# flatten the whole run. One demon is already bound,
 # which is also what makes the opening floors survivable — a lone detective
 # against a pack of three loses on action economy no matter how well he reads
 # the affinity chart.
-const STARTING_DEMON: String = "Fairy"
+const STARTING_DEMON: String = "Cave Bat"
 
 # Enemy names encountered at least once in combat (bestiary unlock).
 var encountered_enemies: Array[String] = []
+
+# Enemy names whose affinity chart he has read with Analyze. Meeting something
+# records that it exists; only Analyze records what it is made of.
+var analyzed: Array[String] = []
+
+
+func has_analyzed(enemy_name: String) -> bool:
+	return enemy_name in analyzed
+
+
+func record_analysis(enemy_name: String) -> void:
+	if enemy_name not in analyzed:
+		analyzed.append(enemy_name)
 
 # Passive skills gained at level-up.
 var passive_skills: Array[String] = []
@@ -111,6 +160,7 @@ func _ready() -> void:
 	equipped_spells = ["fire"]
 	equipped_items  = []
 	recruited       = [STARTING_DEMON]
+	active_demons   = [STARTING_DEMON]
 
 	# He is human. No resistances of his own, and the cold gets through —
 	# which is what makes putting him in front of anything a real decision.

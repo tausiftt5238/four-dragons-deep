@@ -18,6 +18,8 @@ var visited: Dictionary = {}
 # player can spot it on the map once the cell has been explored.
 # Set to (-1,-1) when no exit has been assigned yet.
 var exit_pos:  Vector2i = Vector2i(-1, -1)
+# The warden's cell while it still holds the key; (-1,-1) once it is beaten.
+var warden_pos: Vector2i = Vector2i(-1, -1)
 
 # Pixel size of each maze cell on the minimap.
 const CELL_PX: int = 10
@@ -30,11 +32,15 @@ const PAD: int = 5
 
 # Colour palette for the minimap elements.
 const C_BG: Color     = Color(0.00, 0.00, 0.00, 0.78)  # Semi-transparent dark background
-const C_BORDER: Color = Color(0.55, 0.45, 0.28, 1.00)  # Stone-coloured border drawn last so it sits on top
-const C_WALL: Color   = Color(0.46, 0.34, 0.22, 1.00)  # Brown walls
-const C_FLOOR: Color  = Color(0.13, 0.12, 0.10, 1.00)  # Near-black open floor
+# Wall, floor and border are handed over by main.gd from the level's own wire
+# palette, so the map is drawn in the same colours as the dungeon it describes
+# — including the red of a boss corridor.
+var wall_color:   Color = Color(0.20, 0.30, 0.36, 1.00)
+var floor_color:  Color = Color(0.04, 0.04, 0.06, 1.00)
+var border_color: Color = Color(0.55, 0.88, 1.00, 1.00)
 const C_PLAYER: Color = Color(1.00, 0.82, 0.20, 1.00)  # Bright yellow player marker
 const C_PORTAL: Color = Color(0.00, 0.82, 0.55, 1.00)  # Teal portal — matches the in-world exit glow
+const C_WARDEN: Color = Color(0.66, 0.42, 1.00, 1.00)  # Violet warden — matches its cold fire
 
 # 2D unit vectors for each facing direction, used to draw the direction arrow.
 # Order must match the facing constants in main.gd:
@@ -77,7 +83,7 @@ func _draw() -> void:
 				continue
 			var rx: float = PAD + vc * CELL_PX
 			var ry: float = PAD + vr * CELL_PX
-			var c: Color = C_WALL if row_data[mc] == 1 else C_FLOOR
+			var c: Color = wall_color if row_data[mc] == 1 else floor_color
 			draw_rect(Rect2(rx, ry, CELL_PX - 1, CELL_PX - 1), c)
 
 	# Portal marker within the view window.
@@ -87,6 +93,14 @@ func _draw() -> void:
 		if vc >= 0 and vc < view and vr >= 0 and vr < view:
 			draw_rect(Rect2(PAD + vc * CELL_PX, PAD + vr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_PORTAL)
 
+	# The warden, while it still holds the key. Shown without needing the cell
+	# visited — the floor's task is finding it, not stumbling on it.
+	if warden_pos.x >= 0:
+		var wc: int = warden_pos.x - origin.x
+		var wr: int = warden_pos.y - origin.y
+		if wc >= 0 and wc < view and wr >= 0 and wr < view:
+			draw_rect(Rect2(PAD + wc * CELL_PX, PAD + wr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_WARDEN)
+
 	# Player is always at the centre of the window.
 	var cx: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
 	var cy: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
@@ -95,4 +109,4 @@ func _draw() -> void:
 	draw_circle(center, 3.0, C_PLAYER)
 	draw_line(center, tip, C_PLAYER, 2.0)
 
-	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), C_BORDER, false, 1.5)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), border_color, false, 1.5)

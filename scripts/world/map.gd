@@ -8,7 +8,8 @@ func _ready() -> void:
 
 	var parent_floor: Variant = get_parent().get("floor_num") if get_parent() else null
 	var floor_num: int = int(parent_floor) if parent_floor != null else 0
-	if floor_num > 0 and floor_num % 5 == 0:
+	# The last floor is the corridor; everything before it is a maze.
+	if floor_num >= FLOOR_COUNT:
 		_setup_boss_floor()
 	else:
 		_setup_normal_floor()
@@ -28,6 +29,8 @@ func _setup_normal_floor() -> void:
 	exit_wall_pos = exit_pair["wall"]
 	exit_pos      = exit_pair["floor"]
 	_place_traps()
+	_place_warden()
+	_place_orbs()
 
 
 func _setup_boss_floor() -> void:
@@ -208,6 +211,47 @@ func _random_frontier_wall(excluded_floors: Dictionary) -> Dictionary:
 	return candidates[randi() % candidates.size()]
 
 
+
+
+# Drops the warden on a reachable cell well away from both the entrance and the
+# door it is guarding, so finding it is the floor's actual task.
+func _place_warden() -> void:
+	var best: Vector2i = Vector2i(-1, -1)
+	var best_score: int = -1
+	for _attempt: int in range(80):
+		var pos: Vector2i = _random_reachable_cell(maze, player_start)
+		if pos == player_start or pos == exit_pos or trap_cells.has(pos):
+			continue
+		var from_start: int = absi(pos.x - player_start.x) + absi(pos.y - player_start.y)
+		var from_exit: int  = absi(pos.x - exit_pos.x) + absi(pos.y - exit_pos.y)
+		var score: int = mini(from_start, from_exit)
+		if score > best_score:
+			best_score = score
+			best = pos
+	warden_pos = best
+
+
+# Two or three orbs, spread out and clear of everything else that matters.
+# They are the run's only save points, so a floor without one would be cruel.
+func _place_orbs() -> void:
+	orb_cells.clear()
+	var want: int = 2 + (randi() % 2)
+	var attempts: int = 0
+	while orb_cells.size() < want and attempts < 120:
+		attempts += 1
+		var pos: Vector2i = _random_reachable_cell(maze, player_start)
+		if pos == player_start or pos == exit_pos or pos == warden_pos:
+			continue
+		if trap_cells.has(pos) or pos in orb_cells:
+			continue
+		# Keep them apart so one corner of the maze does not hold all of them.
+		var too_close: bool = false
+		for other: Vector2i in orb_cells:
+			if absi(pos.x - other.x) + absi(pos.y - other.y) < 8:
+				too_close = true
+		if too_close:
+			continue
+		orb_cells.append(pos)
 
 
 func _place_traps() -> void:
