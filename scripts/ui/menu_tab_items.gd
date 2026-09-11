@@ -66,7 +66,7 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 	var qty: int = item.get("qty", 1)
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = GearTooltip.build(item, _m.player) if item["type"] in ["weapon", "armor"] else item.get("desc", "")
+	name_lbl.tooltip_text = GearTooltip.build(item, _m.player) if item["type"] == "accessory" else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)
 
@@ -113,27 +113,17 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 					_m._refresh()
 				)
 				row.add_child(use_btn)
-		"weapon":
-			var is_equipped: bool = (_m.player.equipped_weapon.get("id", "") == item.get("id", "##"))
+		"accessory":
+			var worn: bool = _m.player.is_accessory_equipped(item.get("id", "##") as String)
 			var equip_btn: Button = Button.new()
-			equip_btn.text = "Equipped" if is_equipped else "Equip"
-			equip_btn.disabled = is_equipped
+			equip_btn.text = "Worn" if worn else "Wear"
+			equip_btn.disabled = worn or not _m.player.has_free_accessory_slot()
 			equip_btn.custom_minimum_size = Vector2(70, 26)
 			equip_btn.pressed.connect(func():
-				_m.player.equip_weapon(item)
-				_m._set_status("Equipped %s." % item["name"])
-				_m._refresh()
-			)
-			row.add_child(equip_btn)
-		"armor":
-			var is_equipped: bool = (_m.player.equipped_armor.get("id", "") == item.get("id", "##"))
-			var equip_btn: Button = Button.new()
-			equip_btn.text = "Equipped" if is_equipped else "Equip"
-			equip_btn.disabled = is_equipped
-			equip_btn.custom_minimum_size = Vector2(70, 26)
-			equip_btn.pressed.connect(func():
-				_m.player.equip_armor(item)
-				_m._set_status("Equipped %s." % item["name"])
+				if _m.player.equip_accessory(item):
+					_m._set_status("Put on %s." % item["name"])
+				else:
+					_m._set_status("Both slots are taken.")
 				_m._refresh()
 			)
 			row.add_child(equip_btn)

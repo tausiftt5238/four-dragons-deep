@@ -46,6 +46,7 @@ func build() -> void:
 	_add_stat_row(grid, "DEF", p.def, p.effective_def())
 	_add_stat_row(grid, "MAG", p.mag, p.effective_mag())
 	_add_stat_row(grid, "AGL", p.agl, p.effective_agl())
+	_add_stat_row(grid, "LUK", p.luk, p.effective_luk())
 
 	_m._content.add_child(HSeparator.new())
 

@@ -422,8 +422,7 @@ func _on_fight() -> void:
 	test_player.def             = _stats["def"]
 	test_player.mag             = _stats["mag"]
 	test_player.agl             = _stats["agl"]
-	test_player.equipped_weapon = {}
-	test_player.equipped_armor  = {}
+	test_player.equipped_accessories = []
 	test_player.compute_max_hp()
 	test_player.compute_max_mp()
 

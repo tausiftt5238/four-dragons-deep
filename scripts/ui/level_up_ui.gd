@@ -13,7 +13,7 @@ var player:  PlayerCharacter  # live reference for apply_stat_bonus
 const POINTS_PER_LEVEL: int = 3
 
 var _pts_remaining: int = 0
-var _allocated:     Dictionary = {str=0, def=0, mag=0, agl=0}
+var _allocated:     Dictionary = {str=0, def=0, mag=0, agl=0, luk=0}
 
 var _vbox:          VBoxContainer
 var _remaining_lbl: Label
@@ -107,7 +107,7 @@ func _build() -> void:
 	alloc_grid.add_theme_constant_override("v_separation", 6)
 	vbox.add_child(alloc_grid)
 
-	for stat: String in ["str", "def", "mag", "agl"]:
+	for stat: String in ["str", "def", "mag", "agl", "luk"]:
 		_alloc_row(alloc_grid, stat)
 
 	vbox.add_child(HSeparator.new())

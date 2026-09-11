@@ -1,5 +1,5 @@
 # PlayerCharacter
-# The player's RPG identity. Owns inventory, equipment slots, known spells,
+# The player's RPG identity. Owns inventory, accessory slots, known spells,
 # and gold. HP/MP persist across encounters; manage them carefully.
 class_name PlayerCharacter extends CharacterSheet
 
@@ -7,9 +7,10 @@ const DISPLAY_NAME: String = "Hero"
 
 var gold: int = 200
 
-# Equipment — empty dict means nothing equipped.
-var equipped_weapon: Dictionary = {}
-var equipped_armor:  Dictionary = {}
+# Trinkets. No weapon, no armour — he is a man who walks into other people's
+# heads carrying small objects, and two is as many as he can keep track of.
+const ACCESSORY_SLOTS: int = 2
+var equipped_accessories: Array[Dictionary] = []
 
 # Every spell he has learned. Looked up in Spell.DATA for display and cost.
 var known_spells: Array[String] = []
@@ -151,14 +152,16 @@ func _ready() -> void:
 	def = 4
 	mag = 2
 	agl = 3
+	luk = 3
 	exp = 0
 	exp_to_next = 100
 	compute_max_hp()
 	compute_max_mp()
 
-	known_spells    = ["fire"]
-	equipped_spells = ["fire"]
+	known_spells    = ["ember"]
+	equipped_spells = ["ember"]
 	equipped_items  = []
+	equipped_accessories = []
 	recruited       = [STARTING_DEMON]
 	active_demons   = [STARTING_DEMON]
 
@@ -167,40 +170,83 @@ func _ready() -> void:
 	affinities = {Affinity.PHYS: Affinity.NORMAL, "ice": Affinity.WEAK}
 
 
-# Armor is layered over the innate chart: an absorbing or reflecting piece wins
-# outright, a resisting piece cancels an innate weakness, and a vulnerable
-# piece opens one up.
+# A trinket is layered over the innate chart. It can cancel a weakness or open
+# one, and no further: nothing a person carries makes them drink fire. A
+# resistance wins over a vulnerability, so two conflicting charms leave him
+# merely protected rather than quietly doomed.
 func affinity_of(element: String) -> String:
 	if element == "":
 		return Affinity.NORMAL
-	if equipped_armor.get("absorb_element", "") == element:
-		return Affinity.DRAIN
-	if equipped_armor.get("reflect_element", "") == element:
-		return Affinity.REPEL
-	if equipped_armor.get("resist_element", "") == element:
-		return Affinity.RESIST
-	if equipped_armor.get("weakness", "") == element:
-		return Affinity.WEAK
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("resist_element", "") == element:
+			return Affinity.RESIST
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("weak_element", "") == element:
+			return Affinity.WEAK
 	return affinities.get(element, Affinity.NORMAL) as String
 
 
-# ── Effective stats (base + equipment bonuses) ────────────────────────────────
+# ── Accessories ───────────────────────────────────────────────────────────────
+
+func is_accessory_equipped(item_id: String) -> bool:
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("id", "") == item_id:
+			return true
+	return false
+
+
+func has_free_accessory_slot() -> bool:
+	return equipped_accessories.size() < ACCESSORY_SLOTS
+
+
+# Returns false when both slots are already taken, so the caller can say so.
+func equip_accessory(item: Dictionary) -> bool:
+	if not has_free_accessory_slot() or is_accessory_equipped(item.get("id", "") as String):
+		return false
+	equipped_accessories.append(item)
+	inventory.erase(item)
+	return true
+
+
+func unequip_accessory(item_id: String) -> void:
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("id", "") == item_id:
+			equipped_accessories.erase(acc)
+			inventory.append(acc)
+			return
+
+
+func _accessory_sum(key: String) -> int:
+	var total: int = 0
+	for acc: Dictionary in equipped_accessories:
+		total += int(acc.get(key, 0))
+	return total
+
+
+# ── Effective stats (base + what he is carrying) ──────────────────────────────
 
 func effective_str() -> int:
-	return str + equipped_weapon.get("str_bonus", 0)
+	return maxi(1, str + _accessory_sum("str_bonus"))
 
 func effective_def() -> int:
-	return def + equipped_armor.get("def_bonus", 0)
+	return maxi(0, def + _accessory_sum("def_bonus"))
 
 func effective_mag() -> int:
-	return mag + equipped_weapon.get("mag_bonus", 0)
+	return maxi(1, mag + _accessory_sum("mag_bonus"))
 
 func effective_agl() -> int:
-	return agl + equipped_weapon.get("agl_pen", 0) + equipped_armor.get("agl_pen", 0)
+	return maxi(1, agl + _accessory_sum("agl_bonus"))
+
+func effective_luk() -> int:
+	return maxi(1, luk + _accessory_sum("luk_bonus"))
 
 
 func battle_agility() -> int:
 	return effective_agl()
+
+
+func battle_luck() -> int:
+	return effective_luk()
 
 
 # ── Inventory management ──────────────────────────────────────────────────────
@@ -286,7 +332,7 @@ func use_item(item: Dictionary) -> String:
 
 
 func sort_inventory(mode: String = "type") -> void:
-	var type_order: Dictionary = {consumable=0, scroll=1, weapon=2, armor=3}
+	var type_order: Dictionary = {consumable=0, scroll=1, accessory=2}
 	inventory.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if mode == "type":
 			var ta: int = type_order.get(a["type"], 99)
@@ -297,29 +343,3 @@ func sort_inventory(mode: String = "type") -> void:
 	)
 
 
-# ── Equipment ─────────────────────────────────────────────────────────────────
-
-func equip_weapon(item: Dictionary) -> void:
-	if not equipped_weapon.is_empty():
-		inventory.append(equipped_weapon)
-	equipped_weapon = item
-	inventory.erase(item)
-
-
-func unequip_weapon() -> void:
-	if not equipped_weapon.is_empty():
-		inventory.append(equipped_weapon)
-		equipped_weapon = {}
-
-
-func equip_armor(item: Dictionary) -> void:
-	if not equipped_armor.is_empty():
-		inventory.append(equipped_armor)
-	equipped_armor = item
-	inventory.erase(item)
-
-
-func unequip_armor() -> void:
-	if not equipped_armor.is_empty():
-		inventory.append(equipped_armor)
-		equipped_armor = {}

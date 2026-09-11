@@ -84,8 +84,49 @@ const TEMPLATES: Array[Dictionary] = [
 	{name="Dark Wizard",    str=3,  def=3,  mag=9,  agl=4, exp=62,  gold=20, status_attack="silence",    weakness="ice",     min_floor=4, max_floor=-1, negotiable=true,  talk_difficulty=4, personality="proud",    wants="potion",    sprite="res://resources/enemySprites/WizardB.png",       attack_element="dark",    reflect_element="fire", phys="weak", support="stoke", lv=12, ail=22, light="weak", dark="null"},
 ]
 
+# ── Written for this game, still waiting on art ───────────────────────────────
+#
+# Everything below is original to the detective case: the fantasy roster above
+# is placeholder and these are not. Each carries `needs_art=true` and an
+# `art_note` describing exactly what it looks like, because the sprite is the
+# only thing standing between these and the live game. Nothing here is or ever
+# was an object of worship.
+#
+# Wardens are the floor's locked door made flesh. One sits on each maze floor,
+# does not roam, and holds the key — so unlike a random encounter it cannot be
+# avoided, walked around, or fled from for long. They are repressions: the
+# thing in a mind that will not let you go further in. Two icons each, so the
+# fight is a wall rather than a speed bump, and none of them can be talked down.
+const WARDEN_TEMPLATES: Array[Dictionary] = [
+	{name="Hushmouth", str=5, def=4, mag=2, agl=3, exp=70, gold=30,
+		status_attack="silence", weakness="fire", min_floor=1, max_floor=1,
+		negotiable=false, talk_difficulty=0, sprite="", needs_art=true,
+		phys="weak", lv=4, ail=5, icons=2,
+		art_note="A human jaw on its own, hung at head height across the doorway, wired shut through the teeth with rusted picture wire. No skull above it and no body below. The wire is bright and new; somebody keeps re-doing it."},
+
+	{name="The Held Breath", str=6, def=5, mag=5, agl=4, exp=110, gold=45,
+		status_attack="immobilize", weakness="thunder", min_floor=2, max_floor=2,
+		negotiable=false, talk_difficulty=0, sprite="", needs_art=true,
+		phys="resist", lv=6, ail=8, icons=2, light="weak", support="ward",
+		art_note="A room's worth of air pulled into the outline of someone standing, visible only where dust presses against the seam of it. Inside the outline the dust never settles. It does not move. The room moves around it."},
+
+	{name="Vacancy", str=7, def=6, mag=7, agl=4, exp=160, gold=60,
+		status_attack="silence", weakness="ice", min_floor=3, max_floor=3,
+		negotiable=false, talk_difficulty=0, sprite="", needs_art=true,
+		phys="null", lv=8, ail=10, icons=2, dark="weak", attack_element="ice",
+		art_note="A tall adult silhouette filling a lit doorway, backlit hard enough that you cannot see into it — except there is no light behind it, and no room behind it either. Its edges are exactly the edges of a door you remember."},
+]
+
+
 # Boss templates — one per 5-floor milestone, cycling every 4 bosses.
 const BOSS_TEMPLATES: Array[Dictionary] = [
+	{name="The Tenant", str=10, def=8, mag=8, agl=4, exp=260, gold=120,
+		status_attack="immobilize", weakness="fire", min_floor=3, max_floor=-1,
+		negotiable=false, talk_difficulty=0, sprite="", needs_art=true,
+		icons=3, support="ward", lv=10, ail=15, phys="resist",
+		light="null", dark="null", attack_element="dark",
+		art_note="Something wearing the victim's own childhood bedroom as a body: wallpaper stretched over a frame of bedstead and skirting board, a sash window for a mouth with the curtains still hanging in it. Its posture is relaxed. It has lived here longer than the victim has.",
+		design_note="Weak to fire on purpose — fire is the one spell the detective starts with, so the first boss is answerable with the kit he actually owns. Nulls both banishing lines like every boss."},
 	{name="Shadow Knight", str=12, def=8,  mag=2,  agl=3, exp=200, gold=80,  status_attack="immobilize", weakness="thunder", min_floor=5,  max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=3, support="ward", lv=12, ail=25, light="null", dark="null"},
 	{name="Bone Sorcerer", str=5,  def=6,  mag=14, agl=4, exp=280, gold=110, status_attack="silence",    weakness="ice",     min_floor=10, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", attack_element="fire", icons=3, support="stoke", lv=14, ail=25, light="null", dark="null"},
 	{name="Iron Titan",    str=16, def=12, mag=0,  agl=1, exp=360, gold=140, status_attack="paralyzed",  weakness="thunder", min_floor=15, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=4, support="ward", lv=16, ail=25, light="null", dark="null"},
@@ -184,16 +225,34 @@ static func make_boss(floor_num: int) -> Enemy:
 	return e
 
 
+# The warden for a given maze floor. Floors past the written ones fall back to
+# the last warden rather than to a random demon, so the key always has a keeper.
+static func make_warden(floor_num: int) -> Enemy:
+	var idx: int = clampi(floor_num - 1, 0, WARDEN_TEMPLATES.size() - 1)
+	return _build(WARDEN_TEMPLATES[idx], floor_num)
+
+
+# Everything still waiting on a sprite, so the art queue can be read off the
+# data rather than kept in somebody's head.
+static func needing_art() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for t: Dictionary in all_templates():
+		if bool(t.get("needs_art", false)):
+			out.append(t)
+	return out
+
+
 static func all_templates() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	result.append_array(TEMPLATES)
+	result.append_array(WARDEN_TEMPLATES)
 	result.append_array(BOSS_TEMPLATES)
 	return result
 
 
 
 static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
-	for tmpl: Dictionary in TEMPLATES:
+	for tmpl: Dictionary in all_templates():
 		if tmpl["name"] == enemy_name:
 			return _build(tmpl, floor_num)
 	return make_random(floor_num)

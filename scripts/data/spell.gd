@@ -3,42 +3,111 @@
 # the in-menu spell list and the in-combat spell chooser.
 #
 # Fields per spell:
-#   name   – display name
-#   mp     – MP cost
-#   type   – "heal" (castable from menu) | "dmg" (battle only)
-#   heal   – HP restored when cast from menu (0 for dmg spells)
-#   desc   – one-line description shown in menus
+#   name    – display name
+#   mp      – MP cost
+#   type    – "dmg" | "banish" | "heal" | "buff" | "ailment"
+#   element – affinity key it is scored against ("" for the ones that aren't)
+#   shape   – SHAPE_ONE | SHAPE_FEW | SHAPE_ALL, how many demons it reaches
+#   spread  – what each target gets when the cast is split; 1.0 for single
+#   heal    – HP restored (heals only)
+#   desc    – one line, shown in the menu
 class_name Spell
 
+# ── Reach ─────────────────────────────────────────────────────────────────────
+#
+# Every element is learnable at all three reaches from the first floor, so the
+# choice is never "do I have the big one yet" but "is this a fight worth paying
+# 22 MP to open". Width is paid for twice: once in MP, once in the spread, which
+# is what keeps the single-target spell in the loadout.
+const SHAPE_ONE: String = "single"
+const SHAPE_FEW: String = "few"     # 2-3 demons, chosen at random
+const SHAPE_ALL: String = "all"
+
+# Damage keeps more of itself when split than a banishing cast does. Expelling
+# three demons at once for 36 MP would end most fights outright, so the wide
+# banishing spells give up nearly half their odds to exist at all.
+const SPREAD_FEW_DMG:    float = 0.75
+const SPREAD_ALL_DMG:    float = 0.60
+const SPREAD_FEW_BANISH: float = 0.70
+const SPREAD_ALL_BANISH: float = 0.50
+
 static var DATA: Dictionary = {
-	# ── Elemental damage ──────────────────────────────────────────────────────
-	"fire":     {name="Fire",     mp=8,  type="dmg", heal=0, element="fire",    desc="Deals fire damage to one enemy."},
-	"fira":     {name="Fira",     mp=16, type="dmg", heal=0, element="fire",    desc="Deals strong fire damage to one enemy."},
-	"firaga":   {name="Firaga",   mp=30, type="dmg", heal=0, element="fire",    desc="Deals massive fire damage to one enemy."},
-	"thunder":  {name="Thunder",  mp=10, type="dmg", heal=0, element="thunder", desc="Deals lightning damage to one enemy."},
-	"thundara": {name="Thundara", mp=18, type="dmg", heal=0, element="thunder", desc="Deals strong lightning damage to one enemy."},
-	"blizzard": {name="Blizzard", mp=10, type="dmg", heal=0, element="ice",     desc="Deals ice damage to one enemy."},
-	"blizzara": {name="Blizzara", mp=18, type="dmg", heal=0, element="ice",     desc="Deals strong ice damage to one enemy."},
-	# ── Banishing: expels outright or does nothing at all ─────────────────────
-	"banish":   {name="Banish",   mp=14, type="banish", heal=0, element="light", desc="Tries to expel one enemy outright. Certain things cannot abide the light."},
-	"consign":  {name="Consign",  mp=14, type="banish", heal=0, element="dark",  desc="Tries to unmake one enemy outright. Certain things cannot abide the dark."},
+	# ── Fire ──────────────────────────────────────────────────────────────────
+	"ember":       {name="Ember",       mp=8,  type="dmg", heal=0, element="fire",
+		shape=SHAPE_ONE, spread=1.0,
+		desc="A flame set on one demon."},
+	"cinderfall":  {name="Cinderfall",  mp=14, type="dmg", heal=0, element="fire",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG,
+		desc="Embers fall across two or three of them."},
+	"pyre":        {name="Pyre",        mp=22, type="dmg", heal=0, element="fire",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG,
+		desc="The whole room catches."},
+
+	# ── Ice ───────────────────────────────────────────────────────────────────
+	"rime":        {name="Rime",        mp=8,  type="dmg", heal=0, element="ice",
+		shape=SHAPE_ONE, spread=1.0,
+		desc="Frost closes over one demon."},
+	"hailfall":    {name="Hailfall",    mp=14, type="dmg", heal=0, element="ice",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG,
+		desc="Hail comes down on two or three of them."},
+	"whiteout":    {name="Whiteout",    mp=22, type="dmg", heal=0, element="ice",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG,
+		desc="Everything in the room goes cold at once."},
+
+	# ── Thunder ───────────────────────────────────────────────────────────────
+	"arc":         {name="Arc",         mp=8,  type="dmg", heal=0, element="thunder",
+		shape=SHAPE_ONE, spread=1.0,
+		desc="Current jumps to one demon."},
+	"forkfall":    {name="Forkfall",    mp=14, type="dmg", heal=0, element="thunder",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG,
+		desc="The current forks into two or three of them."},
+	"thunderhead": {name="Thunderhead", mp=22, type="dmg", heal=0, element="thunder",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG,
+		desc="It breaks over all of them together."},
+
+	# ── Light: expels, or does nothing ────────────────────────────────────────
+	"banish":      {name="Banish",      mp=14, type="banish", heal=0, element="light",
+		shape=SHAPE_ONE, spread=1.0,
+		desc="Tries to expel one demon outright. Some things cannot abide the light."},
+	"winnow":      {name="Winnow",      mp=24, type="banish", heal=0, element="light",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH,
+		desc="Reaches for two or three at once, and holds each of them less firmly."},
+	"daybreak":    {name="Daybreak",    mp=36, type="banish", heal=0, element="light",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH,
+		desc="Opens the light on every demon standing. Thin, across that many."},
+
+	# ── Dark: unmakes, or does nothing ────────────────────────────────────────
+	"consign":     {name="Consign",     mp=14, type="banish", heal=0, element="dark",
+		shape=SHAPE_ONE, spread=1.0,
+		desc="Tries to unmake one demon outright. Some things cannot abide the dark."},
+	"cull":        {name="Cull",        mp=24, type="banish", heal=0, element="dark",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH,
+		desc="Takes two or three together, and takes each of them less surely."},
+	"nightfall":   {name="Nightfall",   mp=36, type="banish", heal=0, element="dark",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH,
+		desc="Closes the dark over the whole room. Thin, across that many."},
+
 	# ── Healing ───────────────────────────────────────────────────────────────
 	"cure":     {name="Cure",     mp=6,  type="heal", heal=30,   desc="Restores 30 HP."},
 	"cura":     {name="Cura",     mp=15, type="heal", heal=80,   desc="Restores 80 HP."},
 	"curaga":   {name="Curaga",   mp=30, type="heal", heal=9999, desc="Fully restores HP."},
+
 	# ── Buffs: the whole party at once ────────────────────────────────────────
 	"whet":     {name="Whet",     mp=8,  type="buff", heal=0, stat="atk", delta=1,  scope="party", desc="Sharpens the party's attacks."},
 	"ward":     {name="Ward",     mp=8,  type="buff", heal=0, stat="def", delta=1,  scope="party", desc="Hardens the party's guard."},
 	"quicken":  {name="Quicken",  mp=8,  type="buff", heal=0, stat="agl", delta=1,  scope="party", desc="Quickens the party — lands and dodges more."},
 	"stoke":    {name="Stoke",    mp=8,  type="buff", heal=0, stat="mag", delta=1,  scope="party", desc="Feeds the party's magic — stronger spells and heals."},
+
 	# ── Debuffs: every enemy at once ──────────────────────────────────────────
 	"blunt":    {name="Blunt",    mp=10, type="buff", heal=0, stat="atk", delta=-1, scope="foes",  desc="Dulls every enemy's attacks."},
 	"sunder":   {name="Sunder",   mp=10, type="buff", heal=0, stat="def", delta=-1, scope="foes",  desc="Breaks every enemy's guard."},
 	"mire":     {name="Mire",     mp=10, type="buff", heal=0, stat="agl", delta=-1, scope="foes",  desc="Slows every enemy — they miss more."},
 	"damp":     {name="Damp",     mp=10, type="buff", heal=0, stat="mag", delta=-1, scope="foes",  desc="Smothers every enemy's magic."},
-	# ── Stripping what the other side stacked ─────────────────────────────────
-	"purge":    {name="Purge",    mp=12, type="dispel", heal=0, mode="buffs",   scope="foes",  desc="Strips every enemy buff."},
-	"steady":   {name="Steady",   mp=12, type="dispel", heal=0, mode="debuffs", scope="party", desc="Clears the party's debuffs."},
+
+	# Stripping what the other side stacked is deliberately absent for now —
+	# the dekaja/dekunda pair comes in a later pass, and until it does a stacked
+	# buff is answered by out-stacking it.
+
 	# ── Ailments ──────────────────────────────────────────────────────────────
 	"venom":    {name="Venom",    mp=4,  type="ailment", heal=0, status="poison",     desc="Poisons the enemy."},
 	"shock":    {name="Shock",    mp=6,  type="ailment", heal=0, status="paralyzed",  desc="Paralyzes the enemy."},
@@ -49,3 +118,20 @@ static var DATA: Dictionary = {
 
 static func get_data(spell_id: String) -> Dictionary:
 	return DATA.get(spell_id, {})
+
+
+static func shape_of(spell_id: String) -> String:
+	return DATA.get(spell_id, {}).get("shape", SHAPE_ONE) as String
+
+
+# True when the spell picks its own targets and must not open the target menu.
+static func is_multi(spell_id: String) -> bool:
+	return shape_of(spell_id) != SHAPE_ONE
+
+
+# Short tag for the menus: "ONE" / "2-3" / "ALL".
+static func reach_tag(spell_id: String) -> String:
+	match shape_of(spell_id):
+		SHAPE_FEW: return "2-3"
+		SHAPE_ALL: return "ALL"
+	return "ONE"

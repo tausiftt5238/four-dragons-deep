@@ -450,6 +450,124 @@ func _begin_player_phase() -> void:
 	# rather than being spent on the first hit that lands.
 	for member: CharacterSheet in party:
 		member.defending = false
+	_phases += 1
+	if _try_begging():
+		return
+	_press.begin(_living_party().size())
+	_actor_idx = 0 if party[0].is_alive() else _next_living(0)
+	_prompt_actor()
+
+
+# ── A demon losing its nerve ──────────────────────────────────────────────────
+#
+# One fight in twenty, something on the other side decides it would rather be
+# on this one. It happens before the phase opens and costs no icon: it is luck,
+# not a move, and making the player pay a turn to accept a gift would teach them
+# to dread the prompt. Only demons that can be talked to break this way — a
+# lattice of tendon with nothing behind it doing the thinking has no nerve to
+# lose.
+const BEG_CHANCE: int = 5
+const BEG_PHASE: int = 2
+
+var _beg_used: bool = false
+var _phases: int = 0
+
+
+func _begging_candidates() -> Array[Enemy]:
+	var out: Array[Enemy] = []
+	for foe: Enemy in _living_foes():
+		if foe.negotiable:
+			out.append(foe)
+	return out
+
+
+# Returns true when a plea took over the phase, so the caller stands down.
+func _try_begging() -> bool:
+	if _beg_used or _phases != BEG_PHASE:
+		return false
+	_beg_used = true
+	if randi() % 100 >= BEG_CHANCE:
+		return false
+	var pool: Array[Enemy] = _begging_candidates()
+	if pool.is_empty():
+		return false
+
+	enemy = pool[randi() % pool.size()]
+	_refresh_hp()
+
+	# Already bound: it has nothing to offer that he has not got, and it knows
+	# it. It pays its way out instead.
+	if enemy.enemy_name in player.recruited:
+		_log("[color=#ffd479]%s throws itself down — and sees its own face already standing with you.[/color]"
+				% enemy.display_name())
+		_offer_tribute()
+		return true
+
+	_log("[color=#ffd479]%s stops fighting and begs to be taken with you.[/color]"
+			% enemy.display_name())
+	_prompt_beg()
+	return true
+
+
+func _prompt_beg() -> void:
+	_set_buttons(false)
+	_hide_actions()
+	_back_target = Callable()
+	_right_back_btn.visible = false
+	_right_title.text = "IT IS BEGGING"
+	_right_title.add_theme_color_override("font_color", Color(1.0, 0.83, 0.47))
+	_submenu_clear()
+
+	var take: Button = _big_button("Bind it",
+			"%s joins the rolodex. Costs nothing." % enemy.enemy_name, false)
+	take.pressed.connect(func() -> void:
+		var who: String = enemy.enemy_name
+		_remember_recruit(who)
+		_log("[color=lime]%s is bound. It walks in behind you.[/color]" % who)
+		await _beg_resolved())
+	_submenu_add(take)
+
+	var refuse: Button = _big_button("Refuse it",
+			"Leave it where it is. The fight goes on.", false)
+	refuse.pressed.connect(func() -> void:
+		_log("[color=gray]You say nothing. It picks itself back up.[/color]")
+		_right_back_btn.visible = true
+		_press.begin(_living_party().size())
+		_actor_idx = 0 if party[0].is_alive() else _next_living(0)
+		_prompt_actor())
+	_submenu_add(refuse)
+
+
+# A duplicate hands over whatever it was carrying and leaves under its own
+# power, which is the only way a fight ever gets shorter for free.
+func _offer_tribute() -> void:
+	var drop: Dictionary = enemy.roll_drop()
+	if drop.is_empty():
+		var coin: int = maxi(5, enemy.gold_reward * 2)
+		player.gold += coin
+		_log("[color=#ffd479]It empties its hands — %d gold — and goes.[/color]" % coin)
+	else:
+		player.add_item(drop.duplicate(), 1)
+		_log("[color=#ffd479]It presses %s on you and goes.[/color]" % drop["name"])
+	await _beg_resolved()
+
+
+# Shared tail: the demon leaves the field, and the phase opens normally on
+# whatever is left. No icon is spent either way.
+func _beg_resolved() -> void:
+	var leaving: Enemy = enemy
+	foes.erase(leaving)
+	_departed.append(leaving)
+	_ensure_target()
+	_refresh_hp()
+	_right_back_btn.visible = true
+
+	await get_tree().create_timer(0.9).timeout
+	if not is_instance_valid(self):
+		return
+	if foes.is_empty():
+		_end_combat("talk")
+		return
 	_press.begin(_living_party().size())
 	_actor_idx = 0 if party[0].is_alive() else _next_living(0)
 	_prompt_actor()
@@ -1275,6 +1393,10 @@ func _show_skills_submenu() -> void:
 			var element: String = data.get("element", "")
 			var tag: String = Affinity.element_name(element) if element != "" \
 					else (data.get("type", "dmg") as String).capitalize()
+			# How far it reaches is the thing a player most needs to know
+			# before spending 22 MP, so it rides next to the element.
+			if element != "":
+				tag += "  " + Spell.reach_tag(spell_id)
 			var cost: int = int(data.get("mp", 0))
 			_submenu_add(_make_skill_button("Magic:" + spell_id,
 					data["name"] as String, tag, "%d MP" % cost,
@@ -1305,7 +1427,7 @@ func _resolve_skill() -> Dictionary:
 				cost = PressTurn.COST_FULL}
 	actor.mp -= price
 	var power: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
-	var crit: bool = CombatMath.roll_crit()
+	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(int(power * 2.0) - _guarded_def(enemy),
 			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s calls up %s!" % [
@@ -1752,12 +1874,14 @@ func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
 # ── Casting ───────────────────────────────────────────────────────────────────
 
 func _on_skill_chosen(action: String) -> void:
-	# Healing, buffs and dispels choose no target — buffs take the whole party,
-	# debuffs take every enemy. Only the things aimed at one body ask.
+	# Healing and buffs choose no target — buffs take the whole party, debuffs
+	# take every enemy. Neither does a spell that reaches more than one demon:
+	# it picks its own, so asking which one would be a lie.
 	if action.begins_with("Magic:"):
-		var data: Dictionary = Spell.get_data(action.substr(6))
+		var spell_id: String = action.substr(6)
+		var data: Dictionary = Spell.get_data(spell_id)
 		var kind: String = data.get("type", "dmg") as String
-		if kind == "heal" or kind == "buff" or kind == "dispel":
+		if kind == "heal" or kind == "buff" or Spell.is_multi(spell_id):
 			await _commit_action(action)
 			return
 	_with_target(func() -> void: await _commit_action(action))
@@ -1788,9 +1912,6 @@ func _cast_spell(spell_id: String) -> Dictionary:
 	if spell_type == "buff":
 		return _apply_stage_spell(data)
 
-	if spell_type == "dispel":
-		return _apply_dispel(data)
-
 	if spell_type == "ailment":
 		var target_status: String = data.get("status", "")
 		if target_status == "" or enemy.has_status(target_status):
@@ -1802,7 +1923,9 @@ func _cast_spell(spell_id: String) -> Dictionary:
 				cost = PressTurn.COST_FULL}
 
 	if spell_type == "banish":
-		return _cast_banish(data)
+		var bd: Dictionary = data.duplicate()
+		bd["id"] = spell_id
+		return _cast_banish(bd)
 
 	if spell_type == "heal":
 		var heal_amt: int = data.get("heal", 30)
@@ -1813,15 +1936,101 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		return {msg = "[color=lime]You cast %s! Restored %d HP.[/color]" % [
 				data["name"], player.hp - before], cost = PressTurn.COST_FULL}
 
+	if Spell.is_multi(spell_id):
+		return _cast_spread(data)
+
 	var element: String = data.get("element", "")
 	var power: float = float(player.effective_mag()) \
 			* player.stage_mult(CharacterSheet.STAT_MAG)
 	var base: int = int(power * 2.0) - _guarded_def(enemy)
 	if "scholar" in player.passive_skills:
 		base = int(base * 1.25)
-	var crit: bool = CombatMath.roll_crit()
+	var crit: bool = CombatMath.roll_crit(player)
 	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "You cast %s!" % data["name"])
+
+
+# ── Spells that reach more than one demon ─────────────────────────────────────
+#
+# Which demons a wide cast touches: everything standing for an ALL spell, two
+# or three at random for a FEW. Fewer demons than that on the field means it
+# simply takes all of them — the spell is not wasted, it just has less to do.
+func _spread_targets(shape: String) -> Array[Enemy]:
+	var living: Array[Enemy] = _living_foes()
+	if shape == Spell.SHAPE_ALL or living.size() <= 2:
+		return living
+	living.shuffle()
+	return living.slice(0, 2 + (randi() % 2))
+
+
+# The press-turn cost of a cast that landed on several demons at once. The
+# worst thing that happened decides, with one exception: a single null among
+# demons that otherwise took it is not worth two icons, so only a cast that
+# every demon nulled pays that. This is what makes an ALL spell a gamble
+# against a mixed line rather than a strict upgrade.
+static func _spread_cost(outcomes: Array[String]) -> String:
+	for o: String in outcomes:
+		if o == "repel" or o == "drain":
+			return PressTurn.COST_LOST
+	var nulled: int = 0
+	for o: String in outcomes:
+		if o == "null":
+			nulled += 1
+	if nulled == outcomes.size():
+		return PressTurn.COST_MISS
+	if "weak" in outcomes:
+		return PressTurn.COST_HALF
+	return PressTurn.COST_FULL
+
+
+func _cast_spread(data: Dictionary) -> Dictionary:
+	var element: String = data.get("element", "") as String
+	var spread: float = float(data.get("spread", 1.0))
+	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
+	var power: float = float(player.effective_mag()) \
+			* player.stage_mult(CharacterSheet.STAT_MAG)
+
+	var lines: Array[String] = ["You cast %s!" % data["name"]]
+	var outcomes: Array[String] = []
+	var reflected: int = 0
+
+	for foe: Enemy in targets:
+		var base: int = int(power * 2.0 * spread) - _guarded_def(foe)
+		if "scholar" in player.passive_skills:
+			base = int(base * 1.25)
+		var crit: bool = CombatMath.roll_crit(player)
+		var res: Dictionary = CombatMath.resolve(base, element, foe, crit, foe.defending)
+		var outcome: String = res["outcome"] as String
+		outcomes.append(outcome)
+		var dmg: int = int(res["dmg"])
+
+		match outcome:
+			"drain":
+				foe.heal(dmg)
+				lines.append("[color=lime]%s drinks it and recovers %d.[/color]" % [
+						foe.display_name(), dmg])
+			"repel":
+				reflected += dmg
+				lines.append("[color=#d070ff]%s turns it back for %d.[/color]" % [
+						foe.display_name(), dmg])
+			"null":
+				lines.append("[color=#999999]%s does not feel it.[/color]" % foe.display_name())
+			_:
+				foe.take_damage(dmg)
+				lines.append("[color=orange]%s takes %d.[/color]%s" % [
+						foe.display_name(), dmg,
+						CombatMath.outcome_tag(outcome, bool(res["crit"]),
+								bool(res.get("suppressed", false)))])
+				if not foe.is_alive():
+					lines.append("[color=lime]%s is destroyed![/color]" % foe.display_name())
+
+	if reflected > 0:
+		_actor().take_damage(reflected)
+		lines.append("[color=red]%s takes %d from what came back.[/color]" % [
+				_actor_name(), reflected])
+
+	_ensure_target()
+	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
 
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
@@ -1855,35 +2064,6 @@ func _apply_stage_spell(data: Dictionary) -> Dictionary:
 			cost = PressTurn.COST_FULL}
 
 
-func _apply_dispel(data: Dictionary) -> Dictionary:
-	var strip_buffs: bool = (data.get("mode", "buffs") == "buffs")
-	var on_party: bool    = (data.get("scope", "foes") == "party")
-	var touched: int = 0
-	var pool: Array[CharacterSheet] = []
-	if on_party:
-		pool.assign(_living_party())
-	else:
-		for foe: Enemy in _living_foes():
-			pool.append(foe)
-	for member: CharacterSheet in pool:
-		var had: bool = false
-		for key: String in CharacterSheet.STAT_KEYS:
-			if (strip_buffs and member.stage(key) > 0) or (not strip_buffs and member.stage(key) < 0):
-				had = true
-		if not had:
-			continue
-		if strip_buffs:
-			member.clear_buffs()
-		else:
-			member.clear_debuffs()
-		touched += 1
-	if touched == 0:
-		return {msg = "[color=gray]You cast %s — there was nothing to clear.[/color]" % data["name"],
-				cost = PressTurn.COST_FULL}
-	return {msg = "[color=aqua]You cast %s!  Cleared %d.[/color]" % [data["name"], touched],
-			cost = PressTurn.COST_FULL}
-
-
 static func _stat_name(stat: String) -> String:
 	match stat:
 		CharacterSheet.STAT_ATK: return "Attack"
@@ -1905,10 +2085,14 @@ func _guarded_def(target: CharacterSheet) -> int:
 # why they are worth a slot: one icon for a whole demon, at odds its own nature
 # decides.
 func _cast_banish(data: Dictionary) -> Dictionary:
+	if Spell.is_multi(data.get("id", "") as String) \
+			or data.get("shape", Spell.SHAPE_ONE) != Spell.SHAPE_ONE:
+		return _cast_banish_spread(data)
+
 	var element: String = data.get("element", Affinity.LIGHT) as String
 	var power: int = maxi(1, int(float(player.effective_mag())
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
-	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false)
+	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false, player)
 	var name: String = data["name"] as String
 	var who: String  = enemy.display_name()
 
@@ -1934,6 +2118,63 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 			return {msg = "[color=lime]%s! %s drinks it and recovers %d HP.[/color]" % [
 					name, who, int(res["dmg"])], cost = PressTurn.COST_LOST}
 	return {msg = "[color=gray]%s does nothing.[/color]" % name, cost = PressTurn.COST_FULL}
+
+
+# Light or dark thrown across a line. Each demon is judged on its own chart and
+# rolled separately at reduced odds, so a full room is a real bet rather than an
+# end to the fight: the more demons it reaches, the less firmly it holds any of
+# them, and one that repels it still ends the phase for everyone.
+func _cast_banish_spread(data: Dictionary) -> Dictionary:
+	var element: String = data.get("element", Affinity.LIGHT) as String
+	var spread: float = float(data.get("spread", 1.0))
+	var power: int = maxi(1, int(float(player.effective_mag())
+			* player.stage_mult(CharacterSheet.STAT_MAG)))
+	var targets: Array[Enemy] = _spread_targets(
+			data.get("shape", Spell.SHAPE_ALL) as String)
+
+	var lines: Array[String] = ["[color=#c9a6ff]You cast %s![/color]" % data["name"]]
+	var outcomes: Array[String] = []
+	var reflected: int = 0
+	var took_weak: bool = false
+
+	for foe: Enemy in targets:
+		var res: Dictionary = CombatMath.resolve_banish(
+				foe, element, power, false, player, spread)
+		var outcome: String = res["outcome"] as String
+		match outcome:
+			"banished":
+				var was_weak: bool = (foe.affinity_of(element) == Affinity.WEAK)
+				took_weak = took_weak or was_weak
+				foe.take_damage(foe.max_hp * 2)
+				outcomes.append("weak" if was_weak else "hit")
+				lines.append("[color=#c9a6ff]%s is taken.[/color]" % foe.display_name())
+			"drain":
+				foe.heal(int(res["dmg"]))
+				outcomes.append("drain")
+				lines.append("[color=lime]%s drinks it.[/color]" % foe.display_name())
+			"repel":
+				reflected += int(res["dmg"])
+				outcomes.append("repel")
+				lines.append("[color=#d070ff]%s turns it back.[/color]" % foe.display_name())
+			"null":
+				outcomes.append("null")
+				lines.append("[color=#999999]%s does not feel it.[/color]" % foe.display_name())
+			_:
+				outcomes.append("hit")
+				lines.append("[color=gray]%s holds.[/color]" % foe.display_name())
+
+	if reflected > 0:
+		_actor().take_damage(reflected)
+		lines.append("[color=red]%s takes %d from what came back.[/color]" % [
+				_actor_name(), reflected])
+
+	_ensure_target()
+	# Only an expulsion off a weakness pays an icon back; a lucky one against an
+	# ordinary demon was luck, not a read.
+	var cost: String = _spread_cost(outcomes)
+	if cost == PressTurn.COST_FULL and took_weak:
+		cost = PressTurn.COST_HALF
+	return {msg = " ".join(lines), cost = cost}
 
 
 # ── Physical swings ───────────────────────────────────────────────────────────
@@ -1973,7 +2214,7 @@ func _resolve_attack() -> Dictionary:
 	if _actor_is_player() and "last_stand" in player.passive_skills \
 			and player.hp * 4 < player.max_hp:
 		atk *= 2.0
-	var crit: bool = CombatMath.roll_crit()
+	var crit: bool = CombatMath.roll_crit(_actor())
 	var res: Dictionary = CombatMath.resolve(int(atk) - _guarded_def(enemy),
 			Affinity.PHYS, enemy, crit, enemy.defending)
 	return _land_hit(res, Affinity.PHYS, "%s strikes!" % _actor_name())
@@ -2042,7 +2283,7 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var guarding: bool = target.defending
 	var eff_def: int = _guarded_def(target)
 
-	var crit: bool = CombatMath.roll_crit()
+	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(int(base) - eff_def, element, target,
 			crit, guarding)
 	var outcome: String = res["outcome"] as String

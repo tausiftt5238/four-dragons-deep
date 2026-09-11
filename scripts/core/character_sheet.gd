@@ -8,6 +8,10 @@ var str: int = 1
 var def: int = 1
 var mag: int = 1
 var agl: int = 1
+# Luck does not hit harder or dodge better. It decides the things that are
+# already a coin flip: whether a swing crits, and whether a banishing cast
+# finds purchase on a demon whose chart has no strong opinion either way.
+var luk: int = 1
 var exp: int = 0
 
 var exp_to_next: int = 100
@@ -41,6 +45,7 @@ const STAT_ATK: String = "atk"
 const STAT_MAG: String = "mag"
 const STAT_DEF: String = "def"
 const STAT_AGL: String = "agl"
+
 # Attack and magic are separate axes here, unlike Nocturne where one buff
 # covers both — a caster and a fighter stack different things.
 const STAT_KEYS: Array[String] = ["atk", "mag", "def", "agl"]
@@ -84,6 +89,11 @@ func reset_stages() -> void:
 # Agility as it counts in a fight. PlayerCharacter overrides to fold in gear.
 func battle_agility() -> int:
 	return agl
+
+
+# Luck as it counts in a fight. PlayerCharacter overrides to fold in trinkets.
+func battle_luck() -> int:
+	return luk
 
 
 # The affinity state this combatant has toward an element. Subclasses override
@@ -150,6 +160,7 @@ func apply_stat_bonus(bonus: Dictionary) -> void:
 	def += bonus.get("def", 0)
 	mag += bonus.get("mag", 0)
 	agl += bonus.get("agl", 0)
+	luk += bonus.get("luk", 0)
 	compute_max_hp()
 	compute_max_mp()
 	hp = min(max_hp, hp + (max_hp - old_max_hp))

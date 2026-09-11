@@ -79,17 +79,34 @@ static func scroll_bind() -> Dictionary:
 	return scroll("scroll_bind", "Scroll of Bind", "bind", "Bind",
 			"Teaches the Bind ailment spell.", 3)
 
-static func scroll_fira() -> Dictionary:
-	return scroll("scroll_fira", "Scroll of Fira", "fira", "Fira",
-			"Teaches the Fira fire spell.", 3)
+# One scroll per elemental spell, built straight off Spell.DATA so a scroll can
+# never name a spell that no longer exists. `floor` is only the price tier — the
+# whole grid is learnable from the first floor, and what gates the wide ones is
+# what they cost to buy and to cast.
+static func spell_scroll(spell_id: String, floor: int) -> Dictionary:
+	var d: Dictionary = Spell.get_data(spell_id)
+	var sname: String = d.get("name", spell_id) as String
+	return scroll("scroll_" + spell_id, "Scroll of " + sname, spell_id, sname,
+			d.get("desc", "") as String, floor)
 
-static func scroll_thundara() -> Dictionary:
-	return scroll("scroll_thundara", "Scroll of Thundara", "thundara", "Thundara",
-			"Teaches the Thundara lightning spell.", 3)
 
-static func scroll_blizzara() -> Dictionary:
-	return scroll("scroll_blizzara", "Scroll of Blizzara", "blizzara", "Blizzara",
-			"Teaches the Blizzara ice spell.", 4)
+# The reach of each spell is what sets its tier: one demon is cheap, the whole
+# room is not.
+const ELEMENTAL_SCROLLS: Dictionary = {
+	"ember": 1, "rime": 1, "arc": 1,
+	"cinderfall": 2, "hailfall": 2, "forkfall": 2,
+	"pyre": 4, "whiteout": 4, "thunderhead": 4,
+	"banish": 3, "consign": 3,
+	"winnow": 5, "cull": 5,
+	"daybreak": 6, "nightfall": 6,
+}
+
+
+static func elemental_scrolls() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for spell_id: String in ELEMENTAL_SCROLLS:
+		out.append(spell_scroll(spell_id, int(ELEMENTAL_SCROLLS[spell_id])))
+	return out
 
 
 # ── Support scrolls ───────────────────────────────────────────────────────────
@@ -114,14 +131,6 @@ static func scroll_damp() -> Dictionary:
 	return scroll("scroll_damp", "Scroll of Damp", "damp", "Damp",
 			"Teaches Damp — lowers every enemy's magic.", 4)
 
-static func scroll_banish() -> Dictionary:
-	return scroll("scroll_banish", "Scroll of Banish", "banish", "Banish",
-			"Teaches Banish — expels one enemy outright, or does nothing.", 4)
-
-static func scroll_consign() -> Dictionary:
-	return scroll("scroll_consign", "Scroll of Consign", "consign", "Consign",
-			"Teaches Consign — unmakes one enemy outright, or does nothing.", 4)
-
 static func scroll_blunt() -> Dictionary:
 	return scroll("scroll_blunt", "Scroll of Blunt", "blunt", "Blunt",
 			"Teaches Blunt — lowers every enemy's attack.", 3)
@@ -133,14 +142,6 @@ static func scroll_sunder() -> Dictionary:
 static func scroll_mire() -> Dictionary:
 	return scroll("scroll_mire", "Scroll of Mire", "mire", "Mire",
 			"Teaches Mire — lowers every enemy's agility.", 4)
-
-static func scroll_purge() -> Dictionary:
-	return scroll("scroll_purge", "Scroll of Purge", "purge", "Purge",
-			"Teaches Purge — strips every enemy buff.", 5)
-
-static func scroll_steady() -> Dictionary:
-	return scroll("scroll_steady", "Scroll of Steady", "steady", "Steady",
-			"Teaches Steady — clears the party's debuffs.", 5)
 
 
 # ── Predefined offensive throwables ──────────────────────────────────────────
@@ -173,13 +174,13 @@ static func thunder_bead() -> Dictionary:
 # ── Enemy drop table ──────────────────────────────────────────────────────────
 
 static func drop_table() -> Array[Dictionary]:
-	return [
+	var out: Array[Dictionary] = [
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
 		fire_bomb(), ice_shard(), thunder_bead(),
-		scroll_fira(), scroll_thundara(), scroll_blizzara(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
-		scroll_damp(), scroll_banish(), scroll_consign(),
-		scroll_blunt(), scroll_sunder(), scroll_mire(),
-		scroll_purge(), scroll_steady(),
+		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
 	]
+	out.append_array(elemental_scrolls())
+	out.append_array(Accessory.all())
+	return out

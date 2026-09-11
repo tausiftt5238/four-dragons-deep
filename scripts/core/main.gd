@@ -708,9 +708,21 @@ func _engage_roamer_here() -> bool:
 	# Off the floor the instant the battle opens, rather than after it resolves.
 	# They are only hidden, not freed — escaping has to put them back.
 	_engaged = here
+	var warden_here: bool = false
 	for e: Roamer in here:
+		if e.warden:
+			warden_here = true
 		roamers.erase(e)
 		e.visible = false
+
+	# The warden is a named demon, not a reroll of the floor's random table —
+	# it is the locked door, and it fights alone so its two icons read as a
+	# wall rather than getting lost in a pack.
+	if warden_here:
+		var keeper: Array[Enemy] = [Enemy.make_warden(floor_num)]
+		_launch_combat(keeper)
+		return true
+
 	_launch_combat(Enemy.make_group(floor_num))
 	return true
 
@@ -878,7 +890,7 @@ func _show_congratulations() -> void:
 func _player_snapshot() -> Dictionary:
 	return {
 		lv=player_char.lv, str=player_char.str, def=player_char.def,
-		mag=player_char.mag, agl=player_char.agl,
+		mag=player_char.mag, agl=player_char.agl, luk=player_char.luk,
 		max_hp=player_char.max_hp, max_mp=player_char.max_mp,
 	}
 
@@ -1089,7 +1101,7 @@ func _gather_save_data() -> Dictionary:
 		player_pos  = [player_pos.x, player_pos.y],
 		player_facing = player_facing,
 		player = {
-			lv = p.lv, str = p.str, def = p.def, mag = p.mag, agl = p.agl,
+			lv = p.lv, str = p.str, def = p.def, mag = p.mag, agl = p.agl, luk = p.luk,
 			exp = p.exp, exp_to_next = p.exp_to_next,
 			hp = p.hp, max_hp = p.max_hp, mp = p.mp, max_mp = p.max_mp,
 			hp_bonus = p._hp_bonus, mp_bonus = p._mp_bonus,
@@ -1104,8 +1116,7 @@ func _gather_save_data() -> Dictionary:
 			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
-			equipped_weapon = p.equipped_weapon,
-			equipped_armor  = p.equipped_armor,
+			equipped_accessories = p.equipped_accessories,
 		},
 		map = {
 			scene       = "res://scenes/map.tscn",
@@ -1206,6 +1217,7 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.def         = int(pdata["def"])
 	player_char.mag         = int(pdata["mag"])
 	player_char.agl         = int(pdata["agl"])
+	player_char.luk         = int(pdata.get("luk", 3))
 	player_char.exp         = int(pdata["exp"])
 	player_char.exp_to_next = int(pdata["exp_to_next"])
 	player_char.hp          = int(pdata["hp"])
@@ -1259,8 +1271,10 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.inventory.clear()
 	player_char.inventory.assign(pdata["inventory"] as Array)
 
-	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
-	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
+	var accs: Array = pdata.get("equipped_accessories", []) as Array
+	player_char.equipped_accessories.clear()
+	for a: Variant in accs:
+		player_char.equipped_accessories.append(a as Dictionary)
 
 
 # Roamer positions are saved so a reload does not shuffle the floor's threats.

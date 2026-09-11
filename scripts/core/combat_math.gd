@@ -10,8 +10,19 @@ static func variance(dmg: int) -> int:
 	return max(1, roundi(dmg * randf_range(0.8, 1.2)))
 
 
-static func roll_crit() -> bool:
-	return randi() % 10 == 0
+# 10% bare, climbing half a point per point of luck and capped at a quarter.
+# Luck is the only thing that moves it, which is the whole reason the stat is
+# worth a level-up point next to a flat +1 STR.
+const CRIT_BASE: float = 0.10
+const CRIT_PER_LUK: float = 0.005
+const CRIT_CAP: float = 0.25
+
+
+static func roll_crit(attacker: CharacterSheet = null) -> bool:
+	if attacker == null:
+		return randf() < CRIT_BASE
+	return randf() < minf(CRIT_CAP,
+			CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck()))
 
 
 # Resolves one offensive hit against a target's affinity chart.
@@ -70,21 +81,49 @@ const BANISH_WEAK:   float = 0.62   # exactly what it is made to expel
 const BANISH_RESIST: float = 0.08   # it barely has purchase
 
 
+# Luck moves the coin flip, never the chart. A demon that nulls the light is
+# immune to a lucky detective and an unlucky one alike — what luck buys is an
+# edge on the rows that were already uncertain, and each row keeps its own
+# floor and ceiling so no amount of it turns a resistance into a kill.
+const BANISH_PER_LUK: float = 0.012
+const BANISH_LUK_CAP: float = 0.15
+
+const BANISH_BOUNDS: Dictionary = {
+	Affinity.WEAK:   Vector2(0.45, 0.80),
+	Affinity.RESIST: Vector2(0.02, 0.18),
+	Affinity.NORMAL: Vector2(0.15, 0.45),
+}
+
+
 # The odds a banishing element takes the target, or 0.0 if it cannot.
-static func banish_chance(target: CharacterSheet, element: String) -> float:
-	match target.affinity_of(element):
-		Affinity.WEAK:   return BANISH_WEAK
-		Affinity.RESIST: return BANISH_RESIST
+# `caster` is optional: without one this reports the bare chart odds, which is
+# what Analyze and the bestiary want to show.
+static func banish_chance(target: CharacterSheet, element: String,
+		caster: CharacterSheet = null) -> float:
+	var state: String = target.affinity_of(element)
+	var base: float = BANISH_BASE
+	match state:
+		Affinity.WEAK:   base = BANISH_WEAK
+		Affinity.RESIST: base = BANISH_RESIST
 		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
 			return 0.0
-	return BANISH_BASE
+		_: state = Affinity.NORMAL
+
+	if caster == null:
+		return base
+	var edge: float = clampf(
+			float(caster.battle_luck() - target.battle_luck()) * BANISH_PER_LUK,
+			-BANISH_LUK_CAP, BANISH_LUK_CAP)
+	var bounds: Vector2 = BANISH_BOUNDS[state] as Vector2
+	return clampf(base + edge, bounds.x, bounds.y)
 
 
 # Resolves one banishing cast. The detective is never expelled — he is the mind
 # holding the case open, and a coin-flip game over at an unsaved moment is not a
 # fight, it is a dice roll. It costs him HP instead.
 static func resolve_banish(target: CharacterSheet, element: String,
-		power: int, is_detective: bool) -> Dictionary:
+		power: int, is_detective: bool, caster: CharacterSheet = null,
+		spread: float = 1.0) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	match state:
 		Affinity.DRAIN:
@@ -105,7 +144,9 @@ static func resolve_banish(target: CharacterSheet, element: String,
 		return {outcome = "weak" if state == Affinity.WEAK else "hit",
 				dmg = max(1, hurt), taken = false}
 
-	if randf() < banish_chance(target, element):
+	# A cast thrown across several demons is thinner on each of them, which is
+	# what stops the wide versions from simply ending fights.
+	if randf() < banish_chance(target, element, caster) * spread:
 		return {outcome = "banished", dmg = 0, taken = true}
 	return {outcome = "failed", dmg = 0, taken = false}
 

@@ -53,7 +53,8 @@ func _build_shell() -> void:
 
 	for tab_id: String in ["stats", "party", "items", "equipment", "magic", "bestiary"]:
 		var btn: Button = Button.new()
-		btn.text        = tab_id.capitalize()
+		# "Equipment" overpromises now that there is no weapon and no armour.
+		btn.text        = "Carried" if tab_id == "equipment" else tab_id.capitalize()
 		btn.toggle_mode = true
 		btn.custom_minimum_size     = Vector2(0, 36)
 		btn.size_flags_horizontal   = Control.SIZE_EXPAND_FILL

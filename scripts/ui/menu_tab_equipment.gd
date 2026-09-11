@@ -1,3 +1,7 @@
+# MenuTabEquipment
+# Two slots and a drawer of trinkets. There is no weapon and no armour: what
+# the detective carries is small objects with a history, and the only real
+# decision is which two of them come with him.
 class_name MenuTabEquipment extends RefCounted
 
 var _m
@@ -7,33 +11,41 @@ func _init(menu) -> void:
 
 
 func build() -> void:
-	_m._content.add_child(_make_header("EQUIPPED GEAR"))
+	_m._content.add_child(_make_header("WHAT HE IS CARRYING"))
 	_m._content.add_child(HSeparator.new())
+
+	var p: PlayerCharacter = _m.player
 
 	var slots_hbox: HBoxContainer = HBoxContainer.new()
 	slots_hbox.add_theme_constant_override("separation", 0)
 	_m._content.add_child(slots_hbox)
 
-	var weapon_col: VBoxContainer = _build_slot_section("Weapon", "weapon",
-		_m.player.equipped_weapon,
-		func(): _m.player.unequip_weapon(); _m._set_status("Weapon removed."); _m._refresh(),
-		func(it: Dictionary): _m.player.equip_weapon(it); _m._set_status("Equipped %s." % it["name"]); _m._refresh()
-	)
-	weapon_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slots_hbox.add_child(weapon_col)
-
-	slots_hbox.add_child(VSeparator.new())
-
-	var armor_col: VBoxContainer = _build_slot_section("Armor", "armor",
-		_m.player.equipped_armor,
-		func(): _m.player.unequip_armor(); _m._set_status("Armor removed."); _m._refresh(),
-		func(it: Dictionary): _m.player.equip_armor(it); _m._set_status("Equipped %s." % it["name"]); _m._refresh()
-	)
-	armor_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slots_hbox.add_child(armor_col)
+	for i: int in PlayerCharacter.ACCESSORY_SLOTS:
+		if i > 0:
+			slots_hbox.add_child(VSeparator.new())
+		var col: VBoxContainer = _build_slot(i)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slots_hbox.add_child(col)
 
 	_m._content.add_child(HSeparator.new())
-	_m._content.add_child(_make_section_label("EFFECTIVE STATS"))
+	_m._content.add_child(_make_section_label("IN THE COAT"))
+
+	var spare: Array[Dictionary] = []
+	for item: Dictionary in p.inventory:
+		if item.get("type", "") == "accessory":
+			spare.append(item)
+
+	if spare.is_empty():
+		var none: Label = Label.new()
+		none.text = "Nothing else worth carrying."
+		none.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		_m._content.add_child(none)
+	else:
+		for item: Dictionary in spare:
+			_m._content.add_child(_spare_row(item))
+
+	_m._content.add_child(HSeparator.new())
+	_m._content.add_child(_make_section_label("WITH THEM ON"))
 
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 3
@@ -41,20 +53,21 @@ func build() -> void:
 	grid.add_theme_constant_override("v_separation", 5)
 	_m._content.add_child(grid)
 
-	_add_cmp_row(grid, "STR", _m.player.str, _m.player.effective_str())
-	_add_cmp_row(grid, "DEF", _m.player.def, _m.player.effective_def())
-	_add_cmp_row(grid, "MAG", _m.player.mag, _m.player.effective_mag())
-	_add_cmp_row(grid, "AGL", _m.player.agl, _m.player.effective_agl())
+	_add_cmp_row(grid, "STR", p.str, p.effective_str())
+	_add_cmp_row(grid, "DEF", p.def, p.effective_def())
+	_add_cmp_row(grid, "MAG", p.mag, p.effective_mag())
+	_add_cmp_row(grid, "AGL", p.agl, p.effective_agl())
+	_add_cmp_row(grid, "LUK", p.luk, p.effective_luk())
 
 
-func _build_slot_section(slot_name: String, item_type: String,
-		equipped: Dictionary, on_unequip: Callable, on_equip: Callable) -> VBoxContainer:
+func _build_slot(idx: int) -> VBoxContainer:
+	var p: PlayerCharacter = _m.player
 	var col: VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 
 	var m: MarginContainer = MarginContainer.new()
-	for s: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(s, 8)
+	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(side, 8)
 	col.add_child(m)
 
 	var inner: VBoxContainer = VBoxContainer.new()
@@ -62,68 +75,75 @@ func _build_slot_section(slot_name: String, item_type: String,
 	m.add_child(inner)
 
 	var slot_lbl: Label = Label.new()
-	slot_lbl.text = slot_name.to_upper()
+	slot_lbl.text = "SLOT %d" % (idx + 1)
 	slot_lbl.add_theme_color_override("font_color", Color(0.70, 0.65, 0.50))
 	inner.add_child(slot_lbl)
 
-	var eq_row: HBoxContainer = HBoxContainer.new()
-	eq_row.add_theme_constant_override("separation", 8)
-	inner.add_child(eq_row)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	inner.add_child(row)
 
-	if equipped.is_empty():
-		var none_lbl: Label = Label.new()
-		none_lbl.text = "(none)"
-		none_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-		none_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		eq_row.add_child(none_lbl)
-	else:
-		var item_lbl: Label = Label.new()
-		item_lbl.text = equipped["name"]
-		item_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		item_lbl.tooltip_text = GearTooltip.build(equipped, _m.player)
-		item_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-		eq_row.add_child(item_lbl)
-
-		var unequip_btn: Button = Button.new()
-		unequip_btn.text = "Unequip"
-		unequip_btn.custom_minimum_size = Vector2(70, 26)
-		unequip_btn.pressed.connect(on_unequip)
-		eq_row.add_child(unequip_btn)
-
-	var available: Array[Dictionary] = []
-	for it: Dictionary in _m.player.inventory:
-		if it["type"] == item_type:
-			available.append(it)
-
-	if available.is_empty():
+	if idx >= p.equipped_accessories.size():
+		var none: Label = Label.new()
+		none.text = "(empty)"
+		none.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		none.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(none)
 		return col
 
-	inner.add_child(HSeparator.new())
+	var worn: Dictionary = p.equipped_accessories[idx]
+	var name_lbl: Label = Label.new()
+	name_lbl.text = "%s%s" % [worn["name"], GearTooltip.bonus_string(worn)]
+	name_lbl.tooltip_text = GearTooltip.build(worn, p)
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.add_theme_color_override("font_color", Color(0.62, 0.92, 0.74))
+	row.add_child(name_lbl)
 
-	var avail_lbl: Label = Label.new()
-	avail_lbl.text = "In inventory:"
-	avail_lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
-	inner.add_child(avail_lbl)
+	var off: Button = Button.new()
+	off.text = "Take off"
+	off.custom_minimum_size = Vector2(78, 26)
+	off.pressed.connect(func() -> void:
+		p.unequip_accessory(worn.get("id", "") as String)
+		_m._set_status("Took off %s." % worn["name"])
+		_m._refresh()
+	)
+	row.add_child(off)
 
-	for it: Dictionary in available:
-		var avail_row: HBoxContainer = HBoxContainer.new()
-		avail_row.add_theme_constant_override("separation", 8)
-		inner.add_child(avail_row)
-
-		var name_lbl: Label = Label.new()
-		name_lbl.text = it["name"]
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.tooltip_text = GearTooltip.build(it, _m.player)
-		name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-		avail_row.add_child(name_lbl)
-
-		var equip_btn: Button = Button.new()
-		equip_btn.text = "Equip"
-		equip_btn.custom_minimum_size = Vector2(60, 26)
-		equip_btn.pressed.connect(on_equip.bind(it))
-		avail_row.add_child(equip_btn)
-
+	var desc: Label = Label.new()
+	desc.text = worn.get("desc", "")
+	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	inner.add_child(desc)
 	return col
+
+
+func _spare_row(item: Dictionary) -> HBoxContainer:
+	var p: PlayerCharacter = _m.player
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+
+	var name_lbl: Label = Label.new()
+	name_lbl.text = "%s%s" % [item["name"], GearTooltip.bonus_string(item)]
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.tooltip_text = GearTooltip.build(item, p)
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(name_lbl)
+
+	var btn: Button = Button.new()
+	btn.text = "Wear"
+	btn.custom_minimum_size = Vector2(66, 26)
+	btn.disabled = not p.has_free_accessory_slot()
+	btn.pressed.connect(func() -> void:
+		if p.equip_accessory(item):
+			_m._set_status("Put on %s." % item["name"])
+		else:
+			_m._set_status("Both slots are taken.")
+		_m._refresh()
+	)
+	row.add_child(btn)
+	return row
 
 
 func _add_cmp_row(grid: GridContainer, stat: String, base: int, eff: int) -> void:
