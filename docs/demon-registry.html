@@ -227,7 +227,7 @@
     padding: 26px 0;
     border-bottom: 1px solid var(--rule-soft);
     display: grid;
-    grid-template-columns: 1fr 268px;
+    grid-template-columns: 1fr 396px;
     gap: 12px 34px;
     align-items: start;
   }
@@ -281,6 +281,12 @@
     border-left: 2px solid var(--accent);
   }
 
+  .tell-ban {
+    margin-top: 10px;
+    border-left-color: var(--repel);
+  }
+  .tell-ban b { color: var(--repel); }
+
   .tell b {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 10.5px;
@@ -298,7 +304,7 @@
     grid-column: 2;
     grid-row: 1 / span 2;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     border: 1px solid var(--rule);
     background: var(--panel);
   }
@@ -308,7 +314,7 @@
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 9px 2px 10px;
+    padding: 9px 1px 10px;
     border-right: 1px solid var(--rule-soft);
     text-align: center;
   }
@@ -454,6 +460,12 @@
     text-transform: uppercase;
   }
 
+  .chart .st {
+    font-size: 9px;
+    letter-spacing: .02em;
+    padding: 2px 3px;
+  }
+
   @media (max-width: 760px) {
     .entry {
       grid-template-columns: 1fr;
@@ -478,9 +490,9 @@
 <div class="wrap">
 
   <header class="masthead">
-    <p class="eyebrow">Roster draft two · 20 entries · re-tiered · nothing borrowed from worship</p>
+    <p class="eyebrow">Roster draft three · 20 entries · six affinities · nothing borrowed from worship</p>
     <h1>The Affliction Registry</h1>
-    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to. Every entry's appearance gives away its affinity chart — and this draft orders them so that <em>each tier is answerable with the kit you actually have when you reach it</em>, which the first draft got wrong.</p>
+    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to. Every entry's appearance gives away its affinity chart — and this draft orders them so that <em>each tier is answerable with the kit you actually have when you reach it</em>, which the first draft got wrong. This draft adds the two banishing lines, <strong>light</strong> and <strong>dark</strong>, which do not wound anything; they take a demon out of the world or they fail.</p>
   </header>
 
   <section class="legend">
@@ -492,6 +504,14 @@
       <div class="legend-item li-repel"><span class="st">REPEL</span><span class="cost">Thrown back at the caster. Your phase ends on the spot.</span></div>
       <div class="legend-item li-drain"><span class="st">DRAIN</span><span class="cost">It heals for the damage. Your phase ends on the spot.</span></div>
     </div>
+  </section>
+
+  <section class="note">
+    <h2>Light and dark are not two more elements</h2>
+    <p><b>They do no damage at all.</b> A cast of Banish or Consign either takes the demon out of the fight entirely or does nothing whatsoever, and the chart decides which. Read across those two columns and the words mean something else than they do in the first four: <strong>WEAK</strong> is not double damage, it is <em>gone roughly three times in five</em>. <strong>NULL</strong> is not zero damage, it is <em>immune, and you spent two icons finding out</em>.</p>
+    <p><b>The odds come off the demon's own chart</b> — 62% into a weakness, 28% against an ordinary demon, 8% into a resistance, and nothing at all through null, repel or drain. One slot spent on Banish is a bet that you will meet the right demon; the payoff is a whole enemy for one icon, which is why it is worth the Fire spell it displaces.</p>
+    <p><b>The second half of the alignment line is now load-bearing.</b> It used to be flavour. It is the rule: <strong>no Light-aligned demon is ever weak to Banish, and no Dark-aligned demon is ever weak to Consign.</strong> Every demon that Consign answers outright is Neutral·Light, without exception. So the alignment tells you, before you have read anything else, which of the two spells to leave at home.</p>
+    <p><b>Neither line is ever dead weight.</b> Every tier holds at least one demon weak to light and at least one weak to dark, so whichever you equipped, the floor you are standing on has something on it that the spell answers.</p>
   </section>
 
   <section class="tier">
@@ -511,6 +531,8 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">Knee-high and hunched, woven entirely out of chewed fingernails and pulled hair. It always stands facing away from you, and only turns when you look at something else. Rooms it has been in smell like a cold bathroom.</p>
@@ -527,10 +549,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">A human outline packed out of grey moths, all beating out of sync. Blades pass straight through and it re-forms a foot to the left. The sound it makes is the one you hear when a room goes completely quiet.</p>
         <p class="tell"><b>Tell</b> There is no body to cut. But it is a thousand dry wings, and moths have never been able to leave a flame alone.</p>
+        <p class="tell tell-ban"><b>Banishing</b> A thousand wings holding a shape, and nothing inside holding them. There is no body to cut and no self to defend — call the light and the shape simply stops being agreed upon.</p>
       </div>
     </article>
     <article class="entry">
@@ -543,6 +568,8 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">A bookkeeper with far too many fingers, each one ending in a stylus. He scores marks into his own forearms while he watches you, and both forearms are already full. He is not counting what you own. He is counting what you have not done.</p>
@@ -559,6 +586,8 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">It is wearing the clothes of whoever's mind you are standing in, and their face, except there is nothing above the mouth. Just a smile that has been widened by hand, well past the point where a mouth is supposed to stop.</p>
@@ -575,10 +604,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">It wears the face of someone the victim lost, and it wears it badly — proportions a few percent wrong, blinking a half-second too slow, the seams visible along the jaw where the face was fitted. It wants very much for you to accept it anyway.</p>
         <p class="tell"><b>Tell</b> You can see the seams. Anything held together that poorly comes apart under a blade, and anything that wants to be loved will listen if you tell it that it is.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It is not the person, and underneath the performance it knows that. Consign never has to win the argument. It only has to stop the pretending, and the pretending is all there is.</p>
       </div>
     </article>
   </section>
@@ -600,6 +632,8 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">A knot of knuckles and joints with no limbs in between, walking on eight small hands. It pops and cracks without stopping, the sound of someone flexing their fingers directly behind you.</p>
@@ -616,10 +650,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">A lattice of tendon strung corner to corner across a doorway like a web, dragging itself along by contracting. There is nothing behind it doing the thinking. It is hungry and it is in the way, and those are the same fact.</p>
         <p class="tell"><b>Tell</b> Dry sinew stretched thin. It has no mouth to talk with, so do not waste the icon trying.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It is strung across a doorway it has no business occupying. Light does not so much kill it as evict it.</p>
       </div>
     </article>
     <article class="entry">
@@ -632,6 +669,8 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
         <p class="desc">Very tall, very thin, skin stretched over an absence. Where the organs should sit there is a draft instead, and when it turns toward you, you can see your own breath.</p>
@@ -649,6 +688,8 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">Dog-shaped, except the lower jaw is a hanging furnace door that will not close. It pants embers onto the floor as it circles, and the heat comes off it in a shimmer you can see through.</p>
@@ -666,10 +707,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">Child-sized and made of wet ash. It strikes itself over and over trying to catch, never manages it, and sobs steam between attempts. When there is a flame anywhere in the room it stops and reaches toward it — including yours.</p>
         <p class="tell"><b>Tell</b> It is visibly reaching for your torch. Do not give it what it is asking for.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It has been trying to put itself out since long before you walked in. Consign is not a kill here. It is agreement.</p>
       </div>
       <p class="atk">Attacks with Fire</p>
     </article>
@@ -692,10 +736,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">The shape of a woman who has just left the room, held up by nothing but her own perfume. She is only ever there in the corner of your eye; looking straight at her thins her out until she is a smell and a suggestion.</p>
         <p class="tell"><b>Tell</b> There is nothing there to hit — swinging at her wastes two icons. She is suspended in the air, so charge the air.</p>
+        <p class="tell tell-ban"><b>Banishing</b> She is already most of the way out of the room, so the light has nowhere left to send her. The dark only has to close the door behind her.</p>
       </div>
     </article>
     <article class="entry">
@@ -708,10 +755,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-null">NULL</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-null">NULL</span></div>
       </div>
       <div class="body">
         <p class="desc">A cathedral of ribs walking on femur stilts. In the vault where a heart would hang there is a nest of small skulls, and all of them are singing, and none of them is singing the same thing.</p>
         <p class="tell"><b>Tell</b> It is architecture. Cold does nothing to stone or bone; weight brings both down.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It is a reliquary, and it was given over to the dark a long time ago. Consign asks a building to accept that it is finished; the building declines.</p>
       </div>
     </article>
     <article class="entry">
@@ -724,10 +774,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
         <p class="desc">Waterlogged so far past a shape that the shape is only a habit now. It drags a net behind it holding everything it has ever drowned, and none of that is finished drowning.</p>
         <p class="tell"><b>Tell</b> Your torch guts and gutters when it comes near. Soaked things do not burn — but they conduct beautifully.</p>
+        <p class="tell tell-ban"><b>Banishing</b> Everything in that net is still trying to leave. Open one way out and they all take it at once, and nothing is left holding the shape together.</p>
       </div>
     </article>
     <article class="entry">
@@ -740,10 +793,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-drain">DRAIN</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-null">NULL</span></div>
       </div>
       <div class="body">
         <p class="desc">Swollen, packed solid with chimney soot, and breathing out infants made of smoke that come apart before they reach the floor. She does this continuously. She does not appear to have noticed that they do not land.</p>
         <p class="tell"><b>Tell</b> She came out of a flue and she is still warm. Cold is the only thing in the room she has not already survived.</p>
+        <p class="tell tell-ban"><b>Banishing</b> Consign needs the thing to accept that it is over. She has not noticed that anything is over. It slides off her.</p>
       </div>
       <p class="atk">Attacks with Fire</p>
     </article>
@@ -757,10 +813,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
         <p class="desc">Something that was shaped like an angel once and has gone green with corrosion since, wings oxidised shut into one solid sheet. It weeps a caustic slick that eats the floor under it, and holds a posture of blessing it can no longer complete.</p>
         <p class="tell"><b>Tell</b> It is copper all the way through, and copper is what you run current down. Corrosion burns.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It has been stuck halfway through a blessing for a very long time. Call the light and it finally gets to finish the gesture, which is the same thing as ending it.</p>
       </div>
       <p class="atk">Attacks with Thunder</p>
     </article>
@@ -783,10 +842,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-repel">REPEL</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-null">NULL</span></div>
       </div>
       <div class="body">
         <p class="desc">Three faces sharing one throat, each singing a note a quarter-tone off the others. Near it the air tastes of copper and your fillings ache. It will hold the chord for as long as you let it.</p>
         <p class="tell"><b>Tell</b> Copper in your mouth before it has done anything. Send current at that and it comes straight back.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It is a held note, and a held note has no ending to point at. Consign goes looking for the finish and does not find one.</p>
       </div>
       <p class="atk">Attacks with Thunder</p>
     </article>
@@ -800,10 +862,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-null">NULL</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-drain">DRAIN</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
       </div>
       <div class="body">
         <p class="desc">He works a forge that runs backwards — it takes the heat out of whatever is put in. His hands are frostbitten black to the wrist and he does not favour them. The piece on the anvil is always the same piece, and it is never finished.</p>
         <p class="tell"><b>Tell</b> The forge is drawing warmth out of the room, including yours. Fire is what he does for a living, backwards. Current is not.</p>
+        <p class="tell tell-ban"><b>Banishing</b> The forge takes in whatever is put into it. That includes your light. He will thank you for the material and go back to work.</p>
       </div>
       <p class="atk">Attacks with Ice</p>
     </article>
@@ -817,10 +882,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-none">—</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-resist">RESIST</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-repel">REPEL</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
         <p class="desc">A hanged silhouette assembled out of window glass, turning slowly on nothing. The reflections held in it are of rooms you have not walked into yet, and in some of them you are already there.</p>
         <p class="tell"><b>Tell</b> It is glass. Hitting glass is how you get cut. Do that and your phase is over on the spot.</p>
+        <p class="tell tell-ban"><b>Banishing</b> It is glass. Shine anything at glass and you are the one it lands on.</p>
       </div>
     </article>
     <article class="entry">
@@ -833,10 +901,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-drain">DRAIN</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-weak">WEAK</span></div>
       </div>
       <div class="body">
         <p class="desc">A body under a sheet on a gurney, parked at the far end of the corridor — and at the far end of whichever corridor you turn down to get away from it. There are too many feet under the sheet. The sheet has never once moved.</p>
         <p class="tell"><b>Tell</b> Whatever is under there is not where the sheet is. Striking it accomplishes nothing at all, twice over.</p>
+        <p class="tell tell-ban"><b>Banishing</b> Light expels what is in front of you, and it is never in front of you. But there is a body under that sheet, and it has been waiting a very long time for somebody to finish the job.</p>
       </div>
     </article>
     <article class="entry">
@@ -849,10 +920,13 @@
       <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
       <div class="cell"><span class="el">ICE</span><span class="st s-repel">REPEL</span></div>
       <div class="cell"><span class="el">THDR</span><span class="st s-none">—</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-resist">RESIST</span></div>
       </div>
       <div class="body">
         <p class="desc">A column of black hair and mourning veil wound tight into a spiral two storeys high. Somewhere inside it a woman is still turning, and has been turning for a very long time, and the spiral is what she has turned into.</p>
         <p class="tell"><b>Tell</b> It is dry cloth and dry hair, packed tight — and everything about it is already cold. Adding more comes back at you.</p>
+        <p class="tell tell-ban"><b>Banishing</b> There is still a woman in there, wound in somewhere near the middle. The light does not destroy the coil. It lets her out, and the coil was only ever her.</p>
       </div>
       <p class="atk">Attacks with Ice</p>
     </article>
@@ -863,13 +937,13 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th scope="col">Tier</th><th scope="col">Weak to</th><th scope="col">Punishing states</th></tr>
+          <tr><th scope="col">Tier</th><th scope="col">Weak to</th><th scope="col">Banishing lines</th><th scope="col">Punishing states</th></tr>
         </thead>
         <tbody>
-          <tr><th scope="row">I</th><td class="hit">PHYS 4   FIRE 3   ICE 0   THUNDER 0</td><td class="punish">nothing</td></tr>
-          <tr><th scope="row">II</th><td class="hit">PHYS 1   FIRE 2   ICE 2   THUNDER 0</td><td class="punish">ICE drain, FIRE drain, FIRE drain</td></tr>
-          <tr><th scope="row">III</th><td class="hit">PHYS 1   FIRE 1   ICE 1   THUNDER 2</td><td class="punish">PHYS null, ICE null, FIRE null, FIRE drain, THUNDER drain</td></tr>
-          <tr><th scope="row">IV</th><td class="hit">PHYS 0   FIRE 2   ICE 1   THUNDER 2</td><td class="punish">THUNDER repel, FIRE null, ICE drain, PHYS repel, PHYS null, ICE drain, ICE repel</td></tr>
+          <tr><th scope="row">I</th><td class="hit">PHYS 4   FIRE 3   ICE 0   THUNDER 0</td><td class="hit">LIGHT 1   DARK 1</td><td class="punish">nothing</td></tr>
+          <tr><th scope="row">II</th><td class="hit">PHYS 1   FIRE 2   ICE 2   THUNDER 0</td><td class="hit">LIGHT 1   DARK 1</td><td class="punish">ICE drain, FIRE drain, FIRE drain</td></tr>
+          <tr><th scope="row">III</th><td class="hit">PHYS 1   FIRE 1   ICE 1   THUNDER 2</td><td class="hit">LIGHT 2   DARK 1</td><td class="punish">PHYS null, ICE null, FIRE null, FIRE drain, THUNDER drain, LIGHT null, DARK null, DARK null</td></tr>
+          <tr><th scope="row">IV</th><td class="hit">PHYS 0   FIRE 2   ICE 1   THUNDER 2</td><td class="hit">LIGHT 1   DARK 1</td><td class="punish">THUNDER repel, FIRE null, ICE drain, PHYS repel, PHYS null, ICE drain, ICE repel, DARK null, LIGHT null, LIGHT drain, LIGHT repel</td></tr>
         </tbody>
       </table>
     </div>
@@ -879,11 +953,12 @@
     <h2>Why the order is the design</h2>
     <p><b>A tier is only balanced if it is balanced against what the player is holding.</b> The first draft of this roster had an even spread <em>overall</em> — four phys, six fire, five ice, five thunder — and read as balanced. Tallied per tier it was not: floor one had <em>zero</em> demons weak to a blade, one weak to Fire, and contained both a fire drain and a phys null. The detective starts with a blade and Fire. The first floor punished both of the only two things he owns.</p>
     <p><b>So the punishing states are staged rather than sprinkled.</b> Tier I has none at all. Tier II introduces drains. Tier III introduces nulls. Tier IV is where things throw your own attack back at you. Each tier stays answerable with the kit you plausibly have by the time you reach it.</p>
+    <p><b>The banishing lines were staged on the same clock, one step later.</b> The detective cannot reliably hold Banish or Consign until an orb on the second floor sells him one, so tiers I and II carry no null, drain or repel on either column at all — only a single weakness each way, which is a reward for having found a scroll early rather than a demand that you did. The first banishing nulls arrive in tier III alongside the elemental ones. The drain and the repel wait for tier IV, where a player who has spent the whole run leaning on one of these spells finally meets the forge that swallows it and the glass that sends it back.</p>
     <p><b>Alignment still tells you which Talk option lands</b>, one-to-one with no exceptions: Law answers to <strong>Logic</strong>, Chaos to <strong>Gain</strong>, Neutral·Light to <strong>Flatter</strong>, Neutral·Dark to <strong>Survival</strong>.</p>
     <p><b>Talk difficulty still stops at 3.</b> At 4 a single round can never gain more than one point against a threshold of four, so recruitment becomes arithmetically impossible. Three demons refuse outright instead, which is honest where an unreachable check is not.</p>
   </section>
 
-  <footer>Draft two · 20 of 20 · re-tiered so each floor answers to the kit you have · bosses not yet written</footer>
+  <footer>Draft three · 20 of 20 · six affinities, with light and dark as the banishing lines · bosses not yet written</footer>
 
 </div>
 </body>
