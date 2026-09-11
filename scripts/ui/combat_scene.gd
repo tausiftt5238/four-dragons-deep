@@ -654,9 +654,14 @@ func _resolve_action(action: String) -> Dictionary:
 		"Skill":
 			return _resolve_skill()
 		"Defend":
+			# Half an icon, like a weakness read or a critical. Bracing is the
+			# one defensive move in the game and a full icon made it a turn
+			# thrown away — at half it buys the guard AND leaves most of the
+			# action behind, so covering a demon that is about to be hit where
+			# it is weak is a play rather than a forfeit.
 			actor.defending = true
 			return {msg = "[color=cyan]%s braces. DEF doubled until struck.[/color]" % _actor_name(),
-					cost = PressTurn.COST_FULL}
+					cost = PressTurn.COST_HALF}
 	return {msg = "", cost = PressTurn.COST_FULL}
 
 
@@ -1218,7 +1223,9 @@ func _refresh_button_states() -> void:
 		(_buttons[key] as Button).visible = is_p
 
 	_buttons["Skills"].disabled = false
-	_buttons["Defend"].disabled = false
+	# Bracing on top of a brace does nothing but spend the icon, and at half an
+	# icon it is cheap enough to do by accident.
+	_buttons["Defend"].disabled = _actor().defending
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	_buttons["Summon"].disabled = not is_p or party.size() >= MAX_PARTY \

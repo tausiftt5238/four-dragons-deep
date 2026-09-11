@@ -179,6 +179,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	minimap_ctrl.maze      = current_level.maze
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
+	minimap_ctrl.orb_cells = current_level.orb_cells
 	_sync_minimap_palette()
 	_resize_minimap()
 

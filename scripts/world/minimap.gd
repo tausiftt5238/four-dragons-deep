@@ -21,6 +21,12 @@ var exit_pos:  Vector2i = Vector2i(-1, -1)
 # The warden's cell while it still holds the key; (-1,-1) once it is beaten.
 var warden_pos: Vector2i = Vector2i(-1, -1)
 
+# Every save orb on this floor. Drawn only once the cell has been walked, like
+# the portal: an orb you have not found yet is the thing you are looking for,
+# but an orb you HAVE found is somewhere you need to be able to get back to,
+# and remembering that is the map's job rather than the player's.
+var orb_cells: Array[Vector2i] = []
+
 # Pixel size of each maze cell on the minimap.
 const CELL_PX: int = 10
 
@@ -41,6 +47,7 @@ var border_color: Color = Color(0.55, 0.88, 1.00, 1.00)
 const C_PLAYER: Color = Color(1.00, 0.82, 0.20, 1.00)  # Bright yellow player marker
 const C_PORTAL: Color = Color(0.00, 0.82, 0.55, 1.00)  # Teal portal — matches the in-world exit glow
 const C_WARDEN: Color = Color(0.66, 0.42, 1.00, 1.00)  # Violet warden — matches its cold fire
+const C_ORB: Color    = Color(0.80, 0.96, 1.00, 1.00)  # Cold white orb — matches the shard in the world
 
 # 2D unit vectors for each facing direction, used to draw the direction arrow.
 # Order must match the facing constants in main.gd:
@@ -100,6 +107,19 @@ func _draw() -> void:
 		var wr: int = warden_pos.y - origin.y
 		if wc >= 0 and wc < view and wr >= 0 and wr < view:
 			draw_rect(Rect2(PAD + wc * CELL_PX, PAD + wr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_WARDEN)
+
+	# Orbs, drawn as discs rather than squares so they cannot be mistaken for
+	# the portal or the warden at a glance on a phone screen.
+	for orb: Vector2i in orb_cells:
+		if not visited.has(orb):
+			continue
+		var oc: int = orb.x - origin.x
+		var orow: int = orb.y - origin.y
+		if oc < 0 or oc >= view or orow < 0 or orow >= view:
+			continue
+		var ocx: float = PAD + oc * CELL_PX + CELL_PX * 0.5
+		var ocy: float = PAD + orow * CELL_PX + CELL_PX * 0.5
+		draw_circle(Vector2(ocx, ocy), CELL_PX * 0.34, C_ORB)
 
 	# Player is always at the centre of the window.
 	var cx: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
