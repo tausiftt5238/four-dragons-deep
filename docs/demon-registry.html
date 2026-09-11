@@ -477,6 +477,9 @@
     .ident h3 { font-size: 24px; }
   }
 
+  .tier.live .tier-head { border-bottom-color: var(--accent); }
+  .tier.live .tier-num  { color: var(--accent); }
+
   .tier-blurb {
     margin: 10px 0 0;
     max-width: 72ch;
@@ -490,9 +493,10 @@
 <div class="wrap">
 
   <header class="masthead">
-    <p class="eyebrow">Roster draft three · 20 entries · six affinities · nothing borrowed from worship</p>
+    <p class="eyebrow">Roster draft four · 20 written · 4 already in the game · nothing borrowed from worship</p>
     <h1>The Affliction Registry</h1>
-    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to. Every entry's appearance gives away its affinity chart — and this draft orders them so that <em>each tier is answerable with the kit you actually have when you reach it</em>, which the first draft got wrong. This draft adds the two banishing lines, <strong>light</strong> and <strong>dark</strong>, which do not wound anything; they take a demon out of the world or they fail.</p>
+    <p class="standfirst">Twenty demons written to replace the fantasy roster. None of them is a god, a devil, or anything anyone has ever prayed to. Every entry's appearance gives away its affinity chart — and this draft orders them so that <em>each tier is answerable with the kit you actually have when you reach it</em>, which the first draft got wrong. The two banishing lines, <strong>light</strong> and <strong>dark</strong>, do not wound anything; they take a demon out of the world or they fail.</p>
+    <p class="standfirst">This draft adds the <em>four demons that are already in the code</em> &mdash; three wardens and a boss &mdash; which are waiting on nothing but sprites, and brings the notes in line with a spell list where every element is learnable at three different reaches.</p>
   </header>
 
   <section class="legend">
@@ -507,11 +511,122 @@
   </section>
 
   <section class="note">
+    <h2>Every element comes at three reaches</h2>
+    <p><b>There is no spell tier any more, only a spell width.</b> Fire, ice, thunder, light and dark are each learnable from the first floor at three reaches: one demon, two or three at random, or every demon standing. Nothing gets stronger later; things get <em>wider</em> later, and width is the thing you pay for.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th scope="col">Element</th><th scope="col">One</th><th scope="col">2&ndash;3</th><th scope="col">All</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Fire</th><td>Ember &middot; 8 MP</td><td>Cinderfall &middot; 14 MP</td><td>Pyre &middot; 22 MP</td></tr>
+          <tr><th scope="row">Ice</th><td>Rime &middot; 8 MP</td><td>Hailfall &middot; 14 MP</td><td>Whiteout &middot; 22 MP</td></tr>
+          <tr><th scope="row">Thunder</th><td>Arc &middot; 8 MP</td><td>Forkfall &middot; 14 MP</td><td>Thunderhead &middot; 22 MP</td></tr>
+          <tr><th scope="row">Light</th><td>Banish &middot; 14 MP</td><td>Winnow &middot; 24 MP</td><td>Daybreak &middot; 36 MP</td></tr>
+          <tr><th scope="row">Dark</th><td>Consign &middot; 14 MP</td><td>Cull &middot; 24 MP</td><td>Nightfall &middot; 36 MP</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>Width is charged twice</b>, in MP and again in what reaches each demon: a damage spell keeps 75% of itself across two or three and 60% across a room, and a banishing spell keeps only 70% and 50%, because expelling four demons at once for 36 MP would end the fight rather than shape it. That second charge is what keeps the single-target spell in a loadout of four slots.</p>
+    <p><b>This changes how a line of demons should be read, not just one demon.</b> A wide cast takes the worst thing that happened to it &mdash; one demon repelling it ends the phase for the whole cast &mdash; with a single deliberate exception: a lone NULL among demons that took it is not worth two icons, so only a cast that <em>every</em> demon nulled pays that. A weakness anywhere still pays its half-icon back. So a mixed line is exactly where an ALL spell stops being a straight upgrade, and the charts in this registry are what tell you which line you are looking at.</p>
+  </section>
+
+  <section class="note">
     <h2>Light and dark are not two more elements</h2>
     <p><b>They do no damage at all.</b> A cast of Banish or Consign either takes the demon out of the fight entirely or does nothing whatsoever, and the chart decides which. Read across those two columns and the words mean something else than they do in the first four: <strong>WEAK</strong> is not double damage, it is <em>gone roughly three times in five</em>. <strong>NULL</strong> is not zero damage, it is <em>immune, and you spent two icons finding out</em>.</p>
     <p><b>The odds come off the demon's own chart</b> — 62% into a weakness, 28% against an ordinary demon, 8% into a resistance, and nothing at all through null, repel or drain. One slot spent on Banish is a bet that you will meet the right demon; the payoff is a whole enemy for one icon, which is why it is worth the Fire spell it displaces.</p>
     <p><b>The second half of the alignment line is now load-bearing.</b> It used to be flavour. It is the rule: <strong>no Light-aligned demon is ever weak to Banish, and no Dark-aligned demon is ever weak to Consign.</strong> Every demon that Consign answers outright is Neutral·Light, without exception. So the alignment tells you, before you have read anything else, which of the two spells to leave at home.</p>
+    <p><b>Luck moves the coin flip and never the chart.</b> The detective has a fifth stat now, and on these two columns it is worth spending: it nudges the odds on the rows that were already uncertain, by up to fifteen points either way. It does not touch NULL, REPEL or DRAIN at all &mdash; a demon that cannot abide nothing is immune to a lucky detective and an unlucky one alike &mdash; and each row keeps its own ceiling, so a RESIST tops out at 18% however well he rolls. Luck buys an edge on a maybe. It never buys a different answer.</p>
     <p><b>Neither line is ever dead weight.</b> Every tier holds at least one demon weak to light and at least one weak to dark, so whichever you equipped, the floor you are standing on has something on it that the spell answers.</p>
+  </section>
+
+
+  <section class="tier live">
+    <div class="tier-head">
+      <span class="tier-num">&#9733;</span>
+      <h2 class="tier-name">The four that are already in the game</h2>
+      <span class="tier-floors">Live in code &middot; awaiting sprites</span>
+    </div>
+    <p class="tier-blurb"><b>Read this section first if you are generating art.</b> The twenty below are written and not yet wired to anything; these four are the opposite. They are in <code>Enemy.WARDEN_TEMPLATES</code> and <code>BOSS_TEMPLATES</code> right now, they fight, and the only thing they are missing is a picture. Each carries its appearance as <code>art_note</code> in the data, reproduced here verbatim, so the description below and the one the game holds cannot drift apart.</p>
+    <p class="tier-blurb">A <b>warden</b> is the floor's locked door made flesh. One sits on every maze floor, does not roam, and holds the key, so unlike a random encounter it cannot be walked around. None of them can be talked down &mdash; a door does not negotiate &mdash; and each opens with two icons, which is what makes it a wall rather than a speed bump. They are repressions: the thing in a mind that will not let you go further in.</p>
+    <article class="entry">
+      <div class="ident">
+        <h3>Hushmouth</h3>
+        <p class="subline"><span class="align">WARDEN · FLOOR 1</span><span class="sep">/</span><span>LV 4 · 2 icons · HP 52 · MP 22</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A human jaw on its own, hung at head height across the doorway, wired shut through the teeth with rusted picture wire. No skull above it and no body below. The wire is bright and new; somebody keeps re-doing it.</p>
+      </div>
+    </article>
+    <article class="entry">
+      <div class="ident">
+        <h3>The Held Breath</h3>
+        <p class="subline"><span class="align">WARDEN · FLOOR 2</span><span class="sep">/</span><span>LV 6 · 2 icons · HP 75 · MP 39</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-none">&mdash;</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A room&#x27;s worth of air pulled into the outline of someone standing, visible only where dust presses against the seam of it. Inside the outline the dust never settles. It does not move. The room moves around it.</p>
+      </div>
+    </article>
+    <article class="entry">
+      <div class="ident">
+        <h3>Vacancy</h3>
+        <p class="subline"><span class="align">WARDEN · FLOOR 3</span><span class="sep">/</span><span>LV 8 · 2 icons · HP 98 · MP 53</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Silence</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-weak">WEAK</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">A tall adult silhouette filling a lit doorway, backlit hard enough that you cannot see into it — except there is no light behind it, and no room behind it either. Its edges are exactly the edges of a door you remember.</p>
+      </div>
+      <p class="atk">Attacks with Ice</p>
+    </article>
+
+    <div class="tier-head" style="margin-top:34px">
+      <span class="tier-num">&#9733;</span>
+      <h2 class="tier-name">And what is nesting at the bottom</h2>
+      <span class="tier-floors">The boss a three-floor case reaches</span>
+    </div>
+    <p class="tier-blurb">One boss, at the end of the corridor on the last floor. It nulls both banishing lines like every boss, so it can never fall to a coin flip.</p>
+    <article class="entry">
+      <div class="ident">
+        <h3>The Tenant</h3>
+        <p class="subline"><span class="align">BOSS</span><span class="sep">/</span><span>LV 10 · 3 icons · HP 124 · MP 64</span><span class="sep">/</span><span>Will not talk</span><span class="sep">/</span><span>Inflicts: Immobilize</span></p>
+      </div>
+      <div class="chart">
+      <div class="cell"><span class="el">PHYS</span><span class="st s-resist">RESIST</span></div>
+      <div class="cell"><span class="el">FIRE</span><span class="st s-weak">WEAK</span></div>
+      <div class="cell"><span class="el">ICE</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">THDR</span><span class="st s-none">&mdash;</span></div>
+      <div class="cell"><span class="el">LIGHT</span><span class="st s-null">NULL</span></div>
+      <div class="cell"><span class="el">DARK</span><span class="st s-null">NULL</span></div>
+      </div>
+      <div class="body">
+        <p class="desc">Something wearing the victim&#x27;s own childhood bedroom as a body: wallpaper stretched over a frame of bedstead and skirting board, a sash window for a mouth with the curtains still hanging in it. Its posture is relaxed. It has lived here longer than the victim has.</p>
+        <p class="tell"><b>Why this chart</b> Weak to fire on purpose — fire is the one spell the detective starts with, so the first boss is answerable with the kit he actually owns. Nulls both banishing lines like every boss.</p>
+      </div>
+      <p class="atk">Attacks with Dark</p>
+    </article>
   </section>
 
   <section class="tier">
@@ -951,14 +1066,14 @@
 
   <section class="note">
     <h2>Why the order is the design</h2>
-    <p><b>A tier is only balanced if it is balanced against what the player is holding.</b> The first draft of this roster had an even spread <em>overall</em> — four phys, six fire, five ice, five thunder — and read as balanced. Tallied per tier it was not: floor one had <em>zero</em> demons weak to a blade, one weak to Fire, and contained both a fire drain and a phys null. The detective starts with a blade and Fire. The first floor punished both of the only two things he owns.</p>
+    <p><b>A tier is only balanced if it is balanced against what the player is holding.</b> The first draft of this roster had an even spread <em>overall</em> — four phys, six fire, five ice, five thunder — and read as balanced. Tallied per tier it was not: floor one had <em>zero</em> demons weak to a blade, one weak to Fire, and contained both a fire drain and a phys null. The detective starts with a blade and Ember, the single-target fire spell. The first floor punished both of the only two things he owns.</p>
     <p><b>So the punishing states are staged rather than sprinkled.</b> Tier I has none at all. Tier II introduces drains. Tier III introduces nulls. Tier IV is where things throw your own attack back at you. Each tier stays answerable with the kit you plausibly have by the time you reach it.</p>
     <p><b>The banishing lines were staged on the same clock, one step later.</b> The detective cannot reliably hold Banish or Consign until an orb on the second floor sells him one, so tiers I and II carry no null, drain or repel on either column at all — only a single weakness each way, which is a reward for having found a scroll early rather than a demand that you did. The first banishing nulls arrive in tier III alongside the elemental ones. The drain and the repel wait for tier IV, where a player who has spent the whole run leaning on one of these spells finally meets the forge that swallows it and the glass that sends it back.</p>
     <p><b>Alignment still tells you which Talk option lands</b>, one-to-one with no exceptions: Law answers to <strong>Logic</strong>, Chaos to <strong>Gain</strong>, Neutral·Light to <strong>Flatter</strong>, Neutral·Dark to <strong>Survival</strong>.</p>
     <p><b>Talk difficulty still stops at 3.</b> At 4 a single round can never gain more than one point against a threshold of four, so recruitment becomes arithmetically impossible. Three demons refuse outright instead, which is honest where an unreachable check is not.</p>
   </section>
 
-  <footer>Draft three · 20 of 20 · six affinities, with light and dark as the banishing lines · bosses not yet written</footer>
+  <footer>Draft four · 20 written and unwired · 4 live and unillustrated · six affinities at three reaches each</footer>
 
 </div>
 </body>

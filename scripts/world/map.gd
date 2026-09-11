@@ -12,10 +12,10 @@ func _ready() -> void:
 	if floor_num >= FLOOR_COUNT:
 		_setup_boss_floor()
 	else:
-		_setup_normal_floor()
+		_setup_normal_floor(floor_num)
 
 
-func _setup_normal_floor() -> void:
+func _setup_normal_floor(floor_num: int = 0) -> void:
 	maze = _generate_maze()
 
 	wire_color       = Color(0.55, 0.88, 1.00)
@@ -25,9 +25,25 @@ func _setup_normal_floor() -> void:
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
 
-	var exit_pair: Dictionary = _random_frontier_wall({player_start: true})
+	# On the first floor the cells beside the spawn are reserved for the opening
+	# orb, so the exit is not allowed to take the one open neighbour a tight
+	# corner leaves — which is exactly how a handful of runs used to start with
+	# no orb in sight.
+	var reserved: Dictionary = {player_start: true}
+	if floor_num <= 1:
+		for off: Vector2i in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+			reserved[player_start + off] = true
+	var exit_pair: Dictionary = _random_frontier_wall(reserved)
 	exit_wall_pos = exit_pair["wall"]
 	exit_pos      = exit_pair["floor"]
+	# The very first floor opens with an orb already in view. Orbs are the only
+	# save point, the only shop and the only way to heal, and a player who has
+	# not met one yet does not know any of that — so the first one is claimed
+	# before anything else can take the cell, and everything placed afterwards
+	# routes around it.
+	orb_cells.clear()
+	if floor_num <= 1:
+		_place_orb_in_front_of_start()
 	_place_traps()
 	_place_warden()
 	_place_orbs()
@@ -222,6 +238,8 @@ func _place_warden() -> void:
 		var pos: Vector2i = _random_reachable_cell(maze, player_start)
 		if pos == player_start or pos == exit_pos or trap_cells.has(pos):
 			continue
+		if pos in orb_cells:
+			continue
 		var from_start: int = absi(pos.x - player_start.x) + absi(pos.y - player_start.y)
 		var from_exit: int  = absi(pos.x - exit_pos.x) + absi(pos.y - exit_pos.y)
 		var score: int = mini(from_start, from_exit)
@@ -233,8 +251,9 @@ func _place_warden() -> void:
 
 # Two or three orbs, spread out and clear of everything else that matters.
 # They are the run's only save points, so a floor without one would be cruel.
+# Adds to whatever is already down rather than clearing, so a starting orb
+# claimed earlier survives and still counts toward the floor's total.
 func _place_orbs() -> void:
-	orb_cells.clear()
 	var want: int = 2 + (randi() % 2)
 	var attempts: int = 0
 	while orb_cells.size() < want and attempts < 120:
@@ -254,11 +273,40 @@ func _place_orbs() -> void:
 		orb_cells.append(pos)
 
 
+# Puts one orb on a cell adjacent to the spawn and turns the player to face it,
+# so the first thing on screen at the start of a run is the thing that explains
+# the run. Falls back to leaving it out entirely if the spawn is somehow boxed
+# in, rather than dropping an orb inside a wall.
+func _place_orb_in_front_of_start() -> void:
+	const DIRS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0),
+			Vector2i(0, 1), Vector2i(-1, 0)]
+	for facing: int in DIRS.size():
+		var cell: Vector2i = player_start + DIRS[facing]
+		if not _cell_is_open(cell):
+			continue
+		if cell == exit_pos or cell == exit_wall_pos:
+			continue
+		orb_cells.append(cell)
+		player_start_facing = facing
+		return
+
+
+func _cell_is_open(cell: Vector2i) -> bool:
+	if cell.y < 0 or cell.y >= maze.size():
+		return false
+	var row: Array = maze[cell.y]
+	if cell.x < 0 or cell.x >= row.size():
+		return false
+	return int(row[cell.x]) == 0
+
+
 func _place_traps() -> void:
 	const COUNT: int = 3
 	var occupied: Dictionary = {
 		player_start: true, exit_pos: true, exit_wall_pos: true,
 	}
+	for orb: Vector2i in orb_cells:
+		occupied[orb] = true
 	var types: Array[String] = ["spike", "poison_vent", "binding_rune"]
 	var placed: int = 0
 	var attempts: int = 0
