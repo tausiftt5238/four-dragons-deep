@@ -58,6 +58,58 @@ static func resolve(base: int, element: String, target: CharacterSheet,
 	return {dmg = dmg, outcome = "hit", crit = crit, suppressed = false}
 
 
+# ── Banishing ─────────────────────────────────────────────────────────────────
+#
+# Light and dark do not wound — they expel. A cast either removes the target
+# outright or does nothing at all, and the affinity chart decides which. This is
+# what makes them worth carrying instead of a fourth damage element, and what
+# makes a demon's nature matter beyond which spell hurts it.
+
+const BANISH_BASE:   float = 0.28   # something with no opinion either way
+const BANISH_WEAK:   float = 0.62   # exactly what it is made to expel
+const BANISH_RESIST: float = 0.08   # it barely has purchase
+
+
+# The odds a banishing element takes the target, or 0.0 if it cannot.
+static func banish_chance(target: CharacterSheet, element: String) -> float:
+	match target.affinity_of(element):
+		Affinity.WEAK:   return BANISH_WEAK
+		Affinity.RESIST: return BANISH_RESIST
+		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
+			return 0.0
+	return BANISH_BASE
+
+
+# Resolves one banishing cast. The detective is never expelled — he is the mind
+# holding the case open, and a coin-flip game over at an unsaved moment is not a
+# fight, it is a dice roll. It costs him HP instead.
+static func resolve_banish(target: CharacterSheet, element: String,
+		power: int, is_detective: bool) -> Dictionary:
+	var state: String = target.affinity_of(element)
+	match state:
+		Affinity.DRAIN:
+			return {outcome = "drain", dmg = max(1, variance(power)), taken = false}
+		Affinity.REPEL:
+			return {outcome = "repel", dmg = max(1, variance(power)), taken = false}
+		Affinity.NULL:
+			return {outcome = "null", dmg = 0, taken = false}
+
+	if is_detective:
+		# Not expelled, but the attempt still tears at him — and a weakness
+		# still tears harder.
+		var hurt: int = variance(power)
+		if state == Affinity.WEAK:
+			hurt *= 2
+		elif state == Affinity.RESIST:
+			hurt = max(1, hurt / 2)
+		return {outcome = "weak" if state == Affinity.WEAK else "hit",
+				dmg = max(1, hurt), taken = false}
+
+	if randf() < banish_chance(target, element):
+		return {outcome = "banished", dmg = 0, taken = true}
+	return {outcome = "failed", dmg = 0, taken = false}
+
+
 # Does a physical swing connect? Magic never misses — that is the Nocturne rule,
 # and it keeps the affinity chart reliable while leaving agility to decide the
 # things agility should decide. A miss costs two icons, so a slowed party bleeds

@@ -307,6 +307,10 @@ func _stock() -> Array[Dictionary]:
 	if floor_num >= 2:
 		out.append(Item.panacea())
 		out.append(Item.elixir_motion())
+		# The banishing lines are too central to leave to a drop roll. From the
+		# second floor on, an orb will always sell you the way into them.
+		out.append(Item.scroll_banish())
+		out.append(Item.scroll_consign())
 	return out
 
 

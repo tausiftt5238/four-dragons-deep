@@ -19,6 +19,9 @@ static var DATA: Dictionary = {
 	"thundara": {name="Thundara", mp=18, type="dmg", heal=0, element="thunder", desc="Deals strong lightning damage to one enemy."},
 	"blizzard": {name="Blizzard", mp=10, type="dmg", heal=0, element="ice",     desc="Deals ice damage to one enemy."},
 	"blizzara": {name="Blizzara", mp=18, type="dmg", heal=0, element="ice",     desc="Deals strong ice damage to one enemy."},
+	# ── Banishing: expels outright or does nothing at all ─────────────────────
+	"banish":   {name="Banish",   mp=14, type="banish", heal=0, element="light", desc="Tries to expel one enemy outright. Certain things cannot abide the light."},
+	"consign":  {name="Consign",  mp=14, type="banish", heal=0, element="dark",  desc="Tries to unmake one enemy outright. Certain things cannot abide the dark."},
 	# ── Healing ───────────────────────────────────────────────────────────────
 	"cure":     {name="Cure",     mp=6,  type="heal", heal=30,   desc="Restores 30 HP."},
 	"cura":     {name="Cura",     mp=15, type="heal", heal=80,   desc="Restores 80 HP."},

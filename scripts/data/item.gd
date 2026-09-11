@@ -114,6 +114,14 @@ static func scroll_damp() -> Dictionary:
 	return scroll("scroll_damp", "Scroll of Damp", "damp", "Damp",
 			"Teaches Damp — lowers every enemy's magic.", 4)
 
+static func scroll_banish() -> Dictionary:
+	return scroll("scroll_banish", "Scroll of Banish", "banish", "Banish",
+			"Teaches Banish — expels one enemy outright, or does nothing.", 4)
+
+static func scroll_consign() -> Dictionary:
+	return scroll("scroll_consign", "Scroll of Consign", "consign", "Consign",
+			"Teaches Consign — unmakes one enemy outright, or does nothing.", 4)
+
 static func scroll_blunt() -> Dictionary:
 	return scroll("scroll_blunt", "Scroll of Blunt", "blunt", "Blunt",
 			"Teaches Blunt — lowers every enemy's attack.", 3)
@@ -171,7 +179,7 @@ static func drop_table() -> Array[Dictionary]:
 		fire_bomb(), ice_shard(), thunder_bead(),
 		scroll_fira(), scroll_thundara(), scroll_blizzara(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
-		scroll_damp(),
+		scroll_damp(), scroll_banish(), scroll_consign(),
 		scroll_blunt(), scroll_sunder(), scroll_mire(),
 		scroll_purge(), scroll_steady(),
 	]

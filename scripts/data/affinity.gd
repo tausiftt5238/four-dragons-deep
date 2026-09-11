@@ -13,10 +13,17 @@ const NULL:   String = "null"
 const REPEL:  String = "repel"
 const DRAIN:  String = "drain"
 
-const PHYS: String = "phys"
+const PHYS:  String = "phys"
+const LIGHT: String = "light"
+const DARK:  String = "dark"
 
-# Every element that can appear in an affinity chart.
-const ELEMENTS: Array[String] = ["phys", "fire", "ice", "thunder"]
+# Every element that can appear in an affinity chart. Light and dark are the
+# instant-kill lines rather than damage — see CombatMath.banish_chance.
+const ELEMENTS: Array[String] = ["phys", "fire", "ice", "thunder", "light", "dark"]
+
+# The two that expel rather than wound.
+static func is_banishing(element: String) -> bool:
+	return element == LIGHT or element == DARK
 
 
 static func multiplier(state: String) -> float:
@@ -48,6 +55,8 @@ static func color(state: String) -> Color:
 
 
 static func element_name(element: String) -> String:
-	if element == PHYS:
-		return "Phys"
+	match element:
+		PHYS:  return "Phys"
+		LIGHT: return "Light"
+		DARK:  return "Dark"
 	return element.capitalize()

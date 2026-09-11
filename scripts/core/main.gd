@@ -524,13 +524,13 @@ func _input(event: InputEvent) -> void:
 
 # ── Encounter system ─────────────────────────────────────────────────────────
 
+# Only the abnormal half of the toggle is worth saying out loud. With roamers on
+# the HUD stays clean; with them off the floor is silent for a reason, and that
+# is exactly when a label earns its place.
 func _update_encounter_debug_label() -> void:
-	if _encounters_enabled:
-		_encounter_debug_lbl.text = "[DEBUG] Roamers: ON"
-		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.45, 0.90, 0.45))
-	else:
-		_encounter_debug_lbl.text = "[DEBUG] Roamers: OFF"
-		_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
+	_encounter_debug_lbl.visible = not _encounters_enabled
+	_encounter_debug_lbl.text = "[DEBUG] Roamers: OFF"
+	_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
 
 
 # ── Roaming demons ───────────────────────────────────────────────────────────

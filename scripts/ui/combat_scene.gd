@@ -1801,6 +1801,9 @@ func _cast_spell(spell_id: String) -> Dictionary:
 				Status.get_data(target_status).get("name", target_status)],
 				cost = PressTurn.COST_FULL}
 
+	if spell_type == "banish":
+		return _cast_banish(data)
+
 	if spell_type == "heal":
 		var heal_amt: int = data.get("heal", 30)
 		var before: int = player.hp
@@ -1898,6 +1901,41 @@ func _guarded_def(target: CharacterSheet) -> int:
 	return int(base / 2.0)
 
 
+# Light and dark take the target or they do not. Nothing in between, which is
+# why they are worth a slot: one icon for a whole demon, at odds its own nature
+# decides.
+func _cast_banish(data: Dictionary) -> Dictionary:
+	var element: String = data.get("element", Affinity.LIGHT) as String
+	var power: int = maxi(1, int(float(player.effective_mag())
+			* player.stage_mult(CharacterSheet.STAT_MAG)))
+	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false)
+	var name: String = data["name"] as String
+	var who: String  = enemy.display_name()
+
+	match res["outcome"]:
+		"banished":
+			enemy.take_damage(enemy.max_hp * 2)
+			return {msg = "[color=#c9a6ff]%s! %s is taken, whole.[/color]" % [name, who],
+					cost = PressTurn.COST_HALF if
+						enemy.affinity_of(element) == Affinity.WEAK else PressTurn.COST_FULL}
+		"failed":
+			return {msg = "[color=gray]%s! %s holds.[/color]" % [name, who],
+					cost = PressTurn.COST_FULL}
+		"null":
+			return {msg = "[color=#999999]%s! %s does not feel it at all.[/color]" % [name, who],
+					cost = PressTurn.COST_MISS}
+		"repel":
+			var back: int = int(res["dmg"])
+			_actor().take_damage(back)
+			return {msg = "[color=#d070ff]%s! Turned back — %s takes %d.[/color]" % [
+					name, _actor_name(), back], cost = PressTurn.COST_LOST}
+		"drain":
+			enemy.heal(int(res["dmg"]))
+			return {msg = "[color=lime]%s! %s drinks it and recovers %d HP.[/color]" % [
+					name, who, int(res["dmg"])], cost = PressTurn.COST_LOST}
+	return {msg = "[color=gray]%s does nothing.[/color]" % name, cost = PressTurn.COST_FULL}
+
+
 # ── Physical swings ───────────────────────────────────────────────────────────
 
 # Reads the target's chart, writes it into the bestiary for good, and prints it
@@ -1976,7 +2014,11 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var element: String = Affinity.PHYS
 	var base: float = float(actor.str)
 	var dry: String = ""
-	if actor.attack_element != "" and randi() % 10 < 4:
+	# A banishing element is a bid to end someone outright, and a demon lost that
+	# way does not come back, so a demon that carries one reaches for it half as
+	# often as an ordinary element.
+	var reach: int = 2 if Affinity.is_banishing(actor.attack_element) else 4
+	if actor.attack_element != "" and randi() % 10 < reach:
 		if actor.can_afford_skill():
 			actor.mp -= actor.skill_cost()
 			element = actor.attack_element
@@ -1985,6 +2027,9 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 			dry = "[color=gray]%s: not enough MP![/color]\n" % actor.display_name()
 
 	var target: CharacterSheet = _pick_target(element)
+
+	if Affinity.is_banishing(element):
+		return _enemy_banish(actor, target, element, dry)
 
 	# Only a swing can miss. Whatever it calls up always arrives. A miss does not
 	# spend the target's brace — it never had to absorb anything.
@@ -2034,6 +2079,56 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	if target == player:
 		msg += _check_counter()
 	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}
+
+
+# A demon reaching for light or dark is reaching for one of yours. The detective
+# cannot be expelled, so it tears at him instead; a bound demon it takes is gone
+# for good, which is what makes these the frightening ones to meet.
+func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
+		dry: String) -> Dictionary:
+	var power: int = maxi(1, int(float(actor.mag)
+			* actor.stage_mult(CharacterSheet.STAT_MAG)))
+	var is_hero: bool = (target == player)
+	var res: Dictionary = CombatMath.resolve_banish(target, element, power, is_hero)
+	var ename: String = actor.display_name()
+	var tname: String = _member_name(target)
+	var word: String  = "Light" if element == Affinity.LIGHT else "Dark"
+
+	match res["outcome"]:
+		"banished":
+			target.take_damage(target.max_hp * 2)
+			var pr: TextureRect = _member_portrait(target)
+			if pr != null:
+				_shake_portrait(pr)
+			return {msg = dry + "[color=#c9a6ff]%s calls the %s — %s is taken.[/color]" % [
+					ename, word, tname],
+					cost = PressTurn.COST_HALF if
+						target.affinity_of(element) == Affinity.WEAK else PressTurn.COST_FULL}
+		"failed":
+			return {msg = dry + "[color=gray]%s calls the %s — %s holds.[/color]" % [
+					ename, word, tname], cost = PressTurn.COST_FULL}
+		"null":
+			return {msg = dry + "[color=#999999]%s calls the %s — nothing.[/color]" % [
+					ename, word], cost = PressTurn.COST_MISS}
+		"repel":
+			actor.take_damage(int(res["dmg"]))
+			return {msg = dry + "[color=#d070ff]%s calls the %s — turned back for %d.[/color]" % [
+					ename, word, int(res["dmg"])], cost = PressTurn.COST_LOST}
+		"drain":
+			target.heal(int(res["dmg"]))
+			return {msg = dry + "[color=lime]%s calls the %s — %s drinks it.[/color]" % [
+					ename, word, tname], cost = PressTurn.COST_LOST}
+
+	# The detective takes it as a wound rather than an expulsion.
+	var hurt: int = int(res["dmg"])
+	target.take_damage(hurt)
+	var hit_pr: TextureRect = _member_portrait(target)
+	if hit_pr != null:
+		_shake_portrait(hit_pr)
+	var tag: String = "  [color=yellow]WEAK![/color]" if res["outcome"] == "weak" else ""
+	return {msg = dry + "[color=red]%s calls the %s — %s takes %d.[/color]%s" % [
+			ename, word, tname, hurt, tag],
+			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}
 
 
 # A compact readout of what is stacked on someone: "ATK+2 AGL-1".
