@@ -114,7 +114,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		status_attack="silence", weakness="ice", min_floor=3, max_floor=3,
 		negotiable=false, talk_difficulty=0, sprite="", needs_art=true,
 		phys="null", lv=8, ail=10, icons=2, dark="weak", attack_element="ice",
-		art_note="A tall adult silhouette filling a lit doorway, backlit hard enough that you cannot see into it — except there is no light behind it, and no room behind it either. Its edges are exactly the edges of a door you remember."},
+		art_note="A tall adult silhouette filling a lit doorway, backlit hard enough that you cannot see into it — except there is no light behind it, and no room behind it either. Its edges are crisp enough to cut, and they do not match the doorway it is standing in — they are the outline of some other door entirely."},
 ]
 
 
@@ -125,8 +125,8 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		negotiable=false, talk_difficulty=0, sprite="", needs_art=true,
 		icons=3, support="ward", lv=10, ail=15, phys="resist",
 		light="null", dark="null", attack_element="dark",
-		art_note="Something wearing the victim's own childhood bedroom as a body: wallpaper stretched over a frame of bedstead and skirting board, a sash window for a mouth with the curtains still hanging in it. Its posture is relaxed. It has lived here longer than the victim has.",
-		design_note="Weak to fire on purpose — fire is the one spell the detective starts with, so the first boss is answerable with the kit he actually owns. Nulls both banishing lines like every boss."},
+		art_note="A heavy seated figure built out of years of nesting material — matted hair, dust, chewed paper, shed skin — packed dense and settled so deep it has gone the shape of whatever it sits on. A face is pressed into the front of the mass, worn smooth from use, and it opens to speak. Its limbs are stubby and folded away underneath; it has not needed them in a long time and it does not get up.",
+		design_note="Weak to fire on purpose — fire is the one spell the detective starts with, so the first boss is answerable with the kit he actually owns. The body earns it too: years of packed dry fibre. A blade sinks into that and finds nothing, which is the phys resist. Nulls both banishing lines like every boss."},
 	{name="Shadow Knight", str=12, def=8,  mag=2,  agl=3, exp=200, gold=80,  status_attack="immobilize", weakness="thunder", min_floor=5,  max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=3, support="ward", lv=12, ail=25, light="null", dark="null"},
 	{name="Bone Sorcerer", str=5,  def=6,  mag=14, agl=4, exp=280, gold=110, status_attack="silence",    weakness="ice",     min_floor=10, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", attack_element="fire", icons=3, support="stoke", lv=14, ail=25, light="null", dark="null"},
 	{name="Iron Titan",    str=16, def=12, mag=0,  agl=1, exp=360, gold=140, status_attack="paralyzed",  weakness="thunder", min_floor=15, max_floor=-1, negotiable=false, talk_difficulty=0, sprite="", icons=4, support="ward", lv=16, ail=25, light="null", dark="null"},
