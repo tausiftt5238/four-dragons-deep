@@ -538,10 +538,13 @@ func _update_encounter_debug_label() -> void:
 
 # How many demons a floor carries. Boss corridors carry none — the boss is the
 # encounter, and a 1-cell-wide corridor gives you nowhere to dodge.
+#
+# One demon per territory is the rule that keeps them out of each other's way,
+# so this can only ever reach as high as there are territories — see ZONE_DIV.
 func _roamer_target() -> int:
 	if floor_num >= Level.FLOOR_COUNT:
 		return 0
-	return mini(5 + floor_num, 8)
+	return mini(9 + floor_num * 2, 14)
 
 
 func _spawn_roamers() -> void:
@@ -581,7 +584,13 @@ func _spawn_warden() -> void:
 
 # Carves the floor into a grid of territories. Anything smaller than a couple
 # of cells is not worth patrolling, so tiny slivers are simply skipped later.
-const ZONE_DIV: int = 3
+# The maze is cut into ZONE_DIV x ZONE_DIV territories and each one holds at
+# most one demon, which is what stops them piling into a corner or wandering
+# through each other. It is therefore also the ceiling on how many a floor can
+# carry: at 3 that was nine, and a 20x20 maze felt empty. At 4 there are
+# sixteen territories of about 5x5, still big enough that a demon patrols
+# rather than paces.
+const ZONE_DIV: int = 4
 
 func _build_zones() -> Array[Rect2i]:
 	var out: Array[Rect2i] = []
