@@ -29,6 +29,7 @@ func build() -> void:
 		sort_row.add_child(btn)
 
 	var belt_lbl: Label = Label.new()
+	belt_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	belt_lbl.text = "BELT:  %d / %d      (only belted items appear in battle)" % [
 			_m.player.equipped_items.size(), PlayerCharacter.ITEM_SLOTS]
 	belt_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -66,6 +67,7 @@ func _make_item_row(item: Dictionary) -> HBoxContainer:
 	var qty: int = item.get("qty", 1)
 	name_lbl.text = item["name"] + (" ×%d" % qty if qty > 1 else "")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.tooltip_text = GearTooltip.build(item, _m.player) if item["type"] == "accessory" else item.get("desc", "")
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lbl)

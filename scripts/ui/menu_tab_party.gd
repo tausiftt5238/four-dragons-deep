@@ -33,6 +33,7 @@ func build() -> void:
 
 	var hint: Label = Label.new()
 	hint.text = "Summoned demons start the battle on the field — each one is another action per turn. A demon that falls is gone for good; buy it back at an orb."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
 	_m._content.add_child(hint)
@@ -55,26 +56,47 @@ func build() -> void:
 			_m._content.add_child(_make_row(other, false))
 
 
-func _make_row(demon_name: String, active: bool) -> HBoxContainer:
-	var p: PlayerCharacter = _m.player
+# Upright there is no room for name, HP, element, chart and a button on one
+# line — the chart ends up with forty pixels and wraps a letter at a time. The
+# row splits in two instead: who it is and what you can do with it on top, what
+# it brings to a fight underneath.
+func _make_row(demon_name: String, active: bool) -> Control:
+	var size: Vector2 = _m.get_viewport_rect().size
+	if size.x >= size.y:
+		return _wide_row(demon_name, active)
+
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+
+	var head: HBoxContainer = HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	col.add_child(head)
+	head.add_child(_mark(active))
+	var name_lbl: Label = _name_label(demon_name, active)
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(name_lbl)
+	head.add_child(_slot_button(demon_name, active))
+
+	var demon: Enemy = Enemy.make_from_name(demon_name)
+	var detail: Label = Label.new()
+	detail.text = "      HP %d   MP %d   %s   %s" % [
+			demon.max_hp, demon.max_mp, _element_text(demon), _chart(demon)]
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.add_theme_font_size_override("font_size", 11)
+	detail.add_theme_color_override("font_color", Color(0.62, 0.66, 0.72))
+	demon.free()
+	col.add_child(detail)
+	return col
+
+
+func _wide_row(demon_name: String, active: bool) -> HBoxContainer:
 	# Built at the detective's level, which is what it would join a battle as.
 	var demon: Enemy = Enemy.make_from_name(demon_name)
 
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-
-	var mark: Label = Label.new()
-	mark.text = "*" if active else " "
-	mark.custom_minimum_size = Vector2(12, 0)
-	mark.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-	row.add_child(mark)
-
-	var name_lbl: Label = Label.new()
-	name_lbl.text = demon_name
-	name_lbl.custom_minimum_size = Vector2(120, 0)
-	name_lbl.add_theme_color_override("font_color",
-		Color(0.62, 0.92, 0.74) if active else Color(0.52, 0.52, 0.56))
-	row.add_child(name_lbl)
+	row.add_child(_mark(active))
+	row.add_child(_name_label(demon_name, active))
 
 	var hp_lbl: Label = Label.new()
 	hp_lbl.text = "HP %d   MP %d" % [demon.max_hp, demon.max_mp]
@@ -84,13 +106,10 @@ func _make_row(demon_name: String, active: bool) -> HBoxContainer:
 
 	# The element it brings is the reason to pick one demon over another.
 	var skill_lbl: Label = Label.new()
-	if demon.attack_element != "":
-		skill_lbl.text = "%s  %d MP" % [
-				Affinity.element_name(demon.attack_element), demon.skill_cost()]
-		skill_lbl.add_theme_color_override("font_color", Color(1.0, 0.72, 0.35))
-	else:
-		skill_lbl.text = "no element"
-		skill_lbl.add_theme_color_override("font_color", Color(0.45, 0.45, 0.50))
+	skill_lbl.text = _element_text(demon)
+	skill_lbl.add_theme_color_override("font_color",
+			Color(1.0, 0.72, 0.35) if demon.attack_element != ""
+			else Color(0.45, 0.45, 0.50))
 	skill_lbl.custom_minimum_size = Vector2(132, 0)
 	row.add_child(skill_lbl)
 
@@ -101,6 +120,39 @@ func _make_row(demon_name: String, active: bool) -> HBoxContainer:
 	chart_lbl.add_theme_color_override("font_color", Color(0.66, 0.66, 0.74))
 	row.add_child(chart_lbl)
 
+	row.add_child(_slot_button(demon_name, active))
+	demon.free()
+	return row
+
+
+# ── The pieces both layouts are built from ───────────────────────────────────
+
+func _mark(active: bool) -> Label:
+	var mark: Label = Label.new()
+	mark.text = "*" if active else " "
+	mark.custom_minimum_size = Vector2(12, 0)
+	mark.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+	return mark
+
+
+func _name_label(demon_name: String, active: bool) -> Label:
+	var lbl: Label = Label.new()
+	lbl.text = demon_name
+	lbl.custom_minimum_size = Vector2(120, 0)
+	lbl.add_theme_color_override("font_color",
+			Color(0.62, 0.92, 0.74) if active else Color(0.52, 0.52, 0.56))
+	return lbl
+
+
+func _element_text(demon: Enemy) -> String:
+	if demon.attack_element == "":
+		return "no element"
+	return "%s  %d MP" % [Affinity.element_name(demon.attack_element),
+			demon.skill_cost()]
+
+
+func _slot_button(demon_name: String, active: bool) -> Button:
+	var p: PlayerCharacter = _m.player
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = Vector2(88, 26)
 	if active:
@@ -120,10 +172,7 @@ func _make_row(demon_name: String, active: bool) -> HBoxContainer:
 				_m._set_status("All %d slots are taken." % PlayerCharacter.ACTIVE_SLOTS)
 			_m._refresh()
 		)
-	row.add_child(btn)
-
-	demon.free()
-	return row
+	return btn
 
 
 # Its affinities, written the way the battle log writes them.

@@ -67,8 +67,8 @@ var _party_slots: Array[Dictionary] = []
 # same place whichever is showing. Both menus are capped at MENU_SLOTS, which
 # is why nothing here ever needs to scroll.
 const MENU_SLOTS: int = 6
-var _action_bar: HBoxContainer
-var _sub_bar:    HBoxContainer
+var _action_bar: GridContainer
+var _sub_bar:    GridContainer
 var _sub_slots:  Array[MarginContainer] = []
 var _actor_banner: Label
 var _buttons: Dictionary = {}
@@ -1718,7 +1718,8 @@ func _refresh_party_slots() -> void:
 func _build_menu_panel(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
 	panel.size_flags_vertical = Control.SIZE_SHRINK_END
-	panel.custom_minimum_size = Vector2(0, 132)
+	# Two rows of slots need roughly twice the height of one.
+	panel.custom_minimum_size = Vector2(0, 132 if _is_landscape() else 224)
 	parent.add_child(panel)
 
 	var m: MarginContainer = MarginContainer.new()
@@ -1794,11 +1795,26 @@ func _build_menu_panel(parent: Control) -> void:
 		_sub_slots.append(slot)
 
 
-func _make_slot_row() -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
+# Held upright there is not enough width for six thumb targets in a line —
+# every label truncates to three letters. The six slots stay six; they fold
+# into two rows of three instead, which is wider per slot than landscape
+# manages and still one grid the eye reads in one go.
+func _menu_columns() -> int:
+	return MENU_SLOTS if _is_landscape() else MENU_SLOTS / 2
+
+
+func _is_landscape() -> bool:
+	var size: Vector2 = get_viewport_rect().size
+	return size.x >= size.y
+
+
+func _make_slot_row() -> GridContainer:
+	var row: GridContainer = GridContainer.new()
+	row.columns = _menu_columns()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
 	return row
 
 
@@ -1845,7 +1861,7 @@ func _submenu_add(control: Control) -> void:
 # underneath. Built from child Labels because a Button's own text is one line.
 func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
 	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(0, 74)
+	btn.custom_minimum_size = Vector2(0, 74 if _is_landscape() else 62)
 	btn.disabled = disabled
 
 	var box: VBoxContainer = VBoxContainer.new()

@@ -12,9 +12,22 @@ config_version=5
 
 config/name="first-person-dungeon-crawler"
 run/main_scene="res://scenes/title.tscn"
+config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
-config/quit_on_go_back=false
+
+[display]
+
+; A phone game held upright. 540x960 is the design resolution everything is
+; laid out against; canvas_items scales the whole UI to whatever the device
+; actually has, and "expand" hands a taller or shorter phone the extra space
+; as viewport rather than as black bars. Without any of this Godot renders the
+; UI at native pixel size, which is why the menus ran off the edge of a phone.
+window/size/viewport_width=540
+window/size/viewport_height=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation="portrait"
 
 [physics]
 

@@ -94,14 +94,17 @@ func _make_bestiary_entry(tmpl: Dictionary) -> HBoxContainer:
 # log uses, so the two read as the same information.
 func _add_chart(parent: VBoxContainer, tmpl: Dictionary) -> void:
 	var demon: Enemy = Enemy.make_from_name(tmpl["name"] as String, 1)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	var upright: bool = _m.get_viewport_rect().size.y > _m.get_viewport_rect().size.x
+	var row: GridContainer = GridContainer.new()
+	row.columns = 3 if upright else Affinity.ELEMENTS.size()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 2)
 	for element: String in Affinity.ELEMENTS:
 		var state: String = demon.affinity_of(element)
 		var cell: Label = Label.new()
 		cell.text = "%s %s" % [Affinity.element_name(element).to_upper(),
 				Affinity.label(state)]
-		cell.custom_minimum_size = Vector2(112, 0)
+		cell.custom_minimum_size = Vector2(112 if not upright else 96, 0)
 		cell.add_theme_font_size_override("font_size", 12)
 		cell.add_theme_color_override("font_color", Affinity.color(state))
 		row.add_child(cell)

@@ -99,6 +99,9 @@ func _make_spell_row(spell_id: String, spell: Dictionary, equipped: bool) -> HBo
 	var desc_lbl: Label = Label.new()
 	desc_lbl.text = spell.get("desc", "")
 	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Without this the label insists on the width of its whole sentence and
+	# shoves the Equip button off a phone screen.
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	row.add_child(desc_lbl)
 
