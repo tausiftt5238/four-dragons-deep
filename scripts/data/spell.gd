@@ -88,31 +88,58 @@ static var DATA: Dictionary = {
 		desc="Closes the dark over the whole room. Thin, across that many."},
 
 	# ── Healing ───────────────────────────────────────────────────────────────
-	"cure":     {name="Cure",     mp=6,  type="heal", heal=30,   desc="Restores 30 HP."},
-	"cura":     {name="Cura",     mp=15, type="heal", heal=80,   desc="Restores 80 HP."},
-	"curaga":   {name="Curaga",   mp=30, type="heal", heal=9999, desc="Fully restores HP."},
+	"cure":      {name="Cure", mp=6, type="heal", heal=30,
+		desc="Restores 30 HP."},
+	"cura":      {name="Cura", mp=15, type="heal", heal=80,
+		desc="Restores 80 HP."},
+	"curaga":    {name="Curaga", mp=30, type="heal", heal=9999,
+		desc="Fully restores HP."},
 
 	# ── Buffs: the whole party at once ────────────────────────────────────────
-	"whet":     {name="Whet",     mp=8,  type="buff", heal=0, stat="atk", delta=1,  scope="party", desc="Sharpens the party's attacks."},
-	"ward":     {name="Ward",     mp=8,  type="buff", heal=0, stat="def", delta=1,  scope="party", desc="Hardens the party's guard."},
-	"quicken":  {name="Quicken",  mp=8,  type="buff", heal=0, stat="agl", delta=1,  scope="party", desc="Quickens the party — lands and dodges more."},
-	"stoke":    {name="Stoke",    mp=8,  type="buff", heal=0, stat="mag", delta=1,  scope="party", desc="Feeds the party's magic — stronger spells and heals."},
+	"whet":      {name="Whet", mp=8, type="buff", heal=0,
+		stat="atk", delta=1, scope="party",
+		desc="Sharpens the party's attacks."},
+	"ward":      {name="Ward", mp=8, type="buff", heal=0,
+		stat="def", delta=1, scope="party",
+		desc="Hardens the party's guard."},
+	"quicken":   {name="Quicken", mp=8, type="buff", heal=0,
+		stat="agl", delta=1, scope="party",
+		desc="Quickens the party — lands and dodges more."},
+	"stoke":     {name="Stoke", mp=8, type="buff", heal=0,
+		stat="mag", delta=1, scope="party",
+		desc="Feeds the party's magic — stronger spells and heals."},
 
 	# ── Debuffs: every enemy at once ──────────────────────────────────────────
-	"blunt":    {name="Blunt",    mp=10, type="buff", heal=0, stat="atk", delta=-1, scope="foes",  desc="Dulls every enemy's attacks."},
-	"sunder":   {name="Sunder",   mp=10, type="buff", heal=0, stat="def", delta=-1, scope="foes",  desc="Breaks every enemy's guard."},
-	"mire":     {name="Mire",     mp=10, type="buff", heal=0, stat="agl", delta=-1, scope="foes",  desc="Slows every enemy — they miss more."},
-	"damp":     {name="Damp",     mp=10, type="buff", heal=0, stat="mag", delta=-1, scope="foes",  desc="Smothers every enemy's magic."},
+	"blunt":     {name="Blunt", mp=10, type="buff", heal=0,
+		stat="atk", delta=-1, scope="foes",
+		desc="Dulls every enemy's attacks."},
+	"sunder":    {name="Sunder", mp=10, type="buff", heal=0,
+		stat="def", delta=-1, scope="foes",
+		desc="Breaks every enemy's guard."},
+	"mire":      {name="Mire", mp=10, type="buff", heal=0,
+		stat="agl", delta=-1, scope="foes",
+		desc="Slows every enemy — they miss more."},
+	"damp":      {name="Damp", mp=10, type="buff", heal=0,
+		stat="mag", delta=-1, scope="foes",
+		desc="Smothers every enemy's magic."},
 
 	# Stripping what the other side stacked is deliberately absent for now —
 	# the dekaja/dekunda pair comes in a later pass, and until it does a stacked
 	# buff is answered by out-stacking it.
 
 	# ── Ailments ──────────────────────────────────────────────────────────────
-	"venom":    {name="Venom",    mp=4,  type="ailment", heal=0, status="poison",     desc="Poisons the enemy."},
-	"shock":    {name="Shock",    mp=6,  type="ailment", heal=0, status="paralyzed",  desc="Paralyzes the enemy."},
-	"mute":     {name="Mute",     mp=5,  type="ailment", heal=0, status="silence",    desc="Silences the enemy."},
-	"bind":     {name="Bind",     mp=4,  type="ailment", heal=0, status="immobilize", desc="Immobilizes the enemy."},
+	"venom":     {name="Venom", mp=4, type="ailment", heal=0,
+		status="poison",
+		desc="Poisons the enemy."},
+	"shock":     {name="Shock", mp=6, type="ailment", heal=0,
+		status="paralyzed",
+		desc="Paralyzes the enemy."},
+	"mute":      {name="Mute", mp=5, type="ailment", heal=0,
+		status="silence",
+		desc="Silences the enemy."},
+	"bind":      {name="Bind", mp=4, type="ailment", heal=0,
+		status="immobilize",
+		desc="Immobilizes the enemy."},
 }
 
 

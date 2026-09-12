@@ -33,28 +33,44 @@ static func elemental_throwable(id: String, name: String, desc: String,
 # ── Predefined consumables ────────────────────────────────────────────────────
 
 static func health_potion() -> Dictionary:
-	return consumable("health_potion", "Health Potion", "Restores 30 HP.", 30, 0, 1)
+	return consumable("health_potion", "Health Potion",
+			"Restores 30 HP.",
+			30, 0, 1)
 
 static func hi_potion() -> Dictionary:
-	return consumable("hi_potion", "Hi-Potion", "Restores 80 HP.", 80, 0, 2)
+	return consumable("hi_potion", "Hi-Potion",
+			"Restores 80 HP.",
+			80, 0, 2)
 
 static func ether() -> Dictionary:
-	return consumable("ether", "Ether", "Restores 20 MP.", 0, 20, 1)
+	return consumable("ether", "Ether",
+			"Restores 20 MP.",
+			0, 20, 1)
 
 static func antidote() -> Dictionary:
-	return consumable("antidote", "Antidote", "Cures Poison.", 0, 0, 1, "poison")
+	return consumable("antidote", "Antidote",
+			"Cures Poison.",
+			0, 0, 1, "poison")
 
 static func stimulant() -> Dictionary:
-	return consumable("stimulant", "Stimulant", "Cures Paralysis.", 0, 0, 1, "paralyzed")
+	return consumable("stimulant", "Stimulant",
+			"Cures Paralysis.",
+			0, 0, 1, "paralyzed")
 
 static func echo_gem() -> Dictionary:
-	return consumable("echo_gem", "Echo Gem", "Cures Silence.", 0, 0, 1, "silence")
+	return consumable("echo_gem", "Echo Gem",
+			"Cures Silence.",
+			0, 0, 1, "silence")
 
 static func elixir_motion() -> Dictionary:
-	return consumable("elixir_motion", "Elixir of Motion", "Cures Immobilize.", 0, 0, 1, "immobilize")
+	return consumable("elixir_motion", "Elixir of Motion",
+			"Cures Immobilize.",
+			0, 0, 1, "immobilize")
 
 static func panacea() -> Dictionary:
-	return consumable("panacea", "Panacea", "Cures all ailments.", 0, 0, 4, "all")
+	return consumable("panacea", "Panacea",
+			"Cures all ailments.",
+			0, 0, 4, "all")
 
 
 # ── Predefined scrolls ────────────────────────────────────────────────────────
@@ -147,28 +163,42 @@ static func scroll_mire() -> Dictionary:
 # ── Predefined offensive throwables ──────────────────────────────────────────
 
 static func venom_flask() -> Dictionary:
-	return consumable("venom_flask", "Venom Flask", "Throws a vial of poison at an enemy.", 0, 0, 1, "", "poison")
+	return consumable("venom_flask", "Venom Flask",
+			"Throws a vial of poison at an enemy.",
+			0, 0, 1, "", "poison")
 
 static func flash_powder() -> Dictionary:
-	return consumable("flash_powder", "Flash Powder", "Blinds and paralyzes an enemy.", 0, 0, 2, "", "paralyzed")
+	return consumable("flash_powder", "Flash Powder",
+			"Blinds and paralyzes an enemy.",
+			0, 0, 2, "", "paralyzed")
 
 static func silence_dust() -> Dictionary:
-	return consumable("silence_dust", "Silence Dust", "Silences an enemy, preventing spells.", 0, 0, 2, "", "silence")
+	return consumable("silence_dust", "Silence Dust",
+			"Silences an enemy, preventing spells.",
+			0, 0, 2, "", "silence")
 
 static func binding_web() -> Dictionary:
-	return consumable("binding_web", "Binding Web", "Ensnares an enemy, immobilizing it.", 0, 0, 3, "", "immobilize")
+	return consumable("binding_web", "Binding Web",
+			"Ensnares an enemy, immobilizing it.",
+			0, 0, 3, "", "immobilize")
 
 
 # ── Elemental throwables ──────────────────────────────────────────────────────
 
 static func fire_bomb() -> Dictionary:
-	return elemental_throwable("fire_bomb", "Fire Bomb", "Hurls a flaming explosive. Effective vs. fire-weak foes.", "fire", 20, 2)
+	return elemental_throwable("fire_bomb", "Fire Bomb",
+			"Hurls a flaming explosive. Effective vs. fire-weak foes.",
+			"fire", 20, 2)
 
 static func ice_shard() -> Dictionary:
-	return elemental_throwable("ice_shard", "Ice Shard", "Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.", "ice", 20, 3)
+	return elemental_throwable("ice_shard", "Ice Shard",
+			"Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.",
+			"ice", 20, 3)
 
 static func thunder_bead() -> Dictionary:
-	return elemental_throwable("thunder_bead", "Thunder Bead", "Discharges a crackling orb. Effective vs. thunder-weak foes.", "thunder", 20, 3)
+	return elemental_throwable("thunder_bead", "Thunder Bead",
+			"Discharges a crackling orb. Effective vs. thunder-weak foes.",
+			"thunder", 20, 3)
 
 
 # ── Enemy drop table ──────────────────────────────────────────────────────────
