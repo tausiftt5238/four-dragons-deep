@@ -56,15 +56,11 @@ func build() -> void:
 			_m._content.add_child(_make_row(other, false))
 
 
-# Upright there is no room for name, HP, element, chart and a button on one
-# line — the chart ends up with forty pixels and wraps a letter at a time. The
-# row splits in two instead: who it is and what you can do with it on top, what
-# it brings to a fight underneath.
+# There is no room for name, HP, element, chart and a button on one line — the
+# chart would end up with forty pixels and wrap a letter at a time. So the row
+# is two: who it is and what you can do with it on top, what it brings to a
+# fight underneath.
 func _make_row(demon_name: String, active: bool) -> Control:
-	var size: Vector2 = _m.get_viewport_rect().size
-	if size.x >= size.y:
-		return _wide_row(demon_name, active)
-
 	var col: VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 1)
 
@@ -89,43 +85,7 @@ func _make_row(demon_name: String, active: bool) -> Control:
 	return col
 
 
-func _wide_row(demon_name: String, active: bool) -> HBoxContainer:
-	# Built at the detective's level, which is what it would join a battle as.
-	var demon: Enemy = Enemy.make_from_name(demon_name)
-
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.add_child(_mark(active))
-	row.add_child(_name_label(demon_name, active))
-
-	var hp_lbl: Label = Label.new()
-	hp_lbl.text = "HP %d   MP %d" % [demon.max_hp, demon.max_mp]
-	hp_lbl.custom_minimum_size = Vector2(128, 0)
-	hp_lbl.add_theme_color_override("font_color", Color(0.62, 0.72, 0.68))
-	row.add_child(hp_lbl)
-
-	# The element it brings is the reason to pick one demon over another.
-	var skill_lbl: Label = Label.new()
-	skill_lbl.text = _element_text(demon)
-	skill_lbl.add_theme_color_override("font_color",
-			Color(1.0, 0.72, 0.35) if demon.attack_element != ""
-			else Color(0.45, 0.45, 0.50))
-	skill_lbl.custom_minimum_size = Vector2(132, 0)
-	row.add_child(skill_lbl)
-
-	var chart_lbl: Label = Label.new()
-	chart_lbl.text = _chart(demon)
-	chart_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chart_lbl.add_theme_font_size_override("font_size", 11)
-	chart_lbl.add_theme_color_override("font_color", Color(0.66, 0.66, 0.74))
-	row.add_child(chart_lbl)
-
-	row.add_child(_slot_button(demon_name, active))
-	demon.free()
-	return row
-
-
-# ── The pieces both layouts are built from ───────────────────────────────────
+# ── Row pieces ───────────────────────────────────
 
 func _mark(active: bool) -> Label:
 	var mark: Label = Label.new()

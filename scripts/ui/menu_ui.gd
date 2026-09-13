@@ -41,37 +41,22 @@ func _build_shell() -> void:
 		margin.add_theme_constant_override(side, 12)
 	panel.add_child(margin)
 
-	# Held upright, a 138px sidebar eats a quarter of the screen and leaves the
-	# content too narrow to hold a row. So the shell turns: tabs across the top,
-	# content filling everything under them.
-	var upright: bool = not _is_landscape()
-
-	var shell: BoxContainer = VBoxContainer.new() if upright else HBoxContainer.new()
+	# Tabs across the top in two rows of three, Load and Close sharing a row
+	# under them, and the content filling everything below. A sidebar down the
+	# left would eat a quarter of a 540-wide screen.
+	var shell: VBoxContainer = VBoxContainer.new()
 	shell.add_theme_constant_override("separation", 0)
 	margin.add_child(shell)
-	var hbox: BoxContainer = shell
 
-	var sidebar: BoxContainer
-	if upright:
-		sidebar = VBoxContainer.new()
-		sidebar.add_theme_constant_override("separation", 4)
-	else:
-		sidebar = VBoxContainer.new()
-		sidebar.add_theme_constant_override("separation", 4)
-		sidebar.custom_minimum_size = Vector2(138, 0)
-	hbox.add_child(sidebar)
+	var header: VBoxContainer = VBoxContainer.new()
+	header.add_theme_constant_override("separation", 4)
+	shell.add_child(header)
 
-	# Upright, the six tabs run across in two rows of three; the Load and Close
-	# buttons sit beside each other under them instead of at the foot of a
-	# column that no longer exists.
-	var tab_host: Container = sidebar
-	if upright:
-		var grid: GridContainer = GridContainer.new()
-		grid.columns = 3
-		grid.add_theme_constant_override("h_separation", 4)
-		grid.add_theme_constant_override("v_separation", 4)
-		sidebar.add_child(grid)
-		tab_host = grid
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	header.add_child(grid)
 
 	for tab_id: String in ["stats", "party", "items", "equipment", "magic", "bestiary"]:
 		var btn: Button = Button.new()
@@ -81,23 +66,14 @@ func _build_shell() -> void:
 		btn.custom_minimum_size     = Vector2(0, 36)
 		btn.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(_switch_tab.bind(tab_id))
-		tab_host.add_child(btn)
+		grid.add_child(btn)
 		_tab_btns[tab_id] = btn
 
-	if not upright:
-		var spacer: Control = Control.new()
-		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		sidebar.add_child(spacer)
+	header.add_child(HSeparator.new())
 
-	sidebar.add_child(HSeparator.new())
-
-	# Upright these two share one row; in a column they stack as before.
-	var foot: Container = sidebar
-	if upright:
-		var foot_row: HBoxContainer = HBoxContainer.new()
-		foot_row.add_theme_constant_override("separation", 6)
-		sidebar.add_child(foot_row)
-		foot = foot_row
+	var foot: HBoxContainer = HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 6)
+	header.add_child(foot)
 
 	var load_btn: Button = Button.new()
 	load_btn.text = "Load  [F9]"
@@ -106,9 +82,6 @@ func _build_shell() -> void:
 	load_btn.pressed.connect(func(): load_requested.emit())
 	foot.add_child(load_btn)
 
-	if not upright:
-		sidebar.add_child(HSeparator.new())
-
 	var close_btn: Button = Button.new()
 	close_btn.text = "Close  [ESC]"
 	close_btn.custom_minimum_size   = Vector2(0, 32)
@@ -116,24 +89,18 @@ func _build_shell() -> void:
 	close_btn.pressed.connect(func(): menu_closed.emit())
 	foot.add_child(close_btn)
 
-	# The divider turns with the shell.
 	var sep_wrap: MarginContainer = MarginContainer.new()
-	if upright:
-		sep_wrap.add_theme_constant_override("margin_top",    8)
-		sep_wrap.add_theme_constant_override("margin_bottom", 8)
-		sep_wrap.add_child(HSeparator.new())
-	else:
-		sep_wrap.add_theme_constant_override("margin_left",  10)
-		sep_wrap.add_theme_constant_override("margin_right", 10)
-		sep_wrap.add_child(VSeparator.new())
-	hbox.add_child(sep_wrap)
+	sep_wrap.add_theme_constant_override("margin_top",    8)
+	sep_wrap.add_theme_constant_override("margin_bottom", 8)
+	sep_wrap.add_child(HSeparator.new())
+	shell.add_child(sep_wrap)
 
 	# ── Right content area ────────────────────────────────────────────────────
 	var right: VBoxContainer = VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 6)
-	hbox.add_child(right)
+	shell.add_child(right)
 
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -154,11 +121,6 @@ func _build_shell() -> void:
 
 
 # ── Tab routing ───────────────────────────────────────────────────────────────
-
-func _is_landscape() -> bool:
-	var size: Vector2 = get_viewport_rect().size
-	return size.x >= size.y
-
 
 func _switch_tab(tab_id: String) -> void:
 	_active_tab      = tab_id

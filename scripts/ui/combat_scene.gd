@@ -1719,7 +1719,7 @@ func _build_menu_panel(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
 	panel.size_flags_vertical = Control.SIZE_SHRINK_END
 	# Two rows of slots need roughly twice the height of one.
-	panel.custom_minimum_size = Vector2(0, 132 if _is_landscape() else 224)
+	panel.custom_minimum_size = Vector2(0, 224)
 	parent.add_child(panel)
 
 	var m: MarginContainer = MarginContainer.new()
@@ -1795,22 +1795,12 @@ func _build_menu_panel(parent: Control) -> void:
 		_sub_slots.append(slot)
 
 
-# Held upright there is not enough width for six thumb targets in a line —
-# every label truncates to three letters. The six slots stay six; they fold
-# into two rows of three instead, which is wider per slot than landscape
-# manages and still one grid the eye reads in one go.
-func _menu_columns() -> int:
-	return MENU_SLOTS if _is_landscape() else MENU_SLOTS / 2
-
-
-func _is_landscape() -> bool:
-	var size: Vector2 = get_viewport_rect().size
-	return size.x >= size.y
-
-
+# Six thumb targets in one line on a 540-wide screen truncates every label to
+# three letters, so the six slots sit two rows of three deep — wider per slot
+# than a landscape strip managed, and still one grid the eye reads in one go.
 func _make_slot_row() -> GridContainer:
 	var row: GridContainer = GridContainer.new()
-	row.columns = _menu_columns()
+	row.columns = MENU_SLOTS / 2
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 	row.add_theme_constant_override("h_separation", 6)
@@ -1861,7 +1851,7 @@ func _submenu_add(control: Control) -> void:
 # underneath. Built from child Labels because a Button's own text is one line.
 func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
 	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(0, 74 if _is_landscape() else 62)
+	btn.custom_minimum_size = Vector2(0, 62)
 	btn.disabled = disabled
 
 	var box: VBoxContainer = VBoxContainer.new()
