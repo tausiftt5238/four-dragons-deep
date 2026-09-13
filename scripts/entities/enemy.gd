@@ -304,60 +304,72 @@ const TEMPLATES: Array[Dictionary] = [
 # thing in a mind that will not let you go further in. Two icons each, so the
 # fight is a wall rather than a speed bump, and none of them can be talked down.
 const WARDEN_TEMPLATES: Array[Dictionary] = [
-	{name = "Hushmouth",        lv =  4, icons = 2,
-		str =  5, def =  4, mag =  2, agl =  3,
-		exp =  70, gold =  30, min_floor = 1, max_floor =  1,
-		weakness = "fire", phys = "weak",
-		status_attack = "silence", ail = 5,
+	{name = "Gargoyle",        icons = 2,
+		str =  6, def =  7, mag =  2, agl =  2,
+		weakness = "thunder", phys = "resist", light = "resist",
+		status_attack = "immobilize", ail = 8,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
-		art_note = "A human jaw on its own, hung at head height across the doorway, wired shut through "
-				+ "the teeth with rusted picture wire. No skull above it and no body below. The wire is "
-				+ "bright and new; somebody keeps re-doing it."},
+		art_note = "A squat stone thing perched on the lintel with its knees up under its chin and "
+				+ "its wings folded flat down its back. It is the same grey as the wall and it has "
+				+ "been part of it for a long time. The only thing that moves first is the head.",
+		design_note = "Stone: a blade glances off it, and current finds it the way current finds "
+				+ "anything standing alone on a high point."},
 
-	{name = "The Held Breath",  lv =  6, icons = 2,
-		str =  6, def =  5, mag =  5, agl =  4,
-		exp = 110, gold =  45, min_floor = 2, max_floor =  2,
-		weakness = "thunder", phys = "resist", light = "weak",
-		status_attack = "immobilize", ail = 8, support = "ward",
+	{name = "Barrow Wight",    icons = 2,
+		str =  7, def =  5, mag =  6, agl =  3,
+		weakness = "fire", phys = "resist", light = "weak", dark = "null",
+		status_attack = "silence", ail = 10, support = "mire",
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
-		art_note = "A room's worth of air pulled into the outline of someone standing, visible only "
-				+ "where dust presses against the seam of it. Inside the outline the dust never "
-				+ "settles. It does not move. The room moves around it."},
+		art_note = "A dry, sunken figure in the rags of something that was once well made, wearing "
+				+ "far more rings than it has fingers left. It does not guard the door so much as "
+				+ "guard what it is holding, and the key is simply one of the things it holds.",
+		design_note = "Undead, so it follows the same chart as the Skeleton line: light takes it and "
+				+ "dark slides off. It has the key because a wight hoards, not because it was posted."},
 
-	{name = "Vacancy",          lv =  8, icons = 2,
-		str =  7, def =  6, mag =  7, agl =  4,
-		exp = 160, gold =  60, min_floor = 3, max_floor =  3,
-		weakness = "ice", phys = "null", dark = "weak",
-		attack_element = "ice", status_attack = "silence", ail = 10,
+	{name = "Chained Hound",   icons = 2,
+		str =  9, def =  4, mag =  0, agl =  7,
+		weakness = "ice", phys = "weak",
+		status_attack = "paralyzed", ail = 14,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
-		art_note = "A tall adult silhouette filling a lit doorway, backlit hard enough that you cannot "
-				+ "see into it — except there is no light behind it, and no room behind it either. Its "
-				+ "edges are crisp enough to cut, and they do not match the doorway it is standing in — "
-				+ "they are the outline of some other door entirely."},
+		art_note = "Lean, long-legged and already at the end of its chain when you come round the "
+				+ "corner. The collar is iron and far newer than the animal. There is a worn arc "
+				+ "scraped into the floor showing exactly how far it reaches, and the door is just "
+				+ "outside it.",
+		design_note = "Fast and fragile: it hits hard and often but a blade finds it easily. The "
+				+ "chain is why a warden does not roam — the one warden with a reason to."},
+
+	{name = "Basilisk",        icons = 2,
+		str =  7, def =  6, mag =  8, agl =  2,
+		weakness = "thunder", phys = "resist", dark = "resist",
+		attack_element = "ice", status_attack = "immobilize", ail = 18, support = "ward",
+		negotiable = false, talk_difficulty = 0,
+		sprite = "", needs_art = true,
+		art_note = "A heavy crested lizard coiled across the whole width of the passage, in no hurry "
+				+ "at all. Its eyes are the only part of it that is not dull. Around it, at the edges "
+				+ "of the floor, are several things that used to be standing up.",
+		design_note = "It never has to move, so it is slow and well armoured and leans on immobilising "
+				+ "you. The highest ailment chance of any warden."},
+
+	{name = "Mimic",           icons = 2,
+		str =  8, def =  6, mag =  3, agl =  4,
+		weakness = "fire", phys = "resist", light = "weak",
+		status_attack = "poison", ail = 12,
+		negotiable = false, talk_difficulty = 0,
+		sprite = "", needs_art = true,
+		art_note = "A cache set into the wall, lit from inside exactly like the real ones, sitting a "
+				+ "little further forward than a recess should allow. When it opens, the opening keeps "
+				+ "going: the lid is the upper jaw and the shelf it was resting on is the lower one.",
+		design_note = "Placed among real caches, so the floor's own furniture becomes a thing to read "
+				+ "twice. Weak to fire and to light because the disguise is the whole of its defence."},
 ]
+
 
 
 # Boss templates — one per 5-floor milestone, cycling every 4 bosses.
 const BOSS_TEMPLATES: Array[Dictionary] = [
-	{name = "The Tenant",       lv = 10, icons = 3,
-		str = 10, def =  8, mag =  8, agl =  4,
-		exp = 260, gold = 120, min_floor = 3, max_floor = -1,
-		weakness = "fire", phys = "resist", light = "null", dark = "null",
-		attack_element = "dark", status_attack = "immobilize", ail = 15, support = "ward",
-		negotiable = false, talk_difficulty = 0,
-		sprite = "", needs_art = true,
-		art_note = "A heavy seated figure built out of years of nesting material — matted hair, dust, "
-				+ "chewed paper, shed skin — packed dense and settled so deep it has gone the shape of "
-				+ "whatever it sits on. A face is pressed into the front of the mass, worn smooth from "
-				+ "use, and it opens to speak. Its limbs are stubby and folded away underneath; it has "
-				+ "not needed them in a long time and it does not get up.",
-		design_note = "Weak to fire on purpose — fire is the one spell the detective starts with, so the "
-				+ "first boss is answerable with the kit he actually owns. The body earns it too: years "
-				+ "of packed dry fibre. A blade sinks into that and finds nothing, which is the phys "
-				+ "resist. Nulls both banishing lines like every boss."},
 	{name = "Shadow Knight",    lv = 12, icons = 3,
 		str = 12, def =  8, mag =  2, agl =  3,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
@@ -515,7 +527,12 @@ static func make_at_level(enemy_name: String, lv: int) -> Enemy:
 # the last warden rather than to a random demon, so the key always has a keeper.
 # It is built at the floor's own level like anything else down there.
 static func make_warden(floor_num: int) -> Enemy:
-	var idx: int = clampi((floor_num - 1) % WARDEN_TEMPLATES.size(),
+	# Counted in MAZE floors, not raw ones. Indexing by floor number couples the
+	# rotation to the boss cadence, and with five wardens and a boss every fifth
+	# floor the fifth warden only ever came up on floors that have no warden —
+	# the Mimic was written and then never appeared once.
+	var maze_index: int = (floor_num - 1) - (floor_num - 1) / Level.BOSS_EVERY
+	var idx: int = clampi(maze_index % WARDEN_TEMPLATES.size(),
 			0, WARDEN_TEMPLATES.size() - 1)
 	var e: Enemy = _build(WARDEN_TEMPLATES[idx], floor_num)
 	# A warden is the floor's locked door: a step above its neighbours, a step
