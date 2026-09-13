@@ -9,7 +9,7 @@ func _init(menu) -> void:
 func build() -> void:
 	var p: PlayerCharacter = _m.player
 
-	_m._content.add_child(_make_header("%s   LV %d" % [PlayerCharacter.DISPLAY_NAME.to_upper(), p.lv]))
+	_m._content.add_child(_make_header("%s   LV %d" % [PlayerCharacter.DISPLAY_NAME, p.lv]))
 	_m._content.add_child(HSeparator.new())
 
 	var portrait_row: HBoxContainer = HBoxContainer.new()

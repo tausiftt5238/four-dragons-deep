@@ -11,7 +11,7 @@ func _init(menu) -> void:
 
 
 func build() -> void:
-	_m._content.add_child(_make_header("WHAT HE IS CARRYING"))
+	_m._content.add_child(_make_header("What he is carrying"))
 	_m._content.add_child(HSeparator.new())
 
 	var p: PlayerCharacter = _m.player
@@ -28,24 +28,21 @@ func build() -> void:
 		slots_hbox.add_child(col)
 
 	_m._content.add_child(HSeparator.new())
-	_m._content.add_child(_make_section_label("IN THE COAT"))
+	_m._content.add_child(_make_section_label("In the coat"))
 
-	var spare: Array[Dictionary] = []
+	var spare: Array[String] = []
 	for item: Dictionary in p.inventory:
 		if item.get("type", "") == "accessory":
-			spare.append(item)
+			spare.append(item["id"] as String)
 
 	if spare.is_empty():
-		var none: Label = Label.new()
-		none.text = "Nothing else worth carrying."
-		none.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-		_m._content.add_child(none)
+		SlotList.new(_m._content).add_note("Nothing else worth carrying.")
 	else:
-		for item: Dictionary in spare:
-			_m._content.add_child(_spare_row(item))
+		_m.add_paged_list(_m._content, "carried", spare,
+				func(list: SlotList, item_id: String) -> void: _add_spare(list, item_id))
 
 	_m._content.add_child(HSeparator.new())
-	_m._content.add_child(_make_section_label("WITH THEM ON"))
+	_m._content.add_child(_make_section_label("With them on"))
 
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 3
@@ -119,31 +116,25 @@ func _build_slot(idx: int) -> VBoxContainer:
 	return col
 
 
-func _spare_row(item: Dictionary) -> HBoxContainer:
+func _add_spare(list: SlotList, item_id: String) -> void:
 	var p: PlayerCharacter = _m.player
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-
-	var name_lbl: Label = Label.new()
-	name_lbl.text = "%s%s" % [item["name"], GearTooltip.bonus_string(item)]
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.tooltip_text = GearTooltip.build(item, p)
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.add_child(name_lbl)
-
-	var btn: Button = Button.new()
-	btn.text = "Wear"
-	btn.custom_minimum_size = Vector2(66, 26)
-	btn.disabled = not p.has_free_accessory_slot()
-	btn.pressed.connect(func() -> void:
-		if p.equip_accessory(item):
-			_m._set_status("Put on %s." % item["name"])
-		else:
-			_m._set_status("Both slots are taken.")
-		_m._refresh()
-	)
-	row.add_child(btn)
-	return row
+	var item: Dictionary = {}
+	for candidate: Dictionary in p.inventory:
+		if candidate["id"] == item_id:
+			item = candidate
+			break
+	if item.is_empty():
+		return
+	list.add(item["name"] as String, Color(0.82, 0.82, 0.88),
+			item.get("desc", "") as String,
+			GearTooltip.bonus_string(item).strip_edges(), Color(0.62, 0.92, 0.74),
+			"Wear", not p.has_free_accessory_slot(),
+			func() -> void:
+				if p.equip_accessory(item):
+					_m._set_status("Put on %s." % item["name"])
+				else:
+					_m._set_status("Both slots are taken.")
+				_m._refresh())
 
 
 func _add_cmp_row(grid: GridContainer, stat: String, base: int, eff: int) -> void:

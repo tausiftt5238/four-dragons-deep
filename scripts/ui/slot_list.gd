@@ -48,19 +48,45 @@ func remaining() -> int:
 	return SLOT_COUNT - _filled
 
 
-# Fills the next slot. Returns false when the page is full, so a caller can
-# stop rather than silently dropping entries.
+# Fills the next slot with one action. Returns false when the page is full, so
+# a caller can stop rather than silently dropping entries.
 func add(title: String, title_color: Color, detail: String,
 		value: String, value_color: Color,
 		btn_text: String, disabled: bool, on_press: Callable) -> bool:
+	var actions: Array[Dictionary] = []
+	if btn_text != "":
+		actions.append({text = btn_text, disabled = disabled, press = on_press})
+	return add_entry(title, title_color, detail, value, value_color, actions)
+
+
+# The same slot with however many actions a row needs. Items carry three —
+# belt, use and discard — and three buttons at font size 20 only fit because
+# they share the width the single-button case gives to one.
+func add_entry(title: String, title_color: Color, detail: String,
+		value: String, value_color: Color, actions: Array[Dictionary],
+		icon: Texture2D = null) -> bool:
 	if _filled >= SLOT_COUNT:
 		return false
 	var slot: MarginContainer = _slots[_filled]
 	_filled += 1
 
+	var outer: HBoxContainer = HBoxContainer.new()
+	outer.add_theme_constant_override("separation", 8)
+	slot.add_child(outer)
+
+	if icon != null:
+		var pic: TextureRect = TextureRect.new()
+		pic.texture = icon
+		pic.custom_minimum_size = Vector2(48, 48)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		outer.add_child(pic)
+
 	var col: VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
-	slot.add_child(col)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_child(col)
 
 	var head: HBoxContainer = HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
@@ -79,17 +105,26 @@ func add(title: String, title_color: Color, detail: String,
 		value_lbl.text = value
 		value_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		value_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		value_lbl.custom_minimum_size = Vector2(96, 0)
+		# No fixed width: values run from "x3" to "Floors 1-2", and reserving
+		# the widest for all of them stole room three buttons needed.
+		value_lbl.custom_minimum_size = Vector2(0, 0)
 		value_lbl.add_theme_color_override("font_color", value_color)
 		head.add_child(value_lbl)
 
-	if btn_text != "":
+	# One action gets a comfortable button; three share the same total width.
+	var each: int = BTN_W
+	if actions.size() == 2:
+		each = 108
+	elif actions.size() >= 3:
+		each = 92
+	for act: Dictionary in actions:
 		var btn: Button = Button.new()
-		btn.text = btn_text
-		btn.custom_minimum_size = Vector2(BTN_W, BTN_H)
-		btn.disabled = disabled
-		if not disabled:
-			btn.pressed.connect(on_press)
+		btn.text = act.get("text", "") as String
+		btn.clip_text = true
+		btn.custom_minimum_size = Vector2(each, BTN_H)
+		btn.disabled = bool(act.get("disabled", false))
+		if not btn.disabled:
+			btn.pressed.connect(act["press"] as Callable)
 		head.add_child(btn)
 
 	var detail_lbl: Label = Label.new()
