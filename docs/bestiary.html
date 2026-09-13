@@ -1,0 +1,275 @@
+<title>Gauntlet Bestiary</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground:#f2f4f7; --panel:#ffffff; --sunk:#e6eaf0;
+    --ink:#141920; --ink-2:#4d5663; --ink-3:#7c8694;
+    --rule:#d2d9e2; --rule-soft:#e4e9ef;
+    --wire:#1d6b93; --amber:#8a5d09; --amber-bg:#f7efdc;
+    --weak:#8a4a08;  --weak-bg:#f8e8cf;
+    --res:#26547d;   --res-bg:#dde8f4;
+    --null:#5d6570;  --null-bg:#e4e7eb;
+    --rep:#6c3a94;   --rep-bg:#ece0f7;
+    --drain:#1a6a3c; --drain-bg:#d9eee2;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0a0d12; --panel:#121821; --sunk:#080b0f;
+      --ink:#dce6f0; --ink-2:#95a3b4; --ink-3:#6b7787;
+      --rule:#232c38; --rule-soft:#1a222c;
+      --wire:#63b8e0; --amber:#e0a23c; --amber-bg:#241b0d;
+      --weak:#ffcf52;  --weak-bg:#372c07;
+      --res:#86b4ea;   --res-bg:#13233a;
+      --null:#8d959e;  --null-bg:#1b1f25;
+      --rep:#d093ff;   --rep-bg:#2a1640;
+      --drain:#62dc8e; --drain-bg:#0d2c1b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0a0d12; --panel:#121821; --sunk:#080b0f;
+    --ink:#dce6f0; --ink-2:#95a3b4; --ink-3:#6b7787;
+    --rule:#232c38; --rule-soft:#1a222c;
+    --wire:#63b8e0; --amber:#e0a23c; --amber-bg:#241b0d;
+    --weak:#ffcf52;  --weak-bg:#372c07;
+    --res:#86b4ea;   --res-bg:#13233a;
+    --null:#8d959e;  --null-bg:#1b1f25;
+    --rep:#d093ff;   --rep-bg:#2a1640;
+    --drain:#62dc8e; --drain-bg:#0d2c1b;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--ground); }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 34px 20px 80px; }
+
+  .masthead {
+    border-bottom: 2px solid var(--wire); padding-bottom: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--wire); margin: 0;
+  }
+  h1 {
+    font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 700;
+    font-size: clamp(30px, 5.4vw, 48px); line-height: 1.03;
+    letter-spacing: -.02em; margin: 0; text-wrap: balance;
+  }
+  .stand { color: var(--ink-2); max-width: 66ch; margin: 0; font-size: 17px; }
+
+  section { margin-top: 40px; }
+
+  .rules {
+    display: grid; gap: 1px;
+    grid-template-columns: repeat(auto-fit, minmax(198px, 1fr));
+    background: var(--rule); border: 1px solid var(--rule);
+  }
+  .rule-cell { background: var(--panel); padding: 13px 15px 15px; }
+  .rule-cell b {
+    display: block; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--wire); margin-bottom: 4px;
+  }
+  .rule-cell span {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 19px; font-weight: 600; color: var(--ink); display: block;
+    font-variant-numeric: tabular-nums;
+  }
+  .rule-cell p { margin: 3px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+
+  .tier-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    border-bottom: 2px solid var(--ink); padding-bottom: 6px;
+  }
+  .tier-num {
+    font-family: "Archivo", sans-serif; font-weight: 700;
+    font-size: 22px; color: var(--wire);
+  }
+  .tier-head h2 {
+    font-family: "Archivo", sans-serif; font-weight: 600;
+    font-size: 21px; margin: 0; flex: 1;
+  }
+  .floors {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px;
+    letter-spacing: .05em; color: var(--ink-3); font-variant-numeric: tabular-nums;
+  }
+  .blurb { color: var(--ink-2); max-width: 74ch; margin: 9px 0 12px; font-size: 14.5px; }
+
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; min-width: 840px; font-size: 13.5px; }
+  th, td {
+    text-align: left; padding: 8px 11px;
+    border-bottom: 1px solid var(--rule-soft); vertical-align: middle;
+  }
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+    font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); background: var(--sunk);
+    border-bottom: 1px solid var(--rule);
+  }
+  tbody th {
+    font-family: "Archivo", sans-serif; font-weight: 600; font-size: 14.5px;
+    color: var(--ink); white-space: nowrap;
+  }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+  td { color: var(--ink-2); }
+  td.n {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap;
+  }
+  td.chart { white-space: nowrap; padding: 6px 11px; }
+  .a {
+    display: inline-block; width: 40px; text-align: center;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px; font-weight: 600; padding: 2px 0;
+    border-radius: 2px; margin-right: 2px;
+  }
+  .a-none   { color: var(--ink-3); background: transparent; }
+  .a-weak   { color: var(--weak);  background: var(--weak-bg); }
+  .a-resist { color: var(--res);   background: var(--res-bg); }
+  .a-null   { color: var(--null);  background: var(--null-bg); }
+  .a-repel  { color: var(--rep);   background: var(--rep-bg); }
+  .a-drain  { color: var(--drain); background: var(--drain-bg); }
+  .rank { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--ink-3); }
+  .no { color: var(--ink-3); font-style: italic; }
+  .needs {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px;
+    letter-spacing: .06em; color: var(--amber); background: var(--amber-bg);
+    padding: 1px 5px; border-radius: 2px; margin-left: 6px;
+    vertical-align: middle; text-transform: uppercase;
+  }
+
+  .gaps { margin-top: 40px; border: 1px solid var(--amber); background: var(--amber-bg); padding: 18px 20px; }
+  .gaps h2 { font-family: "Archivo", sans-serif; font-size: 19px; margin: 0 0 10px; color: var(--amber); }
+  .gaps p { max-width: 74ch; margin: 0 0 11px; font-size: 14.5px; color: var(--ink-2); }
+  .gaps p:last-child { margin-bottom: 0; }
+  .gaps strong { color: var(--ink); }
+  .gaps code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px;
+    background: var(--null-bg); padding: 1px 5px; border-radius: 2px;
+  }
+
+  footer {
+    margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .05em; color: var(--ink-3);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Generated from Enemy.TEMPLATES &middot; 38 entries &middot; 20 floors</p>
+    <h1>Gauntlet Bestiary</h1>
+    <p class="stand">Everything the run can put in front of you, and where it sits. Level, HP and experience are no longer written on the row &mdash; they come off the floor &mdash; so each entry shows the range it spans across its tier's five floors.</p>
+  </header>
+
+  <section>
+    <div class="rules">
+      <div class="rule-cell"><b>Ordinary</b><span>floor &times; 1.5</span><p>Plus one for the B variant of a pair.</p></div>
+      <div class="rule-cell"><b>Warden</b><span>floor &times; 1.75</span><p>One per maze floor. Holds the key.</p></div>
+      <div class="rule-cell"><b>Boss</b><span>floor &times; 2</span><p>Every fifth floor, in a corridor.</p></div>
+      <div class="rule-cell"><b>Worth</b><span>10 + lv&sup2; / 2</span><p>Wardens pay double, bosses triple.</p></div>
+    </div>
+  </section>
+
+  <section class="tier">
+    <div class="tier-head"><span class="tier-num">I</span><h2>Tier I</h2><span class="floors">floors 1–5 · ordinary lv 2–9 · boss lv 10</span></div>
+    <p class="blurb">Everything here answers to a blade or to Ember, and nothing nulls, repels or drains.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Name</th><th scope="col">Var</th><th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th><th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th><th scope="col">In a fight</th><th scope="col">Talk</th></tr></thead><tbody>
+<tr><th scope="row">Bat</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">23–89</td><td class="n">12–42</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>5&#37; ail</td><td>Survival · diff 1</td></tr>
+<tr><th scope="row">Slug</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">26–95</td><td class="n">12–42</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td>Poison · 5&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">GiantRat</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">26–95</td><td class="n">12–42</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>5&#37; ail</td><td>Survival · diff 1</td></tr>
+<tr><th scope="row">Cave Bat</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">26–95</td><td class="n">12–42</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td><b>Thunder</b> · 5&#37; ail</td><td>Survival · diff 1</td></tr>
+<tr><th scope="row">Giant Slug</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">32–104</td><td class="n">12–42</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td>Poison · 5&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Dire Rat</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">32–104</td><td class="n">12–42</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>Poison · 5&#37; ail</td><td>Survival · diff 1</td></tr>
+<tr><th scope="row">Goblin</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">26–95</td><td class="n">12–42</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>5&#37; ail</td><td>Gain · diff 2</td></tr>
+<tr><th scope="row">GelatinousCube</th><td class="n"><span class="rank">A</span></td><td class="n">2–8</td><td class="n">35–110</td><td class="n">12–42</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td><b>Ice</b> · Immobilize · 5&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Hobgoblin</th><td class="n"><span class="rank">B</span></td><td class="n">3–9</td><td class="n">42–114</td><td class="n">14–50</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>5&#37; ail</td><td>Gain · diff 2</td></tr>
+<tr><th scope="row">Ooze</th><td class="n"><span class="rank">B</span></td><td class="n">3–9</td><td class="n">51–132</td><td class="n">14–50</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td><b>Ice</b> · Immobilize · 5&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+</tbody></table></div>
+  </section>
+
+  <section class="tier">
+    <div class="tier-head"><span class="tier-num">II</span><h2>Tier II</h2><span class="floors">floors 6–10 · ordinary lv 9–16 · boss lv 20</span></div>
+    <p class="blurb">Levels roughly double. This is where a demon bound on floor one starts to look like ballast.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Name</th><th scope="col">Var</th><th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th><th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th><th scope="col">In a fight</th><th scope="col">Talk</th></tr></thead><tbody>
+<tr><th scope="row">Skeleton</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">114–186</td><td class="n">50–122</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-weak" title="Light Weak">Weak</span><span class="a a-null" title="Dark Null">Null</span></td><td>Immobilize · 12&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">GiantHornet</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">108–174</td><td class="n">50–122</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>Poison · 12&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Bandit</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">114–186</td><td class="n">50–122</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-weak" title="Thdr Weak">Weak</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td><b>Fire</b> · 12&#37; ail</td><td>Gain · diff 2</td></tr>
+<tr><th scope="row">WildBoar</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">114–186</td><td class="n">50–122</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>12&#37; ail</td><td>Survival · diff 2</td></tr>
+<tr><th scope="row">AnimatedPlant</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">114–186</td><td class="n">50–122</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td>Poison · 12&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Bone Knight</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">123–198</td><td class="n">50–122</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-weak" title="Light Weak">Weak</span><span class="a a-null" title="Dark Null">Null</span></td><td>Immobilize · 12&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Queen Hornet</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">114–186</td><td class="n">50–122</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>Poison · 12&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Veteran Bandit</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">123–198</td><td class="n">50–122</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-weak" title="Thdr Weak">Weak</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>12&#37; ail</td><td>Gain · diff 3</td></tr>
+<tr><th scope="row">Tusked Boar</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">123–198</td><td class="n">50–122</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>12&#37; ail</td><td>Survival · diff 2</td></tr>
+<tr><th scope="row">Thornvine</th><td class="n"><span class="rank">A</span></td><td class="n">9–15</td><td class="n">123–198</td><td class="n">50–122</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td>Poison · 12&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+</tbody></table></div>
+  </section>
+
+  <section class="tier">
+    <div class="tier-head"><span class="tier-num">III</span><h2>Tier III</h2><span class="floors">floors 11–15 · ordinary lv 16–23 · boss lv 30</span></div>
+    <p class="blurb">Six templates across five floors, so repetition begins here.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Name</th><th scope="col">Var</th><th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th><th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th><th scope="col">In a fight</th><th scope="col">Talk</th></tr></thead><tbody>
+<tr><th scope="row">Treant</th><td class="n"><span class="rank">A</span></td><td class="n">17–23</td><td class="n">251–335</td><td class="n">154–274</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td>Immobilize · 18&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Orc</th><td class="n"><span class="rank">A</span></td><td class="n">17–23</td><td class="n">224–299</td><td class="n">154–274</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>18&#37; ail</td><td>Logic · diff 3</td></tr>
+<tr><th scope="row">Fairy</th><td class="n"><span class="rank">A</span></td><td class="n">17–23</td><td class="n">197–266</td><td class="n">154–274</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-drain" title="Thdr Drain">Drain</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-weak" title="Dark Weak">Weak</span></td><td><b>Thunder</b> · Silence · Mire · 18&#37; ail</td><td>Flatter · diff 3</td></tr>
+<tr><th scope="row">Elder Treant</th><td class="n"><span class="rank">A</span></td><td class="n">17–23</td><td class="n">266–353</td><td class="n">154–274</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-resist" title="Light Res">Res</span><span class="a a-resist" title="Dark Res">Res</span></td><td>Immobilize · 2 icons · 18&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Orc Warchief</th><td class="n"><span class="rank">A</span></td><td class="n">17–23</td><td class="n">239–317</td><td class="n">154–274</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>Whet · 2 icons · 18&#37; ail</td><td>Logic · diff 4</td></tr>
+<tr><th scope="row">Dark Fairy</th><td class="n"><span class="rank">A</span></td><td class="n">17–23</td><td class="n">212–284</td><td class="n">154–274</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-drain" title="Thdr Drain">Drain</span><span class="a a-weak" title="Light Weak">Weak</span><span class="a a-resist" title="Dark Res">Res</span></td><td><b>Dark</b> · Silence · Mire · 18&#37; ail</td><td>Flatter · diff 3</td></tr>
+</tbody></table></div>
+  </section>
+
+  <section class="tier">
+    <div class="tier-head"><span class="tier-num">IV</span><h2>Tier IV</h2><span class="floors">floors 16–20 · ordinary lv 24–31 · boss lv 40</span></div>
+    <p class="blurb">Four templates across the last five floors — the thinnest band in the game.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Name</th><th scope="col">Var</th><th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th><th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th><th scope="col">In a fight</th><th scope="col">Talk</th></tr></thead><tbody>
+<tr><th scope="row">Ogre</th><td class="n"><span class="rank">A</span></td><td class="n">24–30</td><td class="n">330–411</td><td class="n">298–460</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>2 icons · 22&#37; ail</td><td>Logic · diff 4</td></tr>
+<tr><th scope="row">Wizard</th><td class="n"><span class="rank">A</span></td><td class="n">24–30</td><td class="n">276–345</td><td class="n">298–460</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-repel" title="Fire Rep">Rep</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-resist" title="Dark Res">Res</span></td><td><b>Fire</b> · Silence · Whet · 22&#37; ail</td><td>Logic · diff 3</td></tr>
+<tr><th scope="row">Stone Ogre</th><td class="n"><span class="rank">A</span></td><td class="n">24–30</td><td class="n">348–432</td><td class="n">298–460</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>Ward · 2 icons · 22&#37; ail</td><td>Logic · diff 5</td></tr>
+<tr><th scope="row">Dark Wizard</th><td class="n"><span class="rank">A</span></td><td class="n">24–30</td><td class="n">294–366</td><td class="n">298–460</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-repel" title="Fire Rep">Rep</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-weak" title="Light Weak">Weak</span><span class="a a-null" title="Dark Null">Null</span></td><td><b>Dark</b> · Silence · Stoke · 22&#37; ail</td><td>Logic · diff 4</td></tr>
+</tbody></table></div>
+  </section>
+
+
+  <section class="tier">
+    <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Wardens</h2><span class="floors">one per maze floor &middot; cycles every 3 &middot; never negotiable</span></div>
+    <p class="blurb">The floor's locked door. It does not roam, it holds the key, and it opens with two icons. Only three are written, so they repeat on a three-floor cycle &mdash; floors 1, 4, 7 and 10 all draw the same one.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Name</th><th scope="col">Var</th><th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th><th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th><th scope="col">In a fight</th><th scope="col">Talk</th></tr></thead><tbody>
+<tr><th scope="row">Hushmouth <span class="needs">needs art</span></th><td class="n">—</td><td class="n">2–30</td><td class="n">35–390</td><td class="n">12–460</td><td class="chart"><span class="a a-weak" title="Phys Weak">Weak</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-none" title="Dark ·">·</span></td><td>Silence · 2 icons · 5&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">The Held Breath <span class="needs">needs art</span></th><td class="n">—</td><td class="n">2–30</td><td class="n">38–411</td><td class="n">12–460</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-weak" title="Thdr Weak">Weak</span><span class="a a-weak" title="Light Weak">Weak</span><span class="a a-none" title="Dark ·">·</span></td><td>Immobilize · Ward · 2 icons · 8&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Vacancy <span class="needs">needs art</span></th><td class="n">—</td><td class="n">2–30</td><td class="n">41–432</td><td class="n">12–460</td><td class="chart"><span class="a a-null" title="Phys Null">Null</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-none" title="Light ·">·</span><span class="a a-weak" title="Dark Weak">Weak</span></td><td><b>Ice</b> · Silence · 2 icons · 10&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+</tbody></table></div>
+  </section>
+
+  <section class="tier">
+    <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Bosses</h2><span class="floors">floors 5, 10, 15, 20 &middot; level = floor &times; 2</span></div>
+    <p class="blurb">One closes each tier. Every one nulls both banishing lines, so none of them can fall to a coin flip.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Name</th><th scope="col">Var</th><th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th><th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th><th scope="col">In a fight</th><th scope="col">Talk</th></tr></thead><tbody>
+<tr><th scope="row">The Tenant <span class="needs">needs art</span></th><td class="n">—</td><td class="n">10</td><td class="n">172</td><td class="n">180</td><td class="chart"><span class="a a-resist" title="Phys Res">Res</span><span class="a a-weak" title="Fire Weak">Weak</span><span class="a a-none" title="Ice ·">·</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-null" title="Light Null">Null</span><span class="a a-null" title="Dark Null">Null</span></td><td><b>Dark</b> · Immobilize · Ward · 3 icons · 15&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Shadow Knight <span class="needs">needs art</span></th><td class="n">—</td><td class="n">20</td><td class="n">323</td><td class="n">630</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-weak" title="Thdr Weak">Weak</span><span class="a a-null" title="Light Null">Null</span><span class="a a-null" title="Dark Null">Null</span></td><td>Immobilize · Ward · 3 icons · 25&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Bone Sorcerer <span class="needs">needs art</span></th><td class="n">—</td><td class="n">30</td><td class="n">432</td><td class="n">1380</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-null" title="Light Null">Null</span><span class="a a-null" title="Dark Null">Null</span></td><td><b>Fire</b> · Silence · Stoke · 3 icons · 25&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Iron Titan <span class="needs">needs art</span></th><td class="n">—</td><td class="n">40</td><td class="n">745</td><td class="n">2430</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-none" title="Ice ·">·</span><span class="a a-weak" title="Thdr Weak">Weak</span><span class="a a-null" title="Light Null">Null</span><span class="a a-null" title="Dark Null">Null</span></td><td>Paralyzed · Ward · 4 icons · 25&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+<tr><th scope="row">Void Drake <span class="needs">needs art</span></th><td class="n">—</td><td class="n">50</td><td class="n">854</td><td class="n">3780</td><td class="chart"><span class="a a-none" title="Phys ·">·</span><span class="a a-none" title="Fire ·">·</span><span class="a a-weak" title="Ice Weak">Weak</span><span class="a a-none" title="Thdr ·">·</span><span class="a a-null" title="Light Null">Null</span><span class="a a-null" title="Dark Null">Null</span></td><td><b>Thunder</b> · Damp · 4 icons · 25&#37; ail</td><td><span class="no">will not talk</span></td></tr>
+</tbody></table></div>
+  </section>
+
+  <section class="gaps">
+    <h2>What the table says is missing</h2>
+    <p><b>The tiers are lopsided.</b> Ten templates cover tier I and ten cover tier II, but only <strong>six</strong> cover tier III and <strong>four</strong> cover tier IV. The deepest five floors &mdash; the ones a player only reaches by earning them &mdash; have the least to show. Filling those two bands is worth more than anything else you could add.</p>
+    <p><b>One boss is unreachable.</b> There are five boss templates and four boss floors, and <code>make_boss</code> indexes by floor, so <strong>Void Drake never appears</strong>. Either cut it or move a boss floor.</p>
+    <p><b>The wardens repeat every three floors.</b> Sixteen maze floors, three wardens. A fourth and fifth would break the pattern up &mdash; and they are the only entries here that already have an art note written.</p>
+    <p><b>Nothing past tier II carries a banishing line.</b> Light and dark stop being threats exactly where the run gets hard, so the deep floors are less varied than the shallow ones rather than more.</p>
+  </section>
+
+  <footer>Generated from the live tables &middot; ordinary lv = floor &times; 1.5 &middot; boss lv = floor &times; 2</footer>
+
+</div>
