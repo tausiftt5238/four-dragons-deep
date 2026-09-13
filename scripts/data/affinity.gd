@@ -36,11 +36,11 @@ static func multiplier(state: String) -> float:
 
 static func label(state: String) -> String:
 	match state:
-		WEAK:   return "WEAK"
-		RESIST: return "RESIST"
-		NULL:   return "NULL"
-		REPEL:  return "REPEL"
-		DRAIN:  return "DRAIN"
+		WEAK:   return "Weak"
+		RESIST: return "Resist"
+		NULL:   return "Null"
+		REPEL:  return "Repel"
+		DRAIN:  return "Drain"
 	return "-"
 
 

@@ -103,7 +103,7 @@ func _add_chart(parent: VBoxContainer, tmpl: Dictionary) -> void:
 	for element: String in Affinity.ELEMENTS:
 		var state: String = demon.affinity_of(element)
 		var cell: Label = Label.new()
-		cell.text = "%s %s" % [Affinity.element_name(element).to_upper(),
+		cell.text = "%s %s" % [Affinity.element_name(element),
 				Affinity.label(state)]
 		cell.custom_minimum_size = Vector2(96, 0)
 		cell.add_theme_font_size_override("font_size", 12)

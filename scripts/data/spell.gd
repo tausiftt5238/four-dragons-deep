@@ -160,5 +160,5 @@ static func is_multi(spell_id: String) -> bool:
 static func reach_tag(spell_id: String) -> String:
 	match shape_of(spell_id):
 		SHAPE_FEW: return "2-3"
-		SHAPE_ALL: return "ALL"
-	return "ONE"
+		SHAPE_ALL: return "all"
+	return "one"

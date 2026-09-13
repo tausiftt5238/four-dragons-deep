@@ -78,7 +78,7 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 	# has to hold four things ends up clipped mid-word.
 	var about: String = spell.get("desc", "") as String
 	if element != "":
-		about = "%s %s  —  %s" % [kind.to_upper(), Spell.reach_tag(spell_id), about]
+		about = "%s %s  —  %s" % [kind, Spell.reach_tag(spell_id), about]
 	list.add("%s%s" % ["* " if equipped else "", spell["name"]],
 			title_color, about,
 			"%d MP" % int(spell["mp"]), Color(0.4, 0.55, 0.95),

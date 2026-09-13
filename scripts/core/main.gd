@@ -1358,12 +1358,10 @@ func _on_node_added(node: Node) -> void:
 		(node as RichTextLabel).add_theme_font_override("normal_font", _UI_FONT)
 	elif node is Label:
 		(node as Label).add_theme_font_override("font", _UI_FONT)
-		(node as Label).uppercase = true
 	elif node is Button:
 		var btn := node as Button
 		btn.add_theme_font_override("font", _UI_FONT)
 		btn.add_theme_font_size_override("font_size", 20)
-		btn.text = btn.text.to_upper()
 		var cur: Vector2 = btn.custom_minimum_size
 		if cur.y > 0:
 			btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))

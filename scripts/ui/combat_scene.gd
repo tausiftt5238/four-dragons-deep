@@ -67,6 +67,12 @@ var _party_slots: Array[Dictionary] = []
 # same place whichever is showing. Both menus are capped at MENU_SLOTS, which
 # is why nothing here ever needs to scroll.
 const MENU_SLOTS: int = 6
+# The strip is exactly this tall in every state. Left to its own devices it
+# measured 282 on the main actions, 261 in Skills and 224 in Items, so the
+# whole bottom of the screen jumped by nearly sixty pixels every time you
+# opened a submenu. Six slots are always drawn, empty ones included.
+const MENU_STRIP_H: int = 282
+const MENU_SLOT_H:  int = 88
 var _action_bar: GridContainer
 var _sub_bar:    GridContainer
 var _sub_slots:  Array[MarginContainer] = []
@@ -213,25 +219,7 @@ func _log(line: String) -> void:
 	if not _log_first_line:
 		_log_label.append_text("\n")
 	_log_first_line = false
-	_log_label.append_text(_uppercase_text(line))
-
-
-func _uppercase_text(text: String) -> String:
-	var result := ""
-	var in_tag := false
-	for ch: String in text:
-		if ch == "[":
-			in_tag = true
-			result += ch
-		elif ch == "]":
-			in_tag = false
-			result += ch
-		else:
-			result += ch.to_upper() if not in_tag else ch
-	return result
-
-
-
+	_log_label.append_text(line)
 
 
 func _format_statuses(statuses: Array[String]) -> String:
@@ -288,7 +276,7 @@ func _show_item_submenu() -> void:
 func _show_talk_submenu() -> void:
 	_hide_actions()
 	_set_back(_show_main_actions)
-	_right_title.text = "TALK  %s" % enemy.display_name().to_upper()
+	_right_title.text = "Talk to %s" % enemy.display_name()
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
 	_submenu_clear()
 
@@ -367,7 +355,7 @@ func _use_item_by_id(item_id: String) -> String:
 					return "[color=aqua]Used %s![/color]  [color=#d070ff]Repelled! You take %d damage![/color]" % [
 						item["name"], dmg]
 				dmg = max(1, roundi(dmg * Affinity.multiplier(state)))
-				var weak_tag: String = "  [color=yellow]WEAK![/color]" if state == Affinity.WEAK else ""
+				var weak_tag: String = "  [color=yellow]Weak![/color]" if state == Affinity.WEAK else ""
 				enemy.take_damage(dmg)
 				return "[color=aqua]Used %s![/color]%s  [color=violet]%s takes %d damage.[/color]" % [
 					item["name"], weak_tag, enemy.enemy_name, dmg]
@@ -916,7 +904,7 @@ func _build_foe_column(foe: Enemy) -> Control:
 	col.add_child(marker)
 
 	var name_lbl: Label = Label.new()
-	name_lbl.text                 = foe.display_name().to_upper()
+	name_lbl.text                 = foe.display_name()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.add_theme_font_size_override("font_size", 13)
 	col.add_child(name_lbl)
@@ -1311,7 +1299,7 @@ func _member_portrait(member: CharacterSheet) -> TextureRect:
 func _refresh_hp() -> void:
 	if _actor_banner != null:
 		if _press != null and _press.has_turns():
-			_actor_banner.text = "%s'S TURN" % _actor_name().to_upper()
+			_actor_banner.text = "%s's turn" % _actor_name()
 			_actor_banner.add_theme_color_override("font_color",
 					Color(1.0, 0.92, 0.45) if _actor_is_player()
 					else Color(0.62, 1.0, 0.78))
@@ -1375,7 +1363,7 @@ func _refresh_icons() -> void:
 func _show_skills_submenu() -> void:
 	_hide_actions()
 	_set_back(_show_main_actions)
-	_right_title.text = "SKILLS  %s" % _actor_name().to_upper()
+	_right_title.text = "%s's skills" % _actor_name()
 	_right_title.add_theme_color_override("font_color", Color(0.80, 0.62, 1.0))
 	_submenu_clear()
 
@@ -1674,7 +1662,7 @@ func _refresh_party_slots() -> void:
 		(slot["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
 
 		var name_lbl: Label = slot["name_lbl"] as Label
-		name_lbl.text = _member_name(member).to_upper()
+		name_lbl.text = _member_name(member)
 		if is_hero:
 			name_lbl.text += "  LV%d" % member.lv
 		if not alive:
@@ -1718,8 +1706,7 @@ func _refresh_party_slots() -> void:
 func _build_menu_panel(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
 	panel.size_flags_vertical = Control.SIZE_SHRINK_END
-	# Two rows of slots need roughly twice the height of one.
-	panel.custom_minimum_size = Vector2(0, 224)
+	panel.custom_minimum_size = Vector2(0, MENU_STRIP_H)
 	parent.add_child(panel)
 
 	var m: MarginContainer = MarginContainer.new()
@@ -1768,7 +1755,7 @@ func _build_menu_panel(parent: Control) -> void:
 	for action: String in ["Skills", "Item", "Defend", "Talk", "Summon", "Flee"]:
 		var btn: Button = Button.new()
 		btn.icon                    = _action_icon(action)
-		btn.text                    = action.to_upper()
+		btn.text                    = action
 		btn.icon_alignment          = HORIZONTAL_ALIGNMENT_CENTER
 		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		btn.add_theme_font_size_override("font_size", 11)
@@ -1790,7 +1777,11 @@ func _build_menu_panel(parent: Control) -> void:
 	for _i: int in range(MENU_SLOTS):
 		var slot: MarginContainer = MarginContainer.new()
 		slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
+		slot.size_flags_vertical     = Control.SIZE_EXPAND_FILL
 		slot.size_flags_stretch_ratio = 1.0
+		# An empty slot still holds its ground, so a three-entry submenu is the
+		# same shape as a six-entry one.
+		slot.custom_minimum_size = Vector2(0, MENU_SLOT_H)
 		_sub_bar.add_child(slot)
 		_sub_slots.append(slot)
 
@@ -1841,6 +1832,7 @@ func _submenu_add(control: Control) -> void:
 	for slot: MarginContainer in _sub_slots:
 		if slot.get_child_count() == 0:
 			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			control.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 			slot.add_child(control)
 			return
 	push_warning("combat submenu overflowed %d slots" % MENU_SLOTS)
@@ -1851,7 +1843,7 @@ func _submenu_add(control: Control) -> void:
 # underneath. Built from child Labels because a Button's own text is one line.
 func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
 	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(0, 62)
+	btn.custom_minimum_size = Vector2(0, 0)
 	btn.disabled = disabled
 
 	var box: VBoxContainer = VBoxContainer.new()
@@ -2210,7 +2202,7 @@ static func _affinity_line(sheet: CharacterSheet) -> String:
 	for element: String in Affinity.ELEMENTS:
 		var state: String = sheet.affinity_of(element)
 		if state != Affinity.NORMAL:
-			parts.append("%s %s" % [Affinity.element_name(element).to_upper(),
+			parts.append("%s %s" % [Affinity.element_name(element),
 					Affinity.label(state)])
 	if parts.is_empty():
 		return "no affinities at all."
@@ -2379,7 +2371,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
 		_shake_portrait(hit_pr)
-	var tag: String = "  [color=yellow]WEAK![/color]" if res["outcome"] == "weak" else ""
+	var tag: String = "  [color=yellow]Weak![/color]" if res["outcome"] == "weak" else ""
 	return {msg = dry + "[color=red]%s calls the %s — %s takes %d.[/color]%s" % [
 			ename, word, tname, hurt, tag],
 			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}

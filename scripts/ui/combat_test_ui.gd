@@ -43,10 +43,8 @@ func _apply_font(node: Node) -> void:
 		(node as RichTextLabel).add_theme_font_override("normal_font", _FONT)
 	elif node is Label:
 		(node as Label).add_theme_font_override("font", _FONT)
-		(node as Label).uppercase = true
 	elif node is Button:
 		(node as Button).add_theme_font_override("font", _FONT)
-		(node as Button).text = (node as Button).text.to_upper()
 	elif node is Control:
 		(node as Control).add_theme_font_override("font", _FONT)
 

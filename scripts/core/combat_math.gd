@@ -186,11 +186,11 @@ static func cost_for(outcome: String, crit: bool, suppressed: bool = false) -> S
 static func outcome_tag(outcome: String, crit: bool, suppressed: bool = false) -> String:
 	var tag: String = ""
 	if crit and outcome != "repel" and outcome != "drain" and outcome != "null":
-		tag += "  [color=yellow][CRITICAL!][/color]"
+		tag += "  [color=yellow]Critical![/color]"
 	if suppressed:
-		tag += "  [color=#7fd4ff]GUARDED![/color]"
+		tag += "  [color=#7fd4ff]Guarded![/color]"
 	match outcome:
-		"weak":   tag += "  [color=yellow]WEAK![/color]"
+		"weak":   tag += "  [color=yellow]Weak![/color]"
 		"resist": tag += "  [color=#8cb4e6]Resisted.[/color]"
 		"null":   tag += "  [color=#999999]Nulled![/color]"
 	return tag
