@@ -1,0 +1,686 @@
+<title>Drawing the Afflictions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Eczar:wght@500;600;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:     #e8e4db;
+    --panel:     #f1eee7;
+    --sunk:      #ddd8cc;
+    --ink:       #191720;
+    --ink-2:     #4a4654;
+    --ink-3:     #7a7686;
+    --rule:      #cbc4b7;
+    --rule-soft: #ded8cc;
+    --turmeric:  #8a6209;
+    --iron:      #3a5768;
+    --iron-bg:   #dfe4e7;
+    --caution:   #8c3a2b;
+    --caution-bg:#eddfdb;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #121017;
+      --panel:     #1a1722;
+      --sunk:      #0d0b12;
+      --ink:       #e7e2d8;
+      --ink-2:     #a49eae;
+      --ink-3:     #736e80;
+      --rule:      #2c2836;
+      --rule-soft: #221f2b;
+      --turmeric:  #e0a82e;
+      --iron:      #86aec4;
+      --iron-bg:   #172128;
+      --caution:   #e0836c;
+      --caution-bg:#2a1713;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:     #121017;
+    --panel:     #1a1722;
+    --sunk:      #0d0b12;
+    --ink:       #e7e2d8;
+    --ink-2:     #a49eae;
+    --ink-3:     #736e80;
+    --rule:      #2c2836;
+    --rule-soft: #221f2b;
+    --turmeric:  #e0a82e;
+    --iron:      #86aec4;
+    --iron-bg:   #172128;
+    --caution:   #e0836c;
+    --caution-bg:#2a1713;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Alegreya Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 36px 22px 90px; }
+
+  /* ── Masthead ───────────────────────────────────────────── */
+
+  .masthead {
+    display: flex; flex-direction: column; gap: 12px;
+    padding-bottom: 22px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: .17em; text-transform: uppercase;
+    color: var(--turmeric);
+  }
+
+  h1 {
+    font-family: "Eczar", Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(34px, 6.4vw, 58px);
+    line-height: 1.02;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 19px; line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .standfirst em { color: var(--ink); font-style: italic; }
+
+  /* ── Sections ───────────────────────────────────────────── */
+
+  section { margin-top: 48px; }
+
+  h2 {
+    font-family: "Eczar", Georgia, serif;
+    font-weight: 600;
+    font-size: 27px;
+    margin: 0 0 6px;
+    letter-spacing: -.01em;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    max-width: 68ch;
+    margin: 0 0 20px;
+  }
+
+  .lede b { color: var(--ink); font-weight: 700; }
+
+  /* ── The rule ───────────────────────────────────────────── */
+
+  .rulebox {
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    padding: 20px 22px;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  }
+
+  .rulebox p { margin: 0; font-size: 15.5px; color: var(--ink-2); }
+  .rulebox b {
+    display: block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--turmeric); margin-bottom: 3px;
+  }
+
+  /* ── Grammar grid ───────────────────────────────────────── */
+
+  .grammar {
+    display: grid;
+    gap: 1px;
+    grid-template-columns: repeat(auto-fit, minmax(236px, 1fr));
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .tell { background: var(--panel); padding: 15px 16px 17px; }
+
+  .tell h3 {
+    font-family: "Alegreya Sans", sans-serif;
+    font-size: 16px; font-weight: 700; margin: 0 0 3px;
+  }
+
+  .tell p { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--ink-2); }
+
+  /* ── Demon rows ─────────────────────────────────────────── */
+
+  .tier-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 7px; margin-bottom: 4px;
+  }
+
+  .tier-head h2 { font-size: 23px; margin: 0; flex: 1; }
+
+  .tier-note {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px; letter-spacing: .07em;
+    color: var(--ink-3);
+  }
+
+  .demon {
+    display: grid;
+    grid-template-columns: 246px 1fr;
+    gap: 10px 30px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: start;
+  }
+
+  .demon:last-child { border-bottom: none; }
+
+  .demon h3 {
+    font-family: "Eczar", Georgia, serif;
+    font-size: 24px; font-weight: 600; line-height: 1.1;
+    margin: 0 0 4px;
+  }
+
+  .what { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.45; }
+
+  .refs { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+
+  .refs li { font-size: 15.5px; line-height: 1.45; max-width: 64ch; }
+
+  .src {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--turmeric);
+    margin-right: 7px;
+    white-space: nowrap;
+  }
+
+  .refs strong { font-weight: 700; }
+
+  .shape {
+    grid-column: 2;
+    margin: 12px 0 0;
+    padding: 10px 13px;
+    background: var(--iron-bg);
+    border-left: 3px solid var(--iron);
+    font-size: 15px; line-height: 1.45;
+    color: var(--ink-2);
+    max-width: 64ch;
+  }
+
+  .shape b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--iron);
+    display: block; margin-bottom: 2px;
+  }
+
+  .flag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: .04em;
+    color: var(--caution);
+    background: var(--caution-bg);
+    padding: 1px 6px; border-radius: 2px;
+  }
+
+  /* ── Caution ────────────────────────────────────────────── */
+
+  .caution {
+    margin-top: 48px;
+    border: 1px solid var(--caution);
+    background: var(--caution-bg);
+    padding: 20px 22px;
+  }
+
+  .caution h2 { color: var(--caution); font-size: 21px; }
+  .caution p { max-width: 70ch; margin: 0 0 11px; font-size: 15.5px; color: var(--ink-2); }
+  .caution p:last-child { margin-bottom: 0; }
+  .caution strong { color: var(--ink); }
+
+  footer {
+    margin-top: 46px; padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px; letter-spacing: .05em;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 720px) {
+    .demon { grid-template-columns: 1fr; gap: 8px; }
+    .shape { grid-column: 1; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Art reference &middot; 24 demons &middot; South Asian folk-horror</p>
+    <h1>Drawing the Afflictions</h1>
+    <p class="standfirst">Somewhere to look while you draw. Every demon in the registry paired with two or three real touchstones and a note on the one thing its silhouette has to do. The references lean on subcontinental folk-horror &mdash; <em>bhoot, churel, pret, pey</em> &mdash; because those are beings people warded against rather than prayed to, which is the rule this roster was built on.</p>
+  </header>
+
+  <section>
+    <h2>One shape, one violation</h2>
+    <p class="lede">At sprite size the question is never <b>what creature</b>. It is <b>what survives being shrunk to a thumbnail</b>. Everything below is chosen for that.</p>
+    <div class="rulebox">
+      <p><b>Silhouette first</b>Fill it solid black. If you cannot tell what it is, no amount of interior detail will save it.</p>
+      <p><b>One familiar shape</b>A dog, a person, a doorway. The viewer needs something to recognise before you break it.</p>
+      <p><b>One violation</b>Exactly one thing wrong &mdash; a furnace for a jaw, no face above the mouth, feet on backwards. Two makes noise.</p>
+      <p><b>Four to six colours</b>Count them. Low-tier demons in the games you admire almost never shade; they use flat fills and let shape do the work.</p>
+      <p><b>One saturated thing</b>Everything else desaturated. The bright spot is where the eye lands, so spend it on the violation.</p>
+      <p><b>Head on, one frame</b>These are seen face-forward at a fixed distance. No three-quarter poses, no foreshortening to solve.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The shared grammar</h2>
+    <p class="lede">Subcontinental folk-horror has a consistent visual vocabulary, and most of it is <b>subtractive</b> &mdash; something missing or reversed rather than added. That suits pixel art, where you have very few pixels to add anything with.</p>
+    <div class="grammar">
+      <div class="tell">
+        <h3>Feet on backwards</h3>
+        <p>The most portable tell in the subcontinent &mdash; <em>bhoot</em>, <em>churel</em> and the Nepali <em>kichkandi</em> all share it. Costs you four pixels and reads instantly.</p>
+      </div>
+      <div class="tell">
+        <h3>No shadow, no reflection</h3>
+        <p>The dead cast neither. If every other sprite gets a contact shadow, withholding one is a whole characterisation.</p>
+      </div>
+      <div class="tell">
+        <h3>Unbound hair</h3>
+        <p>Braided or tied in life; loose, long and unkempt in death. A silhouette made almost entirely of hair reads as female and as dead at once.</p>
+      </div>
+      <div class="tell">
+        <h3>Feet off the ground</h3>
+        <p>Not floating dramatically &mdash; hovering an inch, so the wrongness is easy to miss. Draw the gap, not the pose.</p>
+      </div>
+      <div class="tell">
+        <h3>The trees</h3>
+        <p><em>Peepal</em>, banyan and tamarind are where things live. Anything hanging, upside down or half-grown into bark belongs to this family.</p>
+      </div>
+      <div class="tell">
+        <h3>Ash and the burning ground</h3>
+        <p>Grey on grey, matte, no highlights. A palette that is nearly all one value is a legitimate choice for the right demon.</p>
+      </div>
+      <div class="tell">
+        <h3>The wards</h3>
+        <p>Iron, turmeric, mustard seed, a lemon-and-chilli string over a door. Yellow and iron-grey are the colours of protection &mdash; useful to withhold, or to corrupt.</p>
+      </div>
+      <div class="tell">
+        <h3>The threshold</h3>
+        <p>The <em>dehri</em> is a real line you do not cross at dusk. A demon framed inside a doorway is already half-designed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="tier-head">
+      <h2>Draw these first</h2>
+      <span class="tier-note">already in the game &middot; waiting on sprites</span>
+    </div>
+
+    <article class="demon">
+      <div>
+        <h3>Hushmouth</h3>
+        <p class="what">A human jaw on its own, hung at head height across a doorway, wired shut through the teeth.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">North India</span>The <strong>lemon-and-chilli string</strong> hung above a shop door to turn away the evil eye. Hushmouth occupies exactly that spot and does the opposite job &mdash; the format is familiar, the object is wrong.</li>
+        <li><span class="src">Bengal</span><strong>Nishi</strong>, the voice that calls your name once at night, which you must never answer. Hushmouth is its inverse: a mouth that has been stopped.</li>
+        <li><span class="src">Material</span>Rusted picture wire on bone. Two materials, two values, nothing else.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>One object floating at head height with nothing above or below it. A crescent, crossed by straight lines. The easiest thing in the roster to draw &mdash; start here and let it set your palette and line weight for everything after.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>The Held Breath</h3>
+        <p class="what">A room's worth of air pulled into the outline of someone standing. Dust never settles inside it.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Bengal</span><strong>Nishi</strong> again &mdash; a presence known only by its effect. Nobody describes what it looks like, which is the point.</li>
+        <li><span class="src">Pan-Indian</span>The <strong>shadowless</strong> bhoot. Here you go further: draw nothing but the absence.</li>
+        <li><span class="src">Material</span>Heat shimmer over a courtyard in May.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Do not draw the figure. Draw a speckle field of dust and cut a person-shaped hole in it. The outline is the only line on the sprite, and it should be the dust stopping rather than a drawn edge.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Vacancy</h3>
+        <p class="what">A tall adult silhouette in a lit doorway, backlit hard, with no light and no room behind it.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span>The <strong>dehri</strong> &mdash; the threshold you do not cross at dusk, and do not stand in. The whole design is a taboo made literal.</li>
+        <li><span class="src">Bengal</span><strong>Skondhokata</strong>, the headless one, for how a pure silhouette carries a figure with no interior detail at all.</li>
+        <li><span class="src">Material</span>A doorway photographed against a window.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Solid black on a bright rectangle &mdash; the highest contrast in the game. The single violation: its edges do not match the doorframe it stands in. Offset them by two pixels and let the player notice late.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>The Tenant</h3>
+        <p class="what">A heavy seated figure built from years of nesting material, with a face worn smooth into the front of it.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Maharashtra</span><strong>Munjya</strong> &mdash; the spirit of a boy who died before his thread ceremony, who takes up residence in a peepal and will not be moved. Tenancy is the whole idea.</li>
+        <li><span class="src">Germanic</span>The <strong>Mare</strong> that sits on a sleeper's chest. Worth one look for the posture: settled, patient, in no hurry.</li>
+        <li><span class="src">Material</span>A termite mound, or an abandoned wasp nest &mdash; layered, papery, the colour of dust.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A heavy triangle, widest at the base, limbs folded away underneath. The face is a dent rather than a feature. This is your boss: it should be the only sprite whose outline is stable and symmetrical, because nothing about it is going anywhere.</p>
+    </article>
+  </section>
+
+  <section>
+    <div class="tier-head">
+      <h2>Tier I</h2>
+      <span class="tier-note">floors 1&ndash;2 &middot; answerable to a blade or a flame</span>
+    </div>
+
+    <article class="demon">
+      <div>
+        <h3>Nagwort</h3>
+        <p class="what">Knee-high, woven out of chewed fingernails and pulled hair, always facing away.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span>The rule that <strong>cut hair and nail clippings</strong> must be burned or buried, never left where someone could pick them up. Nagwort is what that rule is afraid of.</li>
+        <li><span class="src">North India</span><strong>Churel</strong>'s matted, unbound hair &mdash; for texture, not for the figure.</li>
+        <li><span class="src">Material</span>Keratin. Dry, yellowish, slightly translucent at the edges.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Small and hunched, facing away from the viewer. The whole read is edge noise &mdash; a ragged, hairy outline around a solid core. No face to draw, which is why it is the second-easiest after Hushmouth.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Thrum</h3>
+        <p class="what">A human outline packed out of grey moths, all beating out of sync.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Bengal</span><strong>Aleya</strong>, the marsh lights that lead fishermen off the path &mdash; many small things reading as one presence.</li>
+        <li><span class="src">Material</span>Moths at a tube light on the first wet night of the monsoon. You already know this silhouette.</li>
+        <li><span class="src">Tamil</span><strong>Pey</strong>, the ghoul of burning grounds, for the grey-on-grey palette.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A person-shape whose edge is ragged and whose interior is full of holes. Keep the outline recognisably human or the whole thing reads as static.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>The Tallyman</h3>
+        <p class="what">A bookkeeper with far too many fingers, each ending in a stylus, scoring marks into his own forearms.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span>The village <strong>munshi</strong> and his <em>bahi-khata</em> &mdash; the red cloth-bound ledger, the folded knees, the posture of a man who has been sitting a long time.</li>
+        <li><span class="src">Sanskritic</span><strong>Pishach</strong>'s roped, bulging veins &mdash; use it on the forearms only.</li>
+        <li><span class="src">Material</span>Ink on skin. Old marks faded, new ones wet.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Narrow and vertical; all the information is in the hands. Draw them two sizes too large &mdash; at this resolution an anatomically correct hand is four pixels and says nothing.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Grinner</h3>
+        <p class="what">A body in good clothes that do not fit, with nothing at all above the hand-widened mouth.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span>The <strong>bhoot with backward feet</strong> &mdash; the classic borrowed-body tell. This is the demon to spend it on.</li>
+        <li><span class="src">Material</span>A tailor's dummy in a shuttered shop; clothes with nobody's shape in them.</li>
+        <li><span class="src">Composition</span>The top of the head simply absent, cut flat, as if cropped.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>An ordinary standing human &mdash; deliberately the most normal outline in the game. The violation is a flat horizontal cut where a face should be. Put the feet on backwards and let that be the second read.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>The Understudy</h3>
+        <p class="what">It has a face, and the face is very nearly right. A seam runs along the jaw where it was fitted on.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">North India</span><strong>Churel</strong>, beautiful from the front and wrong from behind &mdash; take the principle, not the figure.</li>
+        <li><span class="src">Tamil</span><strong>Mohini pisasu</strong>, which lures by wearing a borrowed face.</li>
+        <li><span class="src">Material</span>A papier-m&acirc;ch&eacute; festival mask worn a size too loose.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Entirely normal &mdash; it has to be, or the design fails. Everything lives in one line along the jaw. If that seam is not legible at final size, move it to the hairline instead; do not thicken it.</p>
+    </article>
+  </section>
+
+  <section>
+    <div class="tier-head">
+      <h2>Tier II</h2>
+      <span class="tier-note">floors 2&ndash;3 &middot; the first drains</span>
+    </div>
+
+    <article class="demon">
+      <div>
+        <h3>Gristlebone</h3>
+        <p class="what">A knot of knuckles and joints with no limbs between them, walking on eight small hands.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Sanskritic</span><strong>Pishach</strong> and the bones of the burning ground &mdash; the raw material, nothing more.</li>
+        <li><span class="src">Material</span>A knob of ginger root. Lumpen, pale, branching wrongly.</li>
+        <li><span class="src">Movement</span>A crab, for how many legs read at small size when they are all the same length.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A lumpy mass on many thin legs &mdash; radial rather than bilateral, which makes it the only sprite in the roster with no front. Odd number of visible legs; an even split looks like a diagram.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Meatlace</h3>
+        <p class="what">A lattice of tendon strung corner to corner across a doorway, dragging itself by contracting.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span>The <strong>toran</strong> or <em>bandanwar</em> strung across a doorway to welcome. This is that shape and that placement, made of the wrong thing &mdash; the strongest single inversion available to you.</li>
+        <li><span class="src">Material</span>Dried sinew; a spiderweb in a room nobody opens.</li>
+        <li><span class="src">Composition</span>The doorway is part of the sprite. Draw the frame.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Not a creature at all &mdash; a rectangle crossed by lines. The only sprite that should read as architecture. Keep the strands slack, not taut; tension makes it look designed rather than grown.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Hollowmarrow</h3>
+        <p class="what">Very tall, very thin, skin stretched over an absence. Your breath fogs in front of it.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Nepal</span><strong>Kichkandi</strong> &mdash; tall, thin, backward-footed, and cold.</li>
+        <li><span class="src">Sanskritic</span><strong>Pret</strong>, the hungry dead: needle throat, swollen middle, limbs like sticks. <span class="flag">a rebirth state, not a figure of worship</span></li>
+        <li><span class="src">Material</span>A scarecrow at the end of the season.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Height is the whole design &mdash; make it at least two heads taller than anything else on screen, and thin enough that the tallness reads as wrongness rather than strength. Fog only at the mouth.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Cinderjaw</h3>
+        <p class="what">Dog-shaped, except the lower jaw is a hanging furnace door that will not close.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Tamil</span><strong>Kollivay pey</strong>, the fire-mouthed one &mdash; a mouth that is a source of light.</li>
+        <li><span class="src">Bengal</span><strong>Begho bhoot</strong>, the ghost of someone taken by a tiger, for the animal build.</li>
+        <li><span class="src">Material</span>A street dog's proportions: high shoulder, low head, thin flank.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A plain dog profile, which the player will read in one glance. Then one bright rectangle where the jaw should be &mdash; the only saturated colour on the sprite, and the only light source in the frame.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Kindleweep</h3>
+        <p class="what">Child-sized and made of wet ash. It strikes itself trying to catch, and never does.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Maharashtra</span><strong>Munjya</strong> again &mdash; a boy who died too early, pitiable and dangerous in the same breath.</li>
+        <li><span class="src">Tamil</span><strong>Kuzhandai pey</strong>, the child ghost.</li>
+        <li><span class="src">Material</span>A cold hearth the morning after. Damp ash holds a shape and then slumps.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Small, rounded, head too large for the body &mdash; child proportions do most of the work. Grey on grey throughout, so the one reaching arm is the only thing that moves the eye.</p>
+    </article>
+  </section>
+
+  <section>
+    <div class="tier-head">
+      <h2>Tier III</h2>
+      <span class="tier-note">floors 3&ndash;4 &middot; all six elements, and the first nulls</span>
+    </div>
+
+    <article class="demon">
+      <div>
+        <h3>Sillage</h3>
+        <p class="what">The shape of a woman who has just left the room, held up by nothing but her own perfume.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Kerala</span>The folk <strong>yakshi</strong>, announced by jasmine before she is seen, waiting by a palm at night. The best match in the roster. <span class="flag">yakshis are venerated elsewhere &mdash; this is the Malayali horror figure</span></li>
+        <li><span class="src">Bengal</span><strong>Aleya</strong>, for a presence that is only ever at the edge of sight.</li>
+        <li><span class="src">Material</span>The dent a body leaves in a bedsheet.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Draw her mostly missing: densest at the contour, empty through the middle. If you can fill her in solid and still read a woman, you have drawn too much. This is the hardest sprite in the roster &mdash; leave it until your palette is settled.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Ossuara</h3>
+        <p class="what">A cathedral of ribs on femur stilts, with a nest of small singing skulls where a heart would hang.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Material</span>A <strong>bamboo scaffold</strong> lashed at the joints &mdash; the structure is the design, and bamboo reads better at small size than bone does.</li>
+        <li><span class="src">Material</span>An upturned boat's ribs on a riverbank.</li>
+        <li><span class="src">Sanskritic</span>Burning-ground bone imagery, kept to the palette rather than the pose.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A tall arch on thin legs. The negative space between the ribs is the whole read &mdash; this is the one sprite where the holes matter more than the fill. Keep the skull nest small and central so it does not compete.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Fenwrack</h3>
+        <p class="what">Waterlogged past having a shape, dragging a net of everything it has ever drowned.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Bengal</span><strong>Mecho bhoot</strong> &mdash; the pond ghost that wants your catch. Ponds, nets and a smell of fish are its whole world.</li>
+        <li><span class="src">Material</span>Water hyacinth: matted green, clinging, covering everything at the waterline.</li>
+        <li><span class="src">Material</span>Swelling. Soft edges, no joints visible.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>The body has no clear edge, so the <em>net</em> is what makes it legible &mdash; draw that crisp and geometric against a soft, formless mass. Contrast of edge quality, not of value.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Sootmother</h3>
+        <p class="what">Swollen with chimney soot, breathing out infants of smoke that come apart before they land.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">North India</span><strong>Churel</strong> &mdash; the woman who died in childbirth, the most feared figure in the whole tradition. Everything Sootmother is doing, Churel is about.</li>
+        <li><span class="src">Bengal</span><strong>Petni</strong> in a tamarind tree, for the hunched, low, waiting posture.</li>
+        <li><span class="src">Material</span>The inside of a <em>chulha</em> flue. Matte black that eats light.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Heavy and low, wider than tall. The infants are the only motion &mdash; keep them faint and half-formed so they read as smoke rather than as a second sprite competing for attention.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Verdigrease</h3>
+        <p class="what">Shaped like an angel once, gone green with corrosion, wings oxidised into one solid sheet.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Material</span><strong>Verdigris on brass</strong> &mdash; old vessels, door fittings, a handle nobody has turned in years. Take the material, not any figure it was cast as.</li>
+        <li><span class="src">Material</span>A metal thing left in the monsoon: streaked, pitted, weeping down its own surface.</li>
+        <li><span class="src">Composition</span>An arm raised and stuck there. The pose is the story.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>One solid wedge for the fused wings, with a single arm frozen out of it. Do not draw feathers &mdash; they have not been feathers for a long time. Green is your only hue; everything else is value.</p>
+    </article>
+  </section>
+
+  <section>
+    <div class="tier-head">
+      <h2>Tier IV</h2>
+      <span class="tier-note">floors 4+ &middot; three of the five throw something back at you</span>
+    </div>
+
+    <article class="demon">
+      <div>
+        <h3>Static Choir</h3>
+        <p class="what">Three faces sharing one throat, each singing a note a quarter-tone off the others.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Nepal</span>The carving of a <strong>Lakhey</strong> mask &mdash; the bulging eyes, the fixed grin, the way a mask reads at distance. <span class="flag">the Lakhey dance is living festival practice &mdash; take the carving, not the figure</span></li>
+        <li><span class="src">Material</span>A loose filling. The copper taste before the sound.</li>
+        <li><span class="src">Composition</span>Three heads fanned from one neck, perfectly even.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A single column that splits into three at the top. Symmetry is the horror here, so make it exact &mdash; this is the only sprite that should be mirror-perfect, and the evenness is what will unsettle.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Coldsmith</h3>
+        <p class="what">He works a forge that runs backwards, taking heat out of whatever is put in. Frostbitten black to the wrist.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span>The village <strong>lohar</strong> at his bellows &mdash; the crouch, the tongs, the low anvil.</li>
+        <li><span class="src">Pan-Indian</span><strong>Iron as the ward</strong> against bhoot. He is the protection itself, running in reverse.</li>
+        <li><span class="src">Material</span>Frostbite. Black at the fingers, purple further up, and no blood beyond.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>Hunched over a bright rectangle that casts no light &mdash; the forge glows and the room stays dark, which is the whole joke. His hands should be the darkest pixels on the sprite, darker than the outline.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Gallowglass</h3>
+        <p class="what">A hanged silhouette assembled out of window glass, turning slowly on nothing.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Pan-Indian</span><strong>Mirrors turned to the wall</strong> or covered after a death &mdash; the reflection taboo, made into a body.</li>
+        <li><span class="src">Material</span>A broken pane still in its frame. Straight fractures, no curves anywhere.</li>
+        <li><span class="src">Composition</span>What it reflects is not the room you are in.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A human outline built entirely from straight-edged shards &mdash; ban curves from this sprite completely, including the head. It should look like it would cut you, before you know what it is.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>The Long Patient</h3>
+        <p class="what">A body under a sheet on a gurney, always at the far end of whichever corridor you turn down. Too many feet.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Material</span>A covered shape on a bier. <span class="flag">a real funeral image &mdash; keep it to cloth and form, not ritual</span></li>
+        <li><span class="src">Bengal</span><strong>Skondhokata</strong> for how a shape with no visible detail still reads as a person.</li>
+        <li><span class="src">Composition</span>The drape does the anatomy. Every fold implies something underneath.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>The only horizontal in the entire roster &mdash; low, long, flat-topped, which makes it unmistakable among twenty-three standing figures. The sheet never moves, so keep the outline perfectly still. Count the feet and make sure the player can too.</p>
+    </article>
+
+    <article class="demon">
+      <div>
+        <h3>Mourncoil</h3>
+        <p class="what">A column of black hair and mourning veil wound into a spiral two storeys high, with a woman still turning somewhere inside.</p>
+      </div>
+      <ul class="refs">
+        <li><span class="src">Bengal</span><strong>Shakchunni</strong> and <strong>Petni</strong> &mdash; white sari, conch bangles, hair unbound to the waist. The single closest cultural match in the roster.</li>
+        <li><span class="src">Pan-Indian</span>Hair loosened in mourning, which in life is the one time it is not tied.</li>
+        <li><span class="src">Material</span>A coil of rope on a jetty. Same logic, no face.</li>
+      </ul>
+      <p class="shape"><b>Silhouette</b>A tall spiral &mdash; one shape, one texture, no face anywhere. The white of the veil should be the only light value; let it spiral upward so the eye travels and never finds a head to look at.</p>
+    </article>
+  </section>
+
+  <section class="caution">
+    <h2>Where the line sits</h2>
+    <p><strong>The roster's founding rule is that nothing in it is worshipped</strong>, and that rule survives references intact as long as you take how a thing is <em>drawn</em> and leave its identity behind. Silhouette, palette, material, proportion &mdash; all portable. A name, an attribute, an iconography that belongs to a living devotional tradition is not.</p>
+    <p>Two practical cautions. Searching for &ldquo;Indian demons&rdquo; will hand you deities labelled as demons by whoever wrote the page &mdash; asuras, rakshasas and yakshas are antagonists in some texts and objects of devotion in others, so the label is not a reliable guide. And a handful of folk figures are venerated regionally even where they read as horror elsewhere; the three flagged above are the ones in this list where that applies.</p>
+    <p>The safest seam, and the richest one, is the <em>bhoot-pret</em> family proper &mdash; the restless dead. Nobody has ever built a shrine to a churel. People hang a lemon and two chillies over the door and hope she passes.</p>
+  </section>
+
+  <footer>Companion to The Affliction Registry &middot; 24 demons &middot; references for drawing, not for naming</footer>
+
+</div>
