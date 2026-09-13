@@ -32,6 +32,18 @@ var support_skill: String = ""
 # than swinging on the level gap, so the first area stays a gentle place.
 var ailment_chance: int = 12
 
+# How the sprite is tinted for the floor it was drawn on. One palette is drawn
+# per tier; within a tier the engine walks the same sprite from cool to hot
+# across the five floors, so a floor-nine Bat is visibly not a floor-six Bat
+# without anybody drawing a second Bat.
+var tint: Color = Color.WHITE
+
+
+# Cool and pale at the top of a tier, hot and bright at the bottom of it.
+static func tint_for_floor(floor_num: int) -> Color:
+	var step: float = float((floor_num - 1) % Level.BOSS_EVERY) / float(Level.BOSS_EVERY - 1)
+	return Color(0.82, 0.88, 1.0).lerp(Color(1.0, 0.72, 0.62), step)
+
 
 # Name as it should appear in the battle log and on the enemy row.
 func display_name() -> String:
@@ -64,42 +76,42 @@ const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 1-2 ---
 	{name = "Bat",              lv =  1,
 		str =  2, def =  1, mag =  0, agl =  5,
-		exp =  12, gold =   4, min_floor = 1, max_floor =  2,
+		exp =  12, gold =   4, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire", phys = "weak",
 		status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
 		sprite = "res://resources/enemySprites/Bat.png"},
 	{name = "Slug",             lv =  1,
 		str =  2, def =  2, mag =  0, agl =  1,
-		exp =  18, gold =   6, min_floor = 1, max_floor =  2,
+		exp =  18, gold =   6, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		status_attack = "poison", ail = 5,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/Slug.png"},
 	{name = "GiantRat",         lv =  1,
 		str =  3, def =  2, mag =  0, agl =  3,
-		exp =  20, gold =   6, min_floor = 1, max_floor =  2,
+		exp =  20, gold =   6, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire",
 		status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "potion",
 		sprite = "res://resources/enemySprites/GiantRat.png"},
 	{name = "Cave Bat",         lv =  2,
 		str =  3, def =  2, mag =  3, agl =  6,
-		exp =  16, gold =   5, min_floor = 1, max_floor =  2,
+		exp =  16, gold =   5, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire", phys = "weak",
 		attack_element = "thunder", status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
 		sprite = "res://resources/enemySprites/BatB.png"},
 	{name = "Giant Slug",       lv =  2,
 		str =  3, def =  3, mag =  0, agl =  1,
-		exp =  22, gold =   7, min_floor = 1, max_floor =  2,
+		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		status_attack = "poison", ail = 5,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/SlugB.png"},
 	{name = "Dire Rat",         lv =  2,
 		str =  4, def =  3, mag =  0, agl =  4,
-		exp =  25, gold =   8, min_floor = 1, max_floor =  2,
+		exp =  25, gold =   8, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire",
 		status_attack = "poison", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "potion",
@@ -107,28 +119,28 @@ const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 1-3 ---
 	{name = "Goblin",           lv =  2,
 		str =  4, def =  2, mag =  0, agl =  4,
-		exp =  25, gold =   8, min_floor = 1, max_floor =  3,
+		exp =  25, gold =   8, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire", phys = "weak",
 		status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "throwable",
 		sprite = "res://resources/enemySprites/Goblin.png"},
 	{name = "GelatinousCube",   lv =  2,
 		str =  2, def =  4, mag =  0, agl =  1,
-		exp =  22, gold =   7, min_floor = 1, max_floor =  3,
+		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		attack_element = "ice", status_attack = "immobilize", ail = 5,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/GelatinousCube.png"},
 	{name = "Hobgoblin",        lv =  3,
 		str =  5, def =  3, mag =  0, agl =  5,
-		exp =  32, gold =  10, min_floor = 1, max_floor =  3,
+		exp =  32, gold =  10, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
 		weakness = "fire", phys = "weak",
 		status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "throwable",
 		sprite = "res://resources/enemySprites/GoblinB.png"},
 	{name = "Ooze",             lv =  3,
 		str =  3, def =  5, mag =  0, agl =  1,
-		exp =  28, gold =   9, min_floor = 1, max_floor =  3,
+		exp =  28, gold =   9, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		attack_element = "ice", status_attack = "immobilize", ail = 5,
 		negotiable = false, talk_difficulty = 0,
@@ -136,70 +148,70 @@ const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 2-4 ---
 	{name = "Skeleton",         lv =  5,
 		str =  5, def =  3, mag =  1, agl =  2,
-		exp =  30, gold =  10, min_floor = 2, max_floor =  4,
+		exp =  30, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", phys = "resist", light = "weak", dark = "null",
 		status_attack = "immobilize", ail = 12,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/Skeleton.png"},
 	{name = "GiantHornet",      lv =  5,
 		str =  4, def =  2, mag =  0, agl =  6,
-		exp =  28, gold =   9, min_floor = 2, max_floor =  4,
+		exp =  28, gold =   9, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice", phys = "weak",
 		status_attack = "poison", ail = 12,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/GiantHornet.png"},
 	{name = "Bandit",           lv =  5,
 		str =  5, def =  3, mag =  3, agl =  5,
-		exp =  32, gold =  12, min_floor = 2, max_floor =  4,
+		exp =  32, gold =  12, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "thunder", phys = "weak",
 		attack_element = "fire", status_attack = "", ail = 12,
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite = "res://resources/enemySprites/Bandit.png"},
 	{name = "WildBoar",         lv =  5,
 		str =  6, def =  3, mag =  0, agl =  2,
-		exp =  30, gold =   9, min_floor = 2, max_floor =  4,
+		exp =  30, gold =   9, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice",
 		status_attack = "", ail = 12,
 		negotiable = true, talk_difficulty = 2, personality = "cowardly", wants = "potion",
 		sprite = "res://resources/enemySprites/WildBoar.png"},
 	{name = "AnimatedPlant",    lv =  5,
 		str =  3, def =  3, mag =  4, agl =  1,
-		exp =  28, gold =   8, min_floor = 2, max_floor =  4,
+		exp =  28, gold =   8, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", light = "resist", dark = "resist",
 		status_attack = "poison", ail = 12,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/AnimatedPlant.png"},
 	{name = "Bone Knight",      lv =  6,
 		str =  6, def =  4, mag =  2, agl =  2,
-		exp =  38, gold =  12, min_floor = 2, max_floor =  4,
+		exp =  38, gold =  12, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", phys = "resist", light = "weak", dark = "null",
 		status_attack = "immobilize", ail = 12,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/SkeletonB.png"},
 	{name = "Queen Hornet",     lv =  6,
 		str =  5, def =  3, mag =  0, agl =  7,
-		exp =  35, gold =  11, min_floor = 2, max_floor =  4,
+		exp =  35, gold =  11, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice", phys = "weak",
 		status_attack = "poison", ail = 12,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/GiantHornetB.png"},
 	{name = "Veteran Bandit",   lv =  6,
 		str =  6, def =  4, mag =  0, agl =  5,
-		exp =  40, gold =  15, min_floor = 2, max_floor =  4,
+		exp =  40, gold =  15, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "thunder", phys = "weak",
 		status_attack = "", ail = 12,
 		negotiable = true, talk_difficulty = 3, personality = "greedy", wants = "any",
 		sprite = "res://resources/enemySprites/BanditB.png"},
 	{name = "Tusked Boar",      lv =  6,
 		str =  7, def =  4, mag =  0, agl =  2,
-		exp =  38, gold =  11, min_floor = 2, max_floor =  4,
+		exp =  38, gold =  11, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice",
 		status_attack = "", ail = 12,
 		negotiable = true, talk_difficulty = 2, personality = "cowardly", wants = "potion",
 		sprite = "res://resources/enemySprites/WildBoarB.png"},
 	{name = "Thornvine",        lv =  6,
 		str =  4, def =  4, mag =  5, agl =  1,
-		exp =  35, gold =  10, min_floor = 2, max_floor =  4,
+		exp =  35, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", light = "resist", dark = "resist",
 		status_attack = "poison", ail = 12,
 		negotiable = false, talk_difficulty = 0,
@@ -207,42 +219,42 @@ const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 3+ ---
 	{name = "Treant",           lv =  8,
 		str =  6, def =  6, mag =  0, agl =  1,
-		exp =  45, gold =  14, min_floor = 3, max_floor = -1,
+		exp =  45, gold =  14, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		status_attack = "immobilize", ail = 18,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/Treant.png"},
 	{name = "Orc",              lv =  8,
 		str =  7, def =  4, mag =  0, agl =  2,
-		exp =  38, gold =  12, min_floor = 3, max_floor =  5,
+		exp =  38, gold =  12, tier = 3, rank = 0, min_floor = 3, max_floor =  5,
 		weakness = "ice",
 		status_attack = "", ail = 18,
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "throwable",
 		sprite = "res://resources/enemySprites/Orc.png"},
 	{name = "Fairy",            lv =  8,
 		str =  2, def =  2, mag =  6, agl =  7,
-		exp =  42, gold =  14, min_floor = 3, max_floor = -1,
+		exp =  42, gold =  14, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "thunder", phys = "weak", light = "resist", dark = "weak", absorb_element = "thunder",
 		attack_element = "thunder", status_attack = "silence", ail = 18, support = "mire",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/Fairy.png"},
 	{name = "Elder Treant",     lv =  9, icons = 2,
 		str =  7, def =  7, mag =  0, agl =  1,
-		exp =  55, gold =  17, min_floor = 3, max_floor = -1,
+		exp =  55, gold =  17, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		status_attack = "immobilize", ail = 18,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "res://resources/enemySprites/TreantB.png"},
 	{name = "Orc Warchief",     lv =  9, icons = 2,
 		str =  8, def =  5, mag =  0, agl =  2,
-		exp =  46, gold =  15, min_floor = 3, max_floor =  5,
+		exp =  46, gold =  15, tier = 3, rank = 0, min_floor = 3, max_floor =  5,
 		weakness = "ice",
 		status_attack = "", ail = 18, support = "whet",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "throwable",
 		sprite = "res://resources/enemySprites/OrcB.png"},
 	{name = "Dark Fairy",       lv =  9,
 		str =  3, def =  3, mag =  7, agl =  8,
-		exp =  50, gold =  17, min_floor = 3, max_floor = -1,
+		exp =  50, gold =  17, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "thunder", phys = "weak", light = "weak", dark = "resist", absorb_element = "thunder",
 		attack_element = "dark", status_attack = "silence", ail = 18, support = "mire",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
@@ -250,28 +262,28 @@ const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 4+ ---
 	{name = "Ogre",             lv = 11, icons = 2,
 		str =  9, def =  5, mag =  0, agl =  1,
-		exp =  55, gold =  18, min_floor = 4, max_floor = -1,
+		exp =  55, gold =  18, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice",
 		status_attack = "", ail = 22,
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "any",
 		sprite = "res://resources/enemySprites/Ogre.png"},
 	{name = "Wizard",           lv = 11,
 		str =  2, def =  2, mag =  8, agl =  4,
-		exp =  52, gold =  16, min_floor = 4, max_floor = -1,
+		exp =  52, gold =  16, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice", phys = "weak", dark = "resist", reflect_element = "fire",
 		attack_element = "fire", status_attack = "silence", ail = 22, support = "whet",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "potion",
 		sprite = "res://resources/enemySprites/Wizard.png"},
 	{name = "Stone Ogre",       lv = 12, icons = 2,
 		str = 10, def =  6, mag =  0, agl =  1,
-		exp =  65, gold =  22, min_floor = 4, max_floor = -1,
+		exp =  65, gold =  22, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice",
 		status_attack = "", ail = 22, support = "ward",
 		negotiable = true, talk_difficulty = 5, personality = "proud", wants = "any",
 		sprite = "res://resources/enemySprites/OgreB.png"},
 	{name = "Dark Wizard",      lv = 12,
 		str =  3, def =  3, mag =  9, agl =  4,
-		exp =  62, gold =  20, min_floor = 4, max_floor = -1,
+		exp =  62, gold =  20, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice", phys = "weak", light = "weak", dark = "null", reflect_element = "fire",
 		attack_element = "dark", status_attack = "silence", ail = 22, support = "stoke",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "potion",
@@ -348,28 +360,28 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 				+ "resist. Nulls both banishing lines like every boss."},
 	{name = "Shadow Knight",    lv = 12, icons = 3,
 		str = 12, def =  8, mag =  2, agl =  3,
-		exp = 200, gold =  80, min_floor = 5, max_floor = -1,
+		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
 		weakness = "thunder", light = "null", dark = "null",
 		status_attack = "immobilize", ail = 25, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
 	{name = "Bone Sorcerer",    lv = 14, icons = 3,
 		str =  5, def =  6, mag = 14, agl =  4,
-		exp = 280, gold = 110, min_floor = 10, max_floor = -1,
+		exp = 280, gold = 110, tier = 4, rank = 0, min_floor = 10, max_floor = -1,
 		weakness = "ice", light = "null", dark = "null",
 		attack_element = "fire", status_attack = "silence", ail = 25, support = "stoke",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
 	{name = "Iron Titan",       lv = 16, icons = 4,
 		str = 16, def = 12, mag =  0, agl =  1,
-		exp = 360, gold = 140, min_floor = 15, max_floor = -1,
+		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
 		weakness = "thunder", light = "null", dark = "null",
 		status_attack = "paralyzed", ail = 25, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
 	{name = "Void Drake",       lv = 18, icons = 4,
 		str = 14, def = 10, mag = 12, agl =  5,
-		exp = 450, gold = 180, min_floor = 20, max_floor = -1,
+		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
 		weakness = "ice", light = "null", dark = "null",
 		attack_element = "thunder", status_attack = "", ail = 25, support = "damp",
 		negotiable = false, talk_difficulty = 0,
@@ -407,10 +419,16 @@ static func _affinities_from(t: Dictionary) -> Dictionary:
 
 
 static func make_random(floor_num: int) -> Enemy:
+	# Draw from this floor's tier, widening downward if a tier is thin rather
+	# than falling back to the whole table, which would put a tier-one Bat in
+	# front of you on floor nineteen.
+	var want: int = tier_for_floor(floor_num)
 	var pool: Array[Dictionary] = []
-	for tmpl: Dictionary in TEMPLATES:
-		if floor_num >= tmpl["min_floor"] and (tmpl["max_floor"] == -1 or floor_num <= tmpl["max_floor"]):
-			pool.append(tmpl)
+	while pool.is_empty() and want >= 1:
+		for tmpl: Dictionary in TEMPLATES:
+			if int(tmpl.get("tier", 1)) == want:
+				pool.append(tmpl)
+		want -= 1
 	if pool.is_empty():
 		pool = TEMPLATES
 	return _build(pool[randi() % pool.size()], floor_num)
@@ -436,19 +454,20 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 # One boss per run of FLOOR_COUNT floors. The old index went negative on a
 # short run and quietly handed back the LAST boss — the hardest one.
 static func make_boss(floor_num: int) -> Enemy:
-	var idx: int = clampi(floor_num / maxi(1, Level.FLOOR_COUNT) - 1,
+	var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
 			0, BOSS_TEMPLATES.size() - 1)
 	var t: Dictionary = BOSS_TEMPLATES[idx]
 	var e: Enemy = Enemy.new()
 	e.enemy_name      = t["name"]
-	e.lv              = int(t.get("lv", 12))
-	e.str             = t["str"]
-	e.def             = t["def"]
-	e.mag             = t["mag"]
-	e.agl             = t["agl"]
+	e.lv              = maxi(2, floor_num * 2)
+	var scale: float = 1.0 + float(e.lv - 1) * 0.22
+	e.str             = maxi(1, roundi(float(t["str"]) * scale))
+	e.def             = maxi(1, roundi(float(t["def"]) * scale))
+	e.mag             = roundi(float(t["mag"]) * scale)
+	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
 	e.exp_to_next     = 0
-	e.exp_reward      = t["exp"]
-	e.gold_reward     = t["gold"]
+	e.exp_reward      = exp_for_level(e.lv) * 3
+	e.gold_reward     = e.lv * 12
 	e.status_attack   = t.get("status_attack", "")
 	e.weakness        = t.get("weakness", "")
 	e.negotiable      = false
@@ -463,16 +482,50 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.icons           = int(t.get("icons", 3))
 	e.support_skill   = t.get("support", "")
 	e.ailment_chance  = int(t.get("ail", 25))
+	# A boss keeps its own colours; it is not one of a set.
+	e.tint            = Color.WHITE
 	e.compute_max_hp()
 	e.compute_max_mp()
 	return e
 
 
+# Rebuilds a demon at the level it was bound at. A demon never levels, so the
+# one you caught on floor three is a floor-three demon forever — which is the
+# whole reason selling it on to fund a deeper one is a real decision.
+static func make_at_level(enemy_name: String, lv: int) -> Enemy:
+	for tmpl: Dictionary in all_templates():
+		if tmpl["name"] == enemy_name:
+			var floor_guess: int = maxi(1, roundi(float(lv) / 1.5))
+			var e: Enemy = _build(tmpl, floor_guess)
+			e.lv = maxi(1, lv)
+			var scale: float = 1.0 + float(e.lv - 1) * 0.22
+			e.str = maxi(1, roundi(float(tmpl["str"]) * scale))
+			e.def = maxi(1, roundi(float(tmpl["def"]) * scale))
+			e.mag = roundi(float(tmpl["mag"]) * scale)
+			e.agl = maxi(1, roundi(float(tmpl["agl"]) * scale))
+			e.exp_reward = exp_for_level(e.lv)
+			e.gold_reward = maxi(4, e.lv * 3)
+			e.compute_max_hp()
+			e.compute_max_mp()
+			return e
+	return make_random(1)
+
+
 # The warden for a given maze floor. Floors past the written ones fall back to
 # the last warden rather than to a random demon, so the key always has a keeper.
+# It is built at the floor's own level like anything else down there.
 static func make_warden(floor_num: int) -> Enemy:
-	var idx: int = clampi(floor_num - 1, 0, WARDEN_TEMPLATES.size() - 1)
-	return _build(WARDEN_TEMPLATES[idx], floor_num)
+	var idx: int = clampi((floor_num - 1) % WARDEN_TEMPLATES.size(),
+			0, WARDEN_TEMPLATES.size() - 1)
+	var e: Enemy = _build(WARDEN_TEMPLATES[idx], floor_num)
+	# A warden is the floor's locked door: a step above its neighbours, a step
+	# below the boss waiting five floors down.
+	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
+	e.exp_reward = exp_for_level(e.lv) * 2
+	e.gold_reward = e.lv * 6
+	e.compute_max_hp()
+	e.compute_max_mp()
+	return e
 
 
 # Everything still waiting on a sprite, so the art queue can be read off the
@@ -504,17 +557,42 @@ static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
 # A demon's level and stats come off its own template and nothing else, so the
 # same kind is the same fight wherever you meet it. Progression comes from which
 # demons a floor can draw, not from inflating the ones you already know.
+# What a demon is worth. A rule rather than eighty hand-typed numbers, and it
+# reproduces the old values closely at the shallow end — a level 1 Bat was 12
+# and comes out 10 — while scaling properly at depth, which is what lets the
+# player's level keep up with a boss set at twice the floor number.
+static func exp_for_level(lv: int) -> int:
+	return 10 + (lv * lv) / 2
+
+
+# Ordinary demons sit at half again the floor number; a boss sits at twice it.
+# So a boss is always a real step up from what you have been fighting rather
+# than more of the same. `rank` is the only thing the template still says about
+# level: whether it is the weaker or the stronger of its pair.
+static func level_for_floor(floor_num: int, rank: int) -> int:
+	return maxi(1, roundi(float(floor_num) * 1.5) + rank)
+
+
+# Which band of demons a floor draws from. Five floors to a tier, four tiers,
+# and a boss closing each one.
+static func tier_for_floor(floor_num: int) -> int:
+	return clampi((floor_num - 1) / Level.BOSS_EVERY + 1, 1, 4)
+
+
 static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	var e: Enemy = Enemy.new()
 	e.enemy_name      = t["name"]
-	e.lv              = int(t.get("lv", 2))
-	e.str             = t["str"]
-	e.def             = t["def"]
-	e.mag             = t["mag"]
-	e.agl             = t["agl"]
+	e.lv              = level_for_floor(floor_num, int(t.get("rank", 0)))
+	# Stats ride the level rather than the row, so the same demon met deeper is
+	# genuinely a harder demon and not just a bigger number over its head.
+	var scale: float = 1.0 + float(e.lv - 1) * 0.22
+	e.str             = maxi(1, roundi(float(t["str"]) * scale))
+	e.def             = maxi(1, roundi(float(t["def"]) * scale))
+	e.mag             = roundi(float(t["mag"]) * scale)
+	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
 	e.exp_to_next     = 0
-	e.exp_reward      = t["exp"]
-	e.gold_reward     = t["gold"]
+	e.exp_reward      = exp_for_level(e.lv)
+	e.gold_reward     = maxi(4, e.lv * 3)
 	e.status_attack   = t.get("status_attack", "")
 	e.weakness        = t.get("weakness", "")
 	e.negotiable       = t.get("negotiable", true)
@@ -529,6 +607,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.icons           = int(t.get("icons", 1))
 	e.support_skill   = t.get("support", "")
 	e.ailment_chance  = int(t.get("ail", 12))
+	e.tint            = tint_for_floor(floor_num)
 	e.compute_max_hp()
 	e.compute_max_mp()
 	return e

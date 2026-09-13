@@ -142,7 +142,10 @@ func _level_up() -> void:
 	var old_max_hp: int = max_hp
 	var old_max_mp: int = max_mp
 	lv += 1
-	exp_to_next = int(exp_to_next * randf_range(1.3, 1.7))
+	# Gentler than it was. At x1.3-1.7 the player reached level 13 by floor
+	# twenty and stopped mattering; a boss set at twice the floor number needs
+	# a curve that keeps climbing all the way down.
+	exp_to_next = int(exp_to_next * randf_range(1.15, 1.25))
 	_hp_bonus += roundi(10.0 * randf_range(0.8, 1.2)) - 10
 	_mp_bonus += roundi(4.0 * randf_range(0.8, 1.2)) - 4
 	compute_max_hp()

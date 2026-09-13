@@ -62,7 +62,7 @@ func build() -> void:
 func _add_demon(list: SlotList, demon_name: String) -> void:
 	var p: PlayerCharacter = _m.player
 	var active: bool = p.is_active(demon_name)
-	var demon: Enemy = Enemy.make_from_name(demon_name)
+	var demon: Enemy = p.bound_demon(demon_name)
 	var about: String = "HP %d   MP %d   %s   %s" % [
 			demon.max_hp, demon.max_mp, _element_text(demon), _chart(demon)]
 	demon.free()

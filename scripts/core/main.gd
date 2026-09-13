@@ -170,6 +170,9 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	# add_child(), so maze/colour data is available immediately after.
 	var packed: PackedScene = load(scene_path) as PackedScene
 	current_level = packed.instantiate() as Level
+	# Set before it enters the tree: the level builds itself in _ready, and it
+	# cannot ask its parent what floor it is any more.
+	current_level.floor_num = floor_num
 	world.add_child(current_level)
 
 	# Build geometry using the level's colours and maze
@@ -403,11 +406,15 @@ func _is_open(col: int, row: int) -> bool:
 # Checks whether the player is standing on the portal tile and, if so,
 # transitions to the next level. Called after every successful move.
 func _check_portal() -> void:
-	# On the last floor the far end of the corridor is the boss, not a door.
-	if floor_num >= Level.FLOOR_COUNT:
+	# On a boss floor the far end of the corridor is the boss, not a door. Beat
+	# it and the corridor opens onward — except on the last floor of all, where
+	# beating it is the end of the run.
+	if Level.is_boss_floor(floor_num):
 		if not _boss_beaten:
 			_start_boss_combat()
-		return
+			return
+		if floor_num >= Level.FLOOR_COUNT:
+			return
 
 	if not _has_key:
 		_show_hud_popup("The door is sealed. Find the warden.", Color(0.75, 0.55, 1.0))
@@ -588,7 +595,7 @@ func _update_encounter_debug_label() -> void:
 # One demon per territory is the rule that keeps them out of each other's way,
 # so this can only ever reach as high as there are territories — see ZONE_DIV.
 func _roamer_target() -> int:
-	if floor_num >= Level.FLOOR_COUNT:
+	if Level.is_boss_floor(floor_num):
 		return 0
 	return mini(9 + floor_num * 2, 14)
 
@@ -794,7 +801,7 @@ func _start_combat() -> void:
 
 
 func _start_boss_combat() -> void:
-	_pending_congratulations = true
+	_pending_congratulations = (floor_num >= Level.FLOOR_COUNT)
 	# Bosses come alone; their own icon count is what makes them a fight.
 	var solo: Array[Enemy] = [Enemy.make_boss(floor_num)]
 	_launch_combat(solo)
@@ -878,8 +885,8 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		minimap_ctrl.queue_redraw()
 		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
-	# On the last floor an encounter with no roamer behind it is the boss.
-	if result != "lose" and floor_num >= Level.FLOOR_COUNT and met.is_empty():
+	# On a boss floor an encounter with no roamer behind it is the boss.
+	if result != "lose" and Level.is_boss_floor(floor_num) and met.is_empty():
 		_boss_beaten = true
 
 	if not lost.is_empty() and result != "lose":
@@ -1222,6 +1229,7 @@ func _gather_save_data() -> Dictionary:
 			equipped_spells     = p.equipped_spells,
 			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
+			bound_level         = p.bound_level,
 			active_demons       = p.active_demons,
 			encountered_enemies = p.encountered_enemies,
 			analyzed            = p.analyzed,
@@ -1271,6 +1279,10 @@ func _restore_save(data: Dictionary) -> void:
 	var scene_path: String   = map_data["scene"] as String
 	var packed: PackedScene  = load(scene_path) as PackedScene
 	current_level = packed.instantiate() as Level
+	# Same reason as the other one: the level builds itself in _ready, and the
+	# generated layout is thrown away below anyway — but the shape it builds
+	# (maze or boss corridor) has to match the floor being restored.
+	current_level.floor_num = floor_num
 	world.add_child(current_level)
 
 	# Overwrite the freshly-generated maze with the saved layout.
@@ -1358,6 +1370,14 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.recruited.clear()
 	player_char.recruited.assign(pdata.get("recruited", []) as Array)
+	player_char.bound_level.clear()
+	for k: Variant in (pdata.get("bound_level", {}) as Dictionary):
+		player_char.bound_level[k] = int((pdata["bound_level"] as Dictionary)[k])
+	# A save written before demons remembered their level: assume the shallow
+	# end rather than leaving them at zero.
+	for demon_name: String in player_char.recruited:
+		if not player_char.bound_level.has(demon_name):
+			player_char.bound_level[demon_name] = 2
 
 	player_char.active_demons.clear()
 	if pdata.has("active_demons"):

@@ -513,7 +513,7 @@ func _prompt_beg() -> void:
 			"%s joins the rolodex. Costs nothing." % enemy.enemy_name, false)
 	take.pressed.connect(func() -> void:
 		var who: String = enemy.enemy_name
-		_remember_recruit(who)
+		_remember_recruit(who, enemy.lv)
 		_log("[color=lime]%s is bound. It walks in behind you.[/color]" % who)
 		await _beg_resolved())
 	_submenu_add(take)
@@ -784,8 +784,8 @@ func _available_summons() -> Array[String]:
 	return out
 
 
-func _remember_recruit(demon_name: String) -> void:
-	player.remember_recruit(demon_name)
+func _remember_recruit(demon_name: String, lv: int = 1) -> void:
+	player.remember_recruit(demon_name, lv)
 
 
 func _show_summon_submenu() -> void:
@@ -810,7 +810,7 @@ func _show_summon_submenu() -> void:
 func _on_summon(summon_name: String) -> void:
 	_show_main_actions()
 	_set_buttons(false)
-	var demon: Enemy = Enemy.make_from_name(summon_name)
+	var demon: Enemy = player.bound_demon(summon_name)
 	add_child(demon)
 	party.append(demon)
 	_rebuild_party_slots()
@@ -835,7 +835,7 @@ func _form_party() -> void:
 	for demon_name: String in player.active_demons:
 		if party.size() >= MAX_PARTY:
 			break
-		var demon: Enemy = Enemy.make_from_name(demon_name)
+		var demon: Enemy = player.bound_demon(demon_name)
 		add_child(demon)
 		party.append(demon)
 
@@ -922,6 +922,7 @@ func _build_foe_column(foe: Enemy) -> Control:
 	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.size_flags_horizontal = Control.SIZE_FILL
 	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	icon.modulate              = foe.tint
 	col.add_child(icon)
 
 	# The marker sits directly over the name so it reads as pointing at this

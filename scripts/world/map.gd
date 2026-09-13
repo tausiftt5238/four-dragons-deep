@@ -6,10 +6,8 @@ extends Level
 func _ready() -> void:
 	next_scene = "res://scenes/map.tscn"
 
-	var parent_floor: Variant = get_parent().get("floor_num") if get_parent() else null
-	var floor_num: int = int(parent_floor) if parent_floor != null else 0
-	# The last floor is the corridor; everything before it is a maze.
-	if floor_num >= FLOOR_COUNT:
+	# Every fifth floor is a boss corridor; everything else is a maze.
+	if Level.is_boss_floor(floor_num):
 		_setup_boss_floor()
 	else:
 		_setup_normal_floor(floor_num)

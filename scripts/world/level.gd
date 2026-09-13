@@ -5,7 +5,16 @@
 class_name Level extends Node3D
 
 # The whole run: two mazes, then a corridor with the boss at the end of it.
-const FLOOR_COUNT: int = 3
+# Twenty floors, a boss closing every fifth. A boss floor is a straight
+# corridor rather than a maze, so the last thing before the stairs is a fight
+# you cannot walk around.
+const FLOOR_COUNT: int = 20
+const BOSS_EVERY:  int = 5
+
+
+# Boss floors are the multiples of five; the run ends after the last one.
+static func is_boss_floor(floor_num: int) -> bool:
+	return floor_num % BOSS_EVERY == 0
 
 # 2D maze layout: 1 = wall, 0 = open floor.
 var maze: Array[Array] = []
@@ -24,6 +33,13 @@ var wire_floor_color: Color = Color(0.35, 0.60, 0.75)
 # makes "am I facing a wall?" unanswerable.
 var wire_fill_color: Color = Color(0.075, 0.085, 0.115)
 var wire_fill_alpha: float = 1.0
+
+# Which floor this is. Set by Main on the instance BEFORE it enters the tree,
+# because the level's own _ready runs inside add_child and needs it. It used to
+# be read off get_parent(), which stopped working the moment the world moved
+# into its own SubViewport — the parent became the viewport, the lookup
+# returned nothing, and every floor quietly built as floor zero.
+var floor_num: int = 1
 
 # Where the player spawns when this map is first loaded (start of the game).
 var player_start: Vector2i        = Vector2i(1, 1)

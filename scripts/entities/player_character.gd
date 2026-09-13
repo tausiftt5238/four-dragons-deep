@@ -81,6 +81,17 @@ func belt() -> Array[Dictionary]:
 # Every demon he has bound. The rolodex.
 var recruited: Array[String] = []
 
+# The level each one was bound at. A demon never levels, so a Bat talked down
+# on floor three is a level-four Bat for the rest of the run however deep you
+# take it — which is exactly what makes selling it on to fund a deeper one a
+# real decision rather than bookkeeping.
+var bound_level: Dictionary = {}
+
+
+# Rebuilds a bound demon at the level it was caught, not at some default.
+func bound_demon(demon_name: String) -> Enemy:
+	return Enemy.make_at_level(demon_name, int(bound_level.get(demon_name, 1)))
+
 # The ones he actually walks in with, in slot order. Chosen in the menu before
 # a fight rather than assembled mid-battle — CombatScene.MAX_PARTY - 1 of them,
 # since the detective takes the first slot himself.
@@ -110,9 +121,12 @@ func deactivate_demon(demon_name: String) -> void:
 
 # Newly bound demons take a free slot on their own, so a first recruit is
 # usable without a trip to the menu.
-func remember_recruit(demon_name: String) -> void:
+func remember_recruit(demon_name: String, lv: int = 1) -> void:
 	if demon_name not in recruited:
 		recruited.append(demon_name)
+	# Keep the best one ever bound: re-catching a weaker copy should never
+	# downgrade what is already in the rolodex.
+	bound_level[demon_name] = maxi(int(bound_level.get(demon_name, 0)), maxi(1, lv))
 	activate_demon(demon_name)
 
 # Nobody walks into their first case empty-handed. A first-floor demon, not a
@@ -163,6 +177,7 @@ func _ready() -> void:
 	equipped_items  = []
 	equipped_accessories = []
 	recruited       = [STARTING_DEMON]
+	bound_level     = {STARTING_DEMON: 2}
 	active_demons   = [STARTING_DEMON]
 
 	# He is human. No resistances of his own, and the cold gets through —

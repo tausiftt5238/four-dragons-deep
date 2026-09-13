@@ -226,13 +226,14 @@ func _build_bind() -> void:
 
 
 func _bind_offer(list: SlotList, enemy_name: String) -> void:
-	var demon: Enemy = Enemy.make_from_name(enemy_name)
+	var demon: Enemy = Enemy.make_from_name(enemy_name, floor_num)
 	var owned: bool = enemy_name in player.recruited
 	var price: int = bind_price(demon)
 	var element: String = Affinity.element_name(demon.attack_element) \
 			if demon.attack_element != "" else "no element"
 	var about: String = "LV %d   HP %d   MP %d   %s" % [
 			demon.lv, demon.max_hp, demon.max_mp, element]
+	var offered_lv: int = demon.lv
 	demon.free()
 
 	list.add(enemy_name,
@@ -247,7 +248,7 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 					_set_status("Not enough gold.")
 				else:
 					player.gold -= price
-					player.remember_recruit(enemy_name)
+					player.remember_recruit(enemy_name, offered_lv)
 					_set_status("%s answers to you now." % enemy_name)
 				_refresh())
 
