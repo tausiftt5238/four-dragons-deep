@@ -213,4 +213,6 @@ static func drop_table() -> Array[Dictionary]:
 	]
 	out.append_array(elemental_scrolls())
 	out.append_array(Accessory.all())
+	out.append_array(Weapon.all())
+	out.append_array(Armor.all())
 	return out

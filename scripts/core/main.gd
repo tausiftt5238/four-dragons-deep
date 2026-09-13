@@ -1236,6 +1236,8 @@ func _gather_save_data() -> Dictionary:
 			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
+			equipped_weapon      = p.equipped_weapon,
+			equipped_armor       = p.equipped_armor,
 			equipped_accessories = p.equipped_accessories,
 		},
 		map = {
@@ -1403,6 +1405,8 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.inventory.clear()
 	player_char.inventory.assign(pdata["inventory"] as Array)
 
+	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
+	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
 	var accs: Array = pdata.get("equipped_accessories", []) as Array
 	player_char.equipped_accessories.clear()
 	for a: Variant in accs:

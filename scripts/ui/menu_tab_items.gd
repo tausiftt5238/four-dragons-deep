@@ -88,6 +88,20 @@ func _add_item(list: SlotList, item_id: String) -> void:
 			press = func() -> void:
 				_m._set_status(p.use_item(item))
 				_m._refresh()})
+	elif kind == "weapon":
+		actions.append({
+			text = "Wield", disabled = p.equipped_weapon.get("id", "") == item_id,
+			press = func() -> void:
+				p.equip_weapon(item)
+				_m._set_status("Wielding %s." % item["name"])
+				_m._refresh()})
+	elif kind == "armor":
+		actions.append({
+			text = "Wear", disabled = p.equipped_armor.get("id", "") == item_id,
+			press = func() -> void:
+				p.equip_armor(item)
+				_m._set_status("Wearing %s." % item["name"])
+				_m._refresh()})
 	elif kind == "accessory":
 		var worn: bool = p.is_accessory_equipped(item_id)
 		actions.append({
@@ -108,7 +122,7 @@ func _add_item(list: SlotList, item_id: String) -> void:
 			_m._refresh()})
 
 	var about: String = item.get("desc", "") as String
-	if kind == "accessory":
+	if kind in ["accessory", "weapon", "armor"]:
 		about = "%s%s" % [about, GearTooltip.bonus_string(item)]
 
 	list.add_entry("%s%s" % ["* " if belted else "", item["name"]],

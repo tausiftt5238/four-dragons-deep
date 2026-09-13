@@ -272,6 +272,11 @@ func _stock() -> Array[Dictionary]:
 		for spell_id: String in ["rime", "arc", "banish", "consign"]:
 			out.append(Item.spell_scroll(spell_id,
 					int(Item.ELEMENTAL_SCROLLS.get(spell_id, 3))))
+
+	# An orb stocks gear for the depth you have reached, which is the main
+	# thing gold is for once the belt is full.
+	out.append_array(Weapon.for_floor(floor_num))
+	out.append_array(Armor.for_floor(floor_num))
 	return out
 
 

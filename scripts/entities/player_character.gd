@@ -7,8 +7,11 @@ const DISPLAY_NAME: String = "Hero"
 
 var gold: int = 200
 
-# Trinkets. No weapon, no armour — he is a man who walks into other people's
-# heads carrying small objects, and two is as many as he can keep track of.
+# What he is carrying into the dark: a weapon, a worn piece, and two trinkets.
+# Empty dict means the slot is empty.
+var equipped_weapon: Dictionary = {}
+var equipped_armor:  Dictionary = {}
+
 const ACCESSORY_SLOTS: int = 2
 var equipped_accessories: Array[Dictionary] = []
 
@@ -175,6 +178,8 @@ func _ready() -> void:
 	known_spells    = ["ember"]
 	equipped_spells = ["ember"]
 	equipped_items  = []
+	equipped_weapon = {}
+	equipped_armor  = {}
 	equipped_accessories = []
 	recruited       = [STARTING_DEMON]
 	bound_level     = {STARTING_DEMON: 2}
@@ -185,20 +190,53 @@ func _ready() -> void:
 	affinities = {Affinity.PHYS: Affinity.NORMAL, "ice": Affinity.WEAK}
 
 
-# A trinket is layered over the innate chart. It can cancel a weakness or open
-# one, and no further: nothing a person carries makes them drink fire. A
-# resistance wins over a vulnerability, so two conflicting charms leave him
-# merely protected rather than quietly doomed.
+# Gear is layered over the innate chart. Anything worn can cancel a weakness or
+# open one, and no further: nothing a person straps on makes them drink fire.
+# A resistance beats a vulnerability wherever they collide, so a charm that
+# protects and a breastplate that exposes leave him merely protected rather
+# than quietly doomed.
 func affinity_of(element: String) -> String:
 	if element == "":
 		return Affinity.NORMAL
+	if equipped_armor.get("resist_element", "") == element:
+		return Affinity.RESIST
 	for acc: Dictionary in equipped_accessories:
 		if acc.get("resist_element", "") == element:
 			return Affinity.RESIST
-	for acc: Dictionary in equipped_accessories:
-		if acc.get("weak_element", "") == element:
+	if equipped_armor.get("weakness", "") == element:
+		return Affinity.WEAK
+	for acc2: Dictionary in equipped_accessories:
+		if acc2.get("weak_element", "") == element:
 			return Affinity.WEAK
 	return affinities.get(element, Affinity.NORMAL) as String
+
+
+# ── Weapon and armour ─────────────────────────────────────────────────────────
+
+func equip_weapon(item: Dictionary) -> void:
+	if not equipped_weapon.is_empty():
+		inventory.append(equipped_weapon)
+	equipped_weapon = item
+	inventory.erase(item)
+
+
+func unequip_weapon() -> void:
+	if not equipped_weapon.is_empty():
+		inventory.append(equipped_weapon)
+		equipped_weapon = {}
+
+
+func equip_armor(item: Dictionary) -> void:
+	if not equipped_armor.is_empty():
+		inventory.append(equipped_armor)
+	equipped_armor = item
+	inventory.erase(item)
+
+
+func unequip_armor() -> void:
+	if not equipped_armor.is_empty():
+		inventory.append(equipped_armor)
+		equipped_armor = {}
 
 
 # ── Accessories ───────────────────────────────────────────────────────────────
@@ -241,16 +279,21 @@ func _accessory_sum(key: String) -> int:
 # ── Effective stats (base + what he is carrying) ──────────────────────────────
 
 func effective_str() -> int:
-	return maxi(1, str + _accessory_sum("str_bonus"))
+	return maxi(1, str + int(equipped_weapon.get("str_bonus", 0))
+			+ _accessory_sum("str_bonus"))
 
 func effective_def() -> int:
-	return maxi(0, def + _accessory_sum("def_bonus"))
+	return maxi(0, def + int(equipped_armor.get("def_bonus", 0))
+			+ _accessory_sum("def_bonus"))
 
 func effective_mag() -> int:
-	return maxi(1, mag + _accessory_sum("mag_bonus"))
+	return maxi(1, mag + int(equipped_weapon.get("mag_bonus", 0))
+			+ _accessory_sum("mag_bonus"))
 
+# Weight is paid in agility, and a heavy weapon and heavy armour both charge.
 func effective_agl() -> int:
-	return maxi(1, agl + _accessory_sum("agl_bonus"))
+	return maxi(1, agl + int(equipped_weapon.get("agl_pen", 0))
+			+ int(equipped_armor.get("agl_pen", 0)) + _accessory_sum("agl_bonus"))
 
 func effective_luk() -> int:
 	return maxi(1, luk + _accessory_sum("luk_bonus"))
@@ -347,7 +390,7 @@ func use_item(item: Dictionary) -> String:
 
 
 func sort_inventory(mode: String = "type") -> void:
-	var type_order: Dictionary = {consumable=0, scroll=1, accessory=2}
+	var type_order: Dictionary = {consumable=0, scroll=1, weapon=2, armor=3, accessory=4}
 	inventory.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if mode == "type":
 			var ta: int = type_order.get(a["type"], 99)
