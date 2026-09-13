@@ -120,9 +120,10 @@ func _draw() -> void:
 			draw_rect(Rect2(ox + pc * cell, oy + pr * cell,
 					cell - 1.0, cell - 1.0), C_PORTAL)
 
-	# The warden, while it still holds the key. Shown without needing the cell
-	# visited — the floor's task is finding it, not stumbling on it.
-	if warden_pos.x >= 0:
+	# The warden, while it still holds the key — and only once the cell has
+	# been walked. Showing it from the first step handed over the one thing
+	# the floor is asking you to go and find.
+	if warden_pos.x >= 0 and visited.has(warden_pos):
 		var wc: int = warden_pos.x - origin.x
 		var wr: int = warden_pos.y - origin.y
 		if wc >= 0 and wc < view_c and wr >= 0 and wr < view_r:

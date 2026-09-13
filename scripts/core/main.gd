@@ -40,7 +40,7 @@ var cam: Camera3D
 # you cannot see a side opening until you are standing in it. The screen splits
 # instead — the floor map above, the dungeon below — which gives the 3D a pane
 # nearer 4:3 and puts the part you swipe within reach of a thumb.
-const MAP_PANE_H: int = 380
+const MAP_PANE_H: int = 520
 
 var world: SubViewport
 var _world_box: SubViewportContainer
@@ -663,6 +663,8 @@ func _free_cells_in(zone: Rect2i, min_dist: int) -> Array[Vector2i]:
 				continue
 			if c == current_level.exit_pos or c == current_level.warden_pos:
 				continue
+			if c in current_level.orb_cells:
+				continue
 			if absi(c.x - player_pos.x) + absi(c.y - player_pos.y) < min_dist:
 				continue
 			out.append(c)
@@ -734,6 +736,10 @@ func _step_roamers() -> void:
 	for r: Roamer in roamers:
 		if is_instance_valid(r):
 			var taken: Dictionary = _occupied_cells()
+			# An orb is the only place a run can be saved, healed or restocked.
+			# A demon parked on one turns that into a fight you cannot decline.
+			for orb: Vector2i in current_level.orb_cells:
+				taken[orb] = true
 			taken.erase(r.cell)
 			r.move_to(r.choose_step(player_pos, _is_open, taken))
 
