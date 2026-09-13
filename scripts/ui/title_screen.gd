@@ -21,12 +21,16 @@ func _build() -> void:
 	add_child(center)
 
 	var vbox: VBoxContainer = VBoxContainer.new()
-	vbox.custom_minimum_size = Vector2(380, 0)
+	# The screen is 540 wide; leave a margin either side rather than filling it.
+	vbox.custom_minimum_size = Vector2(460, 0)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_theme_constant_override("separation", 18)
 	center.add_child(vbox)
 
-	var title: Label = _make_lbl("DUNGEON CRAWLER", 42, Color(0.90, 0.75, 0.30))
+	# One word per line. Fifteen characters at this size is far wider than a
+	# phone held upright, and shrinking the type to fit would waste the only
+	# place in the game with room for a big word.
+	var title: Label = _make_lbl("DUNGEON\nCRAWLER", 54, Color(0.90, 0.75, 0.30))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
@@ -58,8 +62,13 @@ func _build() -> void:
 
 	vbox.add_child(HSeparator.new())
 
-	var hint: Label = _make_lbl("arrows: move / turn     esc: menu     f5: save     f9: load", 11, Color(0.35, 0.32, 0.40))
+	# The keyboard hints were desktop-only and are a lie on a phone, which is
+	# what this is now. Swipe is the real control.
+	var hint: Label = _make_lbl(
+			"swipe to move and turn  ·  tap MENU for party, gear and magic",
+			12, Color(0.35, 0.32, 0.40))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(hint)
 
 

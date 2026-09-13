@@ -56,13 +56,17 @@ func _build() -> void:
 	head.add_child(_gold_lbl)
 
 	var close_btn: Button = Button.new()
-	close_btn.text = "Leave [ESC]"
-	close_btn.custom_minimum_size = Vector2(150, 32)
+	close_btn.text = "Leave"
+	close_btn.custom_minimum_size = Vector2(88, 32)
 	close_btn.pressed.connect(func() -> void: closed.emit())
 	head.add_child(close_btn)
 
-	var tabs: HBoxContainer = HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 6)
+	# Four tabs named in words are wider than the screen in one line, so they
+	# sit two by two.
+	var tabs: GridContainer = GridContainer.new()
+	tabs.columns = 2
+	tabs.add_theme_constant_override("h_separation", 6)
+	tabs.add_theme_constant_override("v_separation", 6)
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Bind a demon"],
 			["buy", "Supplies"], ["save", "Record the run"]]:
@@ -174,45 +178,67 @@ func _build_rest() -> void:
 				_set_status("Whatever was in you is gone.")))
 
 
-func _rest_row(title: String, desc: String, price: int, nothing_to_do: bool,
-		apply: Callable) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+# ── Row shape ─────────────────────────────────────────────────────────────────
+#
+# Name, price and the button on top; whatever explains the choice underneath,
+# wrapped. Five columns of fixed width was about 570px of a 540px screen, and
+# the thing that got cut off was always the price.
+func _offer_row(title: String, title_color: Color, detail: String,
+		price_text: String, price_color: Color,
+		btn_text: String, disabled: bool, on_press: Callable) -> VBoxContainer:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+
+	var head: HBoxContainer = HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	col.add_child(head)
 
 	var name_lbl: Label = Label.new()
 	name_lbl.text = title
-	name_lbl.custom_minimum_size = Vector2(190, 0)
-	name_lbl.add_theme_color_override("font_color",
-		Color(0.50, 0.52, 0.58) if nothing_to_do else Color(0.85, 0.85, 0.92))
-	row.add_child(name_lbl)
-
-	var desc_lbl: Label = Label.new()
-	desc_lbl.text = desc
-	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	desc_lbl.add_theme_color_override("font_color", Color(0.66, 0.66, 0.74))
-	row.add_child(desc_lbl)
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.add_theme_color_override("font_color", title_color)
+	head.add_child(name_lbl)
 
 	var price_lbl: Label = Label.new()
-	price_lbl.text = "—" if nothing_to_do else "%d g" % price
-	price_lbl.custom_minimum_size = Vector2(80, 0)
-	price_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-	row.add_child(price_lbl)
+	price_lbl.text = price_text
+	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	price_lbl.custom_minimum_size = Vector2(72, 0)
+	price_lbl.add_theme_color_override("font_color", price_color)
+	head.add_child(price_lbl)
 
 	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(96, 28)
-	btn.text = "Nothing to do" if nothing_to_do else "Pay"
-	btn.disabled = nothing_to_do or player.gold < price
-	if not nothing_to_do:
-		btn.pressed.connect(func() -> void:
-			if player.gold < price:
-				_set_status("Not enough gold.")
-			else:
-				player.gold -= price
-				apply.call()
-			_refresh()
-		)
-	row.add_child(btn)
-	return row
+	btn.text = btn_text
+	btn.custom_minimum_size = Vector2(92, 28)
+	btn.disabled = disabled
+	if not disabled:
+		btn.pressed.connect(on_press)
+	head.add_child(btn)
+
+	var detail_lbl: Label = Label.new()
+	detail_lbl.text = "     " + detail
+	detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_lbl.add_theme_font_size_override("font_size", 11)
+	detail_lbl.add_theme_color_override("font_color", Color(0.60, 0.62, 0.70))
+	col.add_child(detail_lbl)
+	return col
+
+
+func _rest_row(title: String, desc: String, price: int, nothing_to_do: bool,
+		apply: Callable) -> VBoxContainer:
+	return _offer_row(title,
+			Color(0.50, 0.52, 0.58) if nothing_to_do else Color(0.85, 0.85, 0.92),
+			desc,
+			"\u2014" if nothing_to_do else "%d g" % price,
+			Color(1.0, 0.85, 0.35),
+			"Nothing to do" if nothing_to_do else "Pay",
+			nothing_to_do or player.gold < price,
+			func() -> void:
+				if player.gold < price:
+					_set_status("Not enough gold.")
+				else:
+					player.gold -= price
+					apply.call()
+				_refresh())
 
 
 # ── Binding ───────────────────────────────────────────────────────────────────
@@ -241,57 +267,26 @@ func _build_bind() -> void:
 		_content.add_child(_note("You have not met anything that would come when called."))
 
 
-func _bind_row(enemy_name: String, demon: Enemy) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-
+func _bind_row(enemy_name: String, demon: Enemy) -> VBoxContainer:
 	var owned: bool = enemy_name in player.recruited
 	var price: int = bind_price(demon)
-
-	var name_lbl: Label = Label.new()
-	name_lbl.text = "%s   LV %d" % [enemy_name, demon.lv]
-	name_lbl.custom_minimum_size = Vector2(190, 0)
-	name_lbl.add_theme_color_override("font_color",
-		Color(0.62, 0.92, 0.74) if owned else Color(0.85, 0.85, 0.92))
-	row.add_child(name_lbl)
-
-	var stat_lbl: Label = Label.new()
-	stat_lbl.text = "HP %d   MP %d" % [demon.max_hp, demon.max_mp]
-	stat_lbl.custom_minimum_size = Vector2(140, 0)
-	stat_lbl.add_theme_color_override("font_color", Color(0.62, 0.72, 0.68))
-	row.add_child(stat_lbl)
-
-	var elem_lbl: Label = Label.new()
-	elem_lbl.text = Affinity.element_name(demon.attack_element) if demon.attack_element != "" \
-			else "no element"
-	elem_lbl.custom_minimum_size = Vector2(110, 0)
-	elem_lbl.add_theme_color_override("font_color",
-		Color(1.0, 0.72, 0.35) if demon.attack_element != "" else Color(0.45, 0.45, 0.50))
-	row.add_child(elem_lbl)
-
-	var price_lbl: Label = Label.new()
-	price_lbl.text = "bound" if owned else "%d g" % price
-	price_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	price_lbl.add_theme_color_override("font_color",
-		Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35))
-	row.add_child(price_lbl)
-
-	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(96, 28)
-	btn.text = "Bound" if owned else "Bind"
-	btn.disabled = owned or player.gold < price
-	if not owned:
-		btn.pressed.connect(func() -> void:
-			if player.gold < price:
-				_set_status("Not enough gold.")
-			else:
-				player.gold -= price
-				player.remember_recruit(enemy_name)
-				_set_status("%s answers to you now." % enemy_name)
-			_refresh()
-		)
-	row.add_child(btn)
-	return row
+	var element: String = Affinity.element_name(demon.attack_element) \
+			if demon.attack_element != "" else "no element"
+	return _offer_row("%s   LV %d" % [enemy_name, demon.lv],
+			Color(0.62, 0.92, 0.74) if owned else Color(0.85, 0.85, 0.92),
+			"HP %d   MP %d   %s" % [demon.max_hp, demon.max_mp, element],
+			"bound" if owned else "%d g" % price,
+			Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35),
+			"Bound" if owned else "Bind",
+			owned or player.gold < price,
+			func() -> void:
+				if player.gold < price:
+					_set_status("Not enough gold.")
+				else:
+					player.gold -= price
+					player.remember_recruit(enemy_name)
+					_set_status("%s answers to you now." % enemy_name)
+				_refresh())
 
 
 # ── Supplies ──────────────────────────────────────────────────────────────────
@@ -326,43 +321,20 @@ func _build_buy() -> void:
 		_content.add_child(_buy_row(item))
 
 
-func _buy_row(item: Dictionary) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+func _buy_row(item: Dictionary) -> VBoxContainer:
 	var price: int = item_price(item)
-
-	var name_lbl: Label = Label.new()
-	name_lbl.text = item["name"]
-	name_lbl.custom_minimum_size = Vector2(190, 0)
-	row.add_child(name_lbl)
-
-	var desc_lbl: Label = Label.new()
-	desc_lbl.text = item.get("desc", "")
-	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	desc_lbl.add_theme_color_override("font_color", Color(0.66, 0.66, 0.74))
-	row.add_child(desc_lbl)
-
-	var price_lbl: Label = Label.new()
-	price_lbl.text = "%d g" % price
-	price_lbl.custom_minimum_size = Vector2(80, 0)
-	price_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-	row.add_child(price_lbl)
-
-	var btn: Button = Button.new()
-	btn.text = "Buy"
-	btn.custom_minimum_size = Vector2(80, 28)
-	btn.disabled = player.gold < price
-	btn.pressed.connect(func() -> void:
-		if player.gold < price:
-			_set_status("Not enough gold.")
-		else:
-			player.gold -= price
-			player.add_item(item.duplicate(), 1)
-			_set_status("Bought %s." % item["name"])
-		_refresh()
-	)
-	row.add_child(btn)
-	return row
+	return _offer_row(item["name"] as String, Color(0.85, 0.85, 0.92),
+			item.get("desc", "") as String,
+			"%d g" % price, Color(1.0, 0.85, 0.35),
+			"Buy", player.gold < price,
+			func() -> void:
+				if player.gold < price:
+					_set_status("Not enough gold.")
+				else:
+					player.gold -= price
+					player.add_item((item as Dictionary).duplicate(), 1)
+					_set_status("Bought %s." % item["name"])
+				_refresh())
 
 
 # ── Saving ────────────────────────────────────────────────────────────────────
