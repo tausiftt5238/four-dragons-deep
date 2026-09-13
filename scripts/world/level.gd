@@ -51,6 +51,14 @@ var warden_pos: Vector2i = Vector2i(-1, -1)
 # and the only place gold buys anything.
 var orb_cells: Array[Vector2i] = []
 
+# Caches cut into the walls. The key is the WALL cell the cache sits inside;
+# the value is the floor cell you have to be standing on to reach it, so
+# walking into that wall from that side opens it instead of bumping. A cache
+# that has been emptied stays in the dictionary and moves into `looted`, so
+# the recess is still drawn and still reads as somewhere you have been.
+var chest_cells: Dictionary = {}
+var looted: Dictionary = {}
+
 # Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
 # Erased by main.gd after the player triggers one.
 var trap_cells: Dictionary = {}

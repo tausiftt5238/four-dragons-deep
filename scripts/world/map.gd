@@ -47,6 +47,7 @@ func _setup_normal_floor(floor_num: int = 0) -> void:
 	_place_traps()
 	_place_warden()
 	_place_orbs()
+	_place_chests()
 
 
 func _setup_boss_floor() -> void:
@@ -298,6 +299,56 @@ func _cell_is_open(cell: Vector2i) -> bool:
 	if cell.x < 0 or cell.x >= row.size():
 		return false
 	return int(row[cell.x]) == 0
+
+
+# Two or three caches per floor, each cut into a wall that exactly one open
+# cell touches. Requiring a single neighbour is what puts them in the side of
+# a corridor rather than in the middle of a junction, where a recess would be
+# visible from three directions and lose all of its quality of being found.
+func _place_chests() -> void:
+	chest_cells.clear()
+	looted.clear()
+	var want: int = 2 + (randi() % 2)
+	var rows: int = maze.size()
+	var cols: int = (maze[0] as Array).size()
+
+	var candidates: Array[Array] = []
+	for row: int in rows:
+		for col: int in cols:
+			var wall: Vector2i = Vector2i(col, row)
+			if _cell_is_open(wall):
+				continue
+			if wall == exit_wall_pos:
+				continue
+			var touching: Array[Vector2i] = []
+			for off: Vector2i in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+				var face: Vector2i = wall + off
+				if _cell_is_open(face):
+					touching.append(face)
+			if touching.size() != 1:
+				continue
+			var face_cell: Vector2i = touching[0]
+			if face_cell == player_start or face_cell == exit_pos \
+					or face_cell == warden_pos or face_cell in orb_cells \
+					or trap_cells.has(face_cell):
+				continue
+			candidates.append([wall, face_cell])
+
+	candidates.shuffle()
+	for entry: Array in candidates:
+		if chest_cells.size() >= want:
+			break
+		var wall2: Vector2i = entry[0] as Vector2i
+		var face2: Vector2i = entry[1] as Vector2i
+		# Spread them out, the same way the orbs are spread.
+		var too_close: bool = false
+		for other: Variant in chest_cells.keys():
+			var o: Vector2i = other as Vector2i
+			if absi(o.x - wall2.x) + absi(o.y - wall2.y) < 7:
+				too_close = true
+		if too_close:
+			continue
+		chest_cells[wall2] = face2
 
 
 func _place_traps() -> void:

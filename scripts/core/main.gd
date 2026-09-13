@@ -53,6 +53,7 @@ var in_combat:  bool = false
 var menu_open:  bool = false
 var save_open:  bool = false
 var orb_open:   bool = false
+var chest_open: bool = false
 
 var _encounters_enabled:       bool = true
 
@@ -82,6 +83,7 @@ var _encounter_debug_lbl: Label
 var menu_layer:    CanvasLayer
 var save_layer:    CanvasLayer
 var orb_layer:     CanvasLayer
+var chest_layer:   CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
 var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
@@ -443,6 +445,9 @@ func _action_forward() -> void:
 		_post_move()
 	elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
 		_check_portal()
+	elif current_level.chest_cells.get(nxt, Vector2i(-1, -1)) == player_pos \
+			and not current_level.looted.has(nxt):
+		_open_chest(nxt)
 	else:
 		_shake_camera()
 
@@ -488,7 +493,7 @@ func _post_move() -> void:
 
 
 func _handle_swipe(delta: Vector2) -> void:
-	if in_combat or menu_open or save_open or orb_open:
+	if in_combat or menu_open or save_open or orb_open or chest_open:
 		return
 	if delta.length() < _SWIPE_MIN:
 		return
@@ -505,7 +510,7 @@ func _handle_swipe(delta: Vector2) -> void:
 
 
 func _on_menu_btn_pressed() -> void:
-	if in_combat or save_open or orb_open:
+	if in_combat or save_open or orb_open or chest_open:
 		return
 	if menu_open:
 		_close_menu()
@@ -532,7 +537,8 @@ func _input(event: InputEvent) -> void:
 		_update_encounter_debug_label()
 		return
 
-	if event.keycode == KEY_F9 and not in_combat and not save_open and not orb_open:
+	if event.keycode == KEY_F9 and not in_combat and not save_open and not orb_open \
+			and not chest_open:
 		if menu_open:
 			_close_menu()
 		_open_load_menu()
@@ -1068,6 +1074,56 @@ func _close_menu() -> void:
 
 
 # ── Save orbs ────────────────────────────────────────────────────────────────
+
+# ── Caches ────────────────────────────────────────────────────────────────────
+
+func _open_chest(wall: Vector2i) -> void:
+	chest_open = true
+	hud_layer.visible = false
+	if not is_instance_valid(chest_layer):
+		chest_layer = CanvasLayer.new()
+		chest_layer.layer = 15
+		add_child(chest_layer)
+	var ui: ChestUI = ChestUI.new()
+	ui.closed.connect(func() -> void: _close_chest())
+	ui.opened.connect(func() -> void:
+		_loot_chest(wall)
+		_close_chest())
+	chest_layer.add_child(ui)
+
+
+# What was in it. Gold always, and better odds of something on top of that
+# than a demon carries — a cache you had to find should beat a demon you
+# tripped over.
+func _loot_chest(wall: Vector2i) -> void:
+	current_level.looted[wall] = true
+
+	var coin: int = 25 + floor_num * 20 + (randi() % (20 + floor_num * 10))
+	player_char.gold += coin
+	var found: Array[String] = ["%d gold" % coin]
+
+	if randi() % 100 < 70:
+		var table: Array[Dictionary] = Item.drop_table()
+		var item: Dictionary = table[randi() % table.size()].duplicate()
+		player_char.add_item(item, 1)
+		found.append(item["name"] as String)
+
+	_show_hud_popup("Opened:  %s" % ", ".join(found), Color(1.0, 0.82, 0.40))
+	# Rebuild so the emptied recess reads as emptied.
+	if is_instance_valid(dungeon):
+		dungeon.queue_free()
+	dungeon = Dungeon.new()
+	world.add_child(dungeon)
+	dungeon.build(current_level)
+
+
+func _close_chest() -> void:
+	chest_open = false
+	hud_layer.visible = true
+	if is_instance_valid(chest_layer):
+		for child: Node in chest_layer.get_children():
+			child.queue_free()
+
 
 func _open_orb() -> void:
 	orb_open = true

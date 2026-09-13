@@ -18,6 +18,7 @@ func build(level: Level) -> void:
 		_add_exit_marker(level.exit_wall_pos, level.exit_pos)
 	_add_trap_markers(level)
 	_add_orbs(level)
+	_add_chests(level)
 	_setup_environment()
 
 
@@ -48,10 +49,19 @@ func _build_geometry(level: Level) -> void:
 		var row_data: Array = level.maze[row]
 		for col: int in range(row_data.size()):
 			if row_data[col] == 1:
-				# Only faces that touch open floor are ever seen.
+				var here: Vector2i = Vector2i(col, row)
+				# Only faces that touch open floor are ever seen — and the one
+				# face a cache opens through is left out entirely, because the
+				# fill behind a wall writes depth and would bury the recess.
+				# The cache REPLACES that face; it does not sit in front of it.
+				var cache_face: Vector2i = level.chest_cells.get(here,
+						Vector2i(-999, -999)) as Vector2i
 				for n: Vector2i in _NEIGHBOURS:
-					if _is_open(level, col + n.x, row + n.y):
-						_add_wall_face(col, row, n, level.wire_color)
+					if not _is_open(level, col + n.x, row + n.y):
+						continue
+					if here + n == cache_face:
+						continue
+					_add_wall_face(col, row, n, level.wire_color)
 			else:
 				_add_cell_outline(col, row, 0.0, level.wire_floor_color)
 				_add_cell_outline(col, row, WALL_HEIGHT, level.wire_floor_color.darkened(0.35))
@@ -282,6 +292,94 @@ func _add_orb(pos: Vector2i) -> void:
 	# A slow turn, so it reads as alive from down a corridor.
 	var spin: Tween = create_tween().set_loops()
 	spin.tween_property(core, "rotation:y", TAU, 6.0).from(0.0)
+
+
+# ── Caches ────────────────────────────────────────────────────────────────────
+#
+# A cache is cut INTO a wall rather than parked on the floor, which is why it
+# has to bring its own recess: no wall in this maze has anything solid behind
+# it, so without lining the niche you would be looking through the level. The
+# lining is three quads and a floor, drawn in the wall's own colour so the
+# recess reads as part of the architecture and the thing inside it does not.
+const _CHEST_DEPTH: float = 0.55
+
+
+func _add_chests(level: Level) -> void:
+	for wall: Variant in level.chest_cells.keys():
+		var wall_pos: Vector2i = wall as Vector2i
+		var face_pos: Vector2i = level.chest_cells[wall] as Vector2i
+		_add_chest(wall_pos, face_pos - wall_pos,
+				level.looted.has(wall_pos), level.wire_color)
+
+
+func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) -> void:
+	var root: Node3D = Node3D.new()
+	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)
+	add_child(root)
+
+	# Outward is the direction the recess opens; across is the other axis.
+	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
+	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
+	var half: float = CELL_SIZE * 0.5
+	var mouth: float = CELL_SIZE * 0.62          # how wide the niche opens
+	var back: float = half - _CHEST_DEPTH        # distance in to the back wall
+	var top: float = WALL_HEIGHT * 0.62
+
+	var line_mat: StandardMaterial3D = StandardMaterial3D.new()
+	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	line_mat.albedo_color = wire.darkened(0.55)
+
+	# Back panel and the two cheeks, so the niche has somewhere to stop.
+	_add_box_child(root, out * back + Vector3(0.0, top * 0.5, 0.0),
+			_axis_box(out, across, 0.06, top, mouth), line_mat)
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				out * ((half + back) * 0.5) + across * (mouth * 0.5 * side)
+					+ Vector3(0.0, top * 0.5, 0.0),
+				_axis_box(out, across, _CHEST_DEPTH, top, 0.06), line_mat)
+	# Lintel across the top of the opening.
+	_add_box_child(root, out * ((half + back) * 0.5) + Vector3(0.0, top, 0.0),
+			_axis_box(out, across, _CHEST_DEPTH, 0.06, mouth), line_mat)
+	# Shelf the cache sits on.
+	_add_box_child(root, out * ((half + back) * 0.5) + Vector3(0.0, 0.04, 0.0),
+			_axis_box(out, across, _CHEST_DEPTH, 0.08, mouth), line_mat)
+
+	# The cache itself: a squat solid, lit from within until it is emptied.
+	var glow: Color = wire.darkened(0.70) if looted else Color(1.0, 0.80, 0.32)
+	var body_mat: StandardMaterial3D = StandardMaterial3D.new()
+	body_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	body_mat.albedo_color = glow
+	if not looted:
+		body_mat.emission_enabled = true
+		body_mat.emission = glow
+		body_mat.emission_energy_multiplier = 2.6
+
+	var centre: Vector3 = out * ((half + back) * 0.5) + Vector3(0.0, 0.30, 0.0)
+	_add_box_child(root, centre,
+			_axis_box(out, across, _CHEST_DEPTH * 0.55, 0.30, mouth * 0.62), body_mat)
+	# A lid, offset so the box reads as a container rather than a crate.
+	_add_box_child(root, centre + Vector3(0.0, 0.20, 0.0),
+			_axis_box(out, across, _CHEST_DEPTH * 0.62, 0.08, mouth * 0.70), body_mat)
+
+	if looted:
+		return
+
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color  = Color(1.0, 0.82, 0.40)
+	light.light_energy = 1.6
+	light.omni_range   = 3.4
+	light.position     = centre
+	root.add_child(light)
+
+
+# Box extents for something aligned to an arbitrary cardinal facing: `depth`
+# runs along `out`, `width` along `across`, and height is always Y.
+func _axis_box(out: Vector3, across: Vector3, depth: float, height: float,
+		width: float) -> Vector3:
+	return Vector3(
+			absf(out.x) * depth + absf(across.x) * width,
+			height,
+			absf(out.z) * depth + absf(across.z) * width)
 
 
 # Colored floor overlay for each trap cell so the player can see them.
