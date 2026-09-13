@@ -10,6 +10,7 @@ signal load_requested
 var player: PlayerCharacter
 
 var _active_tab:  String = "stats"
+var page: Dictionary = {}
 var _tab_btns:    Dictionary = {}
 var _content:     VBoxContainer
 var _status_line: Label
@@ -121,6 +122,11 @@ func _build_shell() -> void:
 
 
 # ── Tab routing ───────────────────────────────────────────────────────────────
+
+func add_paged_list(parent: Control, key: String, entries: Array[String],
+		fill: Callable) -> void:
+	SlotList.paged(parent, page, key, entries, fill, _refresh)
+
 
 func _switch_tab(tab_id: String) -> void:
 	_active_tab      = tab_id

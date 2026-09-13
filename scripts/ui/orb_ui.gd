@@ -16,6 +16,8 @@ var _content: VBoxContainer
 var _status: Label
 var _gold_lbl: Label
 var _tab_btns: Dictionary = {}
+# Which page each of the long lists is showing.
+var _page: Dictionary = {}
 
 
 func _ready() -> void:
@@ -68,8 +70,8 @@ func _build() -> void:
 	tabs.add_theme_constant_override("h_separation", 6)
 	tabs.add_theme_constant_override("v_separation", 6)
 	col.add_child(tabs)
-	for pair: Array in [["rest", "Rest"], ["bind", "Bind a demon"],
-			["buy", "Supplies"], ["save", "Record the run"]]:
+	for pair: Array in [["rest", "Rest"], ["bind", "Bind"],
+			["buy", "Supplies"], ["save", "Record"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -159,78 +161,33 @@ func _build_rest() -> void:
 
 	_content.add_child(HSeparator.new())
 
-	_content.add_child(_rest_row("Mend wounds", "Restores every point of HP.",
+	var list: SlotList = SlotList.new(_content)
+	_rest_offer(list, "Mend wounds", "Restores every point of HP.",
 			hp_price(player), player.hp >= player.max_hp,
 			func() -> void:
 				player.hp = player.max_hp
-				_set_status("Your wounds close.")))
-
-	_content.add_child(_rest_row("Refill the well", "Restores every point of MP.",
+				_set_status("Your wounds close."))
+	_rest_offer(list, "Refill the well", "Restores every point of MP.",
 			mp_price(player), player.mp >= player.max_mp,
 			func() -> void:
 				player.mp = player.max_mp
-				_set_status("The well is full again.")))
-
-	_content.add_child(_rest_row("Draw off the poison", "Clears every ailment.",
+				_set_status("The well is full again."))
+	_rest_offer(list, "Draw off the poison", "Clears every ailment.",
 			CURE_PRICE, player.active_statuses.is_empty(),
 			func() -> void:
 				player.active_statuses.clear()
-				_set_status("Whatever was in you is gone.")))
+				_set_status("Whatever was in you is gone."))
 
 
-# ── Row shape ─────────────────────────────────────────────────────────────────
-#
-# Name, price and the button on top; whatever explains the choice underneath,
-# wrapped. Five columns of fixed width was about 570px of a 540px screen, and
-# the thing that got cut off was always the price.
-func _offer_row(title: String, title_color: Color, detail: String,
-		price_text: String, price_color: Color,
-		btn_text: String, disabled: bool, on_press: Callable) -> VBoxContainer:
-	var col: VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+# ── Offers ────────────────────────────────────────────────────────────────────
 
-	var head: HBoxContainer = HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
-	col.add_child(head)
-
-	var name_lbl: Label = Label.new()
-	name_lbl.text = title
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.add_theme_color_override("font_color", title_color)
-	head.add_child(name_lbl)
-
-	var price_lbl: Label = Label.new()
-	price_lbl.text = price_text
-	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	price_lbl.custom_minimum_size = Vector2(72, 0)
-	price_lbl.add_theme_color_override("font_color", price_color)
-	head.add_child(price_lbl)
-
-	var btn: Button = Button.new()
-	btn.text = btn_text
-	btn.custom_minimum_size = Vector2(92, 28)
-	btn.disabled = disabled
-	if not disabled:
-		btn.pressed.connect(on_press)
-	head.add_child(btn)
-
-	var detail_lbl: Label = Label.new()
-	detail_lbl.text = "     " + detail
-	detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_lbl.add_theme_font_size_override("font_size", 11)
-	detail_lbl.add_theme_color_override("font_color", Color(0.60, 0.62, 0.70))
-	col.add_child(detail_lbl)
-	return col
-
-
-func _rest_row(title: String, desc: String, price: int, nothing_to_do: bool,
-		apply: Callable) -> VBoxContainer:
-	return _offer_row(title,
+func _rest_offer(list: SlotList, title: String, desc: String, price: int,
+		nothing_to_do: bool, apply: Callable) -> void:
+	list.add(title,
 			Color(0.50, 0.52, 0.58) if nothing_to_do else Color(0.85, 0.85, 0.92),
 			desc,
-			"\u2014" if nothing_to_do else "%d g" % price,
-			Color(1.0, 0.85, 0.35),
-			"Nothing to do" if nothing_to_do else "Pay",
+			"\u2014" if nothing_to_do else "%d g" % price, Color(1.0, 0.85, 0.35),
+			"\u2014" if nothing_to_do else "Pay",
 			nothing_to_do or player.gold < price,
 			func() -> void:
 				if player.gold < price:
@@ -253,28 +210,34 @@ func _build_bind() -> void:
 	_content.add_child(_note(
 		"Demons you have met can be bound here for gold. Talking one down in battle costs nothing — and a demon that falls in battle is struck off, so this is how you get it back."))
 
-	var offered: int = 0
+	var offered: Array = []
 	for enemy_name: String in player.encountered_enemies:
 		var demon: Enemy = Enemy.make_from_name(enemy_name)
-		if not demon.negotiable:
-			demon.free()
-			continue      # a mindless thing cannot be bound at any price
-		offered += 1
-		_content.add_child(_bind_row(enemy_name, demon))
+		var can_bind: bool = demon.negotiable   # a mindless thing cannot be bound
 		demon.free()
+		if can_bind:
+			offered.append(enemy_name)
 
-	if offered == 0:
+	if offered.is_empty():
 		_content.add_child(_note("You have not met anything that would come when called."))
+		SlotList.new(_content)
+		return
+	SlotList.paged(_content, _page, "bind", offered, _bind_offer, _refresh)
 
 
-func _bind_row(enemy_name: String, demon: Enemy) -> VBoxContainer:
+func _bind_offer(list: SlotList, enemy_name: String) -> void:
+	var demon: Enemy = Enemy.make_from_name(enemy_name)
 	var owned: bool = enemy_name in player.recruited
 	var price: int = bind_price(demon)
 	var element: String = Affinity.element_name(demon.attack_element) \
 			if demon.attack_element != "" else "no element"
-	return _offer_row("%s   LV %d" % [enemy_name, demon.lv],
+	var about: String = "LV %d   HP %d   MP %d   %s" % [
+			demon.lv, demon.max_hp, demon.max_mp, element]
+	demon.free()
+
+	list.add(enemy_name,
 			Color(0.62, 0.92, 0.74) if owned else Color(0.85, 0.85, 0.92),
-			"HP %d   MP %d   %s" % [demon.max_hp, demon.max_mp, element],
+			about,
 			"bound" if owned else "%d g" % price,
 			Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35),
 			"Bound" if owned else "Bind",
@@ -317,14 +280,14 @@ static func item_price(item: Dictionary) -> int:
 
 func _build_buy() -> void:
 	_content.add_child(_note("Supplies. Only what is on your belt reaches a battle."))
-	for item: Dictionary in _stock():
-		_content.add_child(_buy_row(item))
+	SlotList.paged(_content, _page, "buy", _stock(), _buy_offer, _refresh)
 
 
-func _buy_row(item: Dictionary) -> VBoxContainer:
-	var price: int = item_price(item)
-	return _offer_row(item["name"] as String, Color(0.85, 0.85, 0.92),
-			item.get("desc", "") as String,
+func _buy_offer(list: SlotList, item: Variant) -> void:
+	var entry: Dictionary = item as Dictionary
+	var price: int = item_price(entry)
+	list.add(entry["name"] as String, Color(0.85, 0.85, 0.92),
+			entry.get("desc", "") as String,
 			"%d g" % price, Color(1.0, 0.85, 0.35),
 			"Buy", player.gold < price,
 			func() -> void:
@@ -332,8 +295,8 @@ func _buy_row(item: Dictionary) -> VBoxContainer:
 					_set_status("Not enough gold.")
 				else:
 					player.gold -= price
-					player.add_item((item as Dictionary).duplicate(), 1)
-					_set_status("Bought %s." % item["name"])
+					player.add_item(entry.duplicate(), 1)
+					_set_status("Bought %s." % entry["name"])
 				_refresh())
 
 
