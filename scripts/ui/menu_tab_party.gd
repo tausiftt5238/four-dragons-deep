@@ -31,13 +31,6 @@ func build() -> void:
 	icons_lbl.add_theme_color_override("font_color", Color(0.55, 0.95, 1.0))
 	header.add_child(icons_lbl)
 
-	var hint: Label = Label.new()
-	hint.text = "Summoned demons start the battle on the field — each one is another action per turn. A demon that falls is gone for good; buy it back at an orb."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
-	_m._content.add_child(hint)
-
 	_m._content.add_child(HSeparator.new())
 
 	if p.recruited.is_empty():

@@ -47,7 +47,7 @@ func _build() -> void:
 	col.add_child(head)
 
 	var title: Label = Label.new()
-	title.text = "SAVE ORB"
+	title.text = "Save Orb"
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.70, 0.92, 1.0))
 	head.add_child(title)
@@ -104,7 +104,7 @@ func _switch(tab: String) -> void:
 		(_tab_btns[id] as Button).button_pressed = (id == tab)
 	for child: Node in _content.get_children():
 		child.queue_free()
-	_gold_lbl.text = "GOLD:  %d" % player.gold
+	_gold_lbl.text = "Gold:  %d" % player.gold
 	match tab:
 		"rest": _build_rest()
 		"bind": _build_bind()
@@ -140,9 +140,6 @@ const CURE_PRICE: int = 40
 
 
 func _build_rest() -> void:
-	_content.add_child(_note(
-		"The orb will mend what it can, for a price. Your demons come back whole on their own."))
-
 	var vitals: Label = Label.new()
 	vitals.text = "HP  %d / %d        MP  %d / %d" % [
 			player.hp, player.max_hp, player.mp, player.max_mp]
@@ -207,9 +204,6 @@ static func bind_price(demon: Enemy) -> int:
 
 
 func _build_bind() -> void:
-	_content.add_child(_note(
-		"Demons you have met can be bound here for gold. Talking one down in battle costs nothing — and a demon that falls in battle is struck off, so this is how you get it back."))
-
 	var offered: Array = []
 	for enemy_name: String in player.encountered_enemies:
 		var demon: Enemy = Enemy.make_from_name(enemy_name)
@@ -285,7 +279,6 @@ static func item_price(item: Dictionary) -> int:
 
 
 func _build_buy() -> void:
-	_content.add_child(_note("Supplies. Only what is on your belt reaches a battle."))
 	SlotList.paged(_content, _page, "buy", _stock(), _buy_offer, _refresh)
 
 
@@ -309,8 +302,6 @@ func _buy_offer(list: SlotList, item: Variant) -> void:
 # ── Saving ────────────────────────────────────────────────────────────────────
 
 func _build_save() -> void:
-	_content.add_child(_note(
-		"An orb is the only place a run can be written down. There is no saving in the dark."))
 	var btn: Button = Button.new()
 	btn.text = "Record the run"
 	btn.custom_minimum_size = Vector2(240, 40)

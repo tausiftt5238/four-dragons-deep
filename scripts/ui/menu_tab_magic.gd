@@ -30,12 +30,6 @@ func build() -> void:
 		Color(1.0, 0.85, 0.35) if p.has_free_slot() else Color(0.60, 0.62, 0.68))
 	header.add_child(slots_lbl)
 
-	var hint: Label = Label.new()
-	hint.text = "Only equipped spells appear in battle."
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
-	_m._content.add_child(hint)
-
 	_m._content.add_child(HSeparator.new())
 
 	if p.known_spells.is_empty():

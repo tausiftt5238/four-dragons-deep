@@ -11,9 +11,6 @@ func _init(menu) -> void:
 
 
 func build() -> void:
-	_m._content.add_child(_make_header("Bestiary"))
-	_m._content.add_child(HSeparator.new())
-
 	if _m.player.encountered_enemies.is_empty():
 		SlotList.new(_m._content).add_note("No enemies recorded yet.")
 		return
@@ -79,11 +76,3 @@ func _chart_text(tmpl: Dictionary) -> String:
 			parts.append("%s %s" % [Affinity.element_name(element), Affinity.label(state)])
 	demon.free()
 	return "no affinities" if parts.is_empty() else "  ".join(parts)
-
-
-func _make_header(text: String) -> Label:
-	var lbl: Label = Label.new()
-	lbl.text = text
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_color_override("font_color", Color(0.95, 0.88, 0.60))
-	return lbl

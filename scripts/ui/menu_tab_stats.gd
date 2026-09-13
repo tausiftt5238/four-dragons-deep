@@ -57,7 +57,7 @@ func build() -> void:
 
 	if not p.active_statuses.is_empty():
 		_m._content.add_child(HSeparator.new())
-		_m._content.add_child(_make_section_label("ACTIVE AILMENTS"))
+		_m._content.add_child(_make_section_label("Active ailments"))
 		for s_id: String in p.active_statuses:
 			var sdata: Dictionary = Status.get_data(s_id)
 			var s_lbl: Label = Label.new()

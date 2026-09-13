@@ -11,9 +11,6 @@ func _init(menu) -> void:
 
 
 func build() -> void:
-	_m._content.add_child(_make_header("What he is carrying"))
-	_m._content.add_child(HSeparator.new())
-
 	var p: PlayerCharacter = _m.player
 
 	# Weapon and armour first — the two that decide how a fight goes — then the
@@ -41,20 +38,6 @@ func build() -> void:
 		slots_hbox.add_child(col)
 
 	_m._content.add_child(HSeparator.new())
-	_m._content.add_child(_make_section_label("In the coat"))
-
-	var spare: Array[String] = []
-	for item: Dictionary in p.inventory:
-		if item.get("type", "") in ["accessory", "weapon", "armor"]:
-			spare.append(item["id"] as String)
-
-	if spare.is_empty():
-		SlotList.new(_m._content).add_note("Nothing else worth carrying.")
-	else:
-		_m.add_paged_list(_m._content, "carried", spare,
-				func(list: SlotList, item_id: String) -> void: _add_spare(list, item_id))
-
-	_m._content.add_child(HSeparator.new())
 	_m._content.add_child(_make_section_label("With them on"))
 
 	var grid: GridContainer = GridContainer.new()
@@ -68,6 +51,20 @@ func build() -> void:
 	_add_cmp_row(grid, "MAG", p.mag, p.effective_mag())
 	_add_cmp_row(grid, "AGL", p.agl, p.effective_agl())
 	_add_cmp_row(grid, "LUK", p.luk, p.effective_luk())
+
+	_m._content.add_child(HSeparator.new())
+	_m._content.add_child(_make_section_label("In the coat"))
+
+	var spare: Array[String] = []
+	for item: Dictionary in p.inventory:
+		if item.get("type", "") in ["accessory", "weapon", "armor"]:
+			spare.append(item["id"] as String)
+
+	if spare.is_empty():
+		SlotList.new(_m._content).add_note("Nothing else worth carrying.")
+	else:
+		_m.add_paged_list(_m._content, "carried", spare,
+				func(list: SlotList, item_id: String) -> void: _add_spare(list, item_id))
 
 
 func _build_slot(idx: int) -> VBoxContainer:
@@ -242,14 +239,6 @@ func _add_cmp_row(grid: GridContainer, stat: String, base: int, eff: int) -> voi
 	else:
 		e.text = "→ %d" % eff
 	grid.add_child(e)
-
-
-func _make_header(text: String) -> Label:
-	var lbl: Label = Label.new()
-	lbl.text = text
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_color_override("font_color", Color(0.95, 0.88, 0.60))
-	return lbl
 
 
 func _make_section_label(text: String) -> Label:
