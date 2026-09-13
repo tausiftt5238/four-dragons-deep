@@ -24,7 +24,7 @@ func build() -> void:
 	header.add_child(mp_lbl)
 
 	var slots_lbl: Label = Label.new()
-	slots_lbl.text = "EQUIPPED:  %d / %d" % [p.equipped_spells.size(), PlayerCharacter.SPELL_SLOTS]
+	slots_lbl.text = "Equipped:  %d / %d" % [p.equipped_spells.size(), PlayerCharacter.SPELL_SLOTS]
 	slots_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slots_lbl.add_theme_color_override("font_color",
 		Color(1.0, 0.85, 0.35) if p.has_free_slot() else Color(0.60, 0.62, 0.68))

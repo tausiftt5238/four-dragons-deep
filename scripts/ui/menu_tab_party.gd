@@ -20,14 +20,14 @@ func build() -> void:
 	_m._content.add_child(header)
 
 	var slots_lbl: Label = Label.new()
-	slots_lbl.text = "SUMMONED:  %d / %d" % [p.active_demons.size(), PlayerCharacter.ACTIVE_SLOTS]
+	slots_lbl.text = "Summoned:  %d / %d" % [p.active_demons.size(), PlayerCharacter.ACTIVE_SLOTS]
 	slots_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slots_lbl.add_theme_color_override("font_color",
 		Color(1.0, 0.85, 0.35) if p.has_free_demon_slot() else Color(0.60, 0.62, 0.68))
 	header.add_child(slots_lbl)
 
 	var icons_lbl: Label = Label.new()
-	icons_lbl.text = "PRESS TURNS:  %d" % (p.active_demons.size() + 1)
+	icons_lbl.text = "Press turns:  %d" % (p.active_demons.size() + 1)
 	icons_lbl.add_theme_color_override("font_color", Color(0.55, 0.95, 1.0))
 	header.add_child(icons_lbl)
 

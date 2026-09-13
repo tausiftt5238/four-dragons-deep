@@ -43,7 +43,7 @@ func _build_ui() -> void:
 	m.add_child(vbox)
 
 	var title: Label = Label.new()
-	title.text = "VICTORY!"
+	title.text = "Victory!"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
 	vbox.add_child(title)

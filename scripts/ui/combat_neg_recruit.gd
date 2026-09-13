@@ -18,7 +18,7 @@ func start() -> void:
 
 func _show_submenu() -> void:
 	_s._set_back(_s._show_talk_submenu)
-	_s._right_title.text = "RECRUIT  %d/4" % _talk_trust
+	_s._right_title.text = "Recruit  %d/4" % _talk_trust
 	_s._right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.60))
 	_s._submenu_clear()
 

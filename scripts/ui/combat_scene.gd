@@ -71,8 +71,11 @@ const MENU_SLOTS: int = 6
 # measured 282 on the main actions, 261 in Skills and 224 in Items, so the
 # whole bottom of the screen jumped by nearly sixty pixels every time you
 # opened a submenu. Six slots are always drawn, empty ones included.
-const MENU_STRIP_H: int = 282
-const MENU_SLOT_H:  int = 88
+const MENU_STRIP_H:  int = 302
+const MENU_SLOT_H:   int = 88
+# The header is this tall whether or not Back is showing. A Button that comes
+# and goes takes 15px of layout with it, which moved every slot underneath.
+const MENU_HEADER_H: int = 39
 var _action_bar: GridContainer
 var _sub_bar:    GridContainer
 var _sub_slots:  Array[MarginContainer] = []
@@ -255,7 +258,7 @@ func _on_back_pressed() -> void:
 func _show_item_submenu() -> void:
 	_hide_actions()
 	_set_back(_show_main_actions)
-	_right_title.text = "ITEMS"
+	_right_title.text = "Items"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.40))
 	_submenu_clear()
 
@@ -502,7 +505,7 @@ func _prompt_beg() -> void:
 	_hide_actions()
 	_back_target = Callable()
 	_right_back_btn.visible = false
-	_right_title.text = "IT IS BEGGING"
+	_right_title.text = "It is begging"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.83, 0.47))
 	_submenu_clear()
 
@@ -770,7 +773,7 @@ func _remember_recruit(demon_name: String) -> void:
 func _show_summon_submenu() -> void:
 	_hide_actions()
 	_set_back(_show_main_actions)
-	_right_title.text = "SUMMON"
+	_right_title.text = "Summon"
 	_right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.55))
 	_submenu_clear()
 
@@ -953,7 +956,7 @@ func _with_target(cb: Callable) -> void:
 		return
 	_hide_actions()
 	_set_back(_show_main_actions)
-	_right_title.text = "TARGET"
+	_right_title.text = "Target"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
 	_submenu_clear()
 	for foe: Enemy in living:
@@ -978,7 +981,7 @@ func _refresh_foe_rows() -> void:
 			(r["portrait"] as TextureRect).modulate.a = 0.0
 			(r["name_lbl"] as Label).text = ""
 			((r["bar"] as ProgressBar).get_parent() as Control).visible = false
-			(r["hp_lbl"] as Label).text = "GONE"
+			(r["hp_lbl"] as Label).text = "Gone"
 			(r["stage_lbl"] as Label).text = ""
 			continue
 		var alive: bool = foe.is_alive()
@@ -1304,7 +1307,7 @@ func _refresh_hp() -> void:
 					Color(1.0, 0.92, 0.45) if _actor_is_player()
 					else Color(0.62, 1.0, 0.78))
 		else:
-			_actor_banner.text = "ENEMY PHASE"
+			_actor_banner.text = "Enemy phase"
 			_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
 
 	_refresh_party_slots()
@@ -1353,8 +1356,8 @@ func _build_icon_overlay() -> void:
 func _refresh_icons() -> void:
 	if _press == null or _foe_press == null:
 		return
-	_icon_lbl.text = "YOU  %s" % (_press.icons_string() if _press.has_turns() else "\u2014")
-	_foe_icon_lbl.text = "FOE  %s" % (
+	_icon_lbl.text = "You  %s" % (_press.icons_string() if _press.has_turns() else "\u2014")
+	_foe_icon_lbl.text = "Foe  %s" % (
 			_foe_press.icons_string() if _foe_press.has_turns() else "\u2014")
 
 
@@ -1682,7 +1685,7 @@ func _refresh_party_slots() -> void:
 
 		var val_lbl: Label = slot["val_lbl"] as Label
 		if not alive:
-			val_lbl.text = "DOWN"
+			val_lbl.text = "Down"
 			val_lbl.add_theme_color_override("font_color", Color(0.55, 0.38, 0.38))
 		else:
 			val_lbl.add_theme_color_override("font_color", hp_tint(member.hp, member.max_hp))
@@ -1720,6 +1723,7 @@ func _build_menu_panel(parent: Control) -> void:
 
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 10)
+	header.custom_minimum_size = Vector2(0, MENU_HEADER_H)
 	col.add_child(header)
 
 	_right_back_btn = Button.new()
@@ -1764,8 +1768,13 @@ func _build_menu_panel(parent: Control) -> void:
 		# SUMMON would claim a wider column than TALK and the six slots would
 		# stop being six equal slots.
 		btn.clip_text             = true
-		btn.custom_minimum_size   = Vector2(0, 74)
+		# No minimum of its own: Main's hook multiplies a Button's minimum
+		# height by 1.5, so any figure set here comes out half again taller
+		# than the submenu's slots and the bar grows when you back out of a
+		# submenu. It fills the body instead, exactly as a slot does.
+		btn.custom_minimum_size   = Vector2(0, 0)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(_on_action.bind(action))
 		_action_bar.add_child(btn)
 		_buttons[action] = btn
@@ -1793,7 +1802,7 @@ func _make_slot_row() -> GridContainer:
 	var row: GridContainer = GridContainer.new()
 	row.columns = MENU_SLOTS / 2
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
+	row.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("h_separation", 6)
 	row.add_theme_constant_override("v_separation", 6)
 	return row

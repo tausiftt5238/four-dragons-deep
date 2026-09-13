@@ -11,7 +11,7 @@ func _init(scene) -> void:
 func start() -> void:
 	_s._hide_actions()
 	_s._set_back(_s._show_talk_submenu)
-	_s._right_title.text = "BRIBE"
+	_s._right_title.text = "Bribe"
 	_s._right_title.add_theme_color_override("font_color", Color(1.0, 0.75, 0.2))
 	_s._submenu_clear()
 

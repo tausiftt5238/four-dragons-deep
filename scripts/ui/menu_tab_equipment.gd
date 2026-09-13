@@ -75,7 +75,7 @@ func _build_slot(idx: int) -> VBoxContainer:
 	m.add_child(inner)
 
 	var slot_lbl: Label = Label.new()
-	slot_lbl.text = "SLOT %d" % (idx + 1)
+	slot_lbl.text = "Slot %d" % (idx + 1)
 	slot_lbl.add_theme_color_override("font_color", Color(0.70, 0.65, 0.50))
 	inner.add_child(slot_lbl)
 

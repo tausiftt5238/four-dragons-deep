@@ -30,7 +30,7 @@ func build() -> void:
 
 	var belt_lbl: Label = Label.new()
 	belt_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	belt_lbl.text = "BELT:  %d / %d      (only belted items appear in battle)" % [
+	belt_lbl.text = "Belt:  %d / %d" % [
 			_m.player.equipped_items.size(), PlayerCharacter.ITEM_SLOTS]
 	belt_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	belt_lbl.add_theme_color_override("font_color",

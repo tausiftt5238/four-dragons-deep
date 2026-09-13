@@ -19,7 +19,7 @@ func start() -> void:
 func _show_submenu() -> void:
 	_s._set_back(_s._show_talk_submenu)
 	var threshold: int = 3 + _s.enemy.talk_difficulty
-	_s._right_title.text = "THREATEN  %d/%d" % [_talk_fear, threshold]
+	_s._right_title.text = "Threaten  %d/%d" % [_talk_fear, threshold]
 	_s._right_title.add_theme_color_override("font_color", Color(1.0, 0.40, 0.20))
 	_s._submenu_clear()
 
