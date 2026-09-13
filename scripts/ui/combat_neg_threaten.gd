@@ -31,10 +31,11 @@ func _show_submenu() -> void:
 		["Bluff",      "\"Surrender or die!\""],
 	]
 	for opt: Array in opts:
-		var btn: Button = Button.new()
 		var key: String = opt[0] as String
-		btn.text                = opt[1] as String
-		btn.custom_minimum_size = Vector2(0, 32)
+		# A plain Button grows its minimum width to fit its text, and these are
+		# whole sentences in quotes — one option used to be pushed clean off
+		# the side of the screen. This is the same slot every other menu uses.
+		var btn: Button = _s._big_button(key, opt[1] as String, false)
 		btn.pressed.connect(func() -> void: await _resolve(key))
 		_s._submenu_add(btn)
 

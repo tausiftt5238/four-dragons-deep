@@ -27,6 +27,11 @@ var warden_pos: Vector2i = Vector2i(-1, -1)
 # and remembering that is the map's job rather than the player's.
 var orb_cells: Array[Vector2i] = []
 
+# Draw the entire floor scaled to fit, rather than a window around the player.
+# The upper pane has room for a 20x20 maze at eighteen pixels a cell, so the
+# whole floor is visible at once instead of a ten-by-ten keyhole.
+var whole_floor: bool = false
+
 # Pixel size of each maze cell on the minimap.
 const CELL_PX: int = 10
 
@@ -67,66 +72,84 @@ func _draw() -> void:
 	if maze.is_empty():
 		return
 
-	var view: int = VIEW_HALF * 2
-	var map_w: float = view * CELL_PX + PAD * 2
-	var map_h: float = view * CELL_PX + PAD * 2
+	var rows: int = maze.size()
+	var cols: int = (maze[0] as Array).size()
+
+	var cell: float = float(CELL_PX)
+	var origin: Vector2i = player_pos - Vector2i(VIEW_HALF, VIEW_HALF)
+	var view_c: int = VIEW_HALF * 2
+	var view_r: int = VIEW_HALF * 2
+	var map_w: float = view_c * cell + PAD * 2
+	var map_h: float = view_r * cell + PAD * 2
+	var ox: float = PAD
+	var oy: float = PAD
+
+	if whole_floor:
+		# Fit the floor to the pane and centre it, square cells either way.
+		map_w = size.x
+		map_h = size.y
+		cell = minf((map_w - PAD * 2) / float(cols), (map_h - PAD * 2) / float(rows))
+		origin = Vector2i.ZERO
+		view_c = cols
+		view_r = rows
+		ox = (map_w - cell * float(cols)) * 0.5
+		oy = (map_h - cell * float(rows)) * 0.5
 
 	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), C_BG)
 
-	# Top-left maze cell of the view window.
-	var origin: Vector2i = player_pos - Vector2i(VIEW_HALF, VIEW_HALF)
-
-	for vr: int in range(view):
-		for vc: int in range(view):
+	for vr: int in range(view_r):
+		for vc: int in range(view_c):
 			var mc: int = origin.x + vc
 			var mr: int = origin.y + vr
-			# Skip out-of-bounds and unvisited cells.
-			if mr < 0 or mr >= maze.size() or mc < 0:
+			if mr < 0 or mr >= rows or mc < 0:
 				continue
 			var row_data: Array = maze[mr] as Array
 			if mc >= row_data.size():
 				continue
 			if not visited.has(Vector2i(mc, mr)):
 				continue
-			var rx: float = PAD + vc * CELL_PX
-			var ry: float = PAD + vr * CELL_PX
 			var c: Color = wall_color if row_data[mc] == 1 else floor_color
-			draw_rect(Rect2(rx, ry, CELL_PX - 1, CELL_PX - 1), c)
+			draw_rect(Rect2(ox + vc * cell, oy + vr * cell,
+					cell - maxf(1.0, cell * 0.08), cell - maxf(1.0, cell * 0.08)), c)
 
-	# Portal marker within the view window.
+	# Portal, once the cell has been walked.
 	if exit_pos.x >= 0 and visited.has(exit_pos):
-		var vc: int = exit_pos.x - origin.x
-		var vr: int = exit_pos.y - origin.y
-		if vc >= 0 and vc < view and vr >= 0 and vr < view:
-			draw_rect(Rect2(PAD + vc * CELL_PX, PAD + vr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_PORTAL)
+		var pc: int = exit_pos.x - origin.x
+		var pr: int = exit_pos.y - origin.y
+		if pc >= 0 and pc < view_c and pr >= 0 and pr < view_r:
+			draw_rect(Rect2(ox + pc * cell, oy + pr * cell,
+					cell - 1.0, cell - 1.0), C_PORTAL)
 
 	# The warden, while it still holds the key. Shown without needing the cell
 	# visited — the floor's task is finding it, not stumbling on it.
 	if warden_pos.x >= 0:
 		var wc: int = warden_pos.x - origin.x
 		var wr: int = warden_pos.y - origin.y
-		if wc >= 0 and wc < view and wr >= 0 and wr < view:
-			draw_rect(Rect2(PAD + wc * CELL_PX, PAD + wr * CELL_PX, CELL_PX - 1, CELL_PX - 1), C_WARDEN)
+		if wc >= 0 and wc < view_c and wr >= 0 and wr < view_r:
+			draw_rect(Rect2(ox + wc * cell, oy + wr * cell,
+					cell - 1.0, cell - 1.0), C_WARDEN)
 
 	# Orbs, drawn as discs rather than squares so they cannot be mistaken for
-	# the portal or the warden at a glance on a phone screen.
+	# the portal or the warden at a glance.
 	for orb: Vector2i in orb_cells:
 		if not visited.has(orb):
 			continue
 		var oc: int = orb.x - origin.x
 		var orow: int = orb.y - origin.y
-		if oc < 0 or oc >= view or orow < 0 or orow >= view:
+		if oc < 0 or oc >= view_c or orow < 0 or orow >= view_r:
 			continue
-		var ocx: float = PAD + oc * CELL_PX + CELL_PX * 0.5
-		var ocy: float = PAD + orow * CELL_PX + CELL_PX * 0.5
-		draw_circle(Vector2(ocx, ocy), CELL_PX * 0.34, C_ORB)
+		draw_circle(Vector2(ox + (oc + 0.5) * cell, oy + (orow + 0.5) * cell),
+				cell * 0.34, C_ORB)
 
-	# Player is always at the centre of the window.
-	var cx: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
-	var cy: float = PAD + VIEW_HALF * CELL_PX + CELL_PX * 0.5
-	var center: Vector2 = Vector2(cx, cy)
-	var tip: Vector2 = center + FACING_DIR[player_facing] * (CELL_PX * 0.65)
-	draw_circle(center, 3.0, C_PLAYER)
-	draw_line(center, tip, C_PLAYER, 2.0)
+	# The player: centred in a window, in its own cell on a whole floor.
+	var pcx: float = ox + (float(player_pos.x - origin.x) + 0.5) * cell
+	var pcy: float = oy + (float(player_pos.y - origin.y) + 0.5) * cell
+	if not whole_floor:
+		pcx = PAD + VIEW_HALF * cell + cell * 0.5
+		pcy = PAD + VIEW_HALF * cell + cell * 0.5
+	var center: Vector2 = Vector2(pcx, pcy)
+	var tip: Vector2 = center + FACING_DIR[player_facing] * (cell * 0.65)
+	draw_circle(center, maxf(2.0, cell * 0.3), C_PLAYER)
+	draw_line(center, tip, C_PLAYER, maxf(1.5, cell * 0.18))
 
 	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), border_color, false, 1.5)

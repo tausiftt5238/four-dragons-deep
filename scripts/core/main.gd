@@ -32,6 +32,18 @@ const CAM_PULLBACK: float = 0.40
 const CAM_FOV:      float = 90.0
 var cam_rig: Node3D
 var cam: Camera3D
+
+# ── The two panes ─────────────────────────────────────────────────────────────
+#
+# Held upright, one tall view is the wrong shape for a grid crawler: the 90°
+# field of view is vertical, so a 540x1170 window leaves about 50° across and
+# you cannot see a side opening until you are standing in it. The screen splits
+# instead — the floor map above, the dungeon below — which gives the 3D a pane
+# nearer 4:3 and puts the part you swipe within reach of a thumb.
+const MAP_PANE_H: int = 380
+
+var world: SubViewport
+var _world_box: SubViewportContainer
 var torch: OmniLight3D
 var minimap_ctrl: Minimap
 var hud_layer: CanvasLayer       # CanvasLayer holding the minimap; hidden during combat
@@ -111,6 +123,10 @@ func _notification(what: int) -> void:
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
 
+	# The world pane has to exist before anything three-dimensional, since
+	# everything 3D is parented into it rather than onto Main.
+	_setup_world_pane()
+
 	# Camera and torch must exist before the first _sync_player call,
 	# so set up the player nodes first.
 	_setup_player_nodes()
@@ -152,11 +168,11 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	# add_child(), so maze/colour data is available immediately after.
 	var packed: PackedScene = load(scene_path) as PackedScene
 	current_level = packed.instantiate() as Level
-	add_child(current_level)
+	world.add_child(current_level)
 
 	# Build geometry using the level's colours and maze
 	dungeon = Dungeon.new()
-	add_child(dungeon)
+	world.add_child(dungeon)
 	dungeon.build(current_level)
 
 	# Place the player at the appropriate spawn point
@@ -192,15 +208,39 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 
 # Creates the torch (OmniLight) and first-person camera.
 # Called once at startup; both nodes persist across level transitions.
+# The lower pane. Everything three-dimensional lives inside it, so the map
+# above is not painted over the middle of the view.
+func _setup_world_pane() -> void:
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.layer = 0
+	add_child(layer)
+
+	_world_box = SubViewportContainer.new()
+	_world_box.stretch = true
+	_world_box.anchor_left   = 0.0
+	_world_box.anchor_right  = 1.0
+	_world_box.anchor_top    = 0.0
+	_world_box.anchor_bottom = 1.0
+	_world_box.offset_top    = MAP_PANE_H
+	_world_box.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_world_box)
+
+	world = SubViewport.new()
+	world.handle_input_locally = false
+	world.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	world.transparent_bg = false
+	_world_box.add_child(world)
+
+
 func _setup_player_nodes() -> void:
 	torch = OmniLight3D.new()
 	torch.light_color = Color(1.0, 0.72, 0.38)
 	torch.light_energy = 3.0
 	torch.omni_range   = 9.0
-	add_child(torch)
+	world.add_child(torch)
 
 	cam_rig = Node3D.new()
-	add_child(cam_rig)
+	world.add_child(cam_rig)
 
 	cam = Camera3D.new()
 	cam.fov      = CAM_FOV
@@ -218,6 +258,7 @@ func _setup_minimap() -> void:
 
 	minimap_ctrl = Minimap.new()
 	minimap_ctrl.visited = visited  # Shared reference — no copy needed
+	minimap_ctrl.whole_floor = true
 	layer.add_child(minimap_ctrl)
 
 	floor_label = Label.new()
@@ -256,16 +297,19 @@ func _setup_minimap() -> void:
 	_update_encounter_debug_label()
 	layer.add_child(_encounter_debug_lbl)
 
+	# Bottom right, over the dungeon view. It used to sit in the top-left
+	# corner, which the floor map now owns — and the bottom of an upright
+	# screen is where a thumb already is.
 	var menu_btn: Button = Button.new()
-	menu_btn.text          = "MENU"
-	menu_btn.anchor_left   = 0.0
-	menu_btn.anchor_right  = 0.0
-	menu_btn.anchor_top    = 0.0
-	menu_btn.anchor_bottom = 0.0
-	menu_btn.offset_left   = 10.0
-	menu_btn.offset_right  = 75.0
-	menu_btn.offset_top    = 8.0
-	menu_btn.offset_bottom = 65.0
+	menu_btn.text          = "Menu"
+	menu_btn.anchor_left   = 1.0
+	menu_btn.anchor_right  = 1.0
+	menu_btn.anchor_top    = 1.0
+	menu_btn.anchor_bottom = 1.0
+	menu_btn.offset_left   = -122.0
+	menu_btn.offset_right  = -14.0
+	menu_btn.offset_top    = -74.0
+	menu_btn.offset_bottom = -14.0
 	menu_btn.pressed.connect(_on_menu_btn_pressed)
 	layer.add_child(menu_btn)
 
@@ -287,22 +331,18 @@ func _sync_minimap_palette() -> void:
 
 # Updates the minimap Control's anchors and offsets to fit the current maze size.
 # Called after every level load because maps can differ in dimensions.
+# The map owns the upper pane outright: full width, from under the floor
+# label down to where the dungeon view begins.
 func _resize_minimap() -> void:
-	var view: int = Minimap.VIEW_HALF * 2
-	var map_w: float = Minimap.CELL_PX * view + Minimap.PAD * 2
-	var map_h: float = Minimap.CELL_PX * view + Minimap.PAD * 2
-	var margin: float = 10.0
-
-	# Both horizontal anchors = 1 pins the right edge to the viewport right edge;
-	# offsets pull the control left and down by the map size + margin.
-	minimap_ctrl.anchor_left   = 1.0
+	const TOP: float = 40.0
+	minimap_ctrl.anchor_left   = 0.0
 	minimap_ctrl.anchor_right  = 1.0
 	minimap_ctrl.anchor_top    = 0.0
 	minimap_ctrl.anchor_bottom = 0.0
-	minimap_ctrl.offset_left   = -(map_w + margin)
-	minimap_ctrl.offset_right  = -margin
-	minimap_ctrl.offset_top    = margin
-	minimap_ctrl.offset_bottom = margin + map_h
+	minimap_ctrl.offset_left   = 0.0
+	minimap_ctrl.offset_right  = 0.0
+	minimap_ctrl.offset_top    = TOP
+	minimap_ctrl.offset_bottom = float(MAP_PANE_H)
 
 
 # ── Per-frame / movement ─────────────────────────────────────────────────────
@@ -575,7 +615,7 @@ func _spawn_warden() -> void:
 	var w: Roamer = Roamer.new()
 	w.warden = true
 	w.cell = current_level.warden_pos
-	add_child(w)
+	world.add_child(w)
 	roamers.append(w)
 	_warden = w
 	minimap_ctrl.warden_pos = w.cell
@@ -647,7 +687,7 @@ func _spawn_roamer_in(zone: Rect2i) -> void:
 	var r: Roamer = Roamer.new()
 	r.cell = options[randi() % options.size()]
 	r.zone = zone
-	add_child(r)
+	world.add_child(r)
 	roamers.append(r)
 
 
@@ -1169,7 +1209,7 @@ func _restore_save(data: Dictionary) -> void:
 	var scene_path: String   = map_data["scene"] as String
 	var packed: PackedScene  = load(scene_path) as PackedScene
 	current_level = packed.instantiate() as Level
-	add_child(current_level)
+	world.add_child(current_level)
 
 	# Overwrite the freshly-generated maze with the saved layout.
 	var raw_maze: Array = map_data["maze"] as Array
@@ -1193,7 +1233,7 @@ func _restore_save(data: Dictionary) -> void:
 	_pending_has_key              = bool(map_data.get("has_key", true))
 
 	dungeon = Dungeon.new()
-	add_child(dungeon)
+	world.add_child(dungeon)
 	dungeon.build(current_level)
 
 	# Restore fog-of-war.
@@ -1320,7 +1360,7 @@ func _restore_roamers() -> void:
 	for key: Variant in _pending_roamers:
 		var rm: Roamer = Roamer.new()
 		rm.cell = SaveSystem.key_vec2i(key as String)
-		add_child(rm)
+		world.add_child(rm)
 		roamers.append(rm)
 	_pending_roamers = []
 
@@ -1330,7 +1370,7 @@ func _restore_roamers() -> void:
 		var w: Roamer = Roamer.new()
 		w.warden = true
 		w.cell = current_level.warden_pos
-		add_child(w)
+		world.add_child(w)
 		roamers.append(w)
 		_warden = w
 		minimap_ctrl.warden_pos = w.cell

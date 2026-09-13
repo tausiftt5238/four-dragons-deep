@@ -39,25 +39,20 @@ func start() -> void:
 	if not demand.is_empty():
 		_s._log("[color=orange]%s: \"Hand over your %s... or pay %d gold!\"[/color]" % [
 				_s.enemy.enemy_name, demand["name"], gold_cost])
-		var give_btn: Button = Button.new()
-		give_btn.text                = "Give %s" % demand["name"]
-		give_btn.custom_minimum_size = Vector2(0, 32)
+		var give_btn: Button = _s._big_button("Give",
+				demand["name"] as String, false)
 		give_btn.pressed.connect(func() -> void: await _resolve("give"))
 		_s._submenu_add(give_btn)
 	else:
 		_s._log("[color=orange]%s: \"Pay me %d gold or face my wrath!\"[/color]" % [
 				_s.enemy.enemy_name, gold_cost])
 
-	var gold_btn: Button = Button.new()
-	gold_btn.text                = "Pay %d Gold" % gold_cost
-	gold_btn.custom_minimum_size = Vector2(0, 32)
-	gold_btn.disabled            = _s.player.gold < gold_cost
+	var gold_btn: Button = _s._big_button("Pay", "%d gold" % gold_cost,
+			_s.player.gold < gold_cost)
 	gold_btn.pressed.connect(func() -> void: await _resolve("gold"))
 	_s._submenu_add(gold_btn)
 
-	var refuse_btn: Button = Button.new()
-	refuse_btn.text                = "Refuse"
-	refuse_btn.custom_minimum_size = Vector2(0, 32)
+	var refuse_btn: Button = _s._big_button("Refuse", "Keep what is yours", false)
 	refuse_btn.pressed.connect(func() -> void: await _resolve("refuse"))
 	_s._submenu_add(refuse_btn)
 

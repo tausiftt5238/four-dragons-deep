@@ -491,7 +491,7 @@ func _try_begging() -> bool:
 	if enemy.enemy_name in player.recruited:
 		_log("[color=#ffd479]%s throws itself down — and sees its own face already standing with you.[/color]"
 				% enemy.display_name())
-		_offer_tribute()
+		_prompt_tribute()
 		return true
 
 	_log("[color=#ffd479]%s stops fighting and begs to be taken with you.[/color]"
@@ -529,18 +529,36 @@ func _prompt_beg() -> void:
 	_submenu_add(refuse)
 
 
-# A duplicate hands over whatever it was carrying and leaves under its own
-# power, which is the only way a fight ever gets shorter for free.
-func _offer_tribute() -> void:
+# A duplicate hands over whatever it was carrying and leaves. This used to
+# happen on its own, with one line in the log — which from the other side of
+# the screen looks exactly like an enemy vanishing for no reason. It asks now,
+# even though there is only one answer, because a demon leaving the field
+# should always be something the player watched happen.
+func _prompt_tribute() -> void:
+	_set_buttons(false)
+	_hide_actions()
+	_back_target = Callable()
+	_right_back_btn.visible = false
+	_right_title.text = "It is paying you off"
+	_right_title.add_theme_color_override("font_color", Color(1.0, 0.83, 0.47))
+	_submenu_clear()
+
 	var drop: Dictionary = enemy.roll_drop()
-	if drop.is_empty():
-		var coin: int = maxi(5, enemy.gold_reward * 2)
-		player.gold += coin
-		_log("[color=#ffd479]It empties its hands — %d gold — and goes.[/color]" % coin)
-	else:
-		player.add_item(drop.duplicate(), 1)
-		_log("[color=#ffd479]It presses %s on you and goes.[/color]" % drop["name"])
-	await _beg_resolved()
+	var coin: int = 0 if not drop.is_empty() else maxi(5, enemy.gold_reward * 2)
+	var what: String = drop["name"] as String if not drop.is_empty() else "%d gold" % coin
+	var who: String = enemy.display_name()
+
+	var take: Button = _big_button("Take it",
+			"%s gives up %s and leaves." % [who, what], false)
+	take.pressed.connect(func() -> void:
+		if drop.is_empty():
+			player.gold += coin
+			_log("[color=#ffd479]It empties its hands — %d gold — and goes.[/color]" % coin)
+		else:
+			player.add_item(drop.duplicate(), 1)
+			_log("[color=#ffd479]It presses %s on you and goes.[/color]" % drop["name"])
+		await _beg_resolved())
+	_submenu_add(take)
 
 
 # Shared tail: the demon leaves the field, and the phase opens normally on
@@ -868,12 +886,21 @@ func _build_enemy_area(parent: Control) -> void:
 	var area: HBoxContainer = HBoxContainer.new()
 	area.size_flags_vertical       = Control.SIZE_EXPAND_FILL
 	area.size_flags_stretch_ratio  = 1.0
-	area.alignment = BoxContainer.ALIGNMENT_CENTER
 	area.add_theme_constant_override("separation", 6)
 	parent.add_child(area)
 
+	# Always MAX_PARTY columns, whatever the pack size. A lone demon used to
+	# get the whole width — an HP bar across the screen — and a pack of two
+	# sat at a different pitch from a pack of four, so the line-up moved every
+	# encounter. Empty columns hold the grid instead.
 	for f: Enemy in foes:
 		area.add_child(_build_foe_column(f))
+	for _i: int in range(MAX_PARTY - foes.size()):
+		var blank: Control = Control.new()
+		blank.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		blank.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+		blank.mouse_filter          = Control.MOUSE_FILTER_IGNORE
+		area.add_child(blank)
 
 
 # One column per demon. Identical geometry across the row so a four-strong
@@ -977,11 +1004,18 @@ func _refresh_foe_rows() -> void:
 	for r: Dictionary in _foe_rows:
 		var foe: Enemy = r["foe"] as Enemy
 		if foe in _departed:
+			# Ghosted rather than erased. Blanking the column outright made a
+			# demon that walked away look like one that had glitched out of
+			# existence — it still has a name and a place in the line.
 			(r["marker"] as Label).visible = false
-			(r["portrait"] as TextureRect).modulate.a = 0.0
-			(r["name_lbl"] as Label).text = ""
+			(r["portrait"] as TextureRect).modulate = Color(1, 1, 1, 0.10)
+			var gone_lbl: Label = r["name_lbl"] as Label
+			gone_lbl.text = foe.display_name()
+			gone_lbl.add_theme_color_override("font_color", Color(0.40, 0.40, 0.46))
 			((r["bar"] as ProgressBar).get_parent() as Control).visible = false
-			(r["hp_lbl"] as Label).text = "Gone"
+			(r["hp_lbl"] as Label).text = "Left"
+			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
+					Color(0.45, 0.45, 0.52))
 			(r["stage_lbl"] as Label).text = ""
 			continue
 		var alive: bool = foe.is_alive()
@@ -1004,7 +1038,7 @@ func _refresh_foe_rows() -> void:
 		bar.custom_minimum_size.x = minf(maxf(wrap.size.x, 120.0) * 0.82, 190.0)
 		wrap.visible = alive
 		var hp_lbl: Label = r["hp_lbl"] as Label
-		hp_lbl.text = "%d / %d" % [foe.hp, foe.max_hp] if alive else "DOWN"
+		hp_lbl.text = "%d / %d" % [foe.hp, foe.max_hp] if alive else "Down"
 		hp_lbl.add_theme_color_override("font_color",
 				hp_tint(foe.hp, foe.max_hp) if alive else Color(0.55, 0.38, 0.38))
 
