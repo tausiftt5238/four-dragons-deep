@@ -161,15 +161,24 @@ def table(rows, var_cols=None):
 
 TIER_BLURB = {
  1: "Everything here answers to a blade or to Ember, and nothing nulls, repels or drains. "
-    "Three of the ten carry a skill, and all ten will talk.",
- 2: "Levels roughly double. Six of the ten stack something, spread across all four stats, "
-    "so no single counter answers the whole band.",
- 3: "Six templates across five floors, so repetition begins here. Every one of them "
-    "carries a skill.",
+    "All of them will talk.",
+ 2: "Levels roughly double. The skills are spread across all four stats, so no single "
+    "counter answers the whole band.",
+ 3: "Six templates across five floors, so repetition begins here.",
  4: "Four templates across the last five floors &mdash; the thinnest band in the game. "
     "Both wizards carry a dispel, which is where a player who has not bought one finds "
     "out what they do.",
 }
+
+
+def tier_counts(rows):
+    """Said out of the data rather than kept in a string that goes stale."""
+    n = len(rows)
+    el = sum(1 for r in rows if r["attack_element"])
+    ail = sum(1 for r in rows if r["status_attack"])
+    sk = sum(1 for r in rows if r["support"])
+    return (" %d of the %d call up an element, %d throw an ailment, %d carry a skill."
+            % (el, n, ail, sk))
 ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV"}
 
 parts = []
@@ -183,7 +192,8 @@ for t in d["tiers"]:
     <p class="blurb">%s</p>
     %s
   </section>""" % (ROMAN[t["tier"]], ROMAN[t["tier"]], t["first"], t["last"],
-                   lv_lo, lv_hi, t["boss_lv"], TIER_BLURB[t["tier"]],
+                   lv_lo, lv_hi, t["boss_lv"],
+                   TIER_BLURB[t["tier"]] + tier_counts(rows),
                    table(rows)))
 
 wardens = d["wardens"]
