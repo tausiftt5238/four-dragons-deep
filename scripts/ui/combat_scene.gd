@@ -743,17 +743,78 @@ func _defense_of(member: CharacterSheet) -> int:
 	return member.def
 
 
-func _try_enemy_status(actor: Enemy, target: CharacterSheet) -> String:
-	if actor.status_attack == "" or target.has_status(actor.status_attack):
-		return ""
-	var chance: int = actor.ailment_chance
-	if randi() % 100 >= chance:
-		return ""
-	var sname: String = Status.get_data(actor.status_attack).get("name", actor.status_attack)
+# ── Ailments the demons throw ─────────────────────────────────────────────────
+#
+# An ailment used to ride free on every hit at the template's own percentage,
+# which meant a demon that poisoned you did it by accident in the middle of
+# doing something else, and a demon with a low number effectively did not have
+# one at all. It is a cast now: its own turn, its own MP, and a chance worth
+# spending a turn on.
+#
+# The per-hit percentage becomes the cast's odds, tripled and floored, because
+# a whole turn at five percent is an insult. A ten-turn fight lands about as
+# many ailments as it used to — what changed is that you can see it coming and
+# the demon paid for it.
+const AIL_SPELLS: Dictionary = {
+	Status.POISON:     "venom",
+	Status.PARALYZED:  "shock",
+	Status.SILENCE:    "mute",
+	Status.IMMOBILIZE: "bind",
+}
+const AIL_CAST_ODDS: int = 3    # in ten, while someone standing is still clean
+const AIL_LAND_MULT: int = 3
+const AIL_LAND_MIN:  int = 25
+const AIL_LAND_MAX:  int = 85
+
+
+static func ail_landing_chance(base: int) -> int:
+	return clampi(base * AIL_LAND_MULT, AIL_LAND_MIN, AIL_LAND_MAX)
+
+
+# Nothing to throw, nothing to throw it at, or nothing to throw it with.
+func _ail_cast_ready(actor: Enemy) -> bool:
+	if actor.status_attack == "" or not AIL_SPELLS.has(actor.status_attack):
+		return false
+	var sp: Dictionary = Spell.get_data(AIL_SPELLS[actor.status_attack] as String)
+	var ail_mp: int = int(sp.get("mp", 4))
+	if sp.is_empty() or actor.mp < ail_mp:
+		return false
+	# Same rule as support: never spend the element's MP on something else.
+	if actor.attack_element != "" and actor.mp - ail_mp < actor.skill_cost():
+		return false
+	# No point casting it on a side that is already carrying it.
+	for m: CharacterSheet in _living_party():
+		if not m.has_status(actor.status_attack):
+			return true
+	return false
+
+
+func _enemy_cast_ailment(actor: Enemy) -> Dictionary:
+	var status_id: String = actor.status_attack
+	var sp: Dictionary = Spell.get_data(AIL_SPELLS[status_id] as String)
+	actor.mp -= int(sp.get("mp", 4))
+
+	# Whoever on the field is not already carrying it.
+	var clean: Array[CharacterSheet] = []
+	for m: CharacterSheet in _living_party():
+		if not m.has_status(status_id):
+			clean.append(m)
+	var target: CharacterSheet = clean[randi() % clean.size()] if not clean.is_empty() \
+			else _pick_target(Affinity.PHYS)
+
+	var sname: String = Status.get_data(status_id).get("name", status_id)
+	var lead: String = "[color=violet]%s casts %s![/color]" % [
+			actor.display_name(), sp.get("name", sname)]
+
+	if randi() % 100 >= ail_landing_chance(actor.ailment_chance):
+		return {msg = "%s  [color=gray]%s shrugs it off.[/color]" % [
+				lead, _member_name(target)], cost = PressTurn.COST_FULL}
 	if target == player and "resilience" in player.passive_skills and randi() % 4 == 0:
-		return "  [color=lime]Resilience resists %s![/color]" % sname
-	target.apply_status(actor.status_attack)
-	return "  [color=violet]%s is now %s.[/color]" % [_member_name(target), sname]
+		return {msg = "%s  [color=lime]Resilience resists %s![/color]" % [lead, sname],
+				cost = PressTurn.COST_FULL}
+	target.apply_status(status_id)
+	return {msg = "%s  [color=violet]%s is now %s.[/color]" % [
+			lead, _member_name(target), sname], cost = PressTurn.COST_FULL}
 
 
 # Kept for the CombatNeg* handlers: one provoked swing at the detective, taken
@@ -2555,25 +2616,52 @@ func _resolve_attack() -> Dictionary:
 
 # ── Enemy actions ─────────────────────────────────────────────────────────────
 
+# A demon spends on support only while the pool still covers its element
+# afterwards. One that carries no element has nothing to save for.
+func _can_spare_support(actor: Enemy) -> bool:
+	var sup: Dictionary = Spell.get_data(actor.support_skill)
+	if sup.is_empty():
+		return false
+	var sup_mp: int = int(sup.get("mp", 8))
+	if actor.mp < sup_mp:
+		return false
+	if actor.attack_element == "":
+		return true
+	return actor.mp - sup_mp >= actor.skill_cost()
+
+
 func _enemy_act(actor: Enemy) -> Dictionary:
 	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
 
-	# Support first: a demon that can stack a buff will, while it still has
-	# room and the MP to pay for it.
-	if actor.support_skill != "" and randi() % 10 < 3:
+	# The ailment goes out early or not at all: it is worth most on a full party
+	# and worthless once everyone standing already has it, which is also what
+	# keeps it to a cast or two a fight rather than a loop.
+	if randi() % 10 < AIL_CAST_ODDS and _ail_cast_ready(actor):
+		return _enemy_cast_ailment(actor)
+
+	# Support next: a demon that can stack a buff will, while it still has
+	# room and the MP to pay for it — but never at the price of its element.
+	# Both come out of the one pool, and Mire costs ten against a Cave Bat's
+	# twenty-four, so a demon carrying both used to spend everything on buffs
+	# and never once cast the thing it is named for.
+	if actor.support_skill != "" and randi() % 10 < 3 and _can_spare_support(actor):
 		var sup: Dictionary = Spell.get_data(actor.support_skill)
 		# A dispel against a side with nothing stacked is a wasted phase, so a
 		# demon carrying one holds it until there is something to take.
-		if not sup.is_empty() and actor.mp >= int(sup.get("mp", 8)) \
-				and sup.get("type", "buff") == "dispel" and _dispel_would_bite(sup, false):
-			actor.mp -= int(sup.get("mp", 8))
-			var out: Dictionary = _cast_dispel(sup, false)
-			out["msg"] = "[color=#c9a6ff]%s casts[/color] %s" % [
-					actor.display_name(), out["msg"]]
-			return out
-		if not sup.is_empty() and actor.mp >= int(sup.get("mp", 8)):
+		if sup.get("type", "buff") == "dispel":
+			# Nothing stacked to take means the phase would be wasted, so the
+			# demon holds it and attacks instead. It must not fall through to
+			# the branch below either: a dispel carries no stat or delta, so
+			# read as a buff it came out as a free +1 ATK for the whole line.
+			if _dispel_would_bite(sup, false):
+				actor.mp -= int(sup.get("mp", 8))
+				var out: Dictionary = _cast_dispel(sup, false)
+				out["msg"] = "[color=#c9a6ff]%s casts[/color] %s" % [
+						actor.display_name(), out["msg"]]
+				return out
+		elif not sup.is_empty() and actor.mp >= int(sup.get("mp", 8)):
 			var stat: String = sup.get("stat", CharacterSheet.STAT_ATK) as String
 			var delta: int   = int(sup.get("delta", 1))
 			var on_party: bool = (sup.get("scope", "party") == "party")
@@ -2597,17 +2685,26 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var element: String = Affinity.PHYS
 	var base: float = float(actor.str)
 	var dry: String = ""
-	# A banishing element is a bid to end someone outright, and a demon lost that
-	# way does not come back, so a demon that carries one reaches for it half as
-	# often as an ordinary element.
-	var reach: int = 2 if Affinity.is_banishing(actor.attack_element) else 4
-	if actor.attack_element != "" and randi() % 10 < reach:
+	# An element is what a demon is for, so it reaches for one every turn it can
+	# pay for it and swings only once the pool is gone. MP is a magazine, not a
+	# dice modifier: a demon opens with what it has and finishes the fight with
+	# its hands, which is a shape a player can read and play around.
+	#
+	# A banishing line is the exception. A demon lost that way does not come
+	# back, so those stay held in reserve — one turn in five — rather than being
+	# the opening move of every fight.
+	var reaches: bool = actor.attack_element != ""
+	if reaches and Affinity.is_banishing(actor.attack_element):
+		reaches = randi() % 10 < 2
+	if reaches:
 		if actor.can_afford_skill():
 			actor.mp -= actor.skill_cost()
 			element = actor.attack_element
 			base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
-		else:
-			dry = "[color=gray]%s: not enough MP![/color]\n" % actor.display_name()
+		elif not actor.announced_dry:
+			# Said once, the turn the pool runs out, and not again.
+			actor.announced_dry = true
+			dry = "[color=gray]%s is out of MP.[/color]\n" % actor.display_name()
 
 	var target: CharacterSheet = _pick_target(element)
 
@@ -2656,9 +2753,8 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
 		_shake_portrait(hit_pr)
-	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s%s" % [
-			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted),
-			_try_enemy_status(actor, target)]
+	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s" % [
+			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted)]
 	if target == player:
 		msg += _check_counter()
 	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}

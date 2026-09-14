@@ -22,6 +22,9 @@ func _row(t: Dictionary, lo: Enemy, hi: Enemy) -> Dictionary:
 		attack_element = t.get("attack_element", ""),
 		status_attack = t.get("status_attack", ""),
 		ail = int(t.get("ail", 0)),
+		ail_spell = _ail_spell(t.get("status_attack", "") as String),
+		ail_mp = _ail_mp(t.get("status_attack", "") as String),
+		ail_land = CombatScene.ail_landing_chance(int(t.get("ail", 0))),
 		support = sup,
 		support_name = sd.get("name", ""),
 		support_type = sd.get("type", ""),
@@ -36,6 +39,18 @@ func _row(t: Dictionary, lo: Enemy, hi: Enemy) -> Dictionary:
 		personality = t.get("personality", ""),
 		wants = t.get("wants", ""),
 	}
+
+
+func _ail_spell(status_id: String) -> String:
+	if not CombatScene.AIL_SPELLS.has(status_id):
+		return ""
+	return Spell.get_data(CombatScene.AIL_SPELLS[status_id] as String).get("name", "") as String
+
+
+func _ail_mp(status_id: String) -> int:
+	if not CombatScene.AIL_SPELLS.has(status_id):
+		return 0
+	return int(Spell.get_data(CombatScene.AIL_SPELLS[status_id] as String).get("mp", 0))
 
 
 func _build(name: String, fl: int, kind: String) -> Enemy:

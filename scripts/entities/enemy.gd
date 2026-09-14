@@ -28,6 +28,10 @@ var battle_tag: String = ""
 # knows how to hit things.
 var support_skill: String = ""
 
+# Set the first turn a demon reaches for its element and cannot pay. It tries
+# every turn now, so without this the log would say so every turn.
+var announced_dry: bool = false
+
 # Percent chance one of its hits also lands its ailment. Fixed per demon rather
 # than swinging on the level gap, so the first area stays a gentle place.
 var ailment_chance: int = 12

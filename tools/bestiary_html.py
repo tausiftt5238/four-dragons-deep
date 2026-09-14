@@ -76,11 +76,20 @@ def chart_cell(chart):
 def attacks_cell(r):
     el = r["attack_element"] or "phys"
     cls = "elem elem-phys" if el == "phys" else "elem"
-    bits = ['<span class="%s">%s</span>' % (cls, EL_NAME[el])]
-    if r["status_attack"]:
-        bits.append('<span class="ail"><b>%s</b> %d&#37;</span>'
-                    % (AIL.get(r["status_attack"], r["status_attack"].title()), r["ail"]))
-    return "<td>%s</td>" % "".join(bits)
+    return '<td><span class="%s">%s</span></td>' % (cls, EL_NAME[el])
+
+
+def ailment_cell(r):
+    """The ailment is a spell now: its own turn, its own MP, its own odds."""
+    if not r["status_attack"] or not r["ail_spell"]:
+        return '<td><span class="dash">&mdash;</span></td>'
+    what = AIL.get(r["status_attack"], r["status_attack"].title())
+    # Bind's spell and its status share a name; saying it twice reads as a bug.
+    fx = "%d&#37; to land" % r["ail_land"] if what == r["ail_spell"] \
+        else "%s &middot; %d&#37; to land" % (what, r["ail_land"])
+    return ('<td><span class="skill"><b>%s</b> <span class="mp">%d mp</span>'
+            '<span class="fx">%s</span></span></td>'
+            % (r["ail_spell"], r["ail_mp"], fx))
 
 
 def skill_effect(r):
@@ -120,7 +129,8 @@ def rng(lo, hi):
 HEAD = ('<thead><tr><th scope="col">Name</th><th scope="col">Var</th>'
         '<th scope="col">Level</th><th scope="col">HP</th><th scope="col">Exp</th>'
         '<th scope="col">Phys &nbsp; Fire &nbsp; Ice &nbsp; Thdr &nbsp; Light &nbsp; Dark</th>'
-        '<th scope="col">Attacks with</th><th scope="col">Skill</th>'
+        '<th scope="col">Attacks with</th><th scope="col">Ailment</th>'
+        '<th scope="col">Skill</th>'
         '<th scope="col">Talk</th></tr></thead>')
 
 
@@ -134,11 +144,12 @@ def row(r, var_col=None):
     if r["icons"] > 1:
         icons = ' <span class="rank">%d icons</span>' % r["icons"]
     return ("<tr><th scope=\"row\">%s</th><td class=\"n\">%s</td>"
-            "<td class=\"n\">%s%s</td><td class=\"n\">%s</td><td class=\"n\">%s</td>%s%s%s%s</tr>"
+            "<td class=\"n\">%s%s</td><td class=\"n\">%s</td><td class=\"n\">%s</td>%s%s%s%s%s</tr>"
             % (name, var_col,
                rng(r["lv_lo"], r["lv_hi"]), icons,
                rng(r["hp_lo"], r["hp_hi"]), rng(r["exp_lo"], r["exp_hi"]),
-               chart_cell(r["chart"]), attacks_cell(r), skill_cell(r), talk_cell(r)))
+               chart_cell(r["chart"]), attacks_cell(r), ailment_cell(r),
+               skill_cell(r), talk_cell(r)))
 
 
 def table(rows, var_cols=None):
@@ -227,6 +238,8 @@ parts.append("""
 
 total = sum(len(t["rows"]) for t in d["tiers"]) + len(wardens) + len(bosses)
 with_skill = sum(len(v["who"]) for v in carriers.values())
+with_ail = sum(1 for t in d["tiers"] for r in t["rows"] if r["status_attack"]) \
+         + sum(1 for r in wardens + bosses if r["status_attack"])
 with_elem = sum(1 for t in d["tiers"] for r in t["rows"] if r["attack_element"]) \
           + sum(1 for r in wardens + bosses if r["attack_element"])
 
@@ -253,7 +266,8 @@ page = """<title>Gauntlet Bestiary</title>
 
   <section>
     <div class="tier-head"><span class="tier-num">&#9876;</span><h2>How a demon spends its turn</h2><span class="floors">read the Attacks and Skill columns together</span></div>
-    <p class="blurb">Everything swings. <b>Attacks with</b> names the element a demon calls up instead &mdash; about two turns in five, or one in five for a banishing line, and only while it can pay for it &mdash; so a demon marked Fire is still throwing punches most of the time. The ailment beside it rides on whatever lands. <b>Skill</b> is the support spell it casts in place of attacking, on roughly three turns in ten. %d of the %d demons call up an element; %d carry a skill.</p>
+    <p class="blurb">A demon checks three things in order and swings if none of them fire. <b>Ailment</b> goes out first, three turns in ten, and only while someone standing is still clean &mdash; it can be thrown at anyone on your side, not just whoever it is hitting. <b>Skill</b> is next, also three in ten. <b>Attacks with</b> is the element it calls up, and it reaches for that <em>every</em> turn it can pay for one: MP is a magazine, not a dice roll, so a caster opens hard and finishes the fight with its hands. A banishing line is the exception, held back to one turn in five, because a demon it takes from you does not come back.</p>
+    <p class="blurb">All three come out of the same pool, and a demon never spends its last MP on anything but its element. %d of the %d demons call up an element, %d throw an ailment, and %d carry a skill.</p>
   </section>
 %s
 
@@ -262,13 +276,13 @@ page = """<title>Gauntlet Bestiary</title>
     <p><b>The tiers are lopsided.</b> Ten templates cover tier I and ten cover tier II, but only <strong>six</strong> cover tier III and <strong>four</strong> cover tier IV. The deepest five floors &mdash; the ones a player only reaches by earning them &mdash; have the least to show. Filling those two bands is worth more than anything else you could add.</p>
     <p><b>Every warden still needs a sprite.</b> All five are written with an art note and none is drawn. They are the most drawable things on the list &mdash; a gargoyle, a wight, a hound, a basilisk and a mimic all have unmistakable silhouettes &mdash; so they are the sensible place to start.</p>
     <p><b>Nothing past tier II carries a banishing line.</b> Light and dark stop being threats exactly where the run gets hard, so the deep floors are less varied than the shallow ones rather than more.</p>
-    <p><b>Only four ailments exist, and two of them do the same job.</b> Bind and Paralysis both cost a demon its turn, so across thirty-nine entries the real variety is poison, silence and &ldquo;you do not act&rdquo;.</p>
+    <p><b>Only four ailments exist, and two of them do the same job.</b> Bind and Paralysis both cost a demon its turn, so across thirty-nine entries the real variety is poison, silence and &ldquo;you do not act&rdquo;. Now that throwing one costs a demon its turn, that thinness shows more than it used to.</p>
   </section>
 
   <footer>Generated from the live tables &middot; ordinary lv = floor &times; 1.5 &middot; boss lv = floor &times; 2 &middot; skill odds 3 in 10</footer>
 
 </div>
-""" % (style, total, with_elem, total, with_skill, "\n".join(parts))
+""" % (style, total, with_elem, total, with_ail, with_skill, "\n".join(parts))
 
 open(DST, "w").write(page)
 print("wrote %s  (%d entries, %d with a skill, %d with an element)"
