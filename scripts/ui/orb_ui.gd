@@ -11,6 +11,10 @@ signal save_requested
 var player: PlayerCharacter
 var floor_num: int = 1
 
+# Which tab the orb opens on. Walking onto the tile lands on Rest; the HUD's
+# Save shortcut goes straight to Record.
+var start_tab: String = "rest"
+
 var _tab: String = "rest"
 var _content: VBoxContainer
 var _status: Label
@@ -22,6 +26,7 @@ var _page: Dictionary = {}
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tab = start_tab
 	_build()
 	_switch(_tab)
 
@@ -63,15 +68,16 @@ func _build() -> void:
 	close_btn.pressed.connect(func() -> void: closed.emit())
 	head.add_child(close_btn)
 
-	# Four tabs named in words are wider than the screen in one line, so they
-	# sit two by two.
+	# Tabs named in words are wider than the screen in one line, so they sit
+	# two by two.
 	var tabs: GridContainer = GridContainer.new()
 	tabs.columns = 2
 	tabs.add_theme_constant_override("h_separation", 6)
 	tabs.add_theme_constant_override("v_separation", 6)
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Bind"],
-			["buy", "Supplies"], ["save", "Record"]]:
+			["buy", "Supplies"], ["scrolls", "Scrolls"],
+			["save", "Record"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -109,6 +115,7 @@ func _switch(tab: String) -> void:
 		"rest": _build_rest()
 		"bind": _build_bind()
 		"buy":  _build_buy()
+		"scrolls": _build_scrolls()
 		"save": _build_save()
 
 
@@ -260,13 +267,6 @@ func _stock() -> Array[Dictionary]:
 	if floor_num >= 2:
 		out.append(Item.panacea())
 		out.append(Item.elixir_motion())
-		# The elemental grid is too central to leave to a drop roll. From the
-		# second floor on, an orb always sells the way into every element at
-		# single-target reach; the wide versions stay something you find.
-		for spell_id: String in ["rime", "arc", "banish", "consign"]:
-			out.append(Item.spell_scroll(spell_id,
-					int(Item.ELEMENTAL_SCROLLS.get(spell_id, 3))))
-
 	# An orb stocks gear for the depth you have reached, which is the main
 	# thing gold is for once the belt is full.
 	out.append_array(Weapon.for_floor(floor_num))
@@ -280,6 +280,26 @@ static func item_price(item: Dictionary) -> int:
 
 func _build_buy() -> void:
 	SlotList.paged(_content, _page, "buy", _stock(), _buy_offer, _refresh)
+
+
+# ── Scrolls ───────────────────────────────────────────────────────────────────
+#
+# The elemental grid is too central to leave to a drop roll, and nothing else in
+# the game teaches a spell — so an orb sells every scroll the depth reached has
+# opened, wide ones and higher rungs included. What gates them is how far down
+# you have been and what they cost, not luck. They get their own tab because
+# there are forty-five of them and six fit on a page.
+func _build_scrolls() -> void:
+	# A scroll you have already read teaches nothing, so the shelf drops it
+	# rather than selling the same spell twice.
+	var stock: Array[Dictionary] = []
+	for scroll: Dictionary in Item.scrolls_for_floor(floor_num):
+		if scroll.get("teaches", "") not in player.known_spells:
+			stock.append(scroll)
+	if stock.is_empty():
+		SlotList.new(_content).add_note("Nothing here you have not already been taught.")
+		return
+	SlotList.paged(_content, _page, "scrolls", stock, _buy_offer, _refresh)
 
 
 func _buy_offer(list: SlotList, item: Variant) -> void:

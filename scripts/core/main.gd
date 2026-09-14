@@ -86,6 +86,7 @@ var orb_layer:     CanvasLayer
 var chest_layer:   CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
+var _orb_btn:         Button  # "Save", shown only while standing on an orb
 var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
 var _hud_popup_tween: Tween
 
@@ -318,6 +319,25 @@ func _setup_minimap() -> void:
 	menu_btn.pressed.connect(_on_menu_btn_pressed)
 	layer.add_child(menu_btn)
 
+	# Directly above Menu, and only while the player is standing on an orb.
+	# Stepping onto the tile opens the orb once; without this, leaving that
+	# panel meant walking off the tile and back on to reach it again.
+	_orb_btn = Button.new()
+	_orb_btn.text          = "Save"
+	_orb_btn.anchor_left   = 1.0
+	_orb_btn.anchor_right  = 1.0
+	_orb_btn.anchor_top    = 1.0
+	_orb_btn.anchor_bottom = 1.0
+	_orb_btn.offset_left   = -122.0
+	_orb_btn.offset_right  = -14.0
+	_orb_btn.offset_top    = -142.0
+	_orb_btn.offset_bottom = -82.0
+	_orb_btn.visible       = false
+	_orb_btn.pressed.connect(func() -> void:
+		if not (in_combat or menu_open or save_open or orb_open or chest_open):
+			_open_orb("save"))
+	layer.add_child(_orb_btn)
+
 	# Push debug label below the MENU button
 	_encounter_debug_lbl.offset_top    = 70.0
 	_encounter_debug_lbl.offset_bottom = 94.0
@@ -376,6 +396,15 @@ func _sync_player() -> void:
 	minimap_ctrl.player_pos    = player_pos
 	minimap_ctrl.player_facing = player_facing
 	minimap_ctrl.queue_redraw()
+	_refresh_orb_btn()
+
+
+# The orb shortcut follows the player's feet, so every move re-asks.
+func _refresh_orb_btn() -> void:
+	if not is_instance_valid(_orb_btn):
+		return
+	_orb_btn.visible = is_instance_valid(current_level) \
+			and player_pos in current_level.orb_cells
 
 
 # Snaps camera rotation to the current facing with no animation. Used on level load.
@@ -482,8 +511,24 @@ func _action_turn_right() -> void:
 	minimap_ctrl.queue_redraw()
 
 
+# Walking is how MP comes back. A flat point a step would be everything at
+# level one and nothing at level thirty, so it is a slice of the pool instead:
+# fifty steps from empty to full at any level. That is short enough that a bad
+# fight never strands you at the far end of a floor, and long enough that three
+# fights in a row still leave you deciding whether this one is worth a Pyre.
+const MP_PER_STEP: float = 0.02
+
+
+func _recover_mp_on_step() -> void:
+	if player_char.mp >= player_char.max_mp:
+		return
+	player_char.mp = mini(player_char.max_mp,
+			player_char.mp + maxi(1, roundi(float(player_char.max_mp) * MP_PER_STEP)))
+
+
 func _post_move() -> void:
 	_sync_player()
+	_recover_mp_on_step()
 	_check_step_poison()
 	_check_trap()
 	if not player_char.is_alive():
@@ -1132,7 +1177,7 @@ func _close_chest() -> void:
 			child.queue_free()
 
 
-func _open_orb() -> void:
+func _open_orb(tab: String = "rest") -> void:
 	orb_open = true
 	hud_layer.visible = false
 	if not is_instance_valid(orb_layer):
@@ -1142,6 +1187,7 @@ func _open_orb() -> void:
 	var ui: OrbUI = OrbUI.new()
 	ui.player    = player_char
 	ui.floor_num = floor_num
+	ui.start_tab = tab
 	ui.closed.connect(_close_orb)
 	ui.save_requested.connect(func() -> void:
 		_close_orb()

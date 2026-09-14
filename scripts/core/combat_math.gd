@@ -88,6 +88,9 @@ const BANISH_RESIST: float = 0.08   # it barely has purchase
 const BANISH_PER_LUK: float = 0.012
 const BANISH_LUK_CAP: float = 0.15
 
+# No cast is ever a certainty, whatever rung it sits on.
+const BANISH_MAX: float = 0.92
+
 const BANISH_BOUNDS: Dictionary = {
 	Affinity.WEAK:   Vector2(0.45, 0.80),
 	Affinity.RESIST: Vector2(0.02, 0.18),
@@ -99,7 +102,7 @@ const BANISH_BOUNDS: Dictionary = {
 # `caster` is optional: without one this reports the bare chart odds, which is
 # what Analyze and the bestiary want to show.
 static func banish_chance(target: CharacterSheet, element: String,
-		caster: CharacterSheet = null) -> float:
+		caster: CharacterSheet = null, boost: float = 0.0) -> float:
 	var state: String = target.affinity_of(element)
 	var base: float = BANISH_BASE
 	match state:
@@ -110,12 +113,15 @@ static func banish_chance(target: CharacterSheet, element: String,
 		_: state = Affinity.NORMAL
 
 	if caster == null:
-		return base
+		return clampf(base + boost, 0.0, BANISH_MAX)
 	var edge: float = clampf(
 			float(caster.battle_luck() - target.battle_luck()) * BANISH_PER_LUK,
 			-BANISH_LUK_CAP, BANISH_LUK_CAP)
 	var bounds: Vector2 = BANISH_BOUNDS[state] as Vector2
-	return clampf(base + edge, bounds.x, bounds.y)
+	# The rung is added after the per-state bounds, not inside them: a higher
+	# rung is meant to beat the ceiling an ordinary cast runs into. It cannot
+	# beat the chart — null, repel and drain returned zero above and stay zero.
+	return clampf(clampf(base + edge, bounds.x, bounds.y) + boost, 0.0, BANISH_MAX)
 
 
 # Resolves one banishing cast. The detective is never expelled — he is the mind
@@ -123,7 +129,7 @@ static func banish_chance(target: CharacterSheet, element: String,
 # fight, it is a dice roll. It costs him HP instead.
 static func resolve_banish(target: CharacterSheet, element: String,
 		power: int, is_detective: bool, caster: CharacterSheet = null,
-		spread: float = 1.0) -> Dictionary:
+		spread: float = 1.0, boost: float = 0.0) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	match state:
 		Affinity.DRAIN:
@@ -146,7 +152,7 @@ static func resolve_banish(target: CharacterSheet, element: String,
 
 	# A cast thrown across several demons is thinner on each of them, which is
 	# what stops the wide versions from simply ending fights.
-	if randf() < banish_chance(target, element, caster) * spread:
+	if randf() < banish_chance(target, element, caster, boost) * spread:
 		return {outcome = "banished", dmg = 0, taken = true}
 	return {outcome = "failed", dmg = 0, taken = false}
 

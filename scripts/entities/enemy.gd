@@ -67,11 +67,21 @@ var absorb_element:   String = ""
 #   3  rewards, and the floors it appears on
 #   4  the affinity chart — weakness, then any phys/light/dark/reflect/absorb
 #   5  what it does in a fight — element, ailment, ailment chance, support spell
-#   6  how it can be talked down, if it can
+#   6  how it can be talked down
 #   7  its sprite
 #
 # A key that is absent means the default: no element, no support, no affinity
 # beyond the chart above. Lines 4-6 are the ones worth scanning down.
+#
+# Two rules the roster is written to:
+#
+#   * Everything here talks. Binding is where the party comes from and a demon
+#     that cannot be talked to is a dead end wearing a sprite; only the wardens
+#     and the bosses below are exempt, and they are set pieces.
+#   * Nothing on the first tier resists a physical swing. A floor-one player
+#     has a swing and one spell, and four of these used to answer both with
+#     "resisted" — the slimes keep their high guard and their light resistance
+#     to feel different, which is as far as it goes that early.
 const TEMPLATES: Array[Dictionary] = [
 	# --- Floor 1-2 ---
 	{name = "Bat",              lv =  1,
@@ -84,9 +94,9 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "Slug",             lv =  1,
 		str =  2, def =  2, mag =  0, agl =  1,
 		exp =  18, gold =   6, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
-		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
+		weakness = "fire", light = "resist",
 		status_attack = "poison", ail = 5,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
 		sprite = "res://resources/enemySprites/Slug.png"},
 	{name = "GiantRat",         lv =  1,
 		str =  3, def =  2, mag =  0, agl =  3,
@@ -105,9 +115,9 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "Giant Slug",       lv =  2,
 		str =  3, def =  3, mag =  0, agl =  1,
 		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
-		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
+		weakness = "fire", light = "resist",
 		status_attack = "poison", ail = 5,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
 		sprite = "res://resources/enemySprites/SlugB.png"},
 	{name = "Dire Rat",         lv =  2,
 		str =  4, def =  3, mag =  0, agl =  4,
@@ -127,9 +137,9 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "GelatinousCube",   lv =  2,
 		str =  2, def =  4, mag =  0, agl =  1,
 		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
-		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
+		weakness = "fire", light = "resist",
 		attack_element = "ice", status_attack = "immobilize", ail = 5,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite = "res://resources/enemySprites/GelatinousCube.png"},
 	{name = "Hobgoblin",        lv =  3,
 		str =  5, def =  3, mag =  0, agl =  5,
@@ -141,9 +151,9 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "Ooze",             lv =  3,
 		str =  3, def =  5, mag =  0, agl =  1,
 		exp =  28, gold =   9, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
-		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
+		weakness = "fire", light = "resist",
 		attack_element = "ice", status_attack = "immobilize", ail = 5,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite = "res://resources/enemySprites/GelatinousCubeB.png"},
 	# --- Floor 2-4 ---
 	{name = "Skeleton",         lv =  5,
@@ -151,14 +161,14 @@ const TEMPLATES: Array[Dictionary] = [
 		exp =  30, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", phys = "resist", light = "weak", dark = "null",
 		status_attack = "immobilize", ail = 12,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "throwable",
 		sprite = "res://resources/enemySprites/Skeleton.png"},
 	{name = "GiantHornet",      lv =  5,
 		str =  4, def =  2, mag =  0, agl =  6,
 		exp =  28, gold =   9, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice", phys = "weak",
 		status_attack = "poison", ail = 12,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "any",
 		sprite = "res://resources/enemySprites/GiantHornet.png"},
 	{name = "Bandit",           lv =  5,
 		str =  5, def =  3, mag =  3, agl =  5,
@@ -179,21 +189,21 @@ const TEMPLATES: Array[Dictionary] = [
 		exp =  28, gold =   8, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", light = "resist", dark = "resist",
 		status_attack = "poison", ail = 12,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 2, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/AnimatedPlant.png"},
 	{name = "Bone Knight",      lv =  6,
 		str =  6, def =  4, mag =  2, agl =  2,
 		exp =  38, gold =  12, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", phys = "resist", light = "weak", dark = "null",
 		status_attack = "immobilize", ail = 12,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "throwable",
 		sprite = "res://resources/enemySprites/SkeletonB.png"},
 	{name = "Queen Hornet",     lv =  6,
 		str =  5, def =  3, mag =  0, agl =  7,
 		exp =  35, gold =  11, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice", phys = "weak",
 		status_attack = "poison", ail = 12,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "any",
 		sprite = "res://resources/enemySprites/GiantHornetB.png"},
 	{name = "Veteran Bandit",   lv =  6,
 		str =  6, def =  4, mag =  0, agl =  5,
@@ -214,7 +224,7 @@ const TEMPLATES: Array[Dictionary] = [
 		exp =  35, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", light = "resist", dark = "resist",
 		status_attack = "poison", ail = 12,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/AnimatedPlantB.png"},
 	# --- Floor 3+ ---
 	{name = "Treant",           lv =  8,
@@ -222,7 +232,7 @@ const TEMPLATES: Array[Dictionary] = [
 		exp =  45, gold =  14, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		status_attack = "immobilize", ail = 18,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/Treant.png"},
 	{name = "Orc",              lv =  8,
 		str =  7, def =  4, mag =  0, agl =  2,
@@ -243,7 +253,7 @@ const TEMPLATES: Array[Dictionary] = [
 		exp =  55, gold =  17, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
 		status_attack = "immobilize", ail = 18,
-		negotiable = false, talk_difficulty = 0,
+		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "potion",
 		sprite = "res://resources/enemySprites/TreantB.png"},
 	{name = "Orc Warchief",     lv =  9, icons = 2,
 		str =  8, def =  5, mag =  0, agl =  2,

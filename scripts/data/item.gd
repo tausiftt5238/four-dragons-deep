@@ -106,16 +106,47 @@ static func spell_scroll(spell_id: String, floor: int) -> Dictionary:
 			d.get("desc", "") as String, floor)
 
 
-# The reach of each spell is what sets its tier: one demon is cheap, the whole
-# room is not.
+# Two axes, one table. Reach sets the price within a rung — one demon is cheap,
+# the whole room is not — and the rung sets the depth you have to have reached
+# before an orb will sell it at all. Nothing is ever taken off the shelf, so a
+# late orb still stocks Ember for the player who wants a cheap opener.
 const ELEMENTAL_SCROLLS: Dictionary = {
+	# Rung one
 	"ember": 1, "rime": 1, "arc": 1,
 	"cinderfall": 2, "hailfall": 2, "forkfall": 2,
 	"pyre": 4, "whiteout": 4, "thunderhead": 4,
 	"banish": 3, "consign": 3,
 	"winnow": 5, "cull": 5,
 	"daybreak": 6, "nightfall": 6,
+
+	# Rung two
+	"blaze": 6, "frostbite": 6, "bolt": 6,
+	"firestorm": 8, "blizzard": 8, "thunderstorm": 8,
+	"inferno": 10, "deepwinter": 10, "tempest": 10,
+	"exile": 8, "erase": 8,
+	"scour": 10, "reap": 10,
+	"zenith": 12, "eclipse": 12,
+
+	# Rung three
+	"immolate": 12, "glaciate": 12, "levin": 12,
+	"ashfall": 14, "shardfall": 14, "skyfall": 14,
+	"worldfire": 16, "killingfrost": 16, "stormcrown": 16,
+	"absolve": 14, "unmake": 14,
+	"sunburst": 16, "harvest": 16,
+	"whitehour": 18, "longnight": 18,
 }
+
+
+# Every scroll the depth reached has unlocked, cheapest rung first. This is the
+# only way into an element the player did not start with, so an orb has to be
+# able to sell all of it eventually.
+static func scrolls_for_floor(floor_num: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for spell_id: String in ELEMENTAL_SCROLLS:
+		var gate: int = int(ELEMENTAL_SCROLLS[spell_id])
+		if gate <= floor_num:
+			out.append(spell_scroll(spell_id, gate))
+	return out
 
 
 static func elemental_scrolls() -> Array[Dictionary]:

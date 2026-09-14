@@ -1991,7 +1991,7 @@ func _cast_spell(spell_id: String) -> Dictionary:
 	var element: String = data.get("element", "")
 	var power: float = float(player.effective_mag()) \
 			* player.stage_mult(CharacterSheet.STAT_MAG)
-	var base: int = int(power * 2.0) - _guarded_def(enemy)
+	var base: int = int(power * float(data.get("power", Spell.POWER_I))) - _guarded_def(enemy)
 	if "scholar" in player.passive_skills:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit(player)
@@ -2043,8 +2043,9 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 	var outcomes: Array[String] = []
 	var reflected: int = 0
 
+	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
-		var base: int = int(power * 2.0 * spread) - _guarded_def(foe)
+		var base: int = int(power * rung * spread) - _guarded_def(foe)
 		if "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
@@ -2141,7 +2142,8 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", Affinity.LIGHT) as String
 	var power: int = maxi(1, int(float(player.effective_mag())
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
-	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false, player)
+	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false, player,
+			1.0, float(data.get("boost", Spell.BOOST_I)))
 	var name: String = data["name"] as String
 	var who: String  = enemy.display_name()
 
@@ -2176,6 +2178,7 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 func _cast_banish_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", Affinity.LIGHT) as String
 	var spread: float = float(data.get("spread", 1.0))
+	var boost: float = float(data.get("boost", Spell.BOOST_I))
 	var power: int = maxi(1, int(float(player.effective_mag())
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
 	var targets: Array[Enemy] = _spread_targets(
@@ -2188,7 +2191,7 @@ func _cast_banish_spread(data: Dictionary) -> Dictionary:
 
 	for foe: Enemy in targets:
 		var res: Dictionary = CombatMath.resolve_banish(
-				foe, element, power, false, player, spread)
+				foe, element, power, false, player, spread, boost)
 		var outcome: String = res["outcome"] as String
 		match outcome:
 			"banished":
