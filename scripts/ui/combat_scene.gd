@@ -382,9 +382,10 @@ func _check_counter() -> String:
 
 
 
-# A bound demon that goes down is gone for good — struck off the rolodex, not
-# just out of this fight. Getting it back means buying it again at an orb, which
-# is the whole reason the compendium is there.
+# A bound demon that goes down is struck off here — off the rolodex, not just
+# out of this fight — which is the whole reason the compendium is there. It is
+# struck off at this moment and not the one it dropped in, so everything up to
+# the last enemy is a window in which Recall can still pull it back.
 func _end_combat(result: String) -> void:
 	lost_demons.clear()
 	for i: int in range(1, party.size()):
@@ -773,6 +774,34 @@ func _talk_attempt_failed() -> void:
 
 # ── Summoning ─────────────────────────────────────────────────────────────────
 
+# ── Recall ────────────────────────────────────────────────────────────────────
+#
+# A fallen demon is struck off at the end of the battle, not the moment it
+# drops, so while the fight is still running there is a window to pull it back.
+# It is priced in the detective's own MP and scaled to the demon, because the
+# alternative is buying it again at an orb for gold — a free in-battle revive
+# would make the compendium pointless. It comes back on half its HP with the
+# icon it brings arriving next phase, same as anything summoned.
+const RECALL_MP_BASE:  int   = 12
+const RECALL_MP_PER_LV: int  = 4
+const RECALL_HP_SHARE: float = 0.5
+
+
+static func recall_cost(demon: Enemy) -> int:
+	return RECALL_MP_BASE + demon.lv * RECALL_MP_PER_LV
+
+
+# Demons already on the field with no HP left. They keep their slot — a body is
+# not a free space — so this is the only thing that can be done with one.
+func _fallen_party() -> Array[Enemy]:
+	var out: Array[Enemy] = []
+	for i: int in range(1, party.size()):
+		var demon: Enemy = party[i] as Enemy
+		if not demon.is_alive():
+			out.append(demon)
+	return out
+
+
 func _available_summons() -> Array[String]:
 	var bound: Array[String] = []
 	for i: int in range(1, party.size()):
@@ -795,9 +824,23 @@ func _show_summon_submenu() -> void:
 	_right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.55))
 	_submenu_clear()
 
+	var fallen: Array[Enemy] = _fallen_party()
 	var options: Array[String] = _available_summons()
-	if options.is_empty():
+	if fallen.is_empty() and options.is_empty():
 		_submenu_add(_dim_label("Nothing left to call."))
+		return
+
+	# The fallen come first: one of them is on a clock that ends with the
+	# battle, and everything under it will still be there afterwards.
+	for demon: Enemy in fallen:
+		var cost: int = recall_cost(demon)
+		var btn: Button = _big_button(demon.enemy_name, "recall  %d MP" % cost,
+				player.mp < cost)
+		if player.mp >= cost:
+			btn.pressed.connect(_on_recall.bind(demon))
+		_submenu_add(btn)
+
+	if party.size() >= MAX_PARTY:
 		return
 	for summon_name: String in options:
 		var btn: Button = _big_button(summon_name, "bind", false)
@@ -815,6 +858,26 @@ func _on_summon(summon_name: String) -> void:
 	party.append(demon)
 	_rebuild_party_slots()
 	_log("[color=#7fe0a0]%s answers the call.[/color]" % demon.enemy_name)
+	await _after_action(PressTurn.COST_FULL)
+
+
+# Costs a full icon like a summon does, and the MP on top of it. Whatever put
+# the demon down came with it — a poisoned corpse pulled back up is still
+# poisoned — so the slate is wiped along with the HP.
+func _on_recall(demon: Enemy) -> void:
+	var cost: int = recall_cost(demon)
+	if player.mp < cost or demon.is_alive():
+		_show_main_actions()
+		return
+	_show_main_actions()
+	_set_buttons(false)
+	player.mp -= cost
+	demon.active_statuses.clear()
+	demon.defending = false
+	demon.hp = maxi(1, roundi(float(demon.max_hp) * RECALL_HP_SHARE))
+	_rebuild_party_slots()
+	_log("[color=#7fe0a0]%s is called back, and stands.[/color]  [color=#6fa8dc]%d MP.[/color]"
+			% [demon.enemy_name, cost])
 	await _after_action(PressTurn.COST_FULL)
 
 
@@ -1254,8 +1317,10 @@ func _refresh_button_states() -> void:
 	_buttons["Defend"].disabled = _actor().defending
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
-	_buttons["Summon"].disabled = not is_p or party.size() >= MAX_PARTY \
-			or _available_summons().is_empty()
+	# A full party of bodies has nothing to summon into and everything to
+	# recall, so the two cases are checked separately.
+	_buttons["Summon"].disabled = not is_p or (_fallen_party().is_empty() \
+			and (party.size() >= MAX_PARTY or _available_summons().is_empty()))
 	_buttons["Flee"].disabled   = not is_p
 
 
