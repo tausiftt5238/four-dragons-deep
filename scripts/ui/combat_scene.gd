@@ -387,12 +387,14 @@ func _check_counter() -> String:
 # struck off at this moment and not the one it dropped in, so everything up to
 # the last enemy is a window in which Recall can still pull it back.
 func _end_combat(result: String) -> void:
-	lost_demons.clear()
+	# Not cleared: a body swapped off the field was already struck off and
+	# already recorded, and the tally afterwards has to name it too.
 	for i: int in range(1, party.size()):
 		var demon: Enemy = party[i] as Enemy
 		if demon.is_alive():
 			continue
-		lost_demons.append(demon.enemy_name)
+		if demon.enemy_name not in lost_demons:
+			lost_demons.append(demon.enemy_name)
 		player.recruited.erase(demon.enemy_name)
 		player.deactivate_demon(demon.enemy_name)
 	combat_ended.emit(result)
@@ -772,27 +774,29 @@ func _talk_attempt_failed() -> void:
 	await _after_action(PressTurn.COST_FULL)
 
 
-# ── Summoning ─────────────────────────────────────────────────────────────────
-
-# ── Recall ────────────────────────────────────────────────────────────────────
+# ── Calling demons in and out ─────────────────────────────────────────────────
+#
+# Three demons stand at a time and the rest wait off the field. Summon is the
+# whole bench: it calls in anything bound that is not already standing, pulls a
+# fallen one back up, and — when there is no room — swaps a standing demon for
+# a waiting one.
 #
 # A fallen demon is struck off at the end of the battle, not the moment it
-# drops, so while the fight is still running there is a window to pull it back.
-# It is priced in the detective's own MP and scaled to the demon, because the
-# alternative is buying it again at an orb for gold — a free in-battle revive
-# would make the compendium pointless. It comes back on half its HP with the
-# icon it brings arriving next phase, same as anything summoned.
-const RECALL_MP_BASE:  int   = 12
-const RECALL_MP_PER_LV: int  = 4
+# drops, so the whole fight is a window in which Recall can still reach it. It
+# costs what a summon costs, one icon and nothing else: MP is tight enough that
+# pricing a revive in it meant never affording one in the fight that had just
+# drained you, which is the only fight it matters in. It stands back up on half
+# its HP with whatever put it down cleared off.
 const RECALL_HP_SHARE: float = 0.5
 
+# Demons pulled off the field this battle. They are kept as they were — HP, MP
+# and all — rather than rebuilt, so stepping one out and back in is a way to
+# save it, not a way to heal it.
+var bench: Array[Enemy] = []
 
-static func recall_cost(demon: Enemy) -> int:
-	return RECALL_MP_BASE + demon.lv * RECALL_MP_PER_LV
 
-
-# Demons already on the field with no HP left. They keep their slot — a body is
-# not a free space — so this is the only thing that can be done with one.
+# Demons on the field with no HP left. A body keeps its slot; recalling it or
+# swapping it out are the only two things that can be done with one.
 func _fallen_party() -> Array[Enemy]:
 	var out: Array[Enemy] = []
 	for i: int in range(1, party.size()):
@@ -802,13 +806,15 @@ func _fallen_party() -> Array[Enemy]:
 	return out
 
 
+# Everything bound that is not currently standing. Benched demons come back as
+# the instance that left; the rest are built fresh at the level they were bound.
 func _available_summons() -> Array[String]:
-	var bound: Array[String] = []
+	var standing: Array[String] = []
 	for i: int in range(1, party.size()):
-		bound.append((party[i] as Enemy).enemy_name)
+		standing.append((party[i] as Enemy).enemy_name)
 	var out: Array[String] = []
 	for name: String in player.recruited:
-		if name not in bound:
+		if name not in standing:
 			out.append(name)
 	return out
 
@@ -833,51 +839,118 @@ func _show_summon_submenu() -> void:
 	# The fallen come first: one of them is on a clock that ends with the
 	# battle, and everything under it will still be there afterwards.
 	for demon: Enemy in fallen:
-		var cost: int = recall_cost(demon)
-		var btn: Button = _big_button(demon.enemy_name, "recall  %d MP" % cost,
-				player.mp < cost)
-		if player.mp >= cost:
-			btn.pressed.connect(_on_recall.bind(demon))
+		var btn: Button = _big_button(demon.enemy_name, "recall", false)
+		btn.pressed.connect(_on_recall.bind(demon))
 		_submenu_add(btn)
 
-	if party.size() >= MAX_PARTY:
-		return
+	var room: bool = party.size() < MAX_PARTY
 	for summon_name: String in options:
-		var btn: Button = _big_button(summon_name, "bind", false)
-		btn.pressed.connect(_on_summon.bind(summon_name))
+		var btn: Button = _big_button(summon_name, "call" if room else "swap in", false)
+		if room:
+			btn.pressed.connect(_on_summon.bind(summon_name))
+		else:
+			btn.pressed.connect(_show_swap_submenu.bind(summon_name))
 		_submenu_add(btn)
 
 
-# Binding costs a full icon and the demon joins at the detective's own level.
+# ── Swapping ──────────────────────────────────────────────────────────────────
+#
+# With three already standing, calling a fourth means one of them steps back.
+# What that costs depends on who: a living demon goes to the bench exactly as it
+# is and can be called again, while a body has nothing left to step back to and
+# is struck off there and then — the same loss it was going to take when the
+# battle ended, taken early.
+func _show_swap_submenu(incoming: String) -> void:
+	_hide_actions()
+	_set_back(_show_summon_submenu)
+	_right_title.text = "Who steps back?"
+	_right_title.add_theme_color_override("font_color", Color(1.0, 0.80, 0.40))
+	_submenu_clear()
+
+	for i: int in range(1, party.size()):
+		var demon: Enemy = party[i] as Enemy
+		var note: String = "steps back" if demon.is_alive() else "struck off"
+		var btn: Button = _big_button(demon.enemy_name, note, false)
+		btn.pressed.connect(_on_swap.bind(demon, incoming))
+		_submenu_add(btn)
+
+
+func _on_swap(outgoing: Enemy, incoming: String) -> void:
+	_show_main_actions()
+	_set_buttons(false)
+
+	var idx: int = party.find(outgoing)
+	if idx <= 0:
+		return
+	var was_alive: bool = outgoing.is_alive()
+	if was_alive:
+		bench.append(outgoing)
+	else:
+		# Struck off now rather than at the bell, and reported either way.
+		if outgoing.enemy_name not in lost_demons:
+			lost_demons.append(outgoing.enemy_name)
+		player.recruited.erase(outgoing.enemy_name)
+		player.deactivate_demon(outgoing.enemy_name)
+
+	var demon: Enemy = _take_from_bench(incoming)
+	if demon == null:
+		demon = player.bound_demon(incoming)
+		add_child(demon)
+	party[idx] = demon
+	_ensure_actor_in_range()
+	_rebuild_party_slots()
+	if was_alive:
+		_log("[color=#7fe0a0]%s steps back and %s takes the field.[/color]"
+				% [outgoing.enemy_name, demon.enemy_name])
+	else:
+		_log("[color=#7fe0a0]%s takes the field.[/color]  [color=#d08080]%s is left where it fell.[/color]"
+				% [demon.enemy_name, outgoing.enemy_name])
+	await _after_action(PressTurn.COST_FULL)
+
+
+func _take_from_bench(demon_name: String) -> Enemy:
+	for demon: Enemy in bench:
+		if demon.enemy_name == demon_name:
+			bench.erase(demon)
+			return demon
+	return null
+
+
+# Swapping out the demon whose turn it is would leave the cursor pointing past
+# the end of the party, so it is pulled back into range before anything reads it.
+func _ensure_actor_in_range() -> void:
+	_actor_idx = clampi(_actor_idx, 0, party.size() - 1)
+
+
+# Binding costs a full icon and the demon joins at the level it was bound.
 # Its icon arrives with the next phase, not this one.
 func _on_summon(summon_name: String) -> void:
 	_show_main_actions()
 	_set_buttons(false)
-	var demon: Enemy = player.bound_demon(summon_name)
-	add_child(demon)
+	var demon: Enemy = _take_from_bench(summon_name)
+	if demon == null:
+		demon = player.bound_demon(summon_name)
+		add_child(demon)
 	party.append(demon)
 	_rebuild_party_slots()
 	_log("[color=#7fe0a0]%s answers the call.[/color]" % demon.enemy_name)
 	await _after_action(PressTurn.COST_FULL)
 
 
-# Costs a full icon like a summon does, and the MP on top of it. Whatever put
-# the demon down came with it — a poisoned corpse pulled back up is still
-# poisoned — so the slate is wiped along with the HP.
+# Costs a full icon, like a summon does, and nothing else. Whatever put the
+# demon down came with it — a poisoned corpse pulled back up is still poisoned
+# — so the slate is wiped along with the HP.
 func _on_recall(demon: Enemy) -> void:
-	var cost: int = recall_cost(demon)
-	if player.mp < cost or demon.is_alive():
+	if demon.is_alive():
 		_show_main_actions()
 		return
 	_show_main_actions()
 	_set_buttons(false)
-	player.mp -= cost
 	demon.active_statuses.clear()
 	demon.defending = false
 	demon.hp = maxi(1, roundi(float(demon.max_hp) * RECALL_HP_SHARE))
 	_rebuild_party_slots()
-	_log("[color=#7fe0a0]%s is called back, and stands.[/color]  [color=#6fa8dc]%d MP.[/color]"
-			% [demon.enemy_name, cost])
+	_log("[color=#7fe0a0]%s is called back, and stands.[/color]" % demon.enemy_name)
 	await _after_action(PressTurn.COST_FULL)
 
 
@@ -1317,10 +1390,10 @@ func _refresh_button_states() -> void:
 	_buttons["Defend"].disabled = _actor().defending
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
-	# A full party of bodies has nothing to summon into and everything to
-	# recall, so the two cases are checked separately.
+	# A full party is no longer a reason to grey it out: someone can always
+	# step back for someone else, and a body can always be pulled up.
 	_buttons["Summon"].disabled = not is_p or (_fallen_party().is_empty() \
-			and (party.size() >= MAX_PARTY or _available_summons().is_empty()))
+			and _available_summons().is_empty())
 	_buttons["Flee"].disabled   = not is_p
 
 
@@ -2026,6 +2099,9 @@ func _cast_spell(spell_id: String) -> Dictionary:
 	if spell_type == "buff":
 		return _apply_stage_spell(data)
 
+	if spell_type == "dispel":
+		return _cast_dispel(data, true)
+
 	if spell_type == "ailment":
 		var target_status: String = data.get("status", "")
 		if target_status == "" or enemy.has_status(target_status):
@@ -2176,6 +2252,63 @@ func _apply_stage_spell(data: Dictionary) -> Dictionary:
 	return {msg = "[color=%s]You cast %s!  %s %s on %d of %d.[/color]" % [
 			tint, data["name"], _stat_name(stat),
 			"rises" if delta > 0 else "falls", moved, total],
+			cost = PressTurn.COST_FULL}
+
+
+# ── Dispels ───────────────────────────────────────────────────────────────────
+#
+# Dekaja and dekunda by another name. Both read from where the caster stands:
+# "foes" is the other side and "party" is the caster's own, so one function
+# serves the detective and the demon that casts it back at him. All or nothing
+# across a whole side — there is no picking which stage to take.
+# Is there anything on that side for this cast to take? The player is allowed
+# to waste the turn; a demon deciding its own move is not.
+func _dispel_would_bite(data: Dictionary, by_player: bool) -> bool:
+	var hits_other: bool = (data.get("scope", "foes") == "foes")
+	var take_buffs: bool = (data.get("clears", "buffs") == "buffs")
+	var targets: Array[CharacterSheet] = []
+	if hits_other != by_player:
+		targets = _living_party()
+	else:
+		for foe: Enemy in _living_foes():
+			targets.append(foe)
+	for t: CharacterSheet in targets:
+		for key: String in CharacterSheet.STAT_KEYS:
+			var st: int = t.stage(key)
+			if (take_buffs and st > 0) or (not take_buffs and st < 0):
+				return true
+	return false
+
+
+func _cast_dispel(data: Dictionary, by_player: bool) -> Dictionary:
+	var hits_other: bool = (data.get("scope", "foes") == "foes")
+	var take_buffs: bool = (data.get("clears", "buffs") == "buffs")
+
+	var targets: Array[CharacterSheet] = []
+	var on_party: bool = hits_other != by_player
+	if on_party:
+		targets = _living_party()
+	else:
+		for foe: Enemy in _living_foes():
+			targets.append(foe)
+
+	var moved: int = 0
+	for t: CharacterSheet in targets:
+		var before: Dictionary = t.stages.duplicate()
+		if take_buffs:
+			t.clear_buffs()
+		else:
+			t.clear_debuffs()
+		if t.stages != before:
+			moved += 1
+
+	var side: String = "the party" if on_party else "every enemy"
+	var what: String = "had raised" if take_buffs else "was carrying"
+	if moved == 0:
+		return {msg = "[color=gray]%s — %s has nothing it %s.[/color]" % [
+				data["name"], side, what], cost = PressTurn.COST_FULL}
+	return {msg = "[color=#c9a6ff]%s!  %d of %s stripped back to level.[/color]" % [
+			data["name"], moved, "them" if not on_party else "the party"],
 			cost = PressTurn.COST_FULL}
 
 
@@ -2348,6 +2481,15 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# room and the MP to pay for it.
 	if actor.support_skill != "" and randi() % 10 < 3:
 		var sup: Dictionary = Spell.get_data(actor.support_skill)
+		# A dispel against a side with nothing stacked is a wasted phase, so a
+		# demon carrying one holds it until there is something to take.
+		if not sup.is_empty() and actor.mp >= int(sup.get("mp", 8)) \
+				and sup.get("type", "buff") == "dispel" and _dispel_would_bite(sup, false):
+			actor.mp -= int(sup.get("mp", 8))
+			var out: Dictionary = _cast_dispel(sup, false)
+			out["msg"] = "[color=#c9a6ff]%s casts[/color] %s" % [
+					actor.display_name(), out["msg"]]
+			return out
 		if not sup.is_empty() and actor.mp >= int(sup.get("mp", 8)):
 			var stat: String = sup.get("stat", CharacterSheet.STAT_ATK) as String
 			var delta: int   = int(sup.get("delta", 1))

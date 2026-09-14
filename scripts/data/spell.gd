@@ -5,7 +5,7 @@
 # Fields per spell:
 #   name    – display name
 #   mp      – MP cost
-#   type    – "dmg" | "banish" | "heal" | "buff" | "ailment"
+#   type    – "dmg" | "banish" | "heal" | "buff" | "dispel" | "ailment"
 #   element – affinity key it is scored against ("" for the ones that aren't)
 #   shape   – SHAPE_ONE | SHAPE_FEW | SHAPE_ALL, how many demons it reaches
 #   spread  – what each target gets when the cast is split; 1.0 for single
@@ -241,9 +241,19 @@ static var DATA: Dictionary = {
 		stat="mag", delta=-1, scope="foes",
 		desc="Smothers every enemy's magic."},
 
-	# Stripping what the other side stacked is deliberately absent for now —
-	# the dekaja/dekunda pair comes in a later pass, and until it does a stacked
-	# buff is answered by out-stacking it.
+	# ── Dispels: take back what a side has stacked ────────────────────────────
+	#
+	# Both are read from where the caster stands, so a demon casting Purge
+	# strips the party and a demon casting Steady clears itself. All or nothing
+	# across a whole side, and dearer than the single stage they answer — which
+	# is what keeps out-stacking one buff the cheaper reply and saves these for
+	# a line that has been stacking for three phases.
+	"purge":     {name="Purge", mp=20, type="dispel", heal=0,
+		scope="foes", clears="buffs",
+		desc="Strips the other side of everything it has raised."},
+	"steady":    {name="Steady", mp=20, type="dispel", heal=0,
+		scope="party", clears="debuffs",
+		desc="Clears every penalty stacked on your own side."},
 
 	# ── Ailments ──────────────────────────────────────────────────────────────
 	"venom":     {name="Venom", mp=4, type="ailment", heal=0,

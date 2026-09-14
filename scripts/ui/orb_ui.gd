@@ -274,8 +274,11 @@ func _stock() -> Array[Dictionary]:
 	return out
 
 
+# Price follows the item's depth tier, unless it carries one of its own — the
+# dispel scrolls do, because what they are worth has nothing to do with how far
+# down you have to be to be offered one.
 static func item_price(item: Dictionary) -> int:
-	return 20 + int(item.get("floor", 1)) * 25
+	return int(item.get("price", 20 + int(item.get("floor", 1)) * 25))
 
 
 func _build_buy() -> void:

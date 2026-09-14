@@ -18,10 +18,17 @@ static func consumable(id: String, name: String, desc: String,
 	return d
 
 
+# `floor` is both the depth that unlocks it and, normally, the price tier. A
+# scroll that should cost far more than its depth suggests carries an explicit
+# `price` instead — the dispels do, because they answer a whole stacked line and
+# a cheap one would make stacking pointless for either side.
 static func scroll(id: String, name: String, spell_id: String,
-		spell_name: String, desc: String, floor: int) -> Dictionary:
-	return {id=id, name=name, type="scroll", desc=desc,
+		spell_name: String, desc: String, floor: int, price: int = 0) -> Dictionary:
+	var d: Dictionary = {id=id, name=name, type="scroll", desc=desc,
 			teaches=spell_id, spell_name=spell_name, floor=floor, qty=1}
+	if price > 0:
+		d["price"] = price
+	return d
 
 
 static func elemental_throwable(id: String, name: String, desc: String,
@@ -78,6 +85,14 @@ static func panacea() -> Dictionary:
 static func scroll_cure() -> Dictionary:
 	return scroll("scroll_cure", "Scroll of Cure", "cure", "Cure",
 			"Teaches the Cure healing spell.", 1)
+
+static func scroll_cura() -> Dictionary:
+	return scroll("scroll_cura", "Scroll of Cura", "cura", "Cura",
+			"Teaches the Cura healing spell.", 7)
+
+static func scroll_curaga() -> Dictionary:
+	return scroll("scroll_curaga", "Scroll of Curaga", "curaga", "Curaga",
+			"Teaches the Curaga healing spell.", 13)
 
 static func scroll_venom() -> Dictionary:
 	return scroll("scroll_venom", "Scroll of Venom", "venom", "Venom",
@@ -142,11 +157,27 @@ const ELEMENTAL_SCROLLS: Dictionary = {
 # able to sell all of it eventually.
 static func scrolls_for_floor(floor_num: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	for maker: Callable in SUPPORT_SCROLLS:
+		var scroll_item: Dictionary = maker.call() as Dictionary
+		if int(scroll_item["floor"]) <= floor_num:
+			out.append(scroll_item)
 	for spell_id: String in ELEMENTAL_SCROLLS:
 		var gate: int = int(ELEMENTAL_SCROLLS[spell_id])
 		if gate <= floor_num:
 			out.append(spell_scroll(spell_id, gate))
 	return out
+
+
+# Healing, the four buffs, the four debuffs, the four ailments and the two
+# dispels. None of these dropped anywhere an orb could reach before, which meant
+# a run could finish without ever being able to learn Cure.
+static var SUPPORT_SCROLLS: Array[Callable] = [
+	scroll_cure, scroll_cura, scroll_curaga,
+	scroll_whet, scroll_ward, scroll_quicken, scroll_stoke,
+	scroll_blunt, scroll_sunder, scroll_mire, scroll_damp,
+	scroll_venom, scroll_shock, scroll_mute, scroll_bind,
+	scroll_purge, scroll_steady,
+]
 
 
 static func elemental_scrolls() -> Array[Dictionary]:
@@ -189,6 +220,21 @@ static func scroll_sunder() -> Dictionary:
 static func scroll_mire() -> Dictionary:
 	return scroll("scroll_mire", "Scroll of Mire", "mire", "Mire",
 			"Teaches Mire — lowers every enemy's agility.", 4)
+
+# The dear ones. Everything above raises or lowers a single stage; these two
+# take a whole side's worth back in one cast, which is the only real answer to a
+# line that has spent three phases stacking. Priced to be saved for.
+const DISPEL_PRICE: int = 1000
+
+static func scroll_purge() -> Dictionary:
+	return scroll("scroll_purge", "Scroll of Purge", "purge", "Purge",
+			"Teaches Purge — strips the other side of everything it has raised.",
+			8, DISPEL_PRICE)
+
+static func scroll_steady() -> Dictionary:
+	return scroll("scroll_steady", "Scroll of Steady", "steady", "Steady",
+			"Teaches Steady — clears every penalty stacked on your own side.",
+			8, DISPEL_PRICE)
 
 
 # ── Predefined offensive throwables ──────────────────────────────────────────
@@ -239,8 +285,10 @@ static func drop_table() -> Array[Dictionary]:
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
 		fire_bomb(), ice_shard(), thunder_bead(),
+		scroll_cure(), scroll_cura(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
 		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
+		scroll_venom(), scroll_shock(), scroll_mute(), scroll_bind(),
 	]
 	out.append_array(elemental_scrolls())
 	out.append_array(Accessory.all())
