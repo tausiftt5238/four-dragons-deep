@@ -385,7 +385,7 @@ func _check_counter() -> String:
 # A bound demon that goes down is struck off here — off the rolodex, not just
 # out of this fight — which is the whole reason the compendium is there. It is
 # struck off at this moment and not the one it dropped in, so everything up to
-# the last enemy is a window in which Recall can still pull it back.
+# the last enemy is a window in which Revive can still pull it back.
 func _end_combat(result: String) -> void:
 	# Not cleared: a body swapped off the field was already struck off and
 	# already recorded, and the tally afterwards has to name it too.
@@ -393,10 +393,7 @@ func _end_combat(result: String) -> void:
 		var demon: Enemy = party[i] as Enemy
 		if demon.is_alive():
 			continue
-		if demon.enemy_name not in lost_demons:
-			lost_demons.append(demon.enemy_name)
-		player.recruited.erase(demon.enemy_name)
-		player.deactivate_demon(demon.enemy_name)
+		_strike_off(demon)
 	combat_ended.emit(result)
 	queue_free()
 
@@ -777,31 +774,51 @@ func _talk_attempt_failed() -> void:
 # ── Calling demons in and out ─────────────────────────────────────────────────
 #
 # Three demons stand at a time and the rest wait off the field. Summon is the
-# whole bench: it calls in anything bound that is not already standing, pulls a
-# fallen one back up, and — when there is no room — swaps a standing demon for
-# a waiting one.
+# whole bench, and there are four things it can do:
+#
+#   revive   a demon that has fallen but is still standing in its slot
+#   call     a bound demon into a slot that is free
+#   swap in  a bound demon in place of one already standing, when none is
+#   recall   a standing demon off the field with nothing taking its place
+#
+# The last of those is the one that costs you something other than a turn: the
+# field is where press-turn icons come from, so pulling a demon out to save it
+# is paid for in actions next phase.
 #
 # A fallen demon is struck off at the end of the battle, not the moment it
-# drops, so the whole fight is a window in which Recall can still reach it. It
+# drops, so the whole fight is a window in which Revive can still reach it. It
 # costs what a summon costs, one icon and nothing else: MP is tight enough that
 # pricing a revive in it meant never affording one in the fight that had just
 # drained you, which is the only fight it matters in. It stands back up on half
 # its HP with whatever put it down cleared off.
-const RECALL_HP_SHARE: float = 0.5
+const REVIVE_HP_SHARE: float = 0.5
 
 # Demons pulled off the field this battle. They are kept as they were — HP, MP
 # and all — rather than rebuilt, so stepping one out and back in is a way to
 # save it, not a way to heal it.
 var bench: Array[Enemy] = []
 
+# Which page of a long call list is showing. A run binds far more demons than
+# the six slots a submenu has.
+var _sub_page: int = 0
 
-# Demons on the field with no HP left. A body keeps its slot; recalling it or
+
+# Demons on the field with no HP left. A body keeps its slot, so reviving it or
 # swapping it out are the only two things that can be done with one.
 func _fallen_party() -> Array[Enemy]:
 	var out: Array[Enemy] = []
 	for i: int in range(1, party.size()):
 		var demon: Enemy = party[i] as Enemy
 		if not demon.is_alive():
+			out.append(demon)
+	return out
+
+
+func _standing_party() -> Array[Enemy]:
+	var out: Array[Enemy] = []
+	for i: int in range(1, party.size()):
+		var demon: Enemy = party[i] as Enemy
+		if demon.is_alive():
 			out.append(demon)
 	return out
 
@@ -823,6 +840,11 @@ func _remember_recruit(demon_name: String, lv: int = 1) -> void:
 	player.remember_recruit(demon_name, lv)
 
 
+func _open_summon_menu() -> void:
+	_sub_page = 0
+	_show_summon_submenu()
+
+
 func _show_summon_submenu() -> void:
 	_hide_actions()
 	_set_back(_show_main_actions)
@@ -830,27 +852,64 @@ func _show_summon_submenu() -> void:
 	_right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.55))
 	_submenu_clear()
 
-	var fallen: Array[Enemy] = _fallen_party()
-	var options: Array[String] = _available_summons()
-	if fallen.is_empty() and options.is_empty():
-		_submenu_add(_dim_label("Nothing left to call."))
-		return
+	var entries: Array[Dictionary] = []
 
 	# The fallen come first: one of them is on a clock that ends with the
 	# battle, and everything under it will still be there afterwards.
-	for demon: Enemy in fallen:
-		var btn: Button = _big_button(demon.enemy_name, "recall", false)
-		btn.pressed.connect(_on_recall.bind(demon))
-		_submenu_add(btn)
+	for demon: Enemy in _fallen_party():
+		entries.append({title = demon.enemy_name, detail = "revive",
+				press = _on_revive.bind(demon)})
 
 	var room: bool = party.size() < MAX_PARTY
-	for summon_name: String in options:
-		var btn: Button = _big_button(summon_name, "call" if room else "swap in", false)
+	for summon_name: String in _available_summons():
 		if room:
-			btn.pressed.connect(_on_summon.bind(summon_name))
+			entries.append({title = summon_name, detail = "call",
+					press = _on_summon.bind(summon_name)})
 		else:
-			btn.pressed.connect(_show_swap_submenu.bind(summon_name))
-		_submenu_add(btn)
+			entries.append({title = summon_name, detail = "swap in",
+					press = _show_swap_submenu.bind(summon_name)})
+
+	# Last, because taking a demon off the field is the only one of these that
+	# leaves you with less than you had.
+	for demon: Enemy in _standing_party():
+		entries.append({title = demon.enemy_name,
+				detail = "recall  %d/%d hp" % [demon.hp, demon.max_hp],
+				press = _on_withdraw.bind(demon)})
+
+	if entries.is_empty():
+		_submenu_add(_dim_label("Nothing left to call."))
+		return
+	_fill_submenu(entries, _show_summon_submenu)
+
+
+# One page of a list into the submenu's six slots. Anything longer keeps the
+# last slot for a pager rather than dropping what does not fit — which is what
+# used to happen once a run had bound seven demons.
+func _fill_submenu(entries: Array[Dictionary], rebuild: Callable) -> void:
+	if entries.size() <= MENU_SLOTS:
+		_sub_page = 0
+		for e: Dictionary in entries:
+			_submenu_add(_entry_button(e))
+		return
+
+	var per: int = MENU_SLOTS - 1
+	var pages: int = ceili(float(entries.size()) / float(per))
+	_sub_page = clampi(_sub_page, 0, pages - 1)
+	var first: int = _sub_page * per
+	for i: int in range(first, mini(first + per, entries.size())):
+		_submenu_add(_entry_button(entries[i]))
+
+	var more: Button = _big_button("More", "%d / %d" % [_sub_page + 1, pages], false)
+	more.pressed.connect(func() -> void:
+		_sub_page = (_sub_page + 1) % pages
+		rebuild.call())
+	_submenu_add(more)
+
+
+func _entry_button(e: Dictionary) -> Button:
+	var btn: Button = _big_button(e["title"] as String, e["detail"] as String, false)
+	btn.pressed.connect(e["press"] as Callable)
+	return btn
 
 
 # ── Swapping ──────────────────────────────────────────────────────────────────
@@ -886,11 +945,7 @@ func _on_swap(outgoing: Enemy, incoming: String) -> void:
 	if was_alive:
 		bench.append(outgoing)
 	else:
-		# Struck off now rather than at the bell, and reported either way.
-		if outgoing.enemy_name not in lost_demons:
-			lost_demons.append(outgoing.enemy_name)
-		player.recruited.erase(outgoing.enemy_name)
-		player.deactivate_demon(outgoing.enemy_name)
+		_strike_off(outgoing)
 
 	var demon: Enemy = _take_from_bench(incoming)
 	if demon == null:
@@ -908,6 +963,27 @@ func _on_swap(outgoing: Enemy, incoming: String) -> void:
 	await _after_action(PressTurn.COST_FULL)
 
 
+# ── Recalling ─────────────────────────────────────────────────────────────────
+#
+# Taking a demon off the field with nothing replacing it. The slot closes, so
+# the party is one icon lighter next phase — which is the whole price, and the
+# reason this is worth doing anyway when the alternative is watching something
+# on three HP take one more hit. It keeps everything it had; calling it back
+# later returns the same demon, not a fresh one.
+func _on_withdraw(demon: Enemy) -> void:
+	_show_main_actions()
+	_set_buttons(false)
+	var idx: int = party.find(demon)
+	if idx <= 0 or not demon.is_alive():
+		return
+	party.remove_at(idx)
+	bench.append(demon)
+	_ensure_actor_in_range()
+	_rebuild_party_slots()
+	_log("[color=#7fe0a0]%s is called back and stands down.[/color]" % demon.enemy_name)
+	await _after_action(PressTurn.COST_FULL)
+
+
 func _take_from_bench(demon_name: String) -> Enemy:
 	for demon: Enemy in bench:
 		if demon.enemy_name == demon_name:
@@ -916,8 +992,15 @@ func _take_from_bench(demon_name: String) -> Enemy:
 	return null
 
 
-# Swapping out the demon whose turn it is would leave the cursor pointing past
-# the end of the party, so it is pulled back into range before anything reads it.
+func _strike_off(demon: Enemy) -> void:
+	if demon.enemy_name not in lost_demons:
+		lost_demons.append(demon.enemy_name)
+	player.recruited.erase(demon.enemy_name)
+	player.deactivate_demon(demon.enemy_name)
+
+
+# Taking a demon off the field can leave the turn cursor pointing past the end
+# of the party, so it is pulled back into range before anything reads it.
 func _ensure_actor_in_range() -> void:
 	_actor_idx = clampi(_actor_idx, 0, party.size() - 1)
 
@@ -940,7 +1023,7 @@ func _on_summon(summon_name: String) -> void:
 # Costs a full icon, like a summon does, and nothing else. Whatever put the
 # demon down came with it — a poisoned corpse pulled back up is still poisoned
 # — so the slate is wiped along with the HP.
-func _on_recall(demon: Enemy) -> void:
+func _on_revive(demon: Enemy) -> void:
 	if demon.is_alive():
 		_show_main_actions()
 		return
@@ -948,9 +1031,9 @@ func _on_recall(demon: Enemy) -> void:
 	_set_buttons(false)
 	demon.active_statuses.clear()
 	demon.defending = false
-	demon.hp = maxi(1, roundi(float(demon.max_hp) * RECALL_HP_SHARE))
+	demon.hp = maxi(1, roundi(float(demon.max_hp) * REVIVE_HP_SHARE))
 	_rebuild_party_slots()
-	_log("[color=#7fe0a0]%s is called back, and stands.[/color]" % demon.enemy_name)
+	_log("[color=#7fe0a0]%s is raised, and stands.[/color]" % demon.enemy_name)
 	await _after_action(PressTurn.COST_FULL)
 
 
@@ -1354,7 +1437,7 @@ func _on_action(action: String) -> void:
 				_show_talk_submenu())
 			return
 		"Summon":
-			_show_summon_submenu()
+			_open_summon_menu()
 			return
 		"Defend":
 			# Bracing is not aimed at anybody — no target step.
@@ -1390,10 +1473,10 @@ func _refresh_button_states() -> void:
 	_buttons["Defend"].disabled = _actor().defending
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
-	# A full party is no longer a reason to grey it out: someone can always
-	# step back for someone else, and a body can always be pulled up.
+	# Live whenever there is anything to move: a body to raise, a demon waiting
+	# off the field, or one standing that would rather not be.
 	_buttons["Summon"].disabled = not is_p or (_fallen_party().is_empty() \
-			and _available_summons().is_empty())
+			and _available_summons().is_empty() and _standing_party().is_empty())
 	_buttons["Flee"].disabled   = not is_p
 
 
