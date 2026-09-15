@@ -284,9 +284,14 @@ static func is_multi(spell_id: String) -> bool:
 	return shape_of(spell_id) != SHAPE_ONE
 
 
-# Short tag for the menus: "ONE" / "2-3" / "ALL".
+# Short tag for the menus: "one" / "2-3" / "all".
 static func reach_tag(spell_id: String) -> String:
-	match shape_of(spell_id):
+	return reach_tag_for(shape_of(spell_id))
+
+
+# The same tag off a bare shape, for the demons that carry one without a spell.
+static func reach_tag_for(shape: String) -> String:
+	match shape:
 		SHAPE_FEW: return "2-3"
 		SHAPE_ALL: return "all"
 	return "one"

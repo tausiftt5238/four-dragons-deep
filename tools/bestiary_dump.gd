@@ -24,6 +24,8 @@ func _row(t: Dictionary, lo: Enemy, hi: Enemy) -> Dictionary:
 		attack_element = lo.attack_element,
 		attack_elements = lo.attack_elements,
 		caster = lo.caster,
+		reach = Spell.reach_tag_for(lo.attack_reach),
+		magazine = int(Enemy.MAGAZINE.get(lo.attack_reach, 6)),
 		status_attack = t.get("status_attack", ""),
 		ail = int(t.get("ail", 0)),
 		ail_spell = _ail_spell(t.get("status_attack", "") as String),

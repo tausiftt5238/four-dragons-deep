@@ -25,6 +25,11 @@ var attack_elements:  Array[String] = []
 # cheapest ordinary element rather than throwing a punch — a wizard with no MP
 # left is a worse wizard, not a brawler.
 var caster:           bool = false
+
+# How wide its element lands: Spell.SHAPE_ONE, SHAPE_FEW or SHAPE_ALL. The same
+# value drives it as a foe and as a bound demon, so what a thing did to you is
+# exactly what it does for you once it is yours.
+var attack_reach:     String = Spell.SHAPE_ONE
 var reflect_element:  String = ""
 
 # Press-turn icons this enemy opens its phase with. Bosses get more, which is
@@ -104,7 +109,7 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "Bat",              lv =  1,
 		str =  2, def =  1, mag =  0, agl =  5,
 		exp =  12, gold =   4, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
-		weakness = "fire", phys = "weak",
+		weakness = "thunder", phys = "weak",
 		status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
 		sprite = "res://resources/enemySprites/Bat.png"},
@@ -125,7 +130,7 @@ const TEMPLATES: Array[Dictionary] = [
 	{name = "Cave Bat",         lv =  2,
 		str =  3, def =  2, mag =  3, agl =  6,
 		exp =  16, gold =   5, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
-		weakness = "fire", phys = "weak",
+		weakness = "thunder", phys = "weak",
 		attack_element = "thunder", status_attack = "", ail = 5, support = "mire",
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
 		sprite = "res://resources/enemySprites/BatB.png"},
@@ -140,36 +145,36 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  4, def =  3, mag =  3, agl =  4,
 		exp =  25, gold =   8, tier = 1, rank = 0, min_floor = 1, max_floor =  2,
 		weakness = "fire",
-		attack_element = "fire", status_attack = "poison", ail = 5,
+		attack_element = "thunder", status_attack = "poison", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "potion",
 		sprite = "res://resources/enemySprites/GiantRatB.png"},
 	# --- Floor 1-3 ---
 	{name = "Goblin",           lv =  2,
 		str =  4, def =  2, mag =  3, agl =  4,
 		exp =  25, gold =   8, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
-		weakness = "fire", phys = "weak",
+		weakness = "ice", phys = "weak",
 		attack_element = "fire", status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "throwable",
 		sprite = "res://resources/enemySprites/Goblin.png"},
 	{name = "GelatinousCube",   lv =  2,
 		str =  2, def =  4, mag =  3, agl =  1,
 		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
-		weakness = "fire", light = "resist",
+		weakness = "thunder", light = "resist",
 		attack_element = "ice", status_attack = "immobilize", ail = 5,
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite = "res://resources/enemySprites/GelatinousCube.png"},
 	{name = "Hobgoblin",        lv =  3,
 		str =  5, def =  3, mag =  4, agl =  5,
 		exp =  32, gold =  10, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
-		weakness = "fire", phys = "weak",
-		attack_element = "fire", status_attack = "", ail = 5, support = "whet",
+		weakness = "ice", phys = "weak",
+		attack_element = "fire", reach = "few", status_attack = "", ail = 5, support = "whet",
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "throwable",
 		sprite = "res://resources/enemySprites/GoblinB.png"},
 	{name = "Ooze",             lv =  3,
 		str =  3, def =  5, mag =  4, agl =  1,
 		exp =  28, gold =   9, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
-		weakness = "fire", light = "resist",
-		attack_element = "ice", status_attack = "immobilize", ail = 5, support = "ward",
+		weakness = "thunder", light = "resist",
+		attack_element = "thunder", reach = "few", status_attack = "immobilize", ail = 5, support = "ward",
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite = "res://resources/enemySprites/GelatinousCubeB.png"},
 	# --- Floor 2-4 ---
@@ -212,14 +217,14 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  6, def =  4, mag =  5, agl =  2,
 		exp =  38, gold =  12, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", phys = "resist", light = "weak", dark = "null",
-		attack_elements = ["ice", "dark"], status_attack = "immobilize", ail = 12,
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 12,
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "throwable",
 		sprite = "res://resources/enemySprites/SkeletonB.png"},
 	{name = "Queen Hornet",     lv =  6,
 		str =  5, def =  3, mag =  5, agl =  7,
 		exp =  35, gold =  11, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice", phys = "weak",
-		attack_element = "thunder", status_attack = "poison", ail = 12, support = "quicken",
+		attack_element = "thunder", reach = "few", status_attack = "poison", ail = 12, support = "quicken",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "any",
 		sprite = "res://resources/enemySprites/GiantHornetB.png"},
 	{name = "Veteran Bandit",   lv =  6,
@@ -240,7 +245,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  4, def =  4, mag =  6, agl =  1,
 		exp =  35, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", light = "resist", dark = "resist",
-		attack_element = "ice", status_attack = "poison", ail = 12, support = "sunder",
+		attack_element = "ice", reach = "few", status_attack = "poison", ail = 12, support = "sunder",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/AnimatedPlantB.png"},
 	# --- Floor 3+ ---
@@ -262,7 +267,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  2, def =  2, mag =  6, agl =  7,
 		exp =  42, gold =  14, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "thunder", phys = "weak", light = "resist", dark = "weak", absorb_element = "thunder",
-		attack_elements = ["thunder", "light"], caster = true,
+		attack_elements = ["thunder", "light"], reach = "all", caster = true,
 		status_attack = "silence", ail = 18, support = "mire",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/Fairy.png"},
@@ -270,21 +275,21 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  7, def =  7, mag =  6, agl =  1,
 		exp =  55, gold =  17, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "fire", phys = "resist", light = "resist", dark = "resist",
-		attack_elements = ["ice", "light"], status_attack = "immobilize", ail = 18, support = "ward",
+		attack_elements = ["ice", "light"], reach = "few", status_attack = "immobilize", ail = 18, support = "ward",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "potion",
 		sprite = "res://resources/enemySprites/TreantB.png"},
 	{name = "Orc Warchief",     lv =  9, icons = 2,
 		str =  8, def =  5, mag =  6, agl =  2,
 		exp =  46, gold =  15, tier = 3, rank = 0, min_floor = 3, max_floor =  5,
 		weakness = "ice",
-		attack_elements = ["fire", "thunder"], status_attack = "", ail = 18, support = "whet",
+		attack_elements = ["fire", "thunder"], reach = "few", status_attack = "", ail = 18, support = "whet",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "throwable",
 		sprite = "res://resources/enemySprites/OrcB.png"},
 	{name = "Dark Fairy",       lv =  9,
 		str =  3, def =  3, mag =  7, agl =  8,
 		exp =  50, gold =  17, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "thunder", phys = "weak", light = "weak", dark = "resist", absorb_element = "thunder",
-		attack_elements = ["dark", "ice"], caster = true,
+		attack_elements = ["dark", "ice"], reach = "all", caster = true,
 		status_attack = "silence", ail = 18, support = "mire",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite = "res://resources/enemySprites/FairyB.png"},
@@ -300,7 +305,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  2, def =  2, mag =  8, agl =  4,
 		exp =  52, gold =  16, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice", phys = "weak", dark = "resist", reflect_element = "fire",
-		attack_elements = ["fire", "ice", "thunder"], caster = true,
+		attack_elements = ["fire", "ice", "thunder"], reach = "all", caster = true,
 		status_attack = "silence", ail = 22, support = "purge",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "potion",
 		sprite = "res://resources/enemySprites/Wizard.png"},
@@ -308,14 +313,14 @@ const TEMPLATES: Array[Dictionary] = [
 		str = 10, def =  6, mag =  7, agl =  1,
 		exp =  65, gold =  22, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice",
-		attack_element = "ice", status_attack = "", ail = 22, support = "ward",
+		attack_element = "ice", reach = "few", status_attack = "", ail = 22, support = "ward",
 		negotiable = true, talk_difficulty = 5, personality = "proud", wants = "any",
 		sprite = "res://resources/enemySprites/OgreB.png"},
 	{name = "Dark Wizard",      lv = 12,
 		str =  3, def =  3, mag =  9, agl =  4,
 		exp =  62, gold =  20, tier = 4, rank = 0, min_floor = 4, max_floor = -1,
 		weakness = "ice", phys = "weak", light = "weak", dark = "null", reflect_element = "fire",
-		attack_elements = ["dark", "fire", "ice"], caster = true,
+		attack_elements = ["dark", "fire", "ice"], reach = "all", caster = true,
 		status_attack = "silence", ail = 22, support = "steady",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "potion",
 		sprite = "res://resources/enemySprites/WizardB.png"},
@@ -337,8 +342,8 @@ const TEMPLATES: Array[Dictionary] = [
 const WARDEN_TEMPLATES: Array[Dictionary] = [
 	{name = "Gargoyle",        icons = 2,
 		str =  6, def =  7, mag =  6, agl =  2,
-		weakness = "thunder", phys = "resist", light = "resist",
-		attack_elements = ["thunder", "light"], status_attack = "immobilize", ail = 8,
+		weakness = "thunder", reflect_element = "fire", phys = "resist", light = "resist",
+		attack_elements = ["thunder", "light"], reach = "few", status_attack = "immobilize", ail = 8,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
 		art_note = "A squat stone thing perched on the lintel with its knees up under its chin and "
@@ -349,8 +354,8 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 	{name = "Barrow Wight",    icons = 2,
 		str =  7, def =  5, mag =  6, agl =  3,
-		weakness = "fire", phys = "resist", light = "weak", dark = "null",
-		attack_elements = ["ice", "dark"], status_attack = "silence", ail = 10, support = "mire",
+		weakness = "fire", phys = "resist", light = "weak", dark = "drain",
+		attack_elements = ["ice", "dark"], reach = "all", status_attack = "silence", ail = 10, support = "mire",
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
 		art_note = "A dry, sunken figure in the rags of something that was once well made, wearing "
@@ -361,8 +366,8 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 	{name = "Chained Hound",   icons = 2,
 		str =  9, def =  4, mag =  6, agl =  7,
-		weakness = "ice", phys = "weak",
-		attack_element = "fire", status_attack = "paralyzed", ail = 14,
+		weakness = "ice", absorb_element = "fire", phys = "weak",
+		attack_element = "fire", reach = "few", status_attack = "paralyzed", ail = 14,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
 		art_note = "Lean, long-legged and already at the end of its chain when you come round the "
@@ -374,8 +379,8 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 	{name = "Basilisk",        icons = 2,
 		str =  7, def =  6, mag =  8, agl =  2,
-		weakness = "thunder", phys = "resist", dark = "resist",
-		attack_elements = ["ice", "light"], status_attack = "immobilize", ail = 18, support = "ward",
+		weakness = "thunder", reflect_element = "ice", phys = "resist", dark = "resist",
+		attack_elements = ["ice", "light"], reach = "all", status_attack = "immobilize", ail = 18, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
 		art_note = "A heavy crested lizard coiled across the whole width of the passage, in no hurry "
@@ -386,8 +391,8 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 	{name = "Mimic",           icons = 2,
 		str =  8, def =  6, mag =  6, agl =  4,
-		weakness = "fire", phys = "resist", light = "weak",
-		attack_elements = ["thunder", "dark"], status_attack = "poison", ail = 12,
+		weakness = "fire", dark = "drain", reflect_element = "thunder", phys = "resist", light = "weak",
+		attack_elements = ["thunder", "dark"], reach = "few", status_attack = "poison", ail = 12,
 		negotiable = false, talk_difficulty = 0,
 		sprite = "", needs_art = true,
 		art_note = "A cache set into the wall, lit from inside exactly like the real ones, sitting a "
@@ -404,30 +409,30 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Shadow Knight",    lv = 12, icons = 3,
 		str = 12, def =  8, mag =  8, agl =  3,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
-		weakness = "thunder", light = "null", dark = "null",
-		attack_elements = ["ice", "dark"], status_attack = "immobilize", ail = 25, support = "ward",
+		weakness = "thunder", absorb_element = "ice", light = "null", dark = "null",
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 25, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
 	{name = "Bone Sorcerer",    lv = 14, icons = 3,
 		str =  5, def =  6, mag = 14, agl =  4,
 		exp = 280, gold = 110, tier = 4, rank = 0, min_floor = 10, max_floor = -1,
-		weakness = "ice", light = "null", dark = "null",
-		attack_elements = ["fire", "dark", "ice"], caster = true,
+		weakness = "ice", reflect_element = "fire", light = "null", dark = "drain",
+		attack_elements = ["fire", "dark", "ice"], reach = "all", caster = true,
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
 	{name = "Iron Titan",       lv = 16, icons = 4,
 		str = 16, def = 12, mag =  8, agl =  1,
 		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
-		weakness = "thunder", light = "null", dark = "null",
+		weakness = "thunder", phys = "resist", absorb_element = "ice", light = "null", dark = "null",
 		attack_elements = ["thunder", "ice"], status_attack = "paralyzed", ail = 25, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
 	{name = "Void Drake",       lv = 18, icons = 4,
 		str = 14, def = 10, mag = 12, agl =  5,
 		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
-		weakness = "ice", light = "null", dark = "null",
-		attack_elements = ["thunder", "dark", "fire"],
+		weakness = "ice", reflect_element = "fire", absorb_element = "thunder", light = "null", dark = "null",
+		attack_elements = ["thunder", "dark", "fire"], reach = "all",
 		status_attack = "", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
@@ -523,6 +528,7 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.attack_elements = _elements_from(t)
 	e.attack_element  = e.attack_elements[0] if not e.attack_elements.is_empty() else ""
 	e.caster          = bool(t.get("caster", false))
+	e.attack_reach    = t.get("reach", Spell.SHAPE_ONE)
 	e.reflect_element = t.get("reflect_element", "")
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
@@ -655,6 +661,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.attack_elements = _elements_from(t)
 	e.attack_element  = e.attack_elements[0] if not e.attack_elements.is_empty() else ""
 	e.caster          = bool(t.get("caster", false))
+	e.attack_reach    = t.get("reach", Spell.SHAPE_ONE)
 	e.reflect_element = t.get("reflect_element", "")
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
@@ -681,10 +688,32 @@ static func _elements_from(t: Dictionary) -> Array[String]:
 	return out
 
 
+# How many casts a demon's pool is worth, by how wide it throws. Priced off the
+# magazine rather than off MAG: a cost derived from the stat drifted with level
+# and handed a room-wide caster a single shot per fight, which is not a boss,
+# it is a cutscene. Six narrow casts, four at two or three, three that take the
+# whole row — the same for a floor-two warden and a floor-twenty drake.
+const MAGAZINE: Dictionary = {
+	Spell.SHAPE_ONE: 6,
+	Spell.SHAPE_FEW: 4,
+	Spell.SHAPE_ALL: 3,
+}
+
+
 func skill_cost() -> int:
 	if attack_elements.is_empty():
 		return 0
-	return maxi(6, mag)
+	return maxi(4, roundi(float(max_mp) / float(MAGAZINE.get(attack_reach, 6))))
+
+
+# What each target keeps of a cast that was split across several of them.
+func reach_spread(banishing: bool) -> float:
+	match attack_reach:
+		Spell.SHAPE_FEW:
+			return Spell.SPREAD_FEW_BANISH if banishing else Spell.SPREAD_FEW_DMG
+		Spell.SHAPE_ALL:
+			return Spell.SPREAD_ALL_BANISH if banishing else Spell.SPREAD_ALL_DMG
+	return 1.0
 
 
 func can_afford_skill() -> bool:

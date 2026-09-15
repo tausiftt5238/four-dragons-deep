@@ -1730,10 +1730,11 @@ func _show_skills_submenu() -> void:
 	var blocked: bool = demon.has_status(Status.SILENCE) or demon.mp < demon_cost
 	# One button per line it carries, so a demon bound with three is worth
 	# three buttons rather than one that silently picks for you.
+	var reach: String = Spell.reach_tag_for(demon.attack_reach)
 	for e: String in demon.attack_elements:
 		_submenu_add(_make_skill_button("Skill:" + e,
 				"%s Strike" % Affinity.element_name(e),
-				Affinity.element_name(e),
+				"%s  %s" % [Affinity.element_name(e), reach],
 				"%d MP" % demon_cost, blocked))
 
 
@@ -1752,11 +1753,125 @@ func _resolve_skill(chosen: String) -> Dictionary:
 				cost = PressTurn.COST_FULL}
 	actor.mp -= price
 	var power: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
+	var banishing: bool = Affinity.is_banishing(element)
+
+	# A bound demon casts exactly what it cast at you — same lines, same width.
+	# The single-target case keeps the target you picked; anything wider draws
+	# its own, which is why the menu does not ask.
+	if actor.attack_reach != Spell.SHAPE_ONE:
+		return _demon_spread(actor, element, power * 2.0, banishing)
+
+	if banishing:
+		return _demon_banish_one(actor, enemy, element, power)
+
 	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(int(power * 2.0) - _guarded_def(enemy),
 			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s calls up %s!" % [
 			actor.display_name(), Affinity.element_name(element)])
+
+
+# One demon of yours, one line, one foe. Light and dark expel rather than burn,
+# the same as they do out of the detective's own hands.
+func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
+		power: float) -> Dictionary:
+	var res: Dictionary = CombatMath.resolve_banish(foe, element,
+			maxi(1, int(power)), false, actor)
+	var lead: String = "%s calls the %s!" % [
+			actor.display_name(), Affinity.element_name(element)]
+	match res["outcome"]:
+		"banished":
+			foe.take_damage(foe.max_hp * 2)
+			return {msg = "[color=#c9a6ff]%s %s is taken, whole.[/color]" % [
+					lead, foe.display_name()],
+					cost = PressTurn.COST_HALF if foe.affinity_of(element) == Affinity.WEAK
+						else PressTurn.COST_FULL}
+		"null":
+			return {msg = "[color=#999999]%s %s does not feel it.[/color]" % [
+					lead, foe.display_name()], cost = PressTurn.COST_MISS}
+		"repel":
+			actor.take_damage(int(res["dmg"]))
+			return {msg = "[color=#d070ff]%s Turned back — %s takes %d.[/color]" % [
+					lead, actor.display_name(), int(res["dmg"])], cost = PressTurn.COST_LOST}
+		"drain":
+			foe.heal(int(res["dmg"]))
+			return {msg = "[color=lime]%s %s drinks it and recovers %d HP.[/color]" % [
+					lead, foe.display_name(), int(res["dmg"])], cost = PressTurn.COST_LOST}
+	return {msg = "[color=gray]%s %s holds.[/color]" % [lead, foe.display_name()],
+			cost = PressTurn.COST_FULL}
+
+
+# A bound demon's wide cast. Same arithmetic as the detective's own spread —
+# what it gains in width it gives up on each target.
+func _demon_spread(actor: Enemy, element: String, base: float,
+		banishing: bool) -> Dictionary:
+	var spread: float = actor.reach_spread(banishing)
+	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
+	var lines: Array[String] = ["[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
+			actor.display_name(), Affinity.element_name(element), targets.size()]]
+	var outcomes: Array[String] = []
+	var reflected: int = 0
+	var took_weak: bool = false
+
+	for foe: Enemy in targets:
+		if banishing:
+			var br: Dictionary = CombatMath.resolve_banish(
+					foe, element, maxi(1, int(base * spread)), false, actor, spread)
+			match br["outcome"]:
+				"banished":
+					var was_weak: bool = foe.affinity_of(element) == Affinity.WEAK
+					took_weak = took_weak or was_weak
+					foe.take_damage(foe.max_hp * 2)
+					outcomes.append("weak" if was_weak else "hit")
+					lines.append("[color=#c9a6ff]%s is taken.[/color]" % foe.display_name())
+				"drain":
+					foe.heal(int(br["dmg"]))
+					outcomes.append("drain")
+					lines.append("[color=lime]%s drinks it.[/color]" % foe.display_name())
+				"repel":
+					reflected += int(br["dmg"])
+					outcomes.append("repel")
+					lines.append("[color=#d070ff]%s turns it back.[/color]" % foe.display_name())
+				"null":
+					outcomes.append("null")
+					lines.append("[color=#999999]%s does not feel it.[/color]" % foe.display_name())
+				_:
+					outcomes.append("hit")
+					lines.append("[color=gray]%s holds.[/color]" % foe.display_name())
+			continue
+
+		var res: Dictionary = CombatMath.resolve(
+				int(base * spread) - _guarded_def(foe), element, foe,
+				CombatMath.roll_crit(actor), foe.defending)
+		var outcome: String = res["outcome"] as String
+		var dmg: int = int(res["dmg"])
+		outcomes.append(outcome)
+		match outcome:
+			"drain":
+				foe.heal(dmg)
+				lines.append("[color=lime]%s drinks it and recovers %d.[/color]" % [
+						foe.display_name(), dmg])
+			"repel":
+				reflected += dmg
+				lines.append("[color=#d070ff]%s turns it back.[/color]" % foe.display_name())
+			"null":
+				lines.append("[color=#999999]%s does not feel it.[/color]" % foe.display_name())
+			_:
+				foe.take_damage(dmg)
+				lines.append("[color=orange]%s takes %d.[/color]%s" % [
+						foe.display_name(), dmg,
+						CombatMath.outcome_tag(outcome, false, bool(res.get("suppressed", false)))])
+
+	if reflected > 0:
+		actor.take_damage(reflected)
+		lines.append("[color=red]%s takes %d from what came back.[/color]" % [
+				actor.display_name(), reflected])
+
+	_ensure_target()
+	var cost: String = _spread_cost(outcomes)
+	if cost == PressTurn.COST_FULL and took_weak:
+		cost = PressTurn.COST_HALF
+	return {msg = " ".join(lines), cost = cost}
 
 
 # ── Enemy actions ─────────────────────────────────────────────────────────────
@@ -2706,11 +2821,13 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# A banishing line is the exception, and only joins the pool one turn in
 	# five. A demon it takes from the detective does not come back, so those
 	# stay something that happens rather than the opening move of every fight.
+	var paid: bool = false
 	var pool: Array[String] = actor.affordable_elements(randi() % 10 < 2)
 	if not pool.is_empty():
 		actor.mp -= actor.skill_cost()
 		element = pool[randi() % pool.size()]
 		base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
+		paid    = true
 	elif actor.caster:
 		# A caster does not throw punches. Out of MP it scrapes what is left of
 		# its cheapest ordinary line — free, half strength, and never banishing.
@@ -2726,6 +2843,12 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 		# Said once, the turn the pool runs out, and not again.
 		actor.announced_dry = true
 		dry = "[color=gray]%s is out of MP.[/color]\n" % actor.display_name()
+
+	# A wide line takes the whole row rather than one of them. Only a cast it
+	# actually paid for spreads: the dregs a dry caster scrapes together are a
+	# single-target consolation, and a swing is a swing.
+	if paid and actor.attack_reach != Spell.SHAPE_ONE:
+		return _enemy_spread(actor, element, base, dry)
 
 	var target: CharacterSheet = _pick_target(element)
 
@@ -2779,6 +2902,107 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	if target == player:
 		msg += _check_counter()
 	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}
+
+
+# ── Wide casts from the other side ────────────────────────────────────────────
+#
+# The mirror of the detective's own 2-3 and all-reach spells, and priced the
+# same way: what it gains in width it gives up on each target. Which of the
+# detective's line a FEW cast catches is drawn fresh each time, so covering the
+# demon on three HP is a hope rather than a plan.
+func _enemy_spread_targets(actor: Enemy) -> Array[CharacterSheet]:
+	var standing: Array[CharacterSheet] = _living_party()
+	if actor.attack_reach == Spell.SHAPE_ALL or standing.size() <= 2:
+		return standing
+	standing.shuffle()
+	return standing.slice(0, 2 + (randi() % 2))
+
+
+func _enemy_spread(actor: Enemy, element: String, base: float,
+		dry: String) -> Dictionary:
+	var banishing: bool = Affinity.is_banishing(element)
+	var spread: float = actor.reach_spread(banishing)
+	var targets: Array[CharacterSheet] = _enemy_spread_targets(actor)
+	var reach_word: String = "across" if actor.attack_reach == Spell.SHAPE_FEW else "over"
+
+	var lines: Array[String] = [dry + "[color=#ff9a6a]%s calls up %s %s %d of you![/color]" % [
+			actor.display_name(), Affinity.element_name(element),
+			reach_word, targets.size()]]
+	var outcomes: Array[String] = []
+	var reflected: int = 0
+
+	for who: CharacterSheet in targets:
+		if banishing:
+			var br: Dictionary = CombatMath.resolve_banish(who, element,
+					maxi(1, int(base * spread)), who == player, actor, spread)
+			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
+			continue
+		var res: Dictionary = CombatMath.resolve(
+				int(base * spread) - _guarded_def(who), element, who,
+				CombatMath.roll_crit(actor), who.defending)
+		var outcome: String = res["outcome"] as String
+		var dmg: int = int(res["dmg"])
+		outcomes.append(outcome)
+		match outcome:
+			"drain":
+				who.heal(dmg)
+				lines.append("[color=lime]%s drinks it — %d HP.[/color]" % [
+						_member_name(who), dmg])
+			"repel":
+				reflected += dmg
+				lines.append("[color=#d070ff]%s turns it back.[/color]" % _member_name(who))
+			"null":
+				lines.append("[color=#999999]%s does not feel it.[/color]" % _member_name(who))
+			_:
+				who.take_damage(dmg)
+				var pr: TextureRect = _member_portrait(who)
+				if pr != null:
+					_shake_portrait(pr)
+				lines.append("[color=red]%s takes %d.[/color]%s" % [
+						_member_name(who), dmg,
+						CombatMath.outcome_tag(outcome, false, bool(res.get("suppressed", false)))])
+
+	if reflected > 0:
+		actor.take_damage(reflected)
+		lines.append("[color=#d070ff]%s takes %d from what came back.[/color]" % [
+				actor.display_name(), reflected])
+
+	# The demons' side pays the same press-turn arithmetic the detective does.
+	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
+
+
+# One target of a wide banishing cast, written out so the single-target path and
+# this one cannot drift apart on what an expulsion actually costs.
+func _apply_enemy_banish_one(actor: Enemy, who: CharacterSheet, element: String,
+		res: Dictionary, lines: Array[String]) -> String:
+	match res["outcome"]:
+		"banished":
+			who.take_damage(who.max_hp * 2)
+			lines.append("[color=#c9a6ff]%s is taken.[/color]" % _member_name(who))
+			return "hit"
+		"drain":
+			who.heal(int(res["dmg"]))
+			lines.append("[color=lime]%s drinks it.[/color]" % _member_name(who))
+			return "drain"
+		"repel":
+			actor.take_damage(int(res["dmg"]))
+			lines.append("[color=#d070ff]%s turns it back.[/color]" % _member_name(who))
+			return "repel"
+		"null":
+			lines.append("[color=#999999]%s does not feel it.[/color]" % _member_name(who))
+			return "null"
+		"weak":
+			who.take_damage(int(res["dmg"]))
+			lines.append("[color=red]%s is torn for %d.[/color]" % [
+					_member_name(who), int(res["dmg"])])
+			return "weak"
+		"hit":
+			who.take_damage(int(res["dmg"]))
+			lines.append("[color=red]%s is torn for %d.[/color]" % [
+					_member_name(who), int(res["dmg"])])
+			return "hit"
+	lines.append("[color=gray]%s holds.[/color]" % _member_name(who))
+	return "hit"
 
 
 # A demon reaching for light or dark is reaching for one of yours. The detective

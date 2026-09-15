@@ -83,6 +83,10 @@ def attacks_cell(r):
     if not els:
         return '<td><span class="elem elem-phys">%s</span></td>' % EL_NAME["phys"]
     bits = ['<span class="elem elem-%s">%s</span>' % (e, EL_NAME[e]) for e in els]
+    reach = r.get("reach", "one")
+    note = {"one": "one of you", "2-3": "two or three of you",
+            "all": "the whole row"}.get(reach, reach)
+    bits.append('<span class="fx">%s &middot; %d casts</span>' % (note, r.get("magazine", 6)))
     if r.get("caster"):
         # A caster never swings; out of MP it scrapes its cheapest line instead.
         bits.append('<span class="fx">never swings</span>')
@@ -188,12 +192,14 @@ def tier_counts(rows):
     multi = sum(1 for r in rows if len(r.get("attack_elements") or []) > 1)
     ail = sum(1 for r in rows if r["status_attack"])
     sk = sum(1 for r in rows if r["support"])
+    wide = sum(1 for r in rows if r.get("reach", "one") != "one")
     more = ""
     if multi:
         more = " One of them carries more than one line." if multi == 1 \
             else " %d of them carry more than one line." % multi
-    return (" %d of the %d call up an element, %d throw an ailment, %d carry a skill.%s"
-            % (el, n, ail, sk, more))
+    w = " %d throw wide." % wide if wide else ""
+    return (" %d of the %d call up an element, %d throw an ailment, %d carry a skill.%s%s"
+            % (el, n, ail, sk, more, w))
 ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV"}
 
 parts = []
@@ -292,6 +298,7 @@ page = """<title>Gauntlet Bestiary</title>
   <section>
     <div class="tier-head"><span class="tier-num">&#9876;</span><h2>How a demon spends its turn</h2><span class="floors">read the Attacks and Skill columns together</span></div>
     <p class="blurb">A demon checks three things in order and swings if none of them fire. <b>Ailment</b> goes out first, three turns in ten, and only while someone standing is still clean &mdash; it can be thrown at anyone on your side, not just whoever it is hitting. <b>Skill</b> is next, also three in ten. <b>Attacks with</b> lists the lines it can call up, and it reaches for one <em>every</em> turn it can pay: MP is a magazine, not a dice roll. A demon carrying several picks between them at random, so there is no single resistance that answers it. A banishing line is the exception, eligible only one turn in five, because a demon it takes from you does not come back. Demons marked <em>never swings</em> are casters &mdash; out of MP they scrape the dregs of their cheapest ordinary line at half strength rather than throwing a punch.</p>
+    <p class="blurb">Width is the other half of it. A cast reaches one of you, two or three drawn fresh each time, or the whole row &mdash; and it is paid for the same way your own wide spells are, in what each target keeps of it. A demon's pool is sized to its width rather than to its MAG, so everything gets the same magazine wherever you meet it: <b>six</b> narrow casts, <b>four</b> at two or three, <b>three</b> that take the room.</p>
     <p class="blurb">All three come out of the same pool, and a demon never spends its last MP on anything but its element. %d of the %d demons call up an element, %d throw an ailment, and %d carry a skill.</p>
   </section>
 %s
