@@ -235,6 +235,7 @@ func _build_bind() -> void:
 func _bind_offer(list: SlotList, enemy_name: String) -> void:
 	var demon: Enemy = Enemy.make_from_name(enemy_name, floor_num)
 	var owned: bool = enemy_name in player.recruited
+	var full: bool = not player.can_bind(enemy_name)
 	var price: int = bind_price(demon)
 	var lines: Array[String] = []
 	for e: String in demon.attack_elements:
@@ -250,8 +251,8 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 			about,
 			"bound" if owned else "%d g" % price,
 			Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35),
-			"Bound" if owned else "Bind",
-			owned or player.gold < price,
+			"Bound" if owned else ("Full" if full else "Bind"),
+			owned or full or player.gold < price,
 			func() -> void:
 				if player.gold < price:
 					_set_status("Not enough gold.")

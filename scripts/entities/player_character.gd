@@ -131,9 +131,21 @@ func release_demon(demon_name: String) -> void:
 	bound_level.erase(demon_name)
 
 
+# How many demons can answer to him at once, summoned and benched together.
+# Past this a new one has to be paid off, or something sold at an orb first.
+const ROSTER_SIZE: int = 6
+
+
+# Room for one more name — or this one is already on the list.
+func can_bind(demon_name: String) -> bool:
+	return demon_name in recruited or recruited.size() < ROSTER_SIZE
+
+
 # Newly bound demons take a free slot on their own, so a first recruit is
-# usable without a trip to the menu.
+# usable without a trip to the menu. A full roster turns the demon away.
 func remember_recruit(demon_name: String, lv: int = 1) -> void:
+	if not can_bind(demon_name):
+		return
 	if demon_name not in recruited:
 		recruited.append(demon_name)
 	# Keep the best one ever bound: re-catching a weaker copy should never

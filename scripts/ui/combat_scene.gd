@@ -553,6 +553,13 @@ func _try_begging() -> bool:
 		_prompt_tribute()
 		return true
 
+	# No room for it: the plea turns into the same payoff a duplicate gives.
+	if not player.can_bind(enemy.enemy_name):
+		_log("[color=#ffd479]%s begs to come with you — but six already do. It pays its way out instead.[/color]"
+				% enemy.display_name())
+		_prompt_tribute()
+		return true
+
 	_log("[color=#ffd479]%s stops fighting and begs to be taken with you.[/color]"
 			% enemy.display_name())
 	_prompt_beg()
@@ -1234,9 +1241,12 @@ func _living_foes() -> Array[Enemy]:
 	return out
 
 
-# Keeps the targeted foe on something that is still standing.
+# Keeps the targeted foe on something that is still standing — and still on
+# the field. A demon that talked its way out is alive, so checking HP alone left
+# it targeted, and with one foe left the picker is skipped: Talk went straight
+# back to the one that had gone.
 func _ensure_target() -> void:
-	if enemy != null and enemy.is_alive():
+	if enemy != null and enemy.is_alive() and enemy in foes:
 		return
 	var living: Array[Enemy] = _living_foes()
 	if not living.is_empty():
@@ -1588,6 +1598,12 @@ func _on_action(action: String) -> void:
 				# it knows what that means. It pays its way out instead.
 				if enemy.enemy_name in player.recruited:
 					_log("[color=#ffd479]%s looks past you — and sees its own face already standing with you.[/color]"
+							% enemy.display_name())
+					_prompt_tribute(false)
+					return
+				# Six already answer to you, so there is nothing to bargain for.
+				if not player.can_bind(enemy.enemy_name):
+					_log("[color=#ffd479]%s would come — but six already answer to you. It pays its way out.[/color]"
 							% enemy.display_name())
 					_prompt_tribute(false)
 					return
