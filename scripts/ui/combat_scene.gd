@@ -470,31 +470,42 @@ func _begin_player_phase() -> void:
 # to dread the prompt. Only demons that can be talked to break this way — a
 # lattice of tendon with nothing behind it doing the thinking has no nerve to
 # lose.
+# Nothing throws itself down while it is winning. A demon begs only once its own
+# bar has left the green — yellow or red, the same two bands the player is
+# already reading off the row — which turns the event from a free tier-four
+# demon handed out at random into the end of a fight you were already winning.
+#
+# That also means the old single check on phase two had to go: almost nothing is
+# hurt that early, so the event would have stopped firing altogether. It is
+# rolled at the top of every phase from the second on, still only once a battle,
+# and still at five per cent.
 const BEG_CHANCE: int = 5
-const BEG_PHASE: int = 2
+const BEG_FROM_PHASE: int = 2
 
 var _beg_used: bool = false
 var _phases: int = 0
 
 
+# Foes that can be talked to and are hurt enough to want to. hp_tint is what
+# paints the bar, so "yellow or red" here means exactly what it looks like.
 func _begging_candidates() -> Array[Enemy]:
 	var out: Array[Enemy] = []
 	for foe: Enemy in _living_foes():
-		if foe.negotiable:
+		if foe.negotiable and hp_tint(foe.hp, foe.max_hp) != HP_OK:
 			out.append(foe)
 	return out
 
 
 # Returns true when a plea took over the phase, so the caller stands down.
 func _try_begging() -> bool:
-	if _beg_used or _phases != BEG_PHASE:
-		return false
-	_beg_used = true
-	if randi() % 100 >= BEG_CHANCE:
+	if _beg_used or _phases < BEG_FROM_PHASE:
 		return false
 	var pool: Array[Enemy] = _begging_candidates()
 	if pool.is_empty():
 		return false
+	if randi() % 100 >= BEG_CHANCE:
+		return false
+	_beg_used = true
 
 	enemy = pool[randi() % pool.size()]
 	_refresh_hp()

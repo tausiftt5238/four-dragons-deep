@@ -25,17 +25,9 @@ func _show_submenu() -> void:
 	_s._submenu_add(_s._dim_label("Round %d of %d" % [
 			Negotiation.ROUNDS - _talk_rounds + 1, Negotiation.ROUNDS]))
 
-	var opts: Array[Array] = [
-		["Survival", "\"Not worth it.\""],
-		["Logic",    "\"Think it over.\""],
-		["Gain",     "\"You'll gain nothing.\""],
-	]
-	for opt: Array in opts:
-		var key: String = opt[0] as String
-		# A plain Button grows its minimum width to fit its text, and these are
-		# whole sentences in quotes — one option used to be pushed clean off
-		# the side of the screen. This is the same slot every other menu uses.
-		var btn: Button = _s._big_button(key, opt[1] as String, false)
+	var opts: Array[String] = ["Survival", "Logic", "Gain"]
+	for key: String in opts:
+		var btn: Button = _s._big_button(key, "", false)
 		btn.pressed.connect(func() -> void: await _resolve(key))
 		_s._submenu_add(btn)
 

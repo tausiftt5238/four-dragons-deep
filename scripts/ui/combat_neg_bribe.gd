@@ -52,7 +52,7 @@ func start() -> void:
 	gold_btn.pressed.connect(func() -> void: await _resolve("gold"))
 	_s._submenu_add(gold_btn)
 
-	var refuse_btn: Button = _s._big_button("Refuse", "Keep what is yours", false)
+	var refuse_btn: Button = _s._big_button("Refuse", "", false)
 	refuse_btn.pressed.connect(func() -> void: await _resolve("refuse"))
 	_s._submenu_add(refuse_btn)
 
