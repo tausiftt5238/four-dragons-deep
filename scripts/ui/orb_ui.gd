@@ -12,7 +12,7 @@ var player: PlayerCharacter
 var floor_num: int = 1
 
 # Which tab the orb opens on. Walking onto the tile lands on Rest; the HUD's
-# Save shortcut goes straight to Record.
+# Save shortcut goes straight to the Save tab.
 var start_tab: String = "rest"
 
 var _tab: String = "rest"
@@ -91,7 +91,7 @@ func _build() -> void:
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Bind"],
 			["sell", "Sell"], ["buy", "Supplies"],
-			["scrolls", "Scrolls"], ["save", "Record"]]:
+			["scrolls", "Scrolls"], ["save", "Save"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -384,7 +384,7 @@ func _build_save() -> void:
 	_content.add_child(push)
 
 	var btn: Button = Button.new()
-	btn.text = "Record the run"
+	btn.text = "Save the run"
 	btn.custom_minimum_size = Vector2(240, 40)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(func() -> void: save_requested.emit())
