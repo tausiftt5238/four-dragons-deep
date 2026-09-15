@@ -15,7 +15,12 @@ style = style.replace("  .gaps {", """  .elem {
     padding: 2px 6px; border-radius: 2px; margin-right: 5px;
     color: var(--wire); background: var(--res-bg); white-space: nowrap;
   }
-  .elem-phys { color: var(--ink-3); background: var(--null-bg); }
+  .elem-phys    { color: var(--ink-3); background: var(--null-bg); }
+  .elem-fire    { color: var(--weak);  background: var(--weak-bg); }
+  .elem-ice     { color: var(--res);   background: var(--res-bg); }
+  .elem-thunder { color: var(--amber); background: var(--amber-bg); }
+  .elem-light   { color: var(--drain); background: var(--drain-bg); }
+  .elem-dark    { color: var(--rep);   background: var(--rep-bg); }
   .ail { white-space: nowrap; }
   .ail b { color: var(--weak); font-weight: 600; }
   .skill { white-space: nowrap; }
@@ -74,9 +79,14 @@ def chart_cell(chart):
 
 
 def attacks_cell(r):
-    el = r["attack_element"] or "phys"
-    cls = "elem elem-phys" if el == "phys" else "elem"
-    return '<td><span class="%s">%s</span></td>' % (cls, EL_NAME[el])
+    els = r.get("attack_elements") or ([r["attack_element"]] if r["attack_element"] else [])
+    if not els:
+        return '<td><span class="elem elem-phys">%s</span></td>' % EL_NAME["phys"]
+    bits = ['<span class="elem elem-%s">%s</span>' % (e, EL_NAME[e]) for e in els]
+    if r.get("caster"):
+        # A caster never swings; out of MP it scrapes its cheapest line instead.
+        bits.append('<span class="fx">never swings</span>')
+    return "<td>%s</td>" % "".join(bits)
 
 
 def ailment_cell(r):
@@ -175,10 +185,15 @@ def tier_counts(rows):
     """Said out of the data rather than kept in a string that goes stale."""
     n = len(rows)
     el = sum(1 for r in rows if r["attack_element"])
+    multi = sum(1 for r in rows if len(r.get("attack_elements") or []) > 1)
     ail = sum(1 for r in rows if r["status_attack"])
     sk = sum(1 for r in rows if r["support"])
-    return (" %d of the %d call up an element, %d throw an ailment, %d carry a skill."
-            % (el, n, ail, sk))
+    more = ""
+    if multi:
+        more = " One of them carries more than one line." if multi == 1 \
+            else " %d of them carry more than one line." % multi
+    return (" %d of the %d call up an element, %d throw an ailment, %d carry a skill.%s"
+            % (el, n, ail, sk, more))
 ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV"}
 
 parts = []
@@ -276,7 +291,7 @@ page = """<title>Gauntlet Bestiary</title>
 
   <section>
     <div class="tier-head"><span class="tier-num">&#9876;</span><h2>How a demon spends its turn</h2><span class="floors">read the Attacks and Skill columns together</span></div>
-    <p class="blurb">A demon checks three things in order and swings if none of them fire. <b>Ailment</b> goes out first, three turns in ten, and only while someone standing is still clean &mdash; it can be thrown at anyone on your side, not just whoever it is hitting. <b>Skill</b> is next, also three in ten. <b>Attacks with</b> is the element it calls up, and it reaches for that <em>every</em> turn it can pay for one: MP is a magazine, not a dice roll, so a caster opens hard and finishes the fight with its hands. A banishing line is the exception, held back to one turn in five, because a demon it takes from you does not come back.</p>
+    <p class="blurb">A demon checks three things in order and swings if none of them fire. <b>Ailment</b> goes out first, three turns in ten, and only while someone standing is still clean &mdash; it can be thrown at anyone on your side, not just whoever it is hitting. <b>Skill</b> is next, also three in ten. <b>Attacks with</b> lists the lines it can call up, and it reaches for one <em>every</em> turn it can pay: MP is a magazine, not a dice roll. A demon carrying several picks between them at random, so there is no single resistance that answers it. A banishing line is the exception, eligible only one turn in five, because a demon it takes from you does not come back. Demons marked <em>never swings</em> are casters &mdash; out of MP they scrape the dregs of their cheapest ordinary line at half strength rather than throwing a punch.</p>
     <p class="blurb">All three come out of the same pool, and a demon never spends its last MP on anything but its element. %d of the %d demons call up an element, %d throw an ailment, and %d carry a skill.</p>
   </section>
 %s
@@ -285,7 +300,6 @@ page = """<title>Gauntlet Bestiary</title>
     <h2>What the table says is missing</h2>
     <p><b>The tiers are lopsided.</b> Ten templates cover tier I and ten cover tier II, but only <strong>six</strong> cover tier III and <strong>four</strong> cover tier IV. The deepest five floors &mdash; the ones a player only reaches by earning them &mdash; have the least to show. Filling those two bands is worth more than anything else you could add.</p>
     <p><b>Every warden still needs a sprite.</b> All five are written with an art note and none is drawn. They are the most drawable things on the list &mdash; a gargoyle, a wight, a hound, a basilisk and a mimic all have unmistakable silhouettes &mdash; so they are the sensible place to start.</p>
-    <p><b>Nothing past tier II carries a banishing line.</b> Light and dark stop being threats exactly where the run gets hard, so the deep floors are less varied than the shallow ones rather than more.</p>
     <p><b>Only four ailments exist, and two of them do the same job.</b> Bind and Paralysis both cost a demon its turn, so across thirty-nine entries the real variety is poison, silence and &ldquo;you do not act&rdquo;. Now that throwing one costs a demon its turn, that thinness shows more than it used to.</p>
   </section>
 

@@ -230,8 +230,10 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 	var demon: Enemy = Enemy.make_from_name(enemy_name, floor_num)
 	var owned: bool = enemy_name in player.recruited
 	var price: int = bind_price(demon)
-	var element: String = Affinity.element_name(demon.attack_element) \
-			if demon.attack_element != "" else "no element"
+	var lines: Array[String] = []
+	for e: String in demon.attack_elements:
+		lines.append(Affinity.element_name(e))
+	var element: String = "/".join(lines) if not lines.is_empty() else "no element"
 	var about: String = "LV %d   HP %d   MP %d   %s" % [
 			demon.lv, demon.max_hp, demon.max_mp, element]
 	var offered_lv: int = demon.lv

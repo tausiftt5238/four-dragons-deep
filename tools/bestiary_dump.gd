@@ -19,7 +19,11 @@ func _row(t: Dictionary, lo: Enemy, hi: Enemy) -> Dictionary:
 		exp_lo = lo.exp_reward, exp_hi = hi.exp_reward,
 		gold_lo = lo.gold_reward, gold_hi = hi.gold_reward,
 		chart = chart,
-		attack_element = t.get("attack_element", ""),
+		# Resolved off the built demon, not the template: a demon written with
+		# `attack_elements` has no `attack_element` key of its own.
+		attack_element = lo.attack_element,
+		attack_elements = lo.attack_elements,
+		caster = lo.caster,
 		status_attack = t.get("status_attack", ""),
 		ail = int(t.get("ail", 0)),
 		ail_spell = _ail_spell(t.get("status_attack", "") as String),

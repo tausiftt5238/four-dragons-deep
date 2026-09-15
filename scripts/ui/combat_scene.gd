@@ -655,13 +655,15 @@ func _resolve_action(action: String) -> Dictionary:
 				cost = PressTurn.COST_FULL}
 	if action.begins_with("Magic:"):
 		return _cast_spell(action.substr(6))
+	if action.begins_with("Skill:"):
+		return _resolve_skill(action.substr(6))
 	match action:
 		"Attack":
 			return _resolve_attack()
 		"Analyze":
 			return _resolve_analyze()
 		"Skill":
-			return _resolve_skill()
+			return _resolve_skill("")
 		"Defend":
 			# Half an icon, like a weakness read or a critical. Bracing is the
 			# one defensive move in the game and a full icon made it a turn
@@ -755,6 +757,9 @@ func _defense_of(member: CharacterSheet) -> int:
 # a whole turn at five percent is an insult. A ten-turn fight lands about as
 # many ailments as it used to — what changed is that you can see it coming and
 # the demon paid for it.
+# What a dry caster's cast is worth, against the 2.0 an paid one gets.
+const CASTER_DREGS: float = 1.0
+
 const AIL_SPELLS: Dictionary = {
 	Status.POISON:     "venom",
 	Status.PARALYZED:  "shock",
@@ -780,7 +785,7 @@ func _ail_cast_ready(actor: Enemy) -> bool:
 	if sp.is_empty() or actor.mp < ail_mp:
 		return false
 	# Same rule as support: never spend the element's MP on something else.
-	if actor.attack_element != "" and actor.mp - ail_mp < actor.skill_cost():
+	if not actor.attack_elements.is_empty() and actor.mp - ail_mp < actor.skill_cost():
 		return false
 	# No point casting it on a side that is already carrying it.
 	for m: CharacterSheet in _living_party():
@@ -1719,20 +1724,25 @@ func _show_skills_submenu() -> void:
 		return
 
 	var demon: Enemy = actor as Enemy
-	if demon.attack_element == "":
+	if demon.attack_elements.is_empty():
 		return
 	var demon_cost: int = demon.skill_cost()
-	_submenu_add(_make_skill_button("Skill",
-			"%s Strike" % Affinity.element_name(demon.attack_element),
-			Affinity.element_name(demon.attack_element),
-			"%d MP" % demon_cost,
-			demon.has_status(Status.SILENCE) or demon.mp < demon_cost))
+	var blocked: bool = demon.has_status(Status.SILENCE) or demon.mp < demon_cost
+	# One button per line it carries, so a demon bound with three is worth
+	# three buttons rather than one that silently picks for you.
+	for e: String in demon.attack_elements:
+		_submenu_add(_make_skill_button("Skill:" + e,
+				"%s Strike" % Affinity.element_name(e),
+				Affinity.element_name(e),
+				"%d MP" % demon_cost, blocked))
 
 
 # A bound demon's own element, paid for out of its own pool.
-func _resolve_skill() -> Dictionary:
+func _resolve_skill(chosen: String) -> Dictionary:
 	var actor: Enemy = _actor() as Enemy
-	var element: String = actor.attack_element
+	var element: String = chosen
+	if element == "" or element not in actor.attack_elements:
+		element = actor.attack_element
 	if element == "":
 		return {msg = "[color=gray]%s has nothing to call on.[/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
@@ -2625,7 +2635,7 @@ func _can_spare_support(actor: Enemy) -> bool:
 	var sup_mp: int = int(sup.get("mp", 8))
 	if actor.mp < sup_mp:
 		return false
-	if actor.attack_element == "":
+	if actor.attack_elements.is_empty():
 		return true
 	return actor.mp - sup_mp >= actor.skill_cost()
 
@@ -2690,21 +2700,32 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# dice modifier: a demon opens with what it has and finishes the fight with
 	# its hands, which is a shape a player can read and play around.
 	#
-	# A banishing line is the exception. A demon lost that way does not come
-	# back, so those stay held in reserve — one turn in five — rather than being
-	# the opening move of every fight.
-	var reaches: bool = actor.attack_element != ""
-	if reaches and Affinity.is_banishing(actor.attack_element):
-		reaches = randi() % 10 < 2
-	if reaches:
-		if actor.can_afford_skill():
-			actor.mp -= actor.skill_cost()
-			element = actor.attack_element
-			base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
-		elif not actor.announced_dry:
-			# Said once, the turn the pool runs out, and not again.
-			actor.announced_dry = true
-			dry = "[color=gray]%s is out of MP.[/color]\n" % actor.display_name()
+	# A demon carrying several picks between them at random, so there is no one
+	# resistance that answers it — which is the point of giving a wizard three.
+	#
+	# A banishing line is the exception, and only joins the pool one turn in
+	# five. A demon it takes from the detective does not come back, so those
+	# stay something that happens rather than the opening move of every fight.
+	var pool: Array[String] = actor.affordable_elements(randi() % 10 < 2)
+	if not pool.is_empty():
+		actor.mp -= actor.skill_cost()
+		element = pool[randi() % pool.size()]
+		base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
+	elif actor.caster:
+		# A caster does not throw punches. Out of MP it scrapes what is left of
+		# its cheapest ordinary line — free, half strength, and never banishing.
+		element = actor.dregs_element()
+		if element == "":
+			element = Affinity.PHYS
+		else:
+			base = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * CASTER_DREGS
+			if not actor.announced_dry:
+				actor.announced_dry = true
+				dry = "[color=gray]%s is running on fumes.[/color]\n" % actor.display_name()
+	elif not actor.attack_elements.is_empty() and not actor.announced_dry:
+		# Said once, the turn the pool runs out, and not again.
+		actor.announced_dry = true
+		dry = "[color=gray]%s is out of MP.[/color]\n" % actor.display_name()
 
 	var target: CharacterSheet = _pick_target(element)
 

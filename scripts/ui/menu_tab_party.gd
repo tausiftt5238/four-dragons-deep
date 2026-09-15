@@ -79,10 +79,12 @@ func _add_demon(list: SlotList, demon_name: String) -> void:
 # ── Row pieces ───────────────────────────────────
 
 func _element_text(demon: Enemy) -> String:
-	if demon.attack_element == "":
+	if demon.attack_elements.is_empty():
 		return "no element"
-	return "%s  %d MP" % [Affinity.element_name(demon.attack_element),
-			demon.skill_cost()]
+	var names: Array[String] = []
+	for e: String in demon.attack_elements:
+		names.append(Affinity.element_name(e))
+	return "%s  %d MP" % ["/".join(names), demon.skill_cost()]
 
 
 # Its affinities, written the way the battle log writes them.
