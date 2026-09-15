@@ -133,15 +133,22 @@ func _build_ui() -> void:
 # The press-turn readout. Both sides are always visible so the player can see a
 # phase about to snowball against them, not just their own banked halves.
 
+# The strip is sized in whole lines rather than in pixels, because a height
+# that lands mid-line shows two and a sliver of a third, which reads as two.
+const LOG_LINES:  int = 3
+const LOG_LINE_H: int = 24    # the pixel font at 16, ascent and descent
+const LOG_PAD:    int = 8
+
+
 func _build_log_strip(parent: Control) -> void:
 	var panel: PanelContainer = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 65)
+	panel.custom_minimum_size = Vector2(0, LOG_LINES * LOG_LINE_H + LOG_PAD * 2)
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(panel)
 
 	var m: MarginContainer = MarginContainer.new()
 	for s: String in ["margin_left", "margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(s, 8)
+		m.add_theme_constant_override(s, LOG_PAD)
 	# Wide enough that a long log line never runs under the press-turn corner.
 	m.add_theme_constant_override("margin_right", 196)
 	panel.add_child(m)
@@ -150,8 +157,35 @@ func _build_log_strip(parent: Control) -> void:
 	_log_label.bbcode_enabled   = true
 	_log_label.scroll_active    = true
 	_log_label.scroll_following = true
+	_log_label.mouse_filter     = Control.MOUSE_FILTER_STOP
 	_log_label.add_theme_color_override("default_color", Color(0.88, 0.84, 0.74))
+	_log_label.gui_input.connect(_on_log_input)
 	m.add_child(_log_label)
+
+
+# Drag the log to read back through the phase. A RichTextLabel scrolls to the
+# wheel on its own, which is no use on a phone, and its scrollbar is a two
+# pixel target — so a drag anywhere on the text moves it.
+#
+# scroll_following is what pins the newest line to the bottom. Left on, an
+# arriving message would yank the player back mid-read, so it is switched off
+# the moment they drag away and switched back on when they reach the bottom
+# again. Reading back never costs you the live feed.
+func _on_log_input(event: InputEvent) -> void:
+	var dy: float = 0.0
+	if event is InputEventScreenDrag:
+		dy = (event as InputEventScreenDrag).relative.y
+	elif event is InputEventMouseMotion \
+			and ((event as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		dy = (event as InputEventMouseMotion).relative.y
+	else:
+		return
+	var bar: VScrollBar = _log_label.get_v_scroll_bar()
+	if bar == null:
+		return
+	bar.value -= dy
+	_log_label.scroll_following = bar.value >= bar.max_value - bar.page - 1.0
+	_log_label.accept_event()
 
 
 
