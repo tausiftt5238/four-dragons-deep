@@ -11,19 +11,20 @@ func _init(scene) -> void:
 
 func start() -> void:
 	_talk_fear   = 0
-	_talk_rounds = 2
+	_talk_rounds = Negotiation.ROUNDS
 	_s._hide_actions()
 	_show_submenu()
 
 
 func _show_submenu() -> void:
 	_s._set_back(_s._show_talk_submenu)
-	var threshold: int = 3 + _s.enemy.talk_difficulty
-	_s._right_title.text = "Threaten  %d/%d" % [_talk_fear, threshold]
+	_s._right_title.text = "Threaten  %d/%d" % [
+			_talk_fear, Negotiation.needed(_s.enemy)]
 	_s._right_title.add_theme_color_override("font_color", Color(1.0, 0.40, 0.20))
 	_s._submenu_clear()
 
-	_s._submenu_add(_s._dim_label("Round %d of 2" % (3 - _talk_rounds)))
+	_s._submenu_add(_s._dim_label("Round %d of %d" % [
+			Negotiation.ROUNDS - _talk_rounds + 1, Negotiation.ROUNDS]))
 
 	var opts: Array[Array] = [
 		["Boast",      "\"I'll crush you!\""],
@@ -42,21 +43,30 @@ func _show_submenu() -> void:
 
 func _resolve(approach: String) -> void:
 	_s._right_back_btn.hide()
-	var threshold: int   = 3 + _s.enemy.talk_difficulty
+	# Fear runs on the same two-round track trust does, and reads the same way:
+	# bring the stat the threat is made of and you roll well, bring the wrong
+	# one and you do not.
+	#
+	# It used to be a subtraction — your STR minus its STR — which meant Boast
+	# gave four fear against a floor-three Goblin and exactly zero against
+	# anything from floor twelve down, because their stats climb and the
+	# threshold climbed with them. A ratio does not rot.
+	var threshold: int   = Negotiation.needed(_s.enemy)
 	var gain: int        = 0
 	var insta_fail: bool = false
 
 	match approach:
 		"Boast":
-			gain = max(0, _s.player.effective_str() - _s.enemy.str + randi() % 3)
+			gain = Negotiation.roll(_s.player.effective_str() >= _s.enemy.str)
 		"Intimidate":
-			gain = max(0, _s.player.effective_mag() - _s.enemy.talk_difficulty + randi() % 3)
+			gain = Negotiation.roll(_s.player.effective_mag() >= _s.enemy.mag)
 		"Bluff":
-			var roll: int = randi() % 6
-			if roll <= 1:
+			# The gamble: better than either read when it lands, and it hands
+			# them two free swings when it does not.
+			if randi() % 5 == 0:
 				insta_fail = true
 			else:
-				gain = roll - 1
+				gain = 1 + randi() % 3
 
 	if insta_fail:
 		_s._show_main_actions()

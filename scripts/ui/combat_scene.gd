@@ -2727,7 +2727,15 @@ func _resolve_analyze() -> Dictionary:
 	player.record_analysis(enemy.enemy_name)
 	var chart: String = _affinity_line(enemy)
 	var lead: String = "You read %s again." if already else "You read %s."
-	return {msg = "[color=#9ad0ff]%s  %s[/color]" % [lead % enemy.display_name(), chart],
+	# A scan reads temperament as well as chart. Without this the match bonus in
+	# a negotiation was a blind guess every time — the difference between eighty
+	# per cent and nothing, decided by a coin the player could not see.
+	var mood: String = ""
+	if enemy.negotiable and enemy.talk_personality != "":
+		mood = "  [color=#a0e0b0]%s \u2014 %d%% if you read it right.[/color]" % [
+				enemy.talk_personality.capitalize(), Negotiation.odds_percent(enemy)]
+	return {msg = "[color=#9ad0ff]%s  %s[/color]%s" % [
+			lead % enemy.display_name(), chart, mood],
 			cost = PressTurn.COST_FULL}
 
 

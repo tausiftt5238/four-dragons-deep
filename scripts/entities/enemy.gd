@@ -9,6 +9,11 @@ var gold_reward:      int    = 5
 var status_attack:    String = ""
 var weakness:         String = ""
 var negotiable:       bool   = true
+# Which band the demon was written for. Talking reads this directly: a tier is
+# the one number a player already understands from the floor they are standing
+# on, where talk_difficulty was a private scale nothing on screen ever showed.
+var tier:             int    = 1
+
 var talk_difficulty:  int    = 2
 var talk_personality: String = "cowardly"
 var bribe_wants:      String = "any"
@@ -540,6 +545,7 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.attack_element  = e.attack_elements[0] if not e.attack_elements.is_empty() else ""
 	e.caster          = bool(t.get("caster", false))
 	e.attack_reach    = t.get("reach", Spell.SHAPE_ONE)
+	e.tier            = int(t.get("tier", 1))
 	e.reflect_element = t.get("reflect_element", "")
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
@@ -673,6 +679,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.attack_element  = e.attack_elements[0] if not e.attack_elements.is_empty() else ""
 	e.caster          = bool(t.get("caster", false))
 	e.attack_reach    = t.get("reach", Spell.SHAPE_ONE)
+	e.tier            = int(t.get("tier", 1))
 	e.reflect_element = t.get("reflect_element", "")
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)

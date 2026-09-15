@@ -52,7 +52,16 @@ func _add_demon(list: SlotList, enemy_name: String) -> void:
 	var st: String = tmpl.get("status_attack", "") as String
 	if st != "":
 		parts.append("Inflicts %s" % Status.get_data(st).get("name", st))
-	parts.append("Talk: %s" % ("yes" if bool(tmpl.get("negotiable", false)) else "no"))
+	# What it answers to, and what a correct read is worth — but only once it has
+	# been scanned. An unscanned demon is a guess, which is the point of Analyze.
+	if not bool(tmpl.get("negotiable", false)):
+		parts.append("Will not talk")
+	elif _m.player.has_analyzed(enemy_name):
+		parts.append("%s \u2014 %d%% talked round" % [
+				(tmpl.get("personality", "") as String).capitalize(),
+				Negotiation.tier_odds(int(tmpl.get("tier", 1)))])
+	else:
+		parts.append("Talks \u2014 temperament unread")
 
 	var icon: Texture2D = null
 	var sprite: String = tmpl.get("sprite", "") as String

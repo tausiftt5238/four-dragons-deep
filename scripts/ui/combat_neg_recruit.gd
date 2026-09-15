@@ -11,18 +11,19 @@ func _init(scene) -> void:
 
 func start() -> void:
 	_talk_trust  = 0
-	_talk_rounds = 2
+	_talk_rounds = Negotiation.ROUNDS
 	_s._hide_actions()
 	_show_submenu()
 
 
 func _show_submenu() -> void:
 	_s._set_back(_s._show_talk_submenu)
-	_s._right_title.text = "Recruit  %d/4" % _talk_trust
+	_s._right_title.text = "Recruit  %d/%d" % [_talk_trust, Negotiation.needed(_s.enemy)]
 	_s._right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.60))
 	_s._submenu_clear()
 
-	_s._submenu_add(_s._dim_label("Round %d of 2" % (3 - _talk_rounds)))
+	_s._submenu_add(_s._dim_label("Round %d of %d" % [
+			Negotiation.ROUNDS - _talk_rounds + 1, Negotiation.ROUNDS]))
 
 	var opts: Array[Array] = [
 		["Flatter", "\"You're incredible!\""],
@@ -41,15 +42,9 @@ func _show_submenu() -> void:
 
 func _resolve(approach: String) -> void:
 	_s._right_back_btn.hide()
-	var personality_match: bool = false
-	match _s.enemy.talk_personality:
-		"cowardly": personality_match = (approach == "Safety")
-		"proud":    personality_match = (approach == "Pride")
-		"greedy":   personality_match = (approach == "Flatter")
-		"lonely":   personality_match = (approach == "Flatter") or (approach == "Safety")
-
-	var gain: int = randi() % 4 + (2 if personality_match else 0) - _s.enemy.talk_difficulty
-	gain          = max(0, gain)
+	var matched: bool = Negotiation.matches(
+			Negotiation.RECRUIT_MATCH, _s.enemy.talk_personality, approach)
+	var gain: int = Negotiation.roll(matched)
 	_talk_trust  += gain
 	_talk_rounds -= 1
 
@@ -59,7 +54,7 @@ func _resolve(approach: String) -> void:
 	else:           reaction = _bad_reaction()
 	_s._log("[color=aqua]%s[/color]" % reaction)
 
-	if _talk_trust >= 4:
+	if _talk_trust >= Negotiation.needed(_s.enemy):
 		_s._show_main_actions()
 		_s._set_buttons(false)
 		_s.player.remember_recruit(_s.enemy.enemy_name, _s.enemy.lv)
