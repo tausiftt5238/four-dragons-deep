@@ -400,6 +400,17 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		design_note = "It never has to move, so it is slow and well armoured and leans on immobilising "
 				+ "you. The highest ailment chance of any warden."},
 
+]
+
+
+
+# Boss templates — one per 5-floor milestone, cycling every 4 bosses.
+# ── The mimic ─────────────────────────────────────────────────────────────────
+#
+# Not in the rotation above and not in the wandering pack either: a mimic is a
+# chest. It is only ever met by opening one, which is why the floors it lives on
+# carry extra chests — most of them are chests.
+const MIMIC_TEMPLATES: Array[Dictionary] = [
 	{name = "Mimic",           icons = WARDEN_ICONS,
 		str =  8, def =  6, mag =  6, agl =  4,
 		weakness = "fire", dark = "drain", reflect_element = "thunder", phys = "resist", light = "weak",
@@ -413,9 +424,22 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 				+ "twice. Weak to fire and to light because the disguise is the whole of its defence."},
 ]
 
+# The shallowest floor a chest might be lying about what it is.
+const MIMIC_FROM_FLOOR: int = 6
 
 
-# Boss templates — one per 5-floor milestone, cycling every 4 bosses.
+static func make_mimic(floor_num: int) -> Enemy:
+	var e: Enemy = _build(MIMIC_TEMPLATES[0], floor_num)
+	# Priced like a warden: it is an ambush with two icons, and being wrong
+	# about a chest should be worth something when you win.
+	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
+	e.exp_reward = exp_for_level(e.lv) * 2
+	e.gold_reward = e.lv * 6
+	e.compute_max_hp()
+	e.compute_max_mp()
+	return e
+
+
 const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Shadow Knight",    lv = 12, icons = BOSS_ICONS,
 		str = 12, def =  8, mag =  8, agl =  3,
@@ -617,6 +641,7 @@ static func all_templates() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	result.append_array(TEMPLATES)
 	result.append_array(WARDEN_TEMPLATES)
+	result.append_array(MIMIC_TEMPLATES)
 	result.append_array(BOSS_TEMPLATES)
 	return result
 

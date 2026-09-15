@@ -218,12 +218,15 @@ for t in d["tiers"]:
                    table(rows)))
 
 wardens = d["wardens"]
-w_vars = ['<span class="rank">%s</span>' % ", ".join(str(f) for f in w["floors"])
+w_vars = ['<span class="rank">%s</span>' % (
+              "in a chest" if w.get("is_mimic")
+              else ", ".join(str(f) for f in w["floors"]))
           for w in wardens]
 parts.append("""
   <section class="tier">
-    <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Wardens</h2><span class="floors">one per maze floor &middot; never negotiable</span></div>
-    <p class="blurb">The floor's locked door. It does not roam, it holds the key, and it opens on two press-turn icons. Five rotate across the sixteen maze floors &mdash; the Var column lists the floors each one actually lands on, and the level and HP ranges span the first of those to the last.</p>
+    <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Wardens &amp; the mimic</h2><span class="floors">two icons each &middot; never negotiable</span></div>
+    <p class="blurb">A warden is the floor's locked door. It does not roam, it holds the key, and it opens on two press-turn icons. Four rotate across the sixteen maze floors &mdash; the Var column lists the floors each one actually lands on, and the ranges span the first of those to the last.</p>
+    <p class="blurb">The mimic is none of those things. It is not in the rotation and not in the wandering pack: it is a chest, and the only way to meet one is to open it. From floor six down a floor carries roughly twice the caches it used to and about two of them are lying, so opening is a read rather than a reward. It is priced like a warden because being wrong should be worth something when you win.</p>
     %s
   </section>""" % table(wardens, w_vars))
 

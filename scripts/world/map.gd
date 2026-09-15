@@ -303,10 +303,19 @@ func _cell_is_open(cell: Vector2i) -> bool:
 # cell touches. Requiring a single neighbour is what puts them in the side of
 # a corridor rather than in the middle of a junction, where a recess would be
 # visible from three directions and lose all of its quality of being found.
+# Two or three caches on a shallow floor. From the depth a mimic lives at there
+# are more of them and a share are mimics, so the extras are not a gift: the
+# floor has more to open and opening is no longer free.
+const MIMIC_EXTRA_CHESTS: int = 3
+const MIMIC_SHARE: float = 0.4
+
+
 func _place_chests() -> void:
 	chest_cells.clear()
 	looted.clear()
-	var want: int = 2 + (randi() % 2)
+	mimic_cells.clear()
+	var deep: bool = floor_num >= Enemy.MIMIC_FROM_FLOOR
+	var want: int = 2 + (randi() % 2) + (MIMIC_EXTRA_CHESTS if deep else 0)
 	var rows: int = maze.size()
 	var cols: int = (maze[0] as Array).size()
 
@@ -347,6 +356,17 @@ func _place_chests() -> void:
 		if too_close:
 			continue
 		chest_cells[wall2] = face2
+
+	if not deep:
+		return
+	# At least one, so a floor that can hold a mimic always holds one — and
+	# never all of them, so opening a cache is a risk rather than a refusal.
+	var keys: Array = chest_cells.keys()
+	keys.shuffle()
+	var mimics: int = clampi(roundi(float(keys.size()) * MIMIC_SHARE),
+			1, maxi(1, keys.size() - 1))
+	for i: int in mimics:
+		mimic_cells[keys[i]] = true
 
 
 func _place_traps() -> void:

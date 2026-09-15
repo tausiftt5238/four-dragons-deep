@@ -1139,9 +1139,27 @@ func _open_chest(wall: Vector2i) -> void:
 	var ui: ChestUI = ChestUI.new()
 	ui.closed.connect(func() -> void: _close_chest())
 	ui.opened.connect(func() -> void:
-		_loot_chest(wall)
-		_close_chest())
+		# Nothing about the recess says which it is, so the prompt is the same
+		# either way and the answer arrives on the swing of the lid.
+		if current_level.mimic_cells.has(wall):
+			_spring_mimic(wall)
+		else:
+			_loot_chest(wall)
+			_close_chest())
 	chest_layer.add_child(ui)
+
+
+# It was never a cache. The cell is marked emptied so the recess reads as open
+# afterwards whichever way the fight goes, and the mimic is fought where it
+# stood — it does not roam and it does not get a second ambush.
+func _spring_mimic(wall: Vector2i) -> void:
+	current_level.looted[wall] = true
+	current_level.mimic_cells.erase(wall)
+	_close_chest()
+	_rebuild_dungeon()
+	# No HUD popup here: _launch_combat hides that layer on the same frame, so
+	# the line would never be seen. The encounter line carries the reveal.
+	_launch_combat([Enemy.make_mimic(floor_num)] as Array[Enemy])
 
 
 # What was in it. Gold always, and better odds of something on top of that
@@ -1161,7 +1179,11 @@ func _loot_chest(wall: Vector2i) -> void:
 		found.append(item["name"] as String)
 
 	_show_hud_popup("Opened:  %s" % ", ".join(found), Color(1.0, 0.82, 0.40))
-	# Rebuild so the emptied recess reads as emptied.
+	_rebuild_dungeon()
+
+
+# Rebuild so an emptied recess reads as emptied.
+func _rebuild_dungeon() -> void:
 	if is_instance_valid(dungeon):
 		dungeon.queue_free()
 	dungeon = Dungeon.new()
@@ -1294,6 +1316,9 @@ func _gather_save_data() -> Dictionary:
 			trap_cells  = _pack_trap_cells(current_level.trap_cells),
 			roamers     = _pack_roamers(),
 			orbs        = _pack_orbs(),
+			chests      = _pack_chests(),
+			mimics      = _pack_cell_set(current_level.mimic_cells),
+			looted      = _pack_cell_set(current_level.looted),
 			warden      = SaveSystem.vec2i_key(current_level.warden_pos),
 			has_key     = _has_key,
 		},
@@ -1350,6 +1375,20 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.orb_cells.clear()
 	for key: Variant in (map_data.get("orbs", []) as Array):
 		current_level.orb_cells.append(SaveSystem.key_vec2i(key as String))
+	# Caches were never saved, so a load re-rolled where they were and whether
+	# they were empty. Harmless while a chest was only ever a chest; not once
+	# one of them can be a mimic, because then a reload is a re-roll of the
+	# ambush you just walked into.
+	var saved_chests: Dictionary = map_data.get("chests", {}) as Dictionary
+	if not saved_chests.is_empty():
+		current_level.chest_cells.clear()
+		for key: Variant in saved_chests.keys():
+			current_level.chest_cells[SaveSystem.key_vec2i(key as String)] = \
+					SaveSystem.key_vec2i(saved_chests[key] as String)
+		current_level.mimic_cells = _unpack_cell_set(
+				map_data.get("mimics", []) as Array)
+		current_level.looted = _unpack_cell_set(
+				map_data.get("looted", []) as Array)
 	current_level.warden_pos      = SaveSystem.key_vec2i(
 			map_data.get("warden", "-1,-1") as String)
 	_pending_has_key              = bool(map_data.get("has_key", true))
@@ -1461,6 +1500,29 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 # Roamer positions are saved so a reload does not shuffle the floor's threats.
 var _pending_roamers: Array = []
+
+
+# Which wall each cache opens through, and which of them are lying.
+func _pack_chests() -> Dictionary:
+	var out: Dictionary = {}
+	for wall: Vector2i in current_level.chest_cells:
+		out[SaveSystem.vec2i_key(wall)] = SaveSystem.vec2i_key(
+				current_level.chest_cells[wall] as Vector2i)
+	return out
+
+
+func _pack_cell_set(cells: Dictionary) -> Array:
+	var out: Array = []
+	for c: Vector2i in cells:
+		out.append(SaveSystem.vec2i_key(c))
+	return out
+
+
+func _unpack_cell_set(keys: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for key: Variant in keys:
+		out[SaveSystem.key_vec2i(key as String)] = true
+	return out
 
 
 func _pack_orbs() -> Array:

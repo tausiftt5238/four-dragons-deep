@@ -75,6 +75,11 @@ var orb_cells: Array[Vector2i] = []
 var chest_cells: Dictionary = {}
 var looted: Dictionary = {}
 
+# The subset of chest_cells that are not chests. Keyed the same way, so a cache
+# is looked up once and its nature answered by a second lookup — nothing about
+# the recess itself gives it away, which is the whole point of the thing.
+var mimic_cells: Dictionary = {}
+
 # Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
 # Erased by main.gd after the player triggers one.
 var trap_cells: Dictionary = {}

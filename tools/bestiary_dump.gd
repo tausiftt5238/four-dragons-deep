@@ -88,6 +88,18 @@ func _initialize() -> void:
 		})
 		boss.free()
 
+	# The mimic is not in the rotation and is not in the wandering pack; it is a
+	# chest. Listed with the wardens because that is what it is priced like.
+	for t: Dictionary in Enemy.MIMIC_TEMPLATES:
+		var lo_m: Enemy = Enemy.make_mimic(Enemy.MIMIC_FROM_FLOOR)
+		var hi_m: Enemy = Enemy.make_mimic(Level.FLOOR_COUNT)
+		var row_m: Dictionary = _row(t, lo_m, hi_m)
+		row_m["floors"] = [Enemy.MIMIC_FROM_FLOOR, Level.FLOOR_COUNT]
+		row_m["is_mimic"] = true
+		out["wardens"].append(row_m)
+		lo_m.free()
+		hi_m.free()
+
 	# Wardens, at the shallowest and deepest maze floor each actually appears on.
 	for i: int in Enemy.WARDEN_TEMPLATES.size():
 		var t: Dictionary = Enemy.WARDEN_TEMPLATES[i]
