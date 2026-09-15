@@ -332,7 +332,11 @@ func _roll_crit() -> bool:
 
 
 
-func _use_item_by_id(item_id: String) -> String:
+# Returns { msg, cost }. A thrown flask is scored against the chart like any
+# other elemental hit, which means it can be drunk or turned back — and that
+# has to end the phase the same way a spell does. It used to cost one icon
+# whatever happened, which made a throwable the safe way to probe a chart.
+func _use_item_by_id(item_id: String) -> Dictionary:
 	for item: Dictionary in player.inventory:
 		if item["id"] == item_id and item["type"] == "consumable":
 			var inflicts: String = item.get("inflicts_status", "")
@@ -340,9 +344,12 @@ func _use_item_by_id(item_id: String) -> String:
 				var sname: String = Status.get_data(inflicts).get("name", inflicts)
 				player.remove_item(item, 1)
 				if enemy.has_status(inflicts):
-					return "[color=aqua]Used %s.[/color] %s is already %s." % [item["name"], enemy.enemy_name, sname]
+					return {msg = "[color=aqua]Used %s.[/color] %s is already %s." % [
+							item["name"], enemy.enemy_name, sname],
+							cost = PressTurn.COST_FULL}
 				enemy.apply_status(inflicts)
-				return "[color=aqua]Used %s![/color]  [color=violet]%s is now %s.[/color]" % [item["name"], enemy.enemy_name, sname]
+				return {msg = "[color=aqua]Used %s![/color]  [color=violet]%s is now %s.[/color]" % [
+						item["name"], enemy.enemy_name, sname], cost = PressTurn.COST_FULL}
 			var element: String = item.get("element", "")
 			var base_dmg: int = item.get("dmg", 0)
 			if element != "" and base_dmg > 0:
@@ -351,20 +358,26 @@ func _use_item_by_id(item_id: String) -> String:
 				player.remove_item(item, 1)
 				if state == Affinity.DRAIN:
 					enemy.heal(dmg)
-					return "[color=aqua]Used %s![/color]  [color=lime]%s absorbs it and recovers %d HP![/color]" % [
-						item["name"], enemy.enemy_name, dmg]
+					return {msg = "[color=aqua]Used %s![/color]  [color=lime]%s absorbs it and recovers %d HP![/color]" % [
+							item["name"], enemy.enemy_name, dmg], cost = PressTurn.COST_LOST}
 				if state == Affinity.REPEL:
 					player.take_damage(dmg)
-					return "[color=aqua]Used %s![/color]  [color=#d070ff]Repelled! You take %d damage![/color]" % [
-						item["name"], dmg]
+					return {msg = "[color=aqua]Used %s![/color]  [color=#d070ff]Repelled! You take %d damage![/color]" % [
+							item["name"], dmg], cost = PressTurn.COST_LOST}
+				if state == Affinity.NULL:
+					return {msg = "[color=aqua]Used %s![/color]  [color=#999999]%s does not feel it.[/color]" % [
+							item["name"], enemy.enemy_name], cost = PressTurn.COST_MISS}
 				dmg = max(1, roundi(dmg * Affinity.multiplier(state)))
-				var weak_tag: String = "  [color=yellow]Weak![/color]" if state == Affinity.WEAK else ""
+				var weak: bool = state == Affinity.WEAK
+				var weak_tag: String = "  [color=yellow]Weak![/color]" if weak else ""
 				enemy.take_damage(dmg)
-				return "[color=aqua]Used %s![/color]%s  [color=violet]%s takes %d damage.[/color]" % [
-					item["name"], weak_tag, enemy.enemy_name, dmg]
+				return {msg = "[color=aqua]Used %s![/color]%s  [color=violet]%s takes %d damage.[/color]" % [
+						item["name"], weak_tag, enemy.enemy_name, dmg],
+						cost = PressTurn.COST_HALF if weak else PressTurn.COST_FULL}
 			var result: String = player.use_item(item)
-			return "[color=aqua]Used %s. %s[/color]" % [item["name"], result]
-	return "[color=gray]Item not found.[/color]"
+			return {msg = "[color=aqua]Used %s. %s[/color]" % [item["name"], result],
+					cost = PressTurn.COST_FULL}
+	return {msg = "[color=gray]Item not found.[/color]", cost = PressTurn.COST_FULL}
 
 
 
@@ -643,8 +656,9 @@ func _on_use_item(item: Dictionary) -> void:
 func _commit_item(item: Dictionary) -> void:
 	_show_main_actions()
 	_set_buttons(false)
-	_log(_use_item_by_id(item["id"] as String))
-	await _after_action(PressTurn.COST_FULL)
+	var res: Dictionary = _use_item_by_id(item["id"] as String)
+	_log(res["msg"] as String)
+	await _after_action(res["cost"] as String)
 
 
 # Returns { msg, cost } — the log line and what the action cost in icons.
@@ -1399,7 +1413,14 @@ func _enemy_phase() -> void:
 		_foe_turn_idx += 1
 		var res: Dictionary = _enemy_act(actor)
 		_log(res["msg"] as String)
+		# Their phase ends on a repel or a drain exactly as yours does, and it
+		# is worth saying out loud — the reason the pack stopped is a read the
+		# player just made, not the clock running out.
+		var lost: bool = (res["cost"] as String) == PressTurn.COST_LOST \
+				and _foe_press.total() > 0
 		_foe_press.spend(res["cost"] as String)
+		if lost:
+			_log("[color=#7fd4ff]Their phase collapses.[/color]")
 		_refresh_hp()
 		if _foe_press.has_turns() and not _living_party().is_empty() \
 				and not _living_foes().is_empty():

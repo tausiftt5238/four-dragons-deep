@@ -223,7 +223,7 @@ w_vars = ['<span class="rank">%s</span>' % ", ".join(str(f) for f in w["floors"]
 parts.append("""
   <section class="tier">
     <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Wardens</h2><span class="floors">one per maze floor &middot; never negotiable</span></div>
-    <p class="blurb">The floor's locked door. It does not roam, it holds the key, and it opens with two icons. Five rotate across the sixteen maze floors &mdash; the Var column lists the floors each one actually lands on, and the level and HP ranges span the first of those to the last.</p>
+    <p class="blurb">The floor's locked door. It does not roam, it holds the key, and it opens on two press-turn icons. Five rotate across the sixteen maze floors &mdash; the Var column lists the floors each one actually lands on, and the level and HP ranges span the first of those to the last.</p>
     %s
   </section>""" % table(wardens, w_vars))
 
@@ -232,7 +232,7 @@ b_vars = ['<span class="rank">fl %d</span>' % b["floor"] for b in bosses]
 parts.append("""
   <section class="tier">
     <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Bosses</h2><span class="floors">floors 5, 10, 15, 20 &middot; level = floor &times; 2</span></div>
-    <p class="blurb">One closes each tier. Every one nulls both banishing lines, so none of them can fall to a coin flip &mdash; and from floor ten on, two of the four answer a stacked party by stripping it.</p>
+    <p class="blurb">One closes each tier, alone, on <b>four press-turn icons</b> &mdash; the same number a full party brings &mdash; against a warden's two. None of them can fall to a coin flip: light and dark are nulled or drunk on every one. From floor ten, two of the four answer a stacked party by stripping it.</p>
     %s
   </section>""" % table(bosses, b_vars))
 

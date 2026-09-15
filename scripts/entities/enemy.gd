@@ -32,6 +32,12 @@ var caster:           bool = false
 var attack_reach:     String = Spell.SHAPE_ONE
 var reflect_element:  String = ""
 
+# What a set piece opens its phase with. A warden gets two actions to your
+# party's four, a boss gets four — it is one thing standing where a pack would
+# be, so the icons are what make it a fight rather than a health bar.
+const BOSS_ICONS:   int = 4
+const WARDEN_ICONS: int = 2
+
 # Press-turn icons this enemy opens its phase with. Bosses get more, which is
 # how they threaten a full party without inflating their damage numbers.
 var icons: int = 1
@@ -340,7 +346,7 @@ const TEMPLATES: Array[Dictionary] = [
 # thing in a mind that will not let you go further in. Two icons each, so the
 # fight is a wall rather than a speed bump, and none of them can be talked down.
 const WARDEN_TEMPLATES: Array[Dictionary] = [
-	{name = "Gargoyle",        icons = 2,
+	{name = "Gargoyle",        icons = WARDEN_ICONS,
 		str =  6, def =  7, mag =  6, agl =  2,
 		weakness = "thunder", reflect_element = "fire", phys = "resist", light = "resist",
 		attack_elements = ["thunder", "light"], reach = "few", status_attack = "immobilize", ail = 8,
@@ -352,7 +358,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		design_note = "Stone: a blade glances off it, and current finds it the way current finds "
 				+ "anything standing alone on a high point."},
 
-	{name = "Barrow Wight",    icons = 2,
+	{name = "Barrow Wight",    icons = WARDEN_ICONS,
 		str =  7, def =  5, mag =  6, agl =  3,
 		weakness = "fire", phys = "resist", light = "weak", dark = "drain",
 		attack_elements = ["ice", "dark"], reach = "all", status_attack = "silence", ail = 10, support = "mire",
@@ -364,7 +370,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		design_note = "Undead, so it follows the same chart as the Skeleton line: light takes it and "
 				+ "dark slides off. It has the key because a wight hoards, not because it was posted."},
 
-	{name = "Chained Hound",   icons = 2,
+	{name = "Chained Hound",   icons = WARDEN_ICONS,
 		str =  9, def =  4, mag =  6, agl =  7,
 		weakness = "ice", absorb_element = "fire", phys = "weak",
 		attack_element = "fire", reach = "few", status_attack = "paralyzed", ail = 14,
@@ -377,7 +383,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		design_note = "Fast and fragile: it hits hard and often but a blade finds it easily. The "
 				+ "chain is why a warden does not roam — the one warden with a reason to."},
 
-	{name = "Basilisk",        icons = 2,
+	{name = "Basilisk",        icons = WARDEN_ICONS,
 		str =  7, def =  6, mag =  8, agl =  2,
 		weakness = "thunder", reflect_element = "ice", phys = "resist", dark = "resist",
 		attack_elements = ["ice", "light"], reach = "all", status_attack = "immobilize", ail = 18, support = "ward",
@@ -389,7 +395,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		design_note = "It never has to move, so it is slow and well armoured and leans on immobilising "
 				+ "you. The highest ailment chance of any warden."},
 
-	{name = "Mimic",           icons = 2,
+	{name = "Mimic",           icons = WARDEN_ICONS,
 		str =  8, def =  6, mag =  6, agl =  4,
 		weakness = "fire", dark = "drain", reflect_element = "thunder", phys = "resist", light = "weak",
 		attack_elements = ["thunder", "dark"], reach = "few", status_attack = "poison", ail = 12,
@@ -406,14 +412,14 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 # Boss templates — one per 5-floor milestone, cycling every 4 bosses.
 const BOSS_TEMPLATES: Array[Dictionary] = [
-	{name = "Shadow Knight",    lv = 12, icons = 3,
+	{name = "Shadow Knight",    lv = 12, icons = BOSS_ICONS,
 		str = 12, def =  8, mag =  8, agl =  3,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
 		weakness = "thunder", absorb_element = "ice", light = "null", dark = "null",
 		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 25, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
-	{name = "Bone Sorcerer",    lv = 14, icons = 3,
+	{name = "Bone Sorcerer",    lv = 14, icons = BOSS_ICONS,
 		str =  5, def =  6, mag = 14, agl =  4,
 		exp = 280, gold = 110, tier = 4, rank = 0, min_floor = 10, max_floor = -1,
 		weakness = "ice", reflect_element = "fire", light = "null", dark = "drain",
@@ -421,14 +427,14 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
-	{name = "Iron Titan",       lv = 16, icons = 4,
+	{name = "Iron Titan",       lv = 16, icons = BOSS_ICONS,
 		str = 16, def = 12, mag =  8, agl =  1,
 		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
 		weakness = "thunder", phys = "resist", absorb_element = "ice", light = "null", dark = "null",
 		attack_elements = ["thunder", "ice"], status_attack = "paralyzed", ail = 25, support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite = ""},
-	{name = "Void Drake",       lv = 18, icons = 4,
+	{name = "Void Drake",       lv = 18, icons = BOSS_ICONS,
 		str = 14, def = 10, mag = 12, agl =  5,
 		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
 		weakness = "ice", reflect_element = "fire", absorb_element = "thunder", light = "null", dark = "null",
@@ -532,7 +538,7 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.reflect_element = t.get("reflect_element", "")
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
-	e.icons           = int(t.get("icons", 3))
+	e.icons           = int(t.get("icons", BOSS_ICONS))
 	e.support_skill   = t.get("support", "")
 	e.ailment_chance  = int(t.get("ail", 25))
 	# A boss keeps its own colours; it is not one of a set.
