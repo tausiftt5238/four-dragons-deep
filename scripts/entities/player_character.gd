@@ -122,6 +122,15 @@ func deactivate_demon(demon_name: String) -> void:
 	active_demons.erase(demon_name)
 
 
+# Struck off the rolodex for good — sold at an orb. The level goes with it:
+# remember_recruit keeps the best copy ever bound, so leaving the old level
+# behind would hand a later, weaker recruit the sold demon's strength for free.
+func release_demon(demon_name: String) -> void:
+	recruited.erase(demon_name)
+	active_demons.erase(demon_name)
+	bound_level.erase(demon_name)
+
+
 # Newly bound demons take a free slot on their own, so a first recruit is
 # usable without a trip to the menu.
 func remember_recruit(demon_name: String, lv: int = 1) -> void:

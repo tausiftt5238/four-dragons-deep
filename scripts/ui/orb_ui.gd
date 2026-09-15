@@ -76,8 +76,8 @@ func _build() -> void:
 	tabs.add_theme_constant_override("v_separation", 6)
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Bind"],
-			["buy", "Supplies"], ["scrolls", "Scrolls"],
-			["save", "Record"]]:
+			["sell", "Sell"], ["buy", "Supplies"],
+			["scrolls", "Scrolls"], ["save", "Record"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -114,6 +114,7 @@ func _switch(tab: String) -> void:
 	match tab:
 		"rest": _build_rest()
 		"bind": _build_bind()
+		"sell": _build_sell()
 		"buy":  _build_buy()
 		"scrolls": _build_scrolls()
 		"save": _build_save()
@@ -253,6 +254,51 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 					player.gold -= price
 					player.remember_recruit(enemy_name, offered_lv)
 					_set_status("%s answers to you now." % enemy_name)
+				_refresh())
+
+
+# ── Selling ───────────────────────────────────────────────────────────────────
+#
+# Demons never level, so a floor-two demon is a floor-two demon for the rest of
+# the run. This is the way out of that: it goes back for exactly what binding
+# one at its level costs, which makes the rolodex a ladder rather than a
+# collection — sell what you have outgrown and put the gold into something from
+# the floor you are standing on.
+static func sell_price(demon_name: String, lv: int) -> int:
+	var demon: Enemy = Enemy.make_at_level(demon_name, lv)
+	var price: int = bind_price(demon)
+	demon.free()
+	return price
+
+
+func _build_sell() -> void:
+	if player.recruited.is_empty():
+		SlotList.new(_content).add_note("Nothing bound to you.")
+		return
+	SlotList.paged(_content, _page, "sell", player.recruited.duplicate(),
+			_sell_offer, _refresh)
+
+
+func _sell_offer(list: SlotList, enemy_name: String) -> void:
+	var lv: int = int(player.bound_level.get(enemy_name, 1))
+	var demon: Enemy = player.bound_demon(enemy_name)
+	var lines: Array[String] = []
+	for e: String in demon.attack_elements:
+		lines.append(Affinity.element_name(e))
+	var element: String = "/".join(lines) if not lines.is_empty() else "no element"
+	var about: String = "LV %d   HP %d   MP %d   %s%s" % [
+			demon.lv, demon.max_hp, demon.max_mp, element,
+			"   summoned" if enemy_name in player.active_demons else ""]
+	demon.free()
+	var price: int = sell_price(enemy_name, lv)
+
+	list.add(enemy_name, Color(0.85, 0.85, 0.92), about,
+			"%d g" % price, Color(1.0, 0.85, 0.35),
+			"Sell", false,
+			func() -> void:
+				player.release_demon(enemy_name)
+				player.gold += price
+				_set_status("%s is released. %d gold." % [enemy_name, price])
 				_refresh())
 
 
