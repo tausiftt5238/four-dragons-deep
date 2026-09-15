@@ -609,12 +609,10 @@ static func make_at_level(enemy_name: String, lv: int) -> Enemy:
 # the last warden rather than to a random demon, so the key always has a keeper.
 # It is built at the floor's own level like anything else down there.
 static func make_warden(floor_num: int) -> Enemy:
-	# Counted in MAZE floors, not raw ones. Indexing by floor number couples the
-	# rotation to the boss cadence, and with five wardens and a boss every fifth
-	# floor the fifth warden only ever came up on floors that have no warden —
-	# the Mimic was written and then never appeared once.
-	var maze_index: int = (floor_num - 1) - (floor_num - 1) / Level.BOSS_EVERY
-	var idx: int = clampi(maze_index % WARDEN_TEMPLATES.size(),
+	# One warden per band, standing in the middle of it, so the four of them map
+	# one to one onto the four tiers. No rotation and no modulus to get wrong:
+	# the floor says which band it is in and the band says which warden.
+	var idx: int = clampi(tier_for_floor(floor_num) - 1,
 			0, WARDEN_TEMPLATES.size() - 1)
 	var e: Enemy = _build(WARDEN_TEMPLATES[idx], floor_num)
 	# A warden is the floor's locked door: a step above its neighbours, a step

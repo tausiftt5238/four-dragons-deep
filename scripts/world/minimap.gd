@@ -27,6 +27,19 @@ var warden_pos: Vector2i = Vector2i(-1, -1)
 # and remembering that is the map's job rather than the player's.
 var orb_cells: Array[Vector2i] = []
 
+# Caches, keyed by the wall they open through, and which of them are emptied.
+# An emptied one still draws, hollow: knowing a corridor has nothing left in it
+# is worth as much as knowing it has something.
+var chest_cells: Dictionary = {}
+var looted: Dictionary = {}
+
+# Traps the player has set off. Not trap_cells — the map is a record of what
+# happened to you, not a list of what the floor is hiding.
+var found_traps: Dictionary = {}
+
+# The loose key, while it is still lying there.
+var key_pos: Vector2i = Vector2i(-1, -1)
+
 # Draw the entire floor scaled to fit, rather than a window around the player.
 # The upper pane has room for a 20x20 maze at eighteen pixels a cell, so the
 # whole floor is visible at once instead of a ten-by-ten keyhole.
@@ -53,6 +66,9 @@ const C_PLAYER: Color = Color(1.00, 0.82, 0.20, 1.00)  # Bright yellow player ma
 const C_PORTAL: Color = Color(0.00, 0.82, 0.55, 1.00)  # Teal portal — matches the in-world exit glow
 const C_WARDEN: Color = Color(0.66, 0.42, 1.00, 1.00)  # Violet warden — matches its cold fire
 const C_ORB: Color    = Color(0.80, 0.96, 1.00, 1.00)  # Cold white orb — matches the shard in the world
+const C_KEY: Color    = Color(0.78, 0.58, 1.00, 1.00)  # Violet key — the warden's colour, loose on the floor
+const C_CHEST: Color  = Color(1.00, 0.78, 0.32, 1.00)  # Amber cache
+const C_TRAP: Color   = Color(0.95, 0.35, 0.32, 1.00)  # Red for the ones that have already bitten
 
 # 2D unit vectors for each facing direction, used to draw the direction arrow.
 # Order must match the facing constants in main.gd:
@@ -142,6 +158,47 @@ func _draw() -> void:
 		draw_circle(Vector2(ox + (oc + 0.5) * cell, oy + (orow + 0.5) * cell),
 				cell * 0.34, C_ORB)
 
+	# The key, while it lies there and once its cell has been walked — the same
+	# rule the warden follows, for the same reason.
+	if key_pos.x >= 0 and visited.has(key_pos):
+		var kc: int = key_pos.x - origin.x
+		var kr: int = key_pos.y - origin.y
+		if kc >= 0 and kc < view_c and kr >= 0 and kr < view_r:
+			_diamond(Vector2(ox + (kc + 0.5) * cell, oy + (kr + 0.5) * cell),
+					cell * 0.36, C_KEY)
+
+	# Caches, at the cell they open through rather than the wall they are set
+	# into — the wall is never walked, so a chest keyed to it would never show.
+	for wall: Variant in chest_cells.keys():
+		var face: Vector2i = chest_cells[wall] as Vector2i
+		if not visited.has(face):
+			continue
+		var cc: int = face.x - origin.x
+		var cr: int = face.y - origin.y
+		if cc < 0 or cc >= view_c or cr < 0 or cr >= view_r:
+			continue
+		var at: Vector2 = Vector2(ox + (cc + 0.5) * cell, oy + (cr + 0.5) * cell)
+		var r: float = cell * 0.26
+		var box: Rect2 = Rect2(at - Vector2(r, r), Vector2(r * 2.0, r * 2.0))
+		if looted.has(wall):
+			draw_rect(box, C_CHEST, false, maxf(1.0, cell * 0.09))
+		else:
+			draw_rect(box, C_CHEST)
+
+	# Traps that have gone off. Drawn as a cross, which reads as a warning at
+	# four pixels where a coloured square just reads as another kind of room.
+	for cellpos: Variant in found_traps.keys():
+		var t: Vector2i = cellpos as Vector2i
+		var tc: int = t.x - origin.x
+		var tr: int = t.y - origin.y
+		if tc < 0 or tc >= view_c or tr < 0 or tr >= view_r:
+			continue
+		var mid: Vector2 = Vector2(ox + (tc + 0.5) * cell, oy + (tr + 0.5) * cell)
+		var a: float = cell * 0.28
+		var w: float = maxf(1.0, cell * 0.14)
+		draw_line(mid + Vector2(-a, -a), mid + Vector2(a, a), C_TRAP, w)
+		draw_line(mid + Vector2(-a, a), mid + Vector2(a, -a), C_TRAP, w)
+
 	# The player: centred in a window, in its own cell on a whole floor.
 	var pcx: float = ox + (float(player_pos.x - origin.x) + 0.5) * cell
 	var pcy: float = oy + (float(player_pos.y - origin.y) + 0.5) * cell
@@ -154,3 +211,13 @@ func _draw() -> void:
 	draw_line(center, tip, C_PLAYER, maxf(1.5, cell * 0.18))
 
 	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), border_color, false, 1.5)
+
+
+# A small filled diamond. The key has to be tellable from the orbs' circles and
+# the caches' squares at ten pixels a cell, and a rotated square is the only
+# other shape that survives that.
+func _diamond(at: Vector2, r: float, c: Color) -> void:
+	draw_colored_polygon(PackedVector2Array([
+		at + Vector2(0.0, -r), at + Vector2(r, 0.0),
+		at + Vector2(0.0, r),  at + Vector2(-r, 0.0),
+	]), c)

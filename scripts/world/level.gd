@@ -16,6 +16,17 @@ const BOSS_EVERY:  int = 5
 static func is_boss_floor(floor_num: int) -> bool:
 	return floor_num % BOSS_EVERY == 0
 
+
+# A warden stands in the middle of its band and nowhere else — floors 3, 8, 13
+# and 18, one for each of the four of them. Every other maze floor leaves its
+# key lying somewhere instead, so finding the way down is sometimes a fight and
+# sometimes a search rather than the same errand sixteen times.
+const WARDEN_OFFSET: int = 3
+
+
+static func is_warden_floor(floor_num: int) -> bool:
+	return not is_boss_floor(floor_num) and floor_num % BOSS_EVERY == WARDEN_OFFSET
+
 # 2D maze layout: 1 = wall, 0 = open floor.
 var maze: Array[Array] = []
 
@@ -62,6 +73,15 @@ var next_scene: String     = ""
 # The warden: one stationary demon that holds this floor's key. The door on
 # does not open until it is beaten. (-1,-1) on the boss floor, which has none.
 var warden_pos: Vector2i = Vector2i(-1, -1)
+
+# The key lying loose on a floor that has no warden, and whether it has been
+# picked up. (-1,-1) on a floor whose key is carried by something instead.
+var key_pos: Vector2i = Vector2i(-1, -1)
+var key_taken: bool = false
+
+# Traps the player has actually set off. The map draws these and nothing else:
+# a trap you have not stepped on is not a thing you know about.
+var found_traps: Dictionary = {}
 
 # Save orbs. Standing on one opens the orb: the only place a run can be saved,
 # and the only place gold buys anything.

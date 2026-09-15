@@ -19,6 +19,8 @@ func build(level: Level) -> void:
 	_add_trap_markers(level)
 	_add_orbs(level)
 	_add_chests(level)
+	if level.key_pos.x >= 0 and not level.key_taken:
+		_add_key(level.key_pos)
 	_setup_environment()
 
 
@@ -240,6 +242,53 @@ func _add_wall_label(text: String, pos: Vector3, dir: Vector2i, color: Color) ->
 
 # A save orb: a pale, slowly turning shard hanging at eye height. Cold white so
 # it never reads as one of the burning things walking the floor.
+# The loose key. Deliberately not an orb: same trick of a lit thing floating in
+# a dark corridor, but violet and flat rather than white and round, because the
+# one thing it must never be mistaken for at the end of a long corridor is a
+# save point.
+func _add_key(pos: Vector2i) -> void:
+	var root: Node3D = Node3D.new()
+	root.position = Vector3(pos.x * CELL_SIZE, 0.95, pos.y * CELL_SIZE)
+	root.rotation = Vector3(0.0, PI * 0.25, 0.0)
+	add_child(root)
+
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.86, 0.72, 1.0)
+	mat.emission_enabled = true
+	mat.emission = Color(0.66, 0.42, 1.0)
+	mat.emission_energy_multiplier = 2.4
+
+	var core: MeshInstance3D = MeshInstance3D.new()
+	var bit: PrismMesh = PrismMesh.new()
+	bit.size = Vector3(0.30, 0.44, 0.10)
+	core.mesh = bit
+	core.material_override = mat
+	root.add_child(core)
+
+	var halo_mat: StandardMaterial3D = StandardMaterial3D.new()
+	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	halo_mat.blend_mode   = BaseMaterial3D.BLEND_MODE_ADD
+	halo_mat.cull_mode    = BaseMaterial3D.CULL_FRONT
+	halo_mat.albedo_color = Color(0.62, 0.40, 1.0, 0.20)
+	var halo: MeshInstance3D = MeshInstance3D.new()
+	var halo_mesh: SphereMesh = SphereMesh.new()
+	halo_mesh.radius = 0.30
+	halo_mesh.height = 0.60
+	halo_mesh.radial_segments = 10
+	halo_mesh.rings = 5
+	halo.mesh = halo_mesh
+	halo.material_override = halo_mat
+	root.add_child(halo)
+
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color  = Color(0.70, 0.48, 1.0)
+	light.light_energy = 1.6
+	light.omni_range   = 4.5
+	root.add_child(light)
+
+
 func _add_orbs(level: Level) -> void:
 	for pos: Vector2i in level.orb_cells:
 		_add_orb(pos)

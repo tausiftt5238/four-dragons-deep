@@ -201,7 +201,10 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	minimap_ctrl.maze      = current_level.maze
 	minimap_ctrl.visited   = visited
 	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
-	minimap_ctrl.orb_cells = current_level.orb_cells
+	minimap_ctrl.orb_cells   = current_level.orb_cells
+	minimap_ctrl.chest_cells = current_level.chest_cells
+	minimap_ctrl.looted      = current_level.looted
+	minimap_ctrl.found_traps = current_level.found_traps
 	_sync_minimap_palette()
 	_resize_minimap()
 
@@ -529,6 +532,7 @@ func _recover_mp_on_step() -> void:
 func _post_move() -> void:
 	_sync_player()
 	_recover_mp_on_step()
+	_take_key_here()
 	_check_step_poison()
 	_check_trap()
 	if not player_char.is_alive():
@@ -663,12 +667,37 @@ func _spawn_roamers() -> void:
 	_spawn_warden()
 
 
-# One stationary demon per maze floor, holding the key.
+# Walking onto the loose key takes it. No prompt: there is one thing to do with
+# a key and asking whether to do it is a dialog box in front of a door.
+func _take_key_here() -> void:
+	if current_level == null or _has_key or current_level.key_taken:
+		return
+	if current_level.key_pos.x < 0 or player_pos != current_level.key_pos:
+		return
+	current_level.key_taken = true
+	_has_key = true
+	minimap_ctrl.key_pos = Vector2i(-1, -1)
+	minimap_ctrl.queue_redraw()
+	_rebuild_dungeon()
+	_show_hud_popup("You take the key.", Color(0.75, 0.55, 1.0))
+
+
+# The thing holding the key, if anything is. A warden stands in the middle of
+# its band; the other maze floors leave the key lying and this does nothing.
 func _spawn_warden() -> void:
 	_warden = null
 	_has_key = false
-	if current_level == null or current_level.warden_pos.x < 0:
-		_has_key = true      # the corridor has no warden and no locked door
+	if current_level == null:
+		_has_key = true
+		return
+	minimap_ctrl.key_pos = Vector2i(-1, -1)
+	if current_level.warden_pos.x < 0:
+		# A loose key, or a corridor with neither and no locked door.
+		if current_level.key_pos.x >= 0 and not current_level.key_taken:
+			minimap_ctrl.key_pos = current_level.key_pos
+		else:
+			_has_key = true
+		minimap_ctrl.queue_redraw()
 		return
 	var w: Roamer = Roamer.new()
 	w.warden = true
@@ -1069,6 +1098,10 @@ func _check_trap() -> void:
 	if not current_level.trap_cells.has(player_pos):
 		return
 	var trap_type: String = current_level.trap_cells[player_pos] as String
+	# Remembered from here on. A trap you have not stepped on is not a thing
+	# you know about, so the map stays quiet about it until it has bitten.
+	current_level.found_traps[player_pos] = trap_type
+	minimap_ctrl.queue_redraw()
 	match trap_type:
 		"spike":
 			var dmg: int = max(1, int(player_char.max_hp * 0.15))
@@ -1320,6 +1353,9 @@ func _gather_save_data() -> Dictionary:
 			mimics      = _pack_cell_set(current_level.mimic_cells),
 			looted      = _pack_cell_set(current_level.looted),
 			warden      = SaveSystem.vec2i_key(current_level.warden_pos),
+			key_pos     = SaveSystem.vec2i_key(current_level.key_pos),
+			key_taken   = current_level.key_taken,
+			found_traps = _pack_trap_cells(current_level.found_traps),
 			has_key     = _has_key,
 		},
 		visited = visited_serial,
@@ -1391,6 +1427,11 @@ func _restore_save(data: Dictionary) -> void:
 				map_data.get("looted", []) as Array)
 	current_level.warden_pos      = SaveSystem.key_vec2i(
 			map_data.get("warden", "-1,-1") as String)
+	current_level.key_pos         = SaveSystem.key_vec2i(
+			map_data.get("key_pos", "-1,-1") as String)
+	current_level.key_taken       = bool(map_data.get("key_taken", false))
+	current_level.found_traps     = _unpack_trap_cells(
+			map_data.get("found_traps", {}) as Dictionary)
 	_pending_has_key              = bool(map_data.get("has_key", true))
 
 	dungeon = Dungeon.new()
@@ -1560,6 +1601,9 @@ func _restore_roamers() -> void:
 
 	_has_key = _pending_has_key
 	minimap_ctrl.warden_pos = Vector2i(-1, -1)
+	minimap_ctrl.key_pos = Vector2i(-1, -1)
+	if not _has_key and current_level.key_pos.x >= 0 and not current_level.key_taken:
+		minimap_ctrl.key_pos = current_level.key_pos
 	if not _has_key and current_level.warden_pos.x >= 0:
 		var w: Roamer = Roamer.new()
 		w.warden = true

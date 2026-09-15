@@ -43,7 +43,12 @@ func _setup_normal_floor(floor_num: int = 0) -> void:
 	if floor_num <= 1:
 		_place_orb_in_front_of_start()
 	_place_traps()
-	_place_warden()
+	# A warden holds the key in the middle of its band; every other maze floor
+	# leaves it lying somewhere to be found.
+	if Level.is_warden_floor(floor_num):
+		_place_warden()
+	else:
+		_place_key()
 	_place_orbs()
 	_place_chests()
 
@@ -248,6 +253,29 @@ func _place_warden() -> void:
 	warden_pos = best
 
 
+# The loose key, on a floor with nothing guarding it. Scored the same way the
+# warden is — as far from both the entrance and the door as the maze allows —
+# because a key you trip over on the way past is not a floor, it is a corridor.
+func _place_key() -> void:
+	warden_pos = Vector2i(-1, -1)
+	key_taken = false
+	var best: Vector2i = Vector2i(-1, -1)
+	var best_score: int = -1
+	for _attempt: int in range(80):
+		var pos: Vector2i = _random_reachable_cell(maze, player_start)
+		if pos == player_start or pos == exit_pos or trap_cells.has(pos):
+			continue
+		if pos in orb_cells:
+			continue
+		var from_start: int = absi(pos.x - player_start.x) + absi(pos.y - player_start.y)
+		var from_exit: int  = absi(pos.x - exit_pos.x) + absi(pos.y - exit_pos.y)
+		var score: int = mini(from_start, from_exit)
+		if score > best_score:
+			best_score = score
+			best = pos
+	key_pos = best
+
+
 # Two or three orbs, spread out and clear of everything else that matters.
 # They are the run's only save points, so a floor without one would be cruel.
 # Adds to whatever is already down rather than clearing, so a starting orb
@@ -336,8 +364,8 @@ func _place_chests() -> void:
 				continue
 			var face_cell: Vector2i = touching[0]
 			if face_cell == player_start or face_cell == exit_pos \
-					or face_cell == warden_pos or face_cell in orb_cells \
-					or trap_cells.has(face_cell):
+					or face_cell == warden_pos or face_cell == key_pos \
+					or face_cell in orb_cells or trap_cells.has(face_cell):
 				continue
 			candidates.append([wall, face_cell])
 
