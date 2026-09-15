@@ -323,9 +323,10 @@ func _show_talk_submenu() -> void:
 		["Threaten", "Threaten"],
 		["Recruit",  "Recruit"],
 	]
+	# No "bound" state here any more: Talk never reaches this menu on a demon
+	# whose name is already in the rolodex — that one pays you off instead.
 	for opt: Array in opts:
-		var have: bool = (opt[0] == "Recruit" and enemy.enemy_name in player.recruited)
-		var btn: Button = _big_button(opt[1] as String, "bound" if have else "", have)
+		var btn: Button = _big_button(opt[1] as String, "", false)
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_submenu_add(btn)
 
@@ -592,7 +593,12 @@ func _prompt_beg() -> void:
 # the screen looks exactly like an enemy vanishing for no reason. It asks now,
 # even though there is only one answer, because a demon leaving the field
 # should always be something the player watched happen.
-func _prompt_tribute() -> void:
+# `from_beg` is what the plea path passes. It matters for the tail: a plea
+# interrupts the phase before it has begun, so that path reopens the phase
+# whole, while talking to it is an action you chose and costs the icon every
+# other successful negotiation costs. Sharing one tail handed the player a free
+# phase every time they spoke to something they already keep.
+func _prompt_tribute(from_beg: bool = true) -> void:
 	_set_buttons(false)
 	_hide_actions()
 	_back_target = Callable()
@@ -601,21 +607,32 @@ func _prompt_tribute() -> void:
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.83, 0.47))
 	_submenu_clear()
 
+	# It empties its pockets: whatever it was carrying AND the coin. It used to
+	# be one or the other, which made a demon you already keep worth less than
+	# one you killed.
 	var drop: Dictionary = enemy.roll_drop()
-	var coin: int = 0 if not drop.is_empty() else maxi(5, enemy.gold_reward * 2)
-	var what: String = drop["name"] as String if not drop.is_empty() else "%d gold" % coin
+	var coin: int = maxi(5, enemy.gold_reward * 2)
+	var what: String = "%d gold" % coin
+	if not drop.is_empty():
+		what = "%s and %d gold" % [drop["name"], coin]
 	var who: String = enemy.display_name()
 
 	var take: Button = _big_button("Take it",
 			"%s gives up %s and leaves." % [who, what], false)
 	take.pressed.connect(func() -> void:
+		player.gold += coin
 		if drop.is_empty():
-			player.gold += coin
 			_log("[color=#ffd479]It empties its hands — %d gold — and goes.[/color]" % coin)
 		else:
 			player.add_item(drop.duplicate(), 1)
-			_log("[color=#ffd479]It presses %s on you and goes.[/color]" % drop["name"])
-		await _beg_resolved())
+			_log("[color=#ffd479]It presses %s and %d gold on you, and goes.[/color]" % [
+					drop["name"], coin])
+		if from_beg:
+			await _beg_resolved()
+		else:
+			_right_back_btn.visible = true
+			_show_main_actions()
+			await _foe_departs("talk"))
 	_submenu_add(take)
 
 
@@ -1565,6 +1582,14 @@ func _on_action(action: String) -> void:
 				if not enemy.negotiable:
 					_log("[color=gray]%s won't listen.[/color]" % enemy.display_name())
 					_prompt_actor()
+					return
+				# It looks past you at its own face standing in your line. There
+				# is nothing left to negotiate about — you already have one, and
+				# it knows what that means. It pays its way out instead.
+				if enemy.enemy_name in player.recruited:
+					_log("[color=#ffd479]%s looks past you — and sees its own face already standing with you.[/color]"
+							% enemy.display_name())
+					_prompt_tribute(false)
 					return
 				_show_talk_submenu())
 			return
