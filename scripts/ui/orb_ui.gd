@@ -62,14 +62,28 @@ func _build() -> void:
 	_gold_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
 	head.add_child(_gold_lbl)
 
-	var close_btn: Button = Button.new()
-	close_btn.text = "Leave"
-	close_btn.custom_minimum_size = Vector2(88, 32)
-	close_btn.pressed.connect(func() -> void: closed.emit())
-	head.add_child(close_btn)
+	col.add_child(HSeparator.new())
 
-	# Tabs named in words are wider than the screen in one line, so they sit
-	# two by two.
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+
+	_content = VBoxContainer.new()
+	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Fills the pane, so a tab with one button can push it down to the thumb.
+	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_content.add_theme_constant_override("separation", 5)
+	scroll.add_child(_content)
+
+	_status = Label.new()
+	_status.add_theme_color_override("font_color", Color(0.65, 0.90, 0.70))
+	col.add_child(_status)
+
+	col.add_child(HSeparator.new())
+
+	# The tabs and the way out sit along the bottom, under the lists. Named in
+	# words they are wider than the screen in one line, so they go two by two.
 	var tabs: GridContainer = GridContainer.new()
 	tabs.columns = 2
 	tabs.add_theme_constant_override("h_separation", 6)
@@ -87,21 +101,12 @@ func _build() -> void:
 		tabs.add_child(btn)
 		_tab_btns[pair[0]] = btn
 
-	col.add_child(HSeparator.new())
-
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	col.add_child(scroll)
-
-	_content = VBoxContainer.new()
-	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content.add_theme_constant_override("separation", 5)
-	scroll.add_child(_content)
-
-	_status = Label.new()
-	_status.add_theme_color_override("font_color", Color(0.65, 0.90, 0.70))
-	col.add_child(_status)
+	var close_btn: Button = Button.new()
+	close_btn.text = "Leave"
+	close_btn.custom_minimum_size = Vector2(0, 32)
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn.pressed.connect(func() -> void: closed.emit())
+	col.add_child(close_btn)
 
 
 func _switch(tab: String) -> void:
@@ -373,9 +378,14 @@ func _buy_offer(list: SlotList, item: Variant) -> void:
 # ── Saving ────────────────────────────────────────────────────────────────────
 
 func _build_save() -> void:
+	var push: Control = Control.new()
+	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_content.add_child(push)
+
 	var btn: Button = Button.new()
 	btn.text = "Record the run"
 	btn.custom_minimum_size = Vector2(240, 40)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(func() -> void: save_requested.emit())
 	_content.add_child(btn)
 

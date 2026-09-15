@@ -16,29 +16,41 @@ func _build() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
+	# The name in the upper pane, where the map sits in play, and every button
+	# in the lower one, where the thumb already is.
+	var upper: CenterContainer = CenterContainer.new()
+	upper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	upper.anchor_bottom = 0.0
+	upper.offset_bottom = Main.MAP_PANE_H
+	add_child(upper)
 
-	var vbox: VBoxContainer = VBoxContainer.new()
-	# The screen is 540 wide; leave a margin either side rather than filling it.
-	vbox.custom_minimum_size = Vector2(460, 0)
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 18)
-	center.add_child(vbox)
+	var head: VBoxContainer = VBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 18)
+	upper.add_child(head)
 
 	# One word per line. Fifteen characters at this size is far wider than a
 	# phone held upright, and shrinking the type to fit would waste the only
 	# place in the game with room for a big word.
 	var title: Label = _make_lbl("DUNGEON\nCRAWLER", 54, Color(0.90, 0.75, 0.30))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
+	head.add_child(title)
 
 	var subtitle: Label = _make_lbl("descend. survive. conquer.", 15, Color(0.50, 0.45, 0.55))
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(subtitle)
+	head.add_child(subtitle)
 
-	vbox.add_child(HSeparator.new())
+	var lower: CenterContainer = CenterContainer.new()
+	lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lower.offset_top = Main.MAP_PANE_H
+	add_child(lower)
+
+	var vbox: VBoxContainer = VBoxContainer.new()
+	# The screen is 540 wide; leave a margin either side rather than filling it.
+	vbox.custom_minimum_size = Vector2(460, 0)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 18)
+	lower.add_child(vbox)
 
 	var new_btn: Button = _make_btn("NEW GAME", Vector2(220, 46))
 	new_btn.pressed.connect(_on_new_game)

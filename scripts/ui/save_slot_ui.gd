@@ -29,11 +29,12 @@ func _build() -> void:
 
 	var outer: MarginContainer = MarginContainer.new()
 	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outer.offset_top = Main.MAP_PANE_H
 	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		outer.add_theme_constant_override(side, 16)
 	add_child(outer)
 
-	# Centred vertically, but full width: a VBox hands its children the whole
+	# Centred in the lower pane, under where the map sits, but full width: a VBox hands its children the whole
 	# line, which a CenterContainer would not.
 	var centre: VBoxContainer = VBoxContainer.new()
 	centre.alignment = BoxContainer.ALIGNMENT_CENTER

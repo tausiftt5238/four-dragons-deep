@@ -19,7 +19,14 @@ func _build() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	# Centred content — no panel border, just floating text
+	# Centred in the lower pane, under where the map sits — no panel border,
+	# just floating text.
+	var lower: Control = Control.new()
+	lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lower.offset_top = Main.MAP_PANE_H
+	lower.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lower)
+
 	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.anchor_left   = 0.5
 	vbox.anchor_right  = 0.5
@@ -30,7 +37,7 @@ func _build() -> void:
 	vbox.offset_top    = -140
 	vbox.offset_bottom = 140
 	vbox.add_theme_constant_override("separation", 18)
-	add_child(vbox)
+	lower.add_child(vbox)
 
 	var title: Label = Label.new()
 	title.text = "GAME  OVER"

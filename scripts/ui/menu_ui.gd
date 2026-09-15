@@ -42,22 +42,36 @@ func _build_shell() -> void:
 		margin.add_theme_constant_override(side, 12)
 	panel.add_child(margin)
 
-	# Tabs across the top in two rows of three, Load and Close sharing a row
-	# under them, and the content filling everything below. A sidebar down the
-	# left would eat a quarter of a 540-wide screen.
+	# The content on top, and every button that moves between pages along the
+	# bottom: two rows of three tabs with Load and Close under them, where a
+	# thumb already is. A sidebar down the left would eat a quarter of a
+	# 540-wide screen.
 	var shell: VBoxContainer = VBoxContainer.new()
-	shell.add_theme_constant_override("separation", 0)
+	shell.add_theme_constant_override("separation", 6)
 	margin.add_child(shell)
 
-	var header: VBoxContainer = VBoxContainer.new()
-	header.add_theme_constant_override("separation", 4)
-	shell.add_child(header)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	shell.add_child(scroll)
+
+	_content = VBoxContainer.new()
+	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_theme_constant_override("separation", 8)
+	scroll.add_child(_content)
+
+	_status_line = Label.new()
+	_status_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status_line.add_theme_color_override("font_color", Color(0.9, 0.85, 0.45))
+	_status_line.custom_minimum_size = Vector2(0, 22)
+	shell.add_child(_status_line)
+
+	shell.add_child(HSeparator.new())
 
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 4)
-	header.add_child(grid)
+	shell.add_child(grid)
 
 	for tab_id: String in ["stats", "party", "items", "equipment", "magic", "bestiary"]:
 		var btn: Button = Button.new()
@@ -70,11 +84,9 @@ func _build_shell() -> void:
 		grid.add_child(btn)
 		_tab_btns[tab_id] = btn
 
-	header.add_child(HSeparator.new())
-
 	var foot: HBoxContainer = HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 6)
-	header.add_child(foot)
+	shell.add_child(foot)
 
 	var load_btn: Button = Button.new()
 	load_btn.text = "Load  [F9]"
@@ -89,36 +101,6 @@ func _build_shell() -> void:
 	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	close_btn.pressed.connect(func(): menu_closed.emit())
 	foot.add_child(close_btn)
-
-	var sep_wrap: MarginContainer = MarginContainer.new()
-	sep_wrap.add_theme_constant_override("margin_top",    8)
-	sep_wrap.add_theme_constant_override("margin_bottom", 8)
-	sep_wrap.add_child(HSeparator.new())
-	shell.add_child(sep_wrap)
-
-	# ── Right content area ────────────────────────────────────────────────────
-	var right: VBoxContainer = VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 6)
-	shell.add_child(right)
-
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right.add_child(scroll)
-
-	_content = VBoxContainer.new()
-	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content.add_theme_constant_override("separation", 8)
-	scroll.add_child(_content)
-
-	right.add_child(HSeparator.new())
-
-	_status_line = Label.new()
-	_status_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status_line.add_theme_color_override("font_color", Color(0.9, 0.85, 0.45))
-	_status_line.custom_minimum_size = Vector2(0, 22)
-	right.add_child(_status_line)
 
 
 # ── Tab routing ───────────────────────────────────────────────────────────────

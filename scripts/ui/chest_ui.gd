@@ -19,8 +19,10 @@ func _ready() -> void:
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 
+	# Centred in the lower pane, under where the map sits.
 	var centre: CenterContainer = CenterContainer.new()
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	centre.offset_top = Main.MAP_PANE_H
 	add_child(centre)
 
 	var panel: PanelContainer = PanelContainer.new()
