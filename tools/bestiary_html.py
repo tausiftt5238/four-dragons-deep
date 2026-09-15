@@ -174,8 +174,8 @@ def table(rows, var_cols=None):
 
 
 TIER_BLURB = {
- 1: "Everything here answers to a blade or to Ember, and nothing nulls, repels or drains. "
-    "All of them will talk.",
+ 1: "Nothing here nulls, repels or drains anything &mdash; the opening floors are "
+    "where a chart is learned, not where it is a wall. All of them will talk.",
  2: "Levels roughly double. The skills are spread across all four stats, so no single "
     "counter answers the whole band.",
  3: "Six templates across five floors, so repetition begins here.",
