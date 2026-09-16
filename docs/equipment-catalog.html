@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equipment Catalog — what stays, what goes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400&family=Karla:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:      #eceef1;
+    --panel:      #f7f8fa;
+    --ink:        #15181e;
+    --ink-2:      #464c58;
+    --ink-3:      #737b87;
+    --rule:       #d1d7de;
+    --rule-soft:  #e2e6eb;
+    --accent:     #0d6577;
+    --accent-2:   #0a4b58;
+
+    --good:    #1c6f3f;  --good-bg:   #d8eee1;
+    --bad:     #93590a;  --bad-bg:    #f8e9cd;
+    --weak:    #93590a;  --weak-bg:   #f8e9cd;
+    --resist:  #2c5688;  --resist-bg: #dde8f4;
+    --fire:    #a33718;  --fire-bg:   #f7ded6;
+    --ice:     #1f6273;  --ice-bg:    #d8ecf1;
+    --thunder: #8a6a05;  --thunder-bg:#f7eec9;
+    --light:   #7a6408;  --light-bg:  #f6efcc;
+    --dark:    #5a3a7c;  --dark-bg:   #e8ddf5;
+    --phys:    #5a5f67;  --phys-bg:   #e3e5e9;
+
+    --cut-bg:  #f2dcdc;  --cut-ink:   #8c2f2f;
+    --shadow: 0 1px 0 rgba(20, 26, 34, .04);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #090b0f;
+      --panel:      #10141a;
+      --ink:        #dae3e9;
+      --ink-2:      #949fa9;
+      --ink-3:      #69747e;
+      --rule:       #212932;
+      --rule-soft:  #191f26;
+      --accent:     #55d5ee;
+      --accent-2:   #8ce6f8;
+
+      --good:    #62dc8e;  --good-bg:   #0d2c1b;
+      --bad:     #ffcf52;  --bad-bg:    #372c07;
+      --weak:    #ffcf52;  --weak-bg:   #372c07;
+      --resist:  #86b4ea;  --resist-bg: #13233a;
+      --fire:    #ff9270;  --fire-bg:   #3a1409;
+      --ice:     #7fd8ee;  --ice-bg:    #082830;
+      --thunder: #ffd75e;  --thunder-bg:#332707;
+      --light:   #f2e08a;  --light-bg:  #2f2a0b;
+      --dark:    #d093ff;  --dark-bg:   #2a1640;
+      --phys:    #8d959e;  --phys-bg:   #1b1f25;
+
+      --cut-bg:  #2e1416;  --cut-ink:   #ff9e9e;
+      --shadow: none;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0 1.1rem 6rem;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Karla, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  header { padding: 2.4rem 0 1.2rem; border-bottom: 1px solid var(--rule); }
+
+  h1 {
+    font-family: Spectral, Georgia, serif;
+    font-weight: 800;
+    font-size: clamp(1.6rem, 4.6vw, 2.5rem);
+    letter-spacing: -.02em;
+    margin: 0 0 .35rem;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+    font-size: .98rem;
+  }
+
+  .lede b { color: var(--ink); }
+
+  h2 {
+    font-family: Spectral, Georgia, serif;
+    font-weight: 800;
+    font-size: 1.45rem;
+    letter-spacing: -.01em;
+    margin: 2.6rem 0 .2rem;
+    padding-bottom: .4rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: var(--ink-3);
+    margin: 1.7rem 0 .7rem;
+  }
+
+  .sub { color: var(--ink-3); font-size: .88rem; margin: .35rem 0 0; }
+
+  /* ── controls ─────────────────────────────────────────────── */
+
+  .controls {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+    margin: 0 -1.1rem 1rem;
+    padding: .7rem 1.1rem;
+    display: flex; flex-wrap: wrap; gap: .5rem .7rem; align-items: center;
+  }
+
+  .seg { display: flex; flex-wrap: wrap; gap: .3rem; }
+
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .74rem; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-2);
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: .34rem .7rem;
+    cursor: pointer;
+  }
+
+  button:hover { border-color: var(--accent); color: var(--accent); }
+
+  button[aria-pressed="true"] {
+    background: var(--ink); color: var(--paper); border-color: var(--ink);
+  }
+
+  .floor-ctl {
+    display: flex; align-items: center; gap: .55rem;
+    font-family: 'IBM Plex Mono', monospace; font-size: .74rem;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3);
+    margin-left: auto;
+  }
+
+  .floor-ctl input { width: 140px; accent-color: var(--accent); }
+  .floor-ctl b { color: var(--ink); font-size: .9rem; }
+
+  /* ── cards ────────────────────────────────────────────────── */
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(298px, 1fr));
+    gap: .7rem;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: .8rem .9rem .75rem;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: .45rem;
+  }
+
+  .card.is-cut { background: var(--cut-bg); border-color: var(--cut-ink); }
+  .card.is-cut .nm { text-decoration: line-through; color: var(--cut-ink); }
+  .card.is-keep { border-color: var(--good); border-left-width: 4px; }
+
+  .card-top { display: flex; align-items: baseline; gap: .5rem; }
+
+  .nm {
+    font-family: Spectral, Georgia, serif;
+    font-weight: 600; font-size: 1.09rem;
+    line-height: 1.2; flex: 1;
+  }
+
+  .alt {
+    font-family: Spectral, Georgia, serif;
+    font-style: italic; font-size: .87rem; color: var(--ink-3);
+    margin: -.3rem 0 0;
+  }
+
+  .desc {
+    font-family: Spectral, Georgia, serif;
+    font-size: .93rem; color: var(--ink-2); margin: 0;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .28rem; }
+
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .7rem; font-weight: 600; letter-spacing: .03em;
+    padding: .16rem .42rem; border-radius: 4px;
+    background: var(--phys-bg); color: var(--phys);
+    white-space: nowrap;
+  }
+
+  .chip.up   { background: var(--good-bg); color: var(--good); }
+  .chip.down { background: var(--bad-bg);  color: var(--bad); }
+  .chip.el-fire    { background: var(--fire-bg);    color: var(--fire); }
+  .chip.el-ice     { background: var(--ice-bg);     color: var(--ice); }
+  .chip.el-thunder { background: var(--thunder-bg); color: var(--thunder); }
+  .chip.el-light   { background: var(--light-bg);   color: var(--light); }
+  .chip.el-dark    { background: var(--dark-bg);    color: var(--dark); }
+  .chip.el-phys    { background: var(--phys-bg);    color: var(--phys); }
+  .chip.res  { background: var(--resist-bg); color: var(--resist); }
+  .chip.wk   { background: var(--weak-bg);   color: var(--weak); }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .63rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: .14rem .4rem; border-radius: 3px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+
+  .tag.exists   { color: var(--ink-3); }
+  .tag.new      { color: var(--good); }
+  .tag.mechanic { color: var(--dark); }
+
+  .verdict { display: flex; gap: .35rem; margin-top: auto; padding-top: .3rem; }
+  .verdict button { flex: 1; }
+  .verdict button.keep[aria-pressed="true"] {
+    background: var(--good); border-color: var(--good); color: var(--paper);
+  }
+  .verdict button.cut[aria-pressed="true"] {
+    background: var(--cut-ink); border-color: var(--cut-ink); color: var(--paper);
+  }
+
+  /* ── notes ────────────────────────────────────────────────── */
+
+  .notes {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-top: 1rem;
+  }
+
+  .notes ol { margin: 0; padding-left: 1.3rem; }
+  .notes li { margin-bottom: .75rem; font-size: .95rem; color: var(--ink-2); }
+  .notes li b { color: var(--ink); }
+  .notes code {
+    font-family: 'IBM Plex Mono', monospace; font-size: .85em;
+    background: var(--rule-soft); padding: .1rem .3rem; border-radius: 3px;
+    color: var(--ink);
+  }
+
+  .tally {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .74rem; color: var(--ink-3);
+    letter-spacing: .04em;
+  }
+
+  .empty {
+    color: var(--ink-3); font-style: italic;
+    font-family: Spectral, Georgia, serif; padding: .4rem 0;
+  }
+
+  footer {
+    margin-top: 3rem; padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-3); font-size: .85rem;
+  }
+
+  @media (max-width: 560px) {
+    .floor-ctl { margin-left: 0; width: 100%; }
+    .floor-ctl input { flex: 1; width: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Equipment Catalog</h1>
+  <p class="lede">
+    Everything the run could stock, laid out by the tier that gates it. Grey
+    <span class="tag exists">in game</span> is what exists today; green
+    <span class="tag new">new</span> is a proposal; purple
+    <span class="tag mechanic">needs mechanic</span> is a proposal that needs a
+    new field in code before it can work. <b>Mark each one keep or cut</b> — the
+    choices save in this browser, and the Copy button at the bottom hands me the
+    verdict list.
+  </p>
+  <p class="sub">
+    Tier gating is cumulative, exactly as <code>Weapon.for_floor()</code> does it
+    now: an orb on floor <i>n</i> stocks its own tier and every tier below.
+    Drag the floor slider to see one orb's actual shelf.
+  </p>
+</header>
+
+<div class="controls">
+  <div class="seg" id="tier-seg">
+    <button data-tier="all" aria-pressed="true">All tiers</button>
+    <button data-tier="1" aria-pressed="false">I · 1-5</button>
+    <button data-tier="2" aria-pressed="false">II · 6-10</button>
+    <button data-tier="3" aria-pressed="false">III · 11-15</button>
+    <button data-tier="4" aria-pressed="false">IV · 16-20</button>
+  </div>
+  <div class="seg" id="status-seg">
+    <button data-status="all" aria-pressed="true">Everything</button>
+    <button data-status="exists" aria-pressed="false">In game</button>
+    <button data-status="proposed" aria-pressed="false">Proposed only</button>
+  </div>
+  <label class="floor-ctl">
+    Orb on floor <b id="floor-out">—</b>
+    <input type="range" id="floor" min="0" max="20" step="1" value="0">
+  </label>
+</div>
+
+<main id="out"></main>
+
+<h2>Decisions</h2>
+<p class="tally" id="tally"></p>
+<div class="seg" style="margin-top:.5rem">
+  <button id="copy">Copy verdict list</button>
+  <button id="keep-rest">Keep everything unmarked</button>
+  <button id="reset">Clear all marks</button>
+</div>
+
+<h2>Open questions</h2>
+<div class="notes">
+<ol>
+  <li>
+    <b>Elemental blades need a new field.</b> Weapons today carry only
+    <code>str_bonus</code>, <code>mag_bonus</code> and <code>agl_pen</code>.
+    A fire sword means adding <code>attack_element</code> to a weapon and having
+    a basic swing read it — demons already have exactly that field. The knock-on
+    is the good kind: a free elemental hit with no MP cost, but swinging into a
+    demon that drains or repels that element ends your phase. Yes to the field?
+  </li>
+  <li>
+    <b>A light-element blade can banish.</b> Light and dark expel rather than
+    wound, so the Argent Blade and Excalibur would give a plain swing a banish
+    roll off luck. Bosses null both lines already, so it can't cheese them — but
+    it would shred regular floors. Options: allow it, halve the roll for
+    weapons, or keep weapons off the two banishing lines entirely.
+  </li>
+  <li>
+    <b>Gear prices are flat.</b> <code>OrbUI.item_price</code> is
+    <code>20 + floor * 25</code>, so every tier-IV weapon costs 120 gold —
+    Excalibur at the same price as a potion run. Gear wants its own multiplier,
+    or a <code>price</code> field per piece the way the dispel scrolls have one.
+  </li>
+  <li>
+    <b>Excalibur on a shelf?</b> Everything else here can be bought. A capstone
+    sword reads better as a tier-IV chest or a floor-20 boss drop. Sell it, or
+    find it?
+  </li>
+  <li>
+    <b>Accessories are never stocked.</b> <code>_stock()</code> appends
+    <code>Weapon.for_floor</code> and <code>Armor.for_floor</code> but not
+    <code>Accessory.for_floor</code> — so the ten trinkets can only be found,
+    never bought. Deliberate, or an oversight?
+  </li>
+  <li>
+    <b>A gating inconsistency.</b> <code>Accessory.for_floor</code> compares the
+    piece's <code>floor</code> against the raw floor number, while weapons and
+    armour compare against the tier. So a tier-IV trinket like the Ferryman's
+    Coin turns up on floor 4. Almost certainly a bug — want it fixed to match?
+  </li>
+  <li>
+    <b>Armour has no luck field.</b> Fine as is, but gold and platinum plate
+    would traditionally carry some. Leave armour to defence and agility only?
+  </li>
+</ol>
+</div>
+
+<footer>
+  Thirty pieces of gear exist today — 12 weapons, 8 armour, 10 trinkets. This
+  page proposes 28 more, for 58. Worth knowing before you keep them all: a
+  floor-20 orb already shelves all 20 weapons and armour at once, and six rows
+  fit on a page. Keep every proposal and that shelf becomes 42 rows, seven
+  pages deep. Nothing here is written to <code>weapon.gd</code>,
+  <code>armor.gd</code> or <code>accessory.gd</code> yet — cull first, then I
+  implement only the survivors.
+</footer>
+
+</div>
+
+<script>
+const GEAR = [
+  // ══ WEAPONS · TIER I ══════════════════════════════════════════════════════
+  { slot:"weapon", tier:1, status:"exists", name:"Rusty Dagger",
+    stats:{str:2}, desc:"A worn blade, better than bare hands." },
+  { slot:"weapon", tier:1, status:"exists", name:"Iron Sword",
+    stats:{str:5, agl:-1}, desc:"A sturdy iron blade, honest and slow." },
+  { slot:"weapon", tier:1, status:"exists", name:"Hazel Wand",
+    stats:{mag:4}, desc:"Cut green and never dried. It carries a spell further than it carries a blow." },
+  { slot:"weapon", tier:1, status:"new", name:"Bronze Shortsword",
+    stats:{str:3, agl:1}, desc:"Soft metal. It bends before it breaks, and it is quick about both." },
+  { slot:"weapon", tier:1, status:"new", name:"Woodsman's Hatchet",
+    stats:{str:4, agl:-1}, desc:"Not made for this. It does not know the difference." },
+  { slot:"weapon", tier:1, status:"new", name:"Chapel Censer",
+    stats:{mag:3, def:1}, desc:"It still smells of the service. Swung, it argues." },
+
+  // ══ WEAPONS · TIER II ═════════════════════════════════════════════════════
+  { slot:"weapon", tier:2, status:"exists", name:"Battle Axe",
+    stats:{str:9, agl:-2}, desc:"Powerful, and it arrives late." },
+  { slot:"weapon", tier:2, status:"exists", name:"Silver Rapier",
+    stats:{str:7, agl:1}, desc:"Light enough to lead with. Quick hands matter more than strong ones." },
+  { slot:"weapon", tier:2, status:"exists", name:"Magic Rod",
+    stats:{mag:9}, desc:"Channels what you have learned, and asks nothing of your arm." },
+  { slot:"weapon", tier:2, status:"new", name:"Steel Longsword",
+    stats:{str:8}, desc:"What the iron sword was trying to be." },
+  { slot:"weapon", tier:2, status:"mechanic", name:"Fire Sword", alt:"Ember Brand",
+    stats:{str:6}, element:"fire",
+    desc:"The edge holds a coal that never goes out. Every swing carries it." },
+  { slot:"weapon", tier:2, status:"mechanic", name:"Ice Sword", alt:"Rimeglass Blade",
+    stats:{str:6}, element:"ice",
+    desc:"Cold enough that the wound closes wrong." },
+  { slot:"weapon", tier:2, status:"mechanic", name:"Thunder Sword", alt:"Stormtooth",
+    stats:{str:6}, element:"thunder",
+    desc:"It stands your hair up before it lands." },
+
+  // ══ WEAPONS · TIER III ════════════════════════════════════════════════════
+  { slot:"weapon", tier:3, status:"exists", name:"Runed Glaive",
+    stats:{str:13, mag:3, agl:-1}, desc:"A long reach with something written down the flat of it." },
+  { slot:"weapon", tier:3, status:"exists", name:"Headsman's Maul",
+    stats:{str:17, agl:-3}, desc:"It only has to land once." },
+  { slot:"weapon", tier:3, status:"exists", name:"Witch's Focus",
+    stats:{mag:15}, desc:"A knot of blackthorn around a stone. It does the thinking." },
+  { slot:"weapon", tier:3, status:"new", name:"Mythril Sword", alt:"Mythril Blade",
+    stats:{str:15, agl:1}, desc:"Lighter than it has any right to be. Nothing about it argues with your wrist." },
+  { slot:"weapon", tier:3, status:"mechanic", name:"Silver Sword", alt:"Argent Blade",
+    stats:{str:12}, element:"light",
+    desc:"Silver was always the metal they buried things with. It expels rather than cuts." },
+  { slot:"weapon", tier:3, status:"mechanic", name:"Obsidian Edge",
+    stats:{str:14}, element:"dark",
+    desc:"A glass edge one atom wide, and the dark comes along for free." },
+  { slot:"weapon", tier:3, status:"mechanic", name:"Flamberge",
+    stats:{str:14, agl:-1}, element:"fire",
+    desc:"The waved blade was for show. What runs down it now is not." },
+
+  // ══ WEAPONS · TIER IV ═════════════════════════════════════════════════════
+  { slot:"weapon", tier:4, status:"exists", name:"Drakebone Sabre",
+    stats:{str:22, agl:-1}, desc:"Cut from something that was still arguing at the time." },
+  { slot:"weapon", tier:4, status:"exists", name:"Titan's Cleaver",
+    stats:{str:28, agl:-4}, desc:"Made for a larger hand. You manage." },
+  { slot:"weapon", tier:4, status:"exists", name:"Sorcerer's Crook",
+    stats:{mag:24}, desc:"Bone, and still warm. Whatever it was taken from knew a great deal." },
+  { slot:"weapon", tier:4, status:"new", name:"Diamond Sword", alt:"Adamant Blade",
+    stats:{str:26}, desc:"Nothing down here has managed to blunt it yet." },
+  { slot:"weapon", tier:4, status:"mechanic", name:"Rimefang Greatsword",
+    stats:{str:20, agl:-2}, element:"ice",
+    desc:"Two hands, and the air in front of it goes white." },
+  { slot:"weapon", tier:4, status:"mechanic", name:"Excalibur",
+    stats:{str:24, mag:10}, element:"light",
+    desc:"It was in a stone, and then it was in a lake, and now it is down here with you." },
+
+  // ══ ARMOUR · TIER I ═══════════════════════════════════════════════════════
+  { slot:"armor", tier:1, status:"exists", name:"Leather Vest",
+    stats:{def:3}, weak:"fire", desc:"Light, quiet, and no help at all against a flame." },
+  { slot:"armor", tier:1, status:"exists", name:"Padded Coat",
+    stats:{def:4, agl:-1}, resist:"ice", desc:"Quilted against the cold. Bulky through a doorway." },
+  { slot:"armor", tier:1, status:"new", name:"Leather Garb", alt:"Traveller's Cloak",
+    stats:{def:2, agl:1}, desc:"Worn soft by the road. It hides nothing and it slows nothing." },
+
+  // ══ ARMOUR · TIER II ══════════════════════════════════════════════════════
+  { slot:"armor", tier:2, status:"exists", name:"Chain Mail",
+    stats:{def:8, agl:-1}, weak:"thunder", resist:"phys",
+    desc:"Turns a blade, and draws lightning like a hooked rug." },
+  { slot:"armor", tier:2, status:"exists", name:"Salt-Tanned Hide",
+    stats:{def:7}, resist:"dark", desc:"Cured hard in brine. Whatever crawls does not like it." },
+  { slot:"armor", tier:2, status:"new", name:"Silver Armor", alt:"Silver Mail",
+    stats:{def:9, agl:-1}, resist:"light",
+    desc:"Polished to throw back whatever is thrown at it." },
+  { slot:"armor", tier:2, status:"new", name:"Scale Hauberk",
+    stats:{def:10, agl:-2}, weak:"thunder",
+    desc:"Overlapping plates on a leather backing. Heavy in all the usual places." },
+
+  // ══ ARMOUR · TIER III ═════════════════════════════════════════════════════
+  { slot:"armor", tier:3, status:"exists", name:"Plate Armour",
+    stats:{def:15, agl:-3}, weak:"ice",
+    desc:"Everything a smith knows, all at once, all of it heavy." },
+  { slot:"armor", tier:3, status:"exists", name:"Warded Surcoat",
+    stats:{def:11, agl:-1}, resist:"light",
+    desc:"Stitched through with something that objects to being looked at." },
+  { slot:"armor", tier:3, status:"new", name:"Gold Armor", alt:"Gilded Plate",
+    stats:{def:13, agl:-2}, weak:"thunder", resist:"dark",
+    desc:"Soft, heavy, and it makes you look worth robbing." },
+  { slot:"armor", tier:3, status:"new", name:"Mythril Chain",
+    stats:{def:13}, desc:"The only mail down here that costs you nothing to wear." },
+
+  // ══ ARMOUR · TIER IV ══════════════════════════════════════════════════════
+  { slot:"armor", tier:4, status:"exists", name:"Gargoyle Scale",
+    stats:{def:22, agl:-3}, weak:"thunder", resist:"phys",
+    desc:"Prised off something that was part of a wall. Still wants to be one." },
+  { slot:"armor", tier:4, status:"exists", name:"Drakescale Cuirass",
+    stats:{def:19, agl:-2}, resist:"fire",
+    desc:"It has already survived worse than anything down here." },
+  { slot:"armor", tier:4, status:"new", name:"Platinum Armor", alt:"Platinum Plate",
+    stats:{def:24, agl:-3}, desc:"No trick to it and no hole in it. Only the number." },
+  { slot:"armor", tier:4, status:"new", name:"Diamond Armor", alt:"Adamant Cuirass",
+    stats:{def:27, agl:-4}, weak:"ice",
+    desc:"Set with stone across the chest. It cracks at a temperature you will meet." },
+  { slot:"armor", tier:4, status:"new", name:"Saint's Raiment",
+    stats:{def:17, agl:-1}, resist:"dark",
+    desc:"Cloth, and it has outlasted every plate in this tier." },
+
+  // ══ TRINKETS ══════════════════════════════════════════════════════════════
+  { slot:"accessory", tier:1, status:"exists", name:"Cold Iron Ring",
+    stats:{str:2}, desc:"Iron that was never heated. Heavy on the hand." },
+  { slot:"accessory", tier:1, status:"exists", name:"Dowsing Pendulum",
+    stats:{luk:3}, desc:"It swings before you decide to move it." },
+  { slot:"accessory", tier:1, status:"exists", name:"Thin Brass Bell",
+    stats:{agl:2, luk:1}, desc:"Too small to hear. Something answers it anyway." },
+  { slot:"accessory", tier:1, status:"new", name:"Ironwood Bracer",
+    stats:{str:1, def:2}, desc:"Cut from a tree that grew through a fence and kept the fence." },
+  { slot:"accessory", tier:2, status:"exists", name:"Pouch of Salt",
+    stats:{def:1}, resist:"dark", desc:"A line of it under the door. Old habit, still works." },
+  { slot:"accessory", tier:2, status:"exists", name:"Bone Rosary",
+    stats:{def:2}, resist:"light", desc:"Someone counted their way through something on these." },
+  { slot:"accessory", tier:2, status:"exists", name:"Coil of Copper Wire",
+    stats:{mag:2}, resist:"thunder", desc:"Wound tight. It takes the current so you do not." },
+  { slot:"accessory", tier:2, status:"new", name:"Hummingbird Feather",
+    stats:{agl:3, def:-1}, desc:"Weightless, and it makes everything you carry feel like a decision." },
+  { slot:"accessory", tier:3, status:"exists", name:"Ash Phylactery",
+    stats:{def:3}, resist:"fire", desc:"A locket of someone's ashes. It has already burned once." },
+  { slot:"accessory", tier:3, status:"exists", name:"Widow's Lens",
+    stats:{mag:3, agl:-1}, desc:"Ground from a mourning brooch. You see more and move slower." },
+  { slot:"accessory", tier:3, status:"exists", name:"Gravedigger's Gloves",
+    stats:{str:3, agl:-1}, desc:"Stiff with work. Your hands are surer and no faster." },
+  { slot:"accessory", tier:3, status:"new", name:"Scrying Mirror",
+    stats:{mag:4}, resist:"light", desc:"You are in it twice and you only stepped up once." },
+  { slot:"accessory", tier:3, status:"new", name:"Serpent's Tooth",
+    stats:{str:5}, weak:"dark", desc:"Sharper than you are. It wants something in return." },
+  { slot:"accessory", tier:4, status:"exists", name:"Ferryman's Coin",
+    stats:{luk:4}, desc:"It was under a tongue. It is warm, and it should not be." },
+  { slot:"accessory", tier:4, status:"new", name:"King's Signet",
+    stats:{str:2, def:2, mag:2, agl:2, luk:2}, desc:"Whoever wore it last is further down than you have been." },
+  { slot:"accessory", tier:4, status:"new", name:"Thief's Lantern",
+    stats:{agl:2, luk:3}, desc:"Shuttered on three sides. It shows you the floor and nothing else." },
+];
+
+const SLOTS = [
+  { key:"weapon",    label:"Weapons",   note:"One slot. Reach and weight cost agility; a caster's implement trades strength away entirely." },
+  { key:"armor",     label:"Armour",    note:"One slot. Defence always costs agility, and the heavy pieces buy protection by opening an elemental hole." },
+  { key:"accessory", label:"Trinkets",  note:"Two slots, so every trinket taken is another left behind. Nothing here grants a drain or a repel." },
+];
+
+const TIER_LABEL = { 1:"Tier I · floors 1-5", 2:"Tier II · floors 6-10",
+                     3:"Tier III · floors 11-15", 4:"Tier IV · floors 16-20" };
+
+const STAT_ORDER = ["str","def","mag","agl","luk"];
+const KEY = "portrait-equipment-verdicts";
+
+let verdicts = {};
+try { verdicts = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { verdicts = {}; }
+
+let tierFilter = "all";
+let statusFilter = "all";
+let floorSim = 0;
+
+const idOf = g => g.slot + ":" + g.name;
+const save = () => localStorage.setItem(KEY, JSON.stringify(verdicts));
+
+function chipsFor(g) {
+  const out = [];
+  for (const k of STAT_ORDER) {
+    const v = g.stats[k];
+    if (!v) continue;
+    out.push(`<span class="chip ${v > 0 ? "up" : "down"}">${k.toUpperCase()}${v > 0 ? "+" : ""}${v}</span>`);
+  }
+  if (g.element) out.push(`<span class="chip el-${g.element}">swings ${g.element}</span>`);
+  if (g.resist)  out.push(`<span class="chip res">resist ${g.resist}</span>`);
+  if (g.weak)    out.push(`<span class="chip wk">weak ${g.weak}</span>`);
+  return out.join("");
+}
+
+const TAG_TEXT = { exists:"in game", new:"new", mechanic:"needs mechanic" };
+
+function card(g) {
+  const id = idOf(g);
+  const v = verdicts[id] || "";
+  const cls = v === "keep" ? " is-keep" : v === "cut" ? " is-cut" : "";
+  return `
+    <div class="card${cls}">
+      <div class="card-top">
+        <span class="nm">${g.name}</span>
+        <span class="tag ${g.status}">${TAG_TEXT[g.status]}</span>
+      </div>
+      ${g.alt ? `<p class="alt">or: ${g.alt}</p>` : ""}
+      <div class="chips">${chipsFor(g)}</div>
+      <p class="desc">${g.desc}</p>
+      <div class="verdict" data-id="${id}">
+        <button class="keep" data-v="keep" aria-pressed="${v === "keep"}">Keep</button>
+        <button class="cut"  data-v="cut"  aria-pressed="${v === "cut"}">Cut</button>
+      </div>
+    </div>`;
+}
+
+function visible(g) {
+  if (tierFilter !== "all" && g.tier !== +tierFilter) return false;
+  if (statusFilter === "exists" && g.status !== "exists") return false;
+  if (statusFilter === "proposed" && g.status === "exists") return false;
+  // Cumulative gating, mirroring Weapon.for_floor(): this tier and every one below.
+  if (floorSim > 0) {
+    const tier = Math.min(4, Math.max(1, Math.floor((floorSim - 1) / 5) + 1));
+    if (g.tier > tier) return false;
+  }
+  return true;
+}
+
+function render() {
+  const out = [];
+  for (const slot of SLOTS) {
+    const mine = GEAR.filter(g => g.slot === slot.key && visible(g));
+    if (!mine.length) continue;
+    out.push(`<h2>${slot.label}</h2><p class="sub">${slot.note}</p>`);
+    for (const tier of [1, 2, 3, 4]) {
+      const row = mine.filter(g => g.tier === tier);
+      if (!row.length) continue;
+      out.push(`<h3>${TIER_LABEL[tier]} — ${row.length} piece${row.length === 1 ? "" : "s"}</h3>`);
+      out.push(`<div class="grid">${row.map(card).join("")}</div>`);
+    }
+  }
+  const host = document.getElementById("out");
+  host.innerHTML = out.length ? out.join("") : `<p class="empty">Nothing matches that filter.</p>`;
+  tally();
+}
+
+function tally() {
+  const keep = GEAR.filter(g => verdicts[idOf(g)] === "keep").length;
+  const cut  = GEAR.filter(g => verdicts[idOf(g)] === "cut").length;
+  document.getElementById("tally").textContent =
+    `${keep} keep · ${cut} cut · ${GEAR.length - keep - cut} still undecided · ${GEAR.length} total`;
+}
+
+document.getElementById("out").addEventListener("click", ev => {
+  const btn = ev.target.closest(".verdict button");
+  if (!btn) return;
+  const id = btn.closest(".verdict").dataset.id;
+  verdicts[id] = verdicts[id] === btn.dataset.v ? "" : btn.dataset.v;
+  save();
+  render();
+});
+
+function seg(segId, apply) {
+  document.getElementById(segId).addEventListener("click", ev => {
+    const btn = ev.target.closest("button");
+    if (!btn) return;
+    for (const b of ev.currentTarget.querySelectorAll("button"))
+      b.setAttribute("aria-pressed", String(b === btn));
+    apply(btn);
+    render();
+  });
+}
+
+seg("tier-seg",   btn => { tierFilter = btn.dataset.tier; });
+seg("status-seg", btn => { statusFilter = btn.dataset.status; });
+
+const floorInput = document.getElementById("floor");
+floorInput.addEventListener("input", () => {
+  floorSim = +floorInput.value;
+  document.getElementById("floor-out").textContent = floorSim === 0 ? "—" : floorSim;
+  render();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const lines = [];
+  for (const slot of SLOTS) {
+    const mine = GEAR.filter(g => g.slot === slot.key);
+    lines.push(`## ${slot.label}`);
+    for (const g of mine) {
+      const v = verdicts[idOf(g)] || "undecided";
+      lines.push(`- [${v.toUpperCase()}] T${g.tier} ${g.name}${g.alt ? ` (or: ${g.alt})` : ""} — ${g.status}`);
+    }
+    lines.push("");
+  }
+  const text = lines.join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    document.getElementById("copy").textContent = "Copied";
+    setTimeout(() => { document.getElementById("copy").textContent = "Copy verdict list"; }, 1600);
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;inset:10% 5%;width:90%;height:70%;z-index:99";
+    document.body.appendChild(ta);
+    ta.select();
+  }
+});
+
+document.getElementById("keep-rest").addEventListener("click", () => {
+  for (const g of GEAR) if (!verdicts[idOf(g)]) verdicts[idOf(g)] = "keep";
+  save();
+  render();
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  verdicts = {};
+  save();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
