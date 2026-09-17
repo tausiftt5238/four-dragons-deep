@@ -39,6 +39,11 @@ static func build(item: Dictionary, player: PlayerCharacter) -> String:
 		if delta != 0:
 			lines.append(cmp_line(pair[0] as String, int(pair[2]), int(pair[2]) + delta))
 
+	var el: String = item.get("attack_element", "") as String
+	if el != "":
+		lines.append("Swings: %s%s" % [Affinity.element_name(el),
+				"  (expels rather than wounds)" if Affinity.is_banishing(el) else ""])
+
 	var r: String = item.get("resist_element", "")
 	if r != "":
 		lines.append("Resists: %s" % Affinity.element_name(r))
@@ -65,4 +70,6 @@ static func bonus_string(item: Dictionary) -> String:
 	if item.get("agl_bonus", 0) != 0: parts.append("AGL%+d" % item["agl_bonus"])
 	if item.get("agl_pen",   0) != 0: parts.append("AGL%+d" % item["agl_pen"])
 	if item.get("luk_bonus", 0) != 0: parts.append("LUK%+d" % item["luk_bonus"])
+	var el: String = item.get("attack_element", "") as String
+	if el != "": parts.append(Affinity.element_name(el).to_upper())
 	return "  " + " ".join(parts) if not parts.is_empty() else ""

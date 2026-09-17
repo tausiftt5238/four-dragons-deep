@@ -280,6 +280,22 @@ static func thunder_bead() -> Dictionary:
 
 # ── Enemy drop table ──────────────────────────────────────────────────────────
 
+# The same table, minus gear too deep for where it was found. Gear carries a
+# tier in its `floor` field while consumables and scrolls carry a raw depth, so
+# only the three gear types are gated here — without it a floor-one chest hands
+# out the Titan's Cleaver, and Excalibur would turn up before the first boss.
+static func drop_table_for_floor(floor_num: int) -> Array[Dictionary]:
+	var tier: int = clampi((floor_num - 1) / 5 + 1, 1, 4)
+	var out: Array[Dictionary] = []
+	for d: Dictionary in drop_table():
+		var kind: String = d.get("type", "") as String
+		if kind in ["weapon", "armor", "accessory"] \
+				and int(d.get("floor", 1)) > tier:
+			continue
+		out.append(d)
+	return out
+
+
 static func drop_table() -> Array[Dictionary]:
 	var out: Array[Dictionary] = [
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),

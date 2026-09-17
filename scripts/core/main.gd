@@ -1206,7 +1206,7 @@ func _loot_chest(wall: Vector2i) -> void:
 	var found: Array[String] = ["%d gold" % coin]
 
 	if randi() % 100 < 70:
-		var table: Array[Dictionary] = Item.drop_table()
+		var table: Array[Dictionary] = Item.drop_table_for_floor(floor_num)
 		var item: Dictionary = table[randi() % table.size()].duplicate()
 		player_char.add_item(item, 1)
 		found.append(item["name"] as String)

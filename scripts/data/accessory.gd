@@ -1,8 +1,6 @@
 # Accessory
-# The only gear the detective carries. There are no weapons and no armour: he
-# is not a soldier, he is a man who walks into other people's heads holding
-# small objects that mean something. Two slots, so every trinket taken is
-# another one left behind.
+# The small things carried alongside a weapon and a worn piece. Two slots, so
+# every trinket taken is another one left behind.
 #
 # Fields: str_bonus / def_bonus / mag_bonus / agl_bonus / luk_bonus, plus an
 # optional single-element `resist_element` or `weak_element`. Nothing here
@@ -69,18 +67,51 @@ static func ferrymans_coin() -> Dictionary:
 			"It was under a tongue. It is warm, and it should not be.", 4,
 			0, 0, 0, 0, 4)
 
+static func ironwood_bracer() -> Dictionary:
+	return make("ironwood_bracer", "Ironwood Bracer",
+			"Cut from a tree that grew through a fence and kept the fence.", 1,
+			1, 2)
+
+static func hummingbird_feather() -> Dictionary:
+	return make("hummingbird_feather", "Hummingbird Feather",
+			"Weightless, and it makes everything else you carry feel like a decision.",
+			2, 0, -1, 0, 3)
+
+static func scrying_mirror() -> Dictionary:
+	return make("scrying_mirror", "Scrying Mirror",
+			"You are in it twice and you only stepped up once.", 3,
+			0, 0, 4, 0, 0, Affinity.LIGHT)
+
+static func serpents_tooth() -> Dictionary:
+	return make("serpents_tooth", "Serpent's Tooth",
+			"Sharper than you are. It wants something in return.", 3,
+			5, 0, 0, 0, 0, "", Affinity.DARK)
+
+static func kings_signet() -> Dictionary:
+	return make("kings_signet", "King's Signet",
+			"Whoever wore it last is further down than you have been.", 4,
+			2, 2, 2, 2, 2)
+
+static func thiefs_lantern() -> Dictionary:
+	return make("thiefs_lantern", "Thief's Lantern",
+			"Shuttered on three sides. It shows you the floor and nothing else.", 4,
+			0, 0, 0, 2, 3)
+
 
 static func all() -> Array[Dictionary]:
 	return [cold_iron_ring(), dowsing_pendulum(), thin_brass_bell(),
-			salt_line(), bone_rosary(), copper_coil(),
+			ironwood_bracer(),
+			salt_line(), bone_rosary(), copper_coil(), hummingbird_feather(),
 			ash_phylactery(), widows_lens(), gravediggers_gloves(),
-			ferrymans_coin()]
+			scrying_mirror(), serpents_tooth(),
+			ferrymans_coin(), kings_signet(), thiefs_lantern()]
 
 
-# What this floor could plausibly turn up.
+# What a floor could plausibly turn up: this tier and everything above it.
 static func for_floor(floor_num: int) -> Array[Dictionary]:
+	var tier: int = clampi((floor_num - 1) / 5 + 1, 1, 4)
 	var out: Array[Dictionary] = []
 	for a: Dictionary in all():
-		if int(a["floor"]) <= floor_num:
+		if int(a["floor"]) <= tier:
 			out.append(a)
 	return out

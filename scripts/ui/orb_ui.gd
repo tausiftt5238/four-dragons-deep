@@ -322,9 +322,11 @@ func _stock() -> Array[Dictionary]:
 		out.append(Item.panacea())
 		out.append(Item.elixir_motion())
 	# An orb stocks gear for the depth you have reached, which is the main
-	# thing gold is for once the belt is full.
+	# thing gold is for once the belt is full. Trinkets included, so the two
+	# accessory slots are a purchase rather than a run of luck.
 	out.append_array(Weapon.for_floor(floor_num))
 	out.append_array(Armor.for_floor(floor_num))
+	out.append_array(Accessory.for_floor(floor_num))
 	return out
 
 

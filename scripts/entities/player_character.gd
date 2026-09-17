@@ -305,6 +305,7 @@ func effective_str() -> int:
 
 func effective_def() -> int:
 	return maxi(0, def + int(equipped_armor.get("def_bonus", 0))
+			+ int(equipped_weapon.get("def_bonus", 0))
 			+ _accessory_sum("def_bonus"))
 
 func effective_mag() -> int:
@@ -318,6 +319,14 @@ func effective_agl() -> int:
 
 func effective_luk() -> int:
 	return maxi(1, luk + _accessory_sum("luk_bonus"))
+
+
+# What an ordinary swing is scored as. Most weapons are phys; an elemental one
+# replaces that outright rather than adding to it, so the chart still gets a
+# single answer.
+func attack_element() -> String:
+	var el: String = equipped_weapon.get("attack_element", "") as String
+	return el if el != "" else Affinity.PHYS
 
 
 func battle_agility() -> int:

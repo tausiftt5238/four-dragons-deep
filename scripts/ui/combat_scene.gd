@@ -760,7 +760,8 @@ func _resolve_action(action: String) -> Dictionary:
 
 
 
-func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
+func _land_hit(res: Dictionary, element: String, prefix: String,
+		melee: bool = false) -> Dictionary:
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
 	var crit: bool      = res["crit"] as bool
@@ -788,7 +789,7 @@ func _land_hit(res: Dictionary, element: String, prefix: String) -> Dictionary:
 	if pr != null:
 		_shake_portrait(pr)
 	var extra: String = ""
-	if _actor_is_player() and element == Affinity.PHYS \
+	if _actor_is_player() and melee \
 			and "vampiric" in player.passive_skills:
 		var heal_amt: int = max(1, dmg / 5)
 		player.heal(heal_amt)
@@ -2848,10 +2849,53 @@ func _resolve_attack() -> Dictionary:
 	if _actor_is_player() and "last_stand" in player.passive_skills \
 			and player.hp * 4 < player.max_hp:
 		atk *= 2.0
+	# A bound demon swings with its claws. Only the detective carries a blade,
+	# so only his swing can be something other than phys.
+	var element: String = player.attack_element() if _actor_is_player() \
+			else Affinity.PHYS
+	if Affinity.is_banishing(element):
+		return _resolve_banishing_swing(element, int(atk))
 	var crit: bool = CombatMath.roll_crit(_actor())
 	var res: Dictionary = CombatMath.resolve(int(atk) - _guarded_def(enemy),
-			Affinity.PHYS, enemy, crit, enemy.defending)
-	return _land_hit(res, Affinity.PHYS, "%s strikes!" % _actor_name())
+			element, enemy, crit, enemy.defending)
+	return _land_hit(res, element, "%s strikes!" % _actor_name(), true)
+
+
+# A blade on one of the two banishing lines expels instead of wounding, at the
+# same odds a cast of that element would get — the difference being that a swing
+# has to land first, and a cast never misses.
+func _resolve_banishing_swing(element: String, power: int) -> Dictionary:
+	var res: Dictionary = CombatMath.resolve_banish(
+			enemy, element, power, false, player)
+	var prefix: String = "%s strikes!" % _actor_name()
+	var who: String = enemy.display_name()
+
+	match res["outcome"]:
+		"banished":
+			enemy.take_damage(enemy.max_hp * 2)
+			return {msg = "%s  [color=#c9a6ff]%s is taken, whole.[/color]" % [prefix, who],
+					cost = PressTurn.COST_HALF if
+						enemy.affinity_of(element) == Affinity.WEAK else PressTurn.COST_FULL}
+		"failed":
+			return {msg = "%s  [color=gray]%s holds.[/color]" % [prefix, who],
+					cost = PressTurn.COST_FULL}
+		"null":
+			return {msg = "%s  [color=#999999]%s does not feel it at all.[/color]" % [
+					prefix, who], cost = PressTurn.COST_MISS}
+		"repel":
+			var back: int = int(res["dmg"])
+			_actor().take_damage(back)
+			var pr: TextureRect = _member_portrait(_actor())
+			if pr != null:
+				_shake_portrait(pr)
+			return {msg = "%s  [color=#d070ff]Turned back — %s takes %d![/color]" % [
+					prefix, _actor_name(), back], cost = PressTurn.COST_LOST}
+		"drain":
+			enemy.heal(int(res["dmg"]))
+			return {msg = "%s  [color=lime]%s drinks it and recovers %d HP![/color]" % [
+					prefix, who, int(res["dmg"])], cost = PressTurn.COST_LOST}
+	return {msg = "%s  [color=gray]Nothing comes of it.[/color]" % prefix,
+			cost = PressTurn.COST_FULL}
 
 
 # ── Enemy actions ─────────────────────────────────────────────────────────────

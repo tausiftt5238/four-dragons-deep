@@ -335,62 +335,63 @@
   <button id="reset">Clear all marks</button>
 </div>
 
-<h2>Open questions</h2>
+<h2>Decided and built</h2>
 <div class="notes">
 <ol>
   <li>
-    <b>Elemental blades need a new field.</b> Weapons today carry only
-    <code>str_bonus</code>, <code>mag_bonus</code> and <code>agl_pen</code>.
-    A fire sword means adding <code>attack_element</code> to a weapon and having
-    a basic swing read it — demons already have exactly that field. The knock-on
-    is the good kind: a free elemental hit with no MP cost, but swinging into a
-    demon that drains or repels that element ends your phase. Yes to the field?
+    <b>Every piece on this page is in the game.</b> All 28 proposals were kept,
+    written into <code>weapon.gd</code>, <code>armor.gd</code> and
+    <code>accessory.gd</code>, and gated by the tiers shown above. The cards
+    below are now a record rather than a proposal.
   </li>
   <li>
-    <b>A light-element blade can banish.</b> Light and dark expel rather than
-    wound, so the Argent Blade and Excalibur would give a plain swing a banish
-    roll off luck. Bosses null both lines already, so it can't cheese them — but
-    it would shred regular floors. Options: allow it, halve the roll for
-    weapons, or keep weapons off the two banishing lines entirely.
+    <b>Elemental blades carry <code>attack_element</code>.</b> An ordinary
+    swing is scored as that element instead of phys, so it costs no MP and can
+    hit a weakness every turn — and swinging into a drain or a repel ends the
+    phase exactly as a cast would.
   </li>
   <li>
-    <b>Gear prices are flat.</b> <code>OrbUI.item_price</code> is
-    <code>20 + floor * 25</code>, so every tier-IV weapon costs 120 gold —
-    Excalibur at the same price as a potion run. Gear wants its own multiplier,
-    or a <code>price</code> field per piece the way the dispel scrolls have one.
+    <b>A light or dark blade banishes at full odds</b>, the same as a cast of
+    that element. Measured over 4000 rolls: an ordinary demon is taken by
+    <b>31.9%</b> of swings that land, a light-resister by <b>12.5%</b>, and the
+    floor-20 boss by <b>0%</b> because it nulls the line. A swing still has to
+    beat agility first, which a cast never does.
   </li>
   <li>
-    <b>Excalibur on a shelf?</b> Everything else here can be bought. A capstone
-    sword reads better as a tier-IV chest or a floor-20 boss drop. Sell it, or
-    find it?
+    <b>Excalibur is found, not sold.</b> It is marked <code>found_only</code>,
+    so no orb stocks it at any depth, and it sits only in the tier-IV find
+    pool — floors 16-20.
   </li>
   <li>
-    <b>Accessories are never stocked.</b> <code>_stock()</code> appends
-    <code>Weapon.for_floor</code> and <code>Armor.for_floor</code> but not
-    <code>Accessory.for_floor</code> — so the ten trinkets can only be found,
-    never bought. Deliberate, or an oversight?
+    <b>Gear pricing stays flat</b> at <code>20 + tier × 25</code>, so every
+    tier-IV piece is 120 gold.
   </li>
   <li>
-    <b>A gating inconsistency.</b> <code>Accessory.for_floor</code> compares the
-    piece's <code>floor</code> against the raw floor number, while weapons and
-    armour compare against the tier. So a tier-IV trinket like the Ferryman's
-    Coin turns up on floor 4. Almost certainly a bug — want it fixed to match?
+    <b>Trinkets are on the shelf now</b>, gated by tier like everything else.
+    One consequence worth knowing: a floor-20 orb now lists <b>69 rows</b>
+    across <b>12 pages</b> at six to a page, up from 32 rows. Worth a filter or
+    a slot-by-slot tab before long.
   </li>
   <li>
-    <b>Armour has no luck field.</b> Fine as is, but gold and platinum plate
-    would traditionally carry some. Leave armour to defence and agility only?
+    <b>Two bugs fixed on the way past.</b> <code>Accessory.for_floor</code>
+    gated on the raw floor number instead of the tier, so tier-IV trinkets
+    turned up on floor 4. And neither chests nor demon drops were filtered by
+    depth at all — a floor-1 chest could hand over the Titan's Cleaver. Gear in
+    the find pool is now gated by tier; consumables and scrolls are untouched,
+    since their <code>floor</code> field means a raw depth rather than a tier.
+  </li>
+  <li>
+    <b>Armour still has no luck field</b>, left as it was — armour speaks in
+    defence and agility only.
   </li>
 </ol>
 </div>
 
 <footer>
-  Thirty pieces of gear exist today — 12 weapons, 8 armour, 10 trinkets. This
-  page proposes 28 more, for 58. Worth knowing before you keep them all: a
-  floor-20 orb already shelves all 20 weapons and armour at once, and six rows
-  fit on a page. Keep every proposal and that shelf becomes 42 rows, seven
-  pages deep. Nothing here is written to <code>weapon.gd</code>,
-  <code>armor.gd</code> or <code>accessory.gd</code> yet — cull first, then I
-  implement only the survivors.
+  58 pieces of gear: the 30 that were already here and the 28 added from this
+  page. Names are the plain ones asked for — Fire Sword, Silver Armour, Diamond
+  Sword — and the italic alternate on each card is a one-line change in the data
+  file if you would rather have it.
 </footer>
 
 </div>

@@ -59,6 +59,10 @@ var support_skill: String = ""
 # every turn now, so without this the log would say so every turn.
 var announced_dry: bool = false
 
+# The floor this one was built for. What it carries when it dies is drawn
+# against this, so a shallow demon cannot hand over deep gear.
+var spawn_floor: int = 1
+
 # Percent chance one of its hits also lands its ailment. Fixed per demon rather
 # than swinging on the level gap, so the first area stays a gentle place.
 var ailment_chance: int = 12
@@ -548,6 +552,7 @@ static func make_boss(floor_num: int) -> Enemy:
 			0, BOSS_TEMPLATES.size() - 1)
 	var t: Dictionary = BOSS_TEMPLATES[idx]
 	var e: Enemy = Enemy.new()
+	e.spawn_floor     = maxi(1, floor_num)
 	e.enemy_name      = t["name"]
 	e.lv              = maxi(2, floor_num * 2)
 	var scale: float = 1.0 + float(e.lv - 1) * 0.22
@@ -679,6 +684,7 @@ static func tier_for_floor(floor_num: int) -> int:
 
 static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	var e: Enemy = Enemy.new()
+	e.spawn_floor     = maxi(1, floor_num)
 	e.enemy_name      = t["name"]
 	e.lv              = level_for_floor(floor_num, int(t.get("rank", 0)))
 	# Stats ride the level rather than the row, so the same demon met deeper is
@@ -787,5 +793,5 @@ func dregs_element() -> String:
 func roll_drop() -> Dictionary:
 	if randi() % 100 < 65:
 		return {}
-	var table: Array[Dictionary] = Item.drop_table()
+	var table: Array[Dictionary] = Item.drop_table_for_floor(spawn_floor)
 	return table[randi() % table.size()]
