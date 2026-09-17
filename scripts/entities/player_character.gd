@@ -99,9 +99,31 @@ var demon_exp: Dictionary = {}
 # two Bats raised from the same floor are not the same Bat.
 var demon_gains: Dictionary = {}
 
+# What each bound demon can call on. One entry per skill:
+#   {kind = "element", element = "fire", rung = 1, shape = "one"}
+#   {kind = "support", id = "ward"}
+# Raising a rung rewrites an entry in place, so only learning a new support
+# ever costs a slot.
+var demon_skills: Dictionary = {}
+
+# Level-ups each demon has banked, which is what its growth triggers off.
+var demon_levels_gained: Dictionary = {}
+
 # Points a demon places per level, and how much exp its next level asks for.
 const DEMON_POINTS_PER_LEVEL: int = 2
 const DEMON_EXP_FACTOR: int = 6
+
+# Six, because the skills menu is a fixed six cells — see CombatScene.MENU_SLOTS.
+# A full demon stops learning; its rungs can still climb, since those rewrite a
+# skill rather than adding one.
+const DEMON_SKILL_CAP: int = 6
+const DEMON_GROWTH_EVERY: int = 2
+const DEMON_MAX_RUNG: int = 3
+
+# Every buff and debuff a demon could pick up, which is the same set the
+# templates already hand out as support skills.
+const DEMON_SUPPORTS: Array[String] = ["whet", "ward", "quicken", "stoke",
+		"blunt", "sunder", "mire", "damp"]
 
 static func demon_exp_to_next(lv: int) -> int:
 	return maxi(1, Enemy.exp_for_level(lv) * DEMON_EXP_FACTOR)
@@ -124,12 +146,15 @@ func bound_demon(demon_name: String) -> Enemy:
 
 # Exp from a won fight, paid to every demon that was standing in it. A demon
 # never passes the detective: he is the one holding the case open, and a party
-# that outgrows him would make his own levels pointless. Returns the names that
-# gained a level, so the result screen can say which.
-func award_demon_exp(amount: int) -> Array[String]:
+# that outgrows him would make his own levels pointless.
+#
+# Returns {climbed = [names], learned = {name: [what it picked up]}} so the
+# result screen can say both what grew and what it can now call on.
+func award_demon_exp(amount: int) -> Dictionary:
 	var climbed: Array[String] = []
+	var learned: Dictionary = {}
 	if amount <= 0:
-		return climbed
+		return {climbed = climbed, learned = learned}
 	for demon_name: String in active_demons:
 		var at: int = int(bound_level.get(demon_name, 1))
 		if at >= lv:
@@ -141,13 +166,71 @@ func award_demon_exp(amount: int) -> Array[String]:
 			at += 1
 			_roll_demon_gain(demon_name)
 			gained = true
+			var levels: int = int(demon_levels_gained.get(demon_name, 0)) + 1
+			demon_levels_gained[demon_name] = levels
+			if levels % DEMON_GROWTH_EVERY == 0:
+				var got: String = _roll_demon_skill(demon_name)
+				if got != "":
+					if not learned.has(demon_name):
+						learned[demon_name] = []
+					(learned[demon_name] as Array).append(got)
 		bound_level[demon_name] = at
 		# At the detective's level it stops banking, so the overflow is not
 		# sitting there waiting to fire off three levels the moment he gains one.
 		demon_exp[demon_name] = 0 if at >= lv else banked
 		if gained:
 			climbed.append(demon_name)
-	return climbed
+	return {climbed = climbed, learned = learned}
+
+
+# Every second level a demon picks something up, and a coin decides which kind:
+# one of its lines climbs a rung, or it learns a buff or debuff it did not have.
+# A coin that lands on an impossible side takes the other — a demon with every
+# rung maxed keeps learning, and a full one keeps climbing rungs, since a rung
+# rewrites a skill instead of adding one.
+func _roll_demon_skill(demon_name: String) -> String:
+	# An empty list is not a dead end: a demon that throws no element at all —
+	# a Bat has none and no support either — grows into a support caster, which
+	# is the only way it can grow at all.
+	var list: Array = skills_of(demon_name)
+
+	var upgradable: Array[int] = []
+	for i: int in list.size():
+		var skill: Dictionary = list[i] as Dictionary
+		if skill.get("kind", "") == "element" \
+				and int(skill.get("rung", 1)) < DEMON_MAX_RUNG:
+			upgradable.append(i)
+
+	var unlearned: Array[String] = []
+	if list.size() < DEMON_SKILL_CAP:
+		for id: String in DEMON_SUPPORTS:
+			var known: bool = false
+			for skill: Dictionary in list:
+				if skill.get("kind", "") == "support" and skill.get("id", "") == id:
+					known = true
+			if not known:
+				unlearned.append(id)
+
+	if upgradable.is_empty() and unlearned.is_empty():
+		return ""
+	var climb: bool = (randi() % 2 == 0)
+	if climb and upgradable.is_empty():
+		climb = false
+	elif not climb and unlearned.is_empty():
+		climb = true
+
+	if climb:
+		var idx: int = upgradable[randi() % upgradable.size()]
+		var skill: Dictionary = list[idx] as Dictionary
+		skill["rung"] = int(skill.get("rung", 1)) + 1
+		list[idx] = skill
+		demon_skills[demon_name] = list
+		return skill_name(skill)
+
+	var pick: String = unlearned[randi() % unlearned.size()]
+	list.append({kind = "support", id = pick})
+	demon_skills[demon_name] = list
+	return Spell.get_data(pick).get("name", pick) as String
 
 
 func _roll_demon_gain(demon_name: String) -> void:
@@ -206,6 +289,8 @@ func release_demon(demon_name: String) -> void:
 	bound_level.erase(demon_name)
 	demon_exp.erase(demon_name)
 	demon_gains.erase(demon_name)
+	demon_skills.erase(demon_name)
+	demon_levels_gained.erase(demon_name)
 
 
 # How many demons can answer to him at once, summoned and benched together.
@@ -228,7 +313,43 @@ func remember_recruit(demon_name: String, lv: int = 1) -> void:
 	# Keep the best one ever bound: re-catching a weaker copy should never
 	# downgrade what is already in the rolodex.
 	bound_level[demon_name] = maxi(int(bound_level.get(demon_name, 0)), maxi(1, lv))
+	seed_demon_skills(demon_name)
 	activate_demon(demon_name)
+
+
+# What a demon knows the moment it is bound: every line it throws, on the first
+# rung, plus the support its template already casts at you. That support was
+# only ever used by the enemy AI before — a bound demon carried it and could
+# not call it.
+func seed_demon_skills(demon_name: String) -> void:
+	if demon_skills.has(demon_name):
+		return
+	var e: Enemy = Enemy.make_at_level(demon_name, 1)
+	var list: Array = []
+	for el: String in e.attack_elements:
+		list.append({kind = "element", element = el, rung = 1,
+				shape = e.attack_reach})
+	if e.support_skill != "":
+		list.append({kind = "support", id = e.support_skill})
+	e.free()
+	demon_skills[demon_name] = list
+
+
+func skills_of(demon_name: String) -> Array:
+	return demon_skills.get(demon_name, []) as Array
+
+
+# The name a skill entry goes by on a button and in the log.
+static func skill_name(skill: Dictionary) -> String:
+	if skill.get("kind", "") == "support":
+		return Spell.get_data(skill.get("id", "") as String).get("name", "?") as String
+	var id: String = Spell.elemental_id(skill.get("element", "") as String,
+			int(skill.get("rung", 1)), skill.get("shape", Spell.SHAPE_ONE) as String)
+	if id != "":
+		return Spell.get_data(id).get("name", "?") as String
+	# No cast sits at that element and reach — the banishing lines have no
+	# "few" damage rung, for one. Fall back on naming the line itself.
+	return "%s Strike" % Affinity.element_name(skill.get("element", "") as String)
 
 # Nobody walks into their first case empty-handed. A first-floor demon, not a
 # strong one — it will grow on its own from here, and a powerful gift would

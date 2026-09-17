@@ -62,8 +62,9 @@ func _add_demon(list: SlotList, demon_name: String) -> void:
 	var p: PlayerCharacter = _m.player
 	var active: bool = p.is_active(demon_name)
 	var demon: Enemy = p.bound_demon(demon_name)
-	var about: String = "HP %d   MP %d   %s   %s" % [
-			demon.max_hp, demon.max_mp, _element_text(demon), _chart(demon)]
+	var about: String = "Lv %d   HP %d   MP %d   %s\n%s" % [
+			demon.lv, demon.max_hp, demon.max_mp, _chart(demon),
+			_skill_text(p, demon_name)]
 	demon.free()
 
 	list.add("%s%s" % ["* " if active else "", demon_name],
@@ -84,13 +85,20 @@ func _add_demon(list: SlotList, demon_name: String) -> void:
 
 # ── Row pieces ───────────────────────────────────
 
-func _element_text(demon: Enemy) -> String:
-	if demon.attack_elements.is_empty():
-		return "no element"
+# Everything it can call on, which is the only place outside a fight that a
+# demon's growth is visible: a rung it has climbed and a buff it has picked up
+# both show up here by name.
+func _skill_text(p: PlayerCharacter, demon_name: String) -> String:
+	var known: Array = p.skills_of(demon_name)
+	if known.is_empty():
+		return "[color=#8b8f99]knows nothing it can call on[/color]"
 	var names: Array[String] = []
-	for e: String in demon.attack_elements:
-		names.append(Affinity.element_name(e))
-	return "%s  %d MP" % ["/".join(names), demon.skill_cost()]
+	for skill: Dictionary in known:
+		var colour: String = "c9a6ff" if skill.get("kind", "") == "support" else "7fd4ff"
+		names.append("[color=#%s]%s[/color]" % [colour,
+				PlayerCharacter.skill_name(skill)])
+	return "%s   [color=#8b8f99]%d/%d[/color]" % [
+			"  ".join(names), known.size(), PlayerCharacter.DEMON_SKILL_CAP]
 
 
 # Its affinities, written the way the battle log writes them.

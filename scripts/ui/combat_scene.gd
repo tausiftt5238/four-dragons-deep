@@ -1852,59 +1852,99 @@ func _show_skills_submenu() -> void:
 		return
 
 	var demon: Enemy = actor as Enemy
-	if demon.attack_elements.is_empty():
+	var known: Array = player.skills_of(demon.enemy_name)
+	if known.is_empty():
 		return
-	var demon_cost: int = demon.skill_cost()
-	var blocked: bool = demon.has_status(Status.SILENCE) or demon.mp < demon_cost
-	# One button per line it carries, so a demon bound with three is worth
-	# three buttons rather than one that silently picks for you.
+	var silenced_demon: bool = demon.has_status(Status.SILENCE)
 	var reach: String = Spell.reach_tag_for(demon.attack_reach)
-	for e: String in demon.attack_elements:
-		_submenu_add(_make_skill_button("Skill:" + e,
-				"%s Strike" % Affinity.element_name(e),
-				"%s  %s" % [Affinity.element_name(e), reach],
-				"%d MP" % demon_cost, blocked))
+	# One button per skill it carries — its own lines at whatever rung they have
+	# reached, and every buff or debuff it has picked up since it was bound.
+	for i: int in known.size():
+		var skill: Dictionary = known[i] as Dictionary
+		var cost: int = _demon_skill_cost(demon, skill)
+		var blocked: bool = silenced_demon or demon.mp < cost
+		var tag: String = ""
+		if skill.get("kind", "") == "support":
+			var d: Dictionary = Spell.get_data(skill.get("id", "") as String)
+			tag = "%s%s  party" % [(d.get("stat", "") as String).to_upper(),
+					"+" if int(d.get("delta", 1)) > 0 else "-"] \
+					if d.get("scope", "party") == "party" \
+					else "%s%s  foes" % [(d.get("stat", "") as String).to_upper(),
+					"+" if int(d.get("delta", 1)) > 0 else "-"]
+		else:
+			tag = "%s  %s  %s" % [
+					Affinity.element_name(skill.get("element", "") as String),
+					reach, "I".repeat(int(skill.get("rung", 1)))]
+		_submenu_add(_make_skill_button("Skill:%d" % i,
+				PlayerCharacter.skill_name(skill), tag, "%d MP" % cost, blocked))
 
 
-# A bound demon's own element, paid for out of its own pool.
+# An elemental cast is paid out of the demon's own pool and gets dearer as its
+# rung climbs; a buff costs what the spell costs, the same as the detective pays.
+func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
+	if skill.get("kind", "") == "support":
+		return int(Spell.get_data(skill.get("id", "") as String).get("mp", 8))
+	var rung: int = int(skill.get("rung", 1))
+	return maxi(1, roundi(float(demon.skill_cost())
+			* (Spell.rung_power(rung) / Spell.POWER_I)))
+
+
+# One of a bound demon's skills, picked by its index in the demon's own list and
+# paid for out of its own pool.
 func _resolve_skill(chosen: String) -> Dictionary:
 	var actor: Enemy = _actor() as Enemy
-	var element: String = chosen
-	if element == "" or element not in actor.attack_elements:
-		element = actor.attack_element
-	if element == "":
+	var known: Array = player.skills_of(actor.enemy_name)
+	# A bare "Skill" action means "its first one", which is what the auto path
+	# and the older single-element button both asked for.
+	var idx: int = chosen.to_int() if chosen.is_valid_int() else 0
+	if idx < 0 or idx >= known.size():
 		return {msg = "[color=gray]%s has nothing to call on.[/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
-	var price: int = actor.skill_cost()
+	var skill: Dictionary = known[idx] as Dictionary
+	var price: int = _demon_skill_cost(actor, skill)
 	if actor.mp < price:
 		return {msg = "[color=gray]%s: not enough MP![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
 	actor.mp -= price
+
+	if skill.get("kind", "") == "support":
+		var data: Dictionary = Spell.get_data(skill.get("id", "") as String)
+		var out: Dictionary = _apply_stage_spell(data)
+		out["msg"] = "%s calls up %s!  %s" % [actor.display_name(),
+				data.get("name", "?"), out.get("msg", "")]
+		return out
+
+	var element: String = skill.get("element", "") as String
+	var rung: int = int(skill.get("rung", 1))
 	var power: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
 	var banishing: bool = Affinity.is_banishing(element)
+	var named: String = PlayerCharacter.skill_name(skill)
 
 	# A bound demon casts exactly what it cast at you — same lines, same width.
 	# The single-target case keeps the target you picked; anything wider draws
 	# its own, which is why the menu does not ask.
 	if actor.attack_reach != Spell.SHAPE_ONE:
-		return _demon_spread(actor, element, power * 2.0, banishing)
+		return _demon_spread(actor, element, power * Spell.rung_power(rung),
+				banishing, Spell.rung_boost(rung))
 
 	if banishing:
-		return _demon_banish_one(actor, enemy, element, power)
+		return _demon_banish_one(actor, enemy, element, power,
+				Spell.rung_boost(rung))
 
 	var crit: bool = CombatMath.roll_crit(actor)
-	var res: Dictionary = CombatMath.resolve(int(power * 2.0) - _guarded_def(enemy),
+	var res: Dictionary = CombatMath.resolve(
+			int(power * Spell.rung_power(rung)) - _guarded_def(enemy),
 			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s calls up %s!" % [
-			actor.display_name(), Affinity.element_name(element)])
+			actor.display_name(), named])
 
 
 # One demon of yours, one line, one foe. Light and dark expel rather than burn,
 # the same as they do out of the detective's own hands.
 func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
-		power: float) -> Dictionary:
+		power: float, boost: float = 0.0) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
-			maxi(1, int(power)), false, actor)
+			maxi(1, int(power)), false, actor, 1.0, boost)
 	var lead: String = "%s calls the %s!" % [
 			actor.display_name(), Affinity.element_name(element)]
 	match res["outcome"]:
@@ -1932,7 +1972,7 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 # A bound demon's wide cast. Same arithmetic as the detective's own spread —
 # what it gains in width it gives up on each target.
 func _demon_spread(actor: Enemy, element: String, base: float,
-		banishing: bool) -> Dictionary:
+		banishing: bool, boost: float = 0.0) -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
 	var lines: Array[String] = ["[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
@@ -1944,7 +1984,8 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 	for foe: Enemy in targets:
 		if banishing:
 			var br: Dictionary = CombatMath.resolve_banish(
-					foe, element, maxi(1, int(base * spread)), false, actor, spread)
+					foe, element, maxi(1, int(base * spread)), false, actor,
+					spread, boost)
 			match br["outcome"]:
 				"banished":
 					var was_weak: bool = foe.affinity_of(element) == Affinity.WEAK

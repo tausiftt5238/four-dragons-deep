@@ -271,6 +271,37 @@ static var DATA: Dictionary = {
 }
 
 
+# The elemental grid is three reaches on three rungs per element, so an
+# element, a rung and a reach name exactly one cast. A demon that grows a rung
+# looks its new spell up here rather than carrying a table of its own.
+static func elemental_id(element: String, rung: int, shape: String) -> String:
+	var at: int = clampi(rung - 1, 0, 2)
+	var banishing: bool = Affinity.is_banishing(element)
+	var want: float = ([BOOST_I, BOOST_II, BOOST_III] if banishing
+			else [POWER_I, POWER_II, POWER_III])[at]
+	var field: String = "boost" if banishing else "power"
+	var kind: String = "banish" if banishing else "dmg"
+	for id: String in DATA:
+		var d: Dictionary = DATA[id] as Dictionary
+		if d.get("element", "") != element or d.get("shape", "") != shape:
+			continue
+		if d.get("type", "") == kind \
+				and is_equal_approx(float(d.get(field, -99.0)), want):
+			return id
+	return ""
+
+
+# What a rung multiplies a cast by. Rung one is 2.0, which is exactly what a
+# demon's element has always been worth, so nothing changes for one that has
+# not grown yet.
+static func rung_power(rung: int) -> float:
+	return [POWER_I, POWER_II, POWER_III][clampi(rung - 1, 0, 2)]
+
+
+static func rung_boost(rung: int) -> float:
+	return [BOOST_I, BOOST_II, BOOST_III][clampi(rung - 1, 0, 2)]
+
+
 static func get_data(spell_id: String) -> Dictionary:
 	return DATA.get(spell_id, {})
 
