@@ -87,9 +87,10 @@ func display_name() -> String:
 	return "%s %s" % [enemy_name, battle_tag]
 var absorb_element:   String = ""
 
-# Levels and stats are fixed per template and never move — for enemies OR for
-# demons bound to the party. A demon is exactly what it was when you met it,
-# which is why binding a strong one is the reward rather than raising a weak one.
+# Levels and stats here are what a template says at a given level, for enemies
+# and for the copy a bound demon is rebuilt from. A bound demon's own climb —
+# its level and the points it rolled — lives on PlayerCharacter, so this table
+# stays the fixed thing both sides are measured against.
 # Template data for all enemy types. Stats are base values for floor 1.
 # min_floor / max_floor control which dungeon floors they appear on.
 # max_floor = -1 means no upper limit.

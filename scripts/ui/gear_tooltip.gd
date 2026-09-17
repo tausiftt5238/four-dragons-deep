@@ -59,7 +59,62 @@ static func cmp_line(stat: String, cur: int, nxt: int) -> String:
 	var diff: int = nxt - cur
 	if diff == 0:
 		return "%s  %d" % [stat, nxt]
-	return "%s  %d → %d  (%s%d)" % [stat, cur, nxt, ("+" if diff > 0 else ""), diff]
+	return "%s  %d -> %d  (%s%d)" % [stat, cur, nxt, ("+" if diff > 0 else ""), diff]
+
+
+# Colours used wherever a stat change is shown: a gain, a loss, and a figure
+# that is only being stated rather than compared.
+const UP:    Color = Color(0.49, 0.88, 0.63)
+const DOWN:  Color = Color(1.00, 0.56, 0.56)
+const FLAT:  Color = Color(0.60, 0.62, 0.70)
+
+static func stat_color(delta: int) -> Color:
+	if delta > 0:
+		return UP
+	elif delta < 0:
+		return DOWN
+	return FLAT
+
+
+# What taking this piece would do, stat by stat and coloured, as BBCode for a
+# list row. A weapon or a worn piece is measured against the one already in
+# that slot — the number that matters in a shop is the change, not the piece's
+# own figure. Trinkets take a free slot, so theirs is stated as it is.
+static func delta_markup(item: Dictionary, player: PlayerCharacter) -> String:
+	var kind: String = item.get("type", "") as String
+	if kind not in ["accessory", "weapon", "armor"]:
+		return ""
+	var out: Dictionary = {}
+	if kind == "weapon":
+		out = player.equipped_weapon
+	elif kind == "armor":
+		out = player.equipped_armor
+
+	var parts: Array[String] = []
+	for pair: Array in [["STR", "str_bonus"], ["DEF", "def_bonus"],
+			["MAG", "mag_bonus"], ["AGL", "agl_bonus"], ["LUK", "luk_bonus"]]:
+		var key: String = pair[1] as String
+		var mine: int = int(item.get(key, 0))
+		var theirs: int = int(out.get(key, 0))
+		if key == "agl_bonus":
+			mine = int(item.get("agl_pen", mine))
+			theirs = int(out.get("agl_pen", theirs))
+		var delta: int = mine - theirs
+		if delta == 0:
+			continue
+		parts.append("[color=#%s]%s%+d[/color]" % [
+				stat_color(delta).to_html(false), pair[0], delta])
+
+	var el: String = item.get("attack_element", "") as String
+	if el != "":
+		parts.append("[color=#c9a6ff]%s[/color]" % Affinity.element_name(el).to_upper())
+	var r: String = item.get("resist_element", "") as String
+	if r != "":
+		parts.append("[color=#86b4ea]res %s[/color]" % Affinity.element_name(r))
+	var w: String = item.get("weak_element", item.get("weakness", "")) as String
+	if w != "":
+		parts.append("[color=#ffcf52]weak %s[/color]" % Affinity.element_name(w))
+	return "  ".join(parts)
 
 
 static func bonus_string(item: Dictionary) -> String:

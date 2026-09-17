@@ -8,6 +8,8 @@ signal dismissed
 var exp_gained:  int = 0
 var gold_gained: int = 0
 var item_drop:   Dictionary = {}
+# One entry per demon that gained a level in that fight, already formatted.
+var demons_leveled: Array[String] = []
 
 
 func _ready() -> void:
@@ -64,6 +66,10 @@ func _build_ui() -> void:
 		_add_row(vbox, "Found", item_drop["name"], Color(0.50, 0.85, 1.00))
 	else:
 		_add_row(vbox, "Found", "Nothing", Color(0.38, 0.38, 0.38))
+
+	# One row however many climbed, so the panel never has to grow.
+	if not demons_leveled.is_empty():
+		_add_row(vbox, "Grew", ", ".join(demons_leveled), Color(0.80, 0.62, 1.00))
 
 	vbox.add_child(HSeparator.new())
 

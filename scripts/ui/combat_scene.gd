@@ -55,8 +55,8 @@ var _log_first_line: bool = true
 # handlers shake it directly.
 var _player_portrait: TextureRect
 
-var _icon_lbl:     Label   # player-side press-turn icons
-var _foe_icon_lbl: Label   # enemy-side press-turn icons
+var _icon_pips:     UIGlyph   # player-side press-turn icons, drawn
+var _foe_icon_pips: UIGlyph   # enemy-side press-turn icons, drawn
 var _party_box:   HBoxContainer
 # One slot per party member, mirroring _foe_rows so both sides read the same.
 var _party_slots: Array[Dictionary] = []
@@ -323,10 +323,17 @@ func _show_talk_submenu() -> void:
 		["Threaten", "Threaten"],
 		["Recruit",  "Recruit"],
 	]
+	# Nothing above the detective's own level will answer to him, so Recruit is
+	# closed rather than allowed to eat three rounds and fail. Refusing up front
+	# is the honest version of the same rule.
+	var outranks: bool = enemy.lv > player.lv
 	# No "bound" state here any more: Talk never reaches this menu on a demon
 	# whose name is already in the rolodex — that one pays you off instead.
 	for opt: Array in opts:
-		var btn: Button = _big_button(opt[1] as String, "", false)
+		var recruit: bool = opt[0] == "Recruit"
+		var btn: Button = _big_button(opt[1] as String,
+				"Lv %d > yours" % enemy.lv if recruit and outranks else "",
+				recruit and outranks)
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_submenu_add(btn)
 
@@ -1299,11 +1306,7 @@ func _build_foe_column(foe: Enemy) -> Control:
 
 	# The marker sits directly over the name so it reads as pointing at this
 	# demon rather than floating at the top of the column.
-	var marker: Label = Label.new()
-	marker.text                 = "\u25bc"
-	marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	marker.add_theme_font_size_override("font_size", 12)
-	marker.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
+	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
 	col.add_child(marker)
 
 	var name_lbl: Label = Label.new()
@@ -1327,9 +1330,17 @@ func _build_foe_column(foe: Enemy) -> Control:
 	hp_lbl.add_theme_color_override("font_color", Color(0.90, 0.60, 0.60))
 	col.add_child(hp_lbl)
 
-	var stage_lbl: Label = Label.new()
-	stage_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stage_lbl.add_theme_font_size_override("font_size", 10)
+	# BBCode, so a buff and a debuff in the same stack read as two colours
+	# instead of one averaged verdict. fit_content with a floor under it keeps
+	# the strip exactly one line tall either way.
+	var stage_lbl: RichTextLabel = RichTextLabel.new()
+	stage_lbl.bbcode_enabled = true
+	stage_lbl.fit_content = true
+	stage_lbl.scroll_active = false
+	stage_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	stage_lbl.custom_minimum_size = Vector2(0, 14)
+	stage_lbl.add_theme_font_size_override("normal_font_size", 10)
+	stage_lbl.add_theme_color_override("default_color", Color(0.72, 0.78, 0.86))
 	col.add_child(stage_lbl)
 
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
@@ -1380,7 +1391,7 @@ func _refresh_foe_rows() -> void:
 			# Ghosted rather than erased. Blanking the column outright made a
 			# demon that walked away look like one that had glitched out of
 			# existence — it still has a name and a place in the line.
-			(r["marker"] as Label).visible = false
+			(r["marker"] as UIGlyph).visible = false
 			(r["portrait"] as TextureRect).modulate = Color(1, 1, 1, 0.10)
 			var gone_lbl: Label = r["name_lbl"] as Label
 			gone_lbl.text = foe.display_name()
@@ -1389,11 +1400,11 @@ func _refresh_foe_rows() -> void:
 			(r["hp_lbl"] as Label).text = "Left"
 			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
 					Color(0.45, 0.45, 0.52))
-			(r["stage_lbl"] as Label).text = ""
+			(r["stage_lbl"] as RichTextLabel).text = ""
 			continue
 		var alive: bool = foe.is_alive()
 		var targeted: bool = (foe == enemy) and alive
-		(r["marker"] as Label).visible = targeted and multiple
+		(r["marker"] as UIGlyph).visible = targeted and multiple
 		(r["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
 		var name_lbl: Label = r["name_lbl"] as Label
 		if not alive:
@@ -1415,20 +1426,18 @@ func _refresh_foe_rows() -> void:
 		hp_lbl.add_theme_color_override("font_color",
 				hp_tint(foe.hp, foe.max_hp) if alive else Color(0.55, 0.38, 0.38))
 
-		var stage_lbl: Label = r["stage_lbl"] as Label
+		var stage_lbl: RichTextLabel = r["stage_lbl"] as RichTextLabel
 		var bits: Array[String] = []
 		var chart: String = _foe_chart_text(foe)
 		if chart != "":
 			bits.append(chart)
-		var stg: String = _format_stages(foe)
+		# On a foe the colours are inverted: what raises the thing hitting you
+		# is bad news, so its buffs read as the warning and its debuffs as the
+		# good sign.
+		var stg: String = stage_markup(foe, true)
 		if stg != "":
 			bits.append(stg)
-		stage_lbl.text = "   ".join(bits) if alive else ""
-		# Green when the stack favours them, amber when it favours you.
-		var net: int = foe.stage(CharacterSheet.STAT_ATK) \
-				+ foe.stage(CharacterSheet.STAT_DEF) + foe.stage(CharacterSheet.STAT_AGL)
-		stage_lbl.add_theme_color_override("font_color",
-				Color(1.0, 0.55, 0.35) if net > 0 else Color(0.55, 0.90, 0.70))
+		stage_lbl.text = "[center]%s[/center]" % "   ".join(bits) if alive else ""
 
 
 # ── Phase flow ────────────────────────────────────────────────────────────────
@@ -1774,21 +1783,32 @@ func _build_icon_overlay() -> void:
 	col.add_theme_constant_override("separation", 1)
 	m.add_child(col)
 
-	_icon_lbl = Label.new()
-	_icon_lbl.add_theme_color_override("font_color", Color(0.55, 0.95, 1.0))
-	col.add_child(_icon_lbl)
+	_icon_pips = UIGlyph.pips(Color(0.55, 0.95, 1.0))
+	col.add_child(_side_row("You", Color(0.55, 0.95, 1.0), _icon_pips))
 
-	_foe_icon_lbl = Label.new()
-	_foe_icon_lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
-	col.add_child(_foe_icon_lbl)
+	_foe_icon_pips = UIGlyph.pips(Color(1.0, 0.45, 0.45))
+	col.add_child(_side_row("Foe", Color(1.0, 0.45, 0.45), _foe_icon_pips))
+
+
+# "You" or "Foe" and that side's icons, side by side.
+func _side_row(who: String, color: Color, pips: UIGlyph) -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var lbl: Label = Label.new()
+	lbl.text = who
+	lbl.add_theme_color_override("font_color", color)
+	row.add_child(lbl)
+	row.add_child(pips)
+	return row
 
 
 func _refresh_icons() -> void:
 	if _press == null or _foe_press == null:
 		return
-	_icon_lbl.text = "You  %s" % (_press.icons_string() if _press.has_turns() else "\u2014")
-	_foe_icon_lbl.text = "Foe  %s" % (
-			_foe_press.icons_string() if _foe_press.has_turns() else "\u2014")
+	_icon_pips.set_pips(_press.full if _press.has_turns() else 0,
+			_press.blink if _press.has_turns() else 0)
+	_foe_icon_pips.set_pips(_foe_press.full if _foe_press.has_turns() else 0,
+			_foe_press.blink if _foe_press.has_turns() else 0)
 
 
 # ── Skills ────────────────────────────────────────────────────────────────────
@@ -2153,11 +2173,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 			icon.modulate = Color(0.55, 0.85, 0.65)
 	col.add_child(icon)
 
-	var marker: Label = Label.new()
-	marker.text                 = "\u25b2"
-	marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	marker.add_theme_font_size_override("font_size", 11)
-	marker.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
+	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))
 	col.add_child(marker)
 
 	var name_lbl: Label = Label.new()
@@ -2189,10 +2205,14 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
 	col.add_child(val_lbl)
 
-	var sts_lbl: Label = Label.new()
-	sts_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sts_lbl.add_theme_font_size_override("font_size", 10)
-	sts_lbl.add_theme_color_override("font_color", Color(0.90, 0.78, 0.30))
+	var sts_lbl: RichTextLabel = RichTextLabel.new()
+	sts_lbl.bbcode_enabled = true
+	sts_lbl.fit_content = true
+	sts_lbl.scroll_active = false
+	sts_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	sts_lbl.custom_minimum_size = Vector2(0, 14)
+	sts_lbl.add_theme_font_size_override("normal_font_size", 10)
+	sts_lbl.add_theme_color_override("default_color", Color(0.90, 0.78, 0.30))
 	col.add_child(sts_lbl)
 
 	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
@@ -2211,7 +2231,7 @@ func _refresh_party_slots() -> void:
 		var is_hero: bool  = (member == player)
 		var is_actor: bool = (member == acting) and alive
 
-		(slot["marker"] as Label).visible = is_actor
+		(slot["marker"] as UIGlyph).visible = is_actor
 		(slot["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
 
 		var name_lbl: Label = slot["name_lbl"] as Label
@@ -2247,11 +2267,12 @@ func _refresh_party_slots() -> void:
 		var tags: Array[String] = []
 		var ail: String = _format_statuses(member.active_statuses)
 		if ail != "":
-			tags.append(ail)
-		var stg: String = _format_stages(member)
+			tags.append("[color=#e6c74d]%s[/color]" % ail)
+		var stg: String = stage_markup(member, false)
 		if stg != "":
 			tags.append(stg)
-		(slot["sts_lbl"] as Label).text = "  ".join(tags)
+		(slot["sts_lbl"] as RichTextLabel).text = \
+				"[center]%s[/center]" % "  ".join(tags) if not tags.is_empty() else ""
 
 
 # ── The menu strip ────────────────────────────────────────────────────────────
@@ -3215,11 +3236,17 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 
 
 # A compact readout of what is stacked on someone: "ATK+2 AGL-1".
-static func _format_stages(member: CharacterSheet) -> String:
+# The same stack, with every stat carrying its own colour. `inverted` is for
+# the other side of the fight, where a raised stat is the thing to worry about.
+static func stage_markup(member: CharacterSheet, inverted: bool) -> String:
 	var parts: Array[String] = []
 	for key: String in CharacterSheet.STAT_KEYS:
 		var st: int = member.stage(key)
-		if st != 0:
-			parts.append("%s%+d" % [key.to_upper(), st])
+		if st == 0:
+			continue
+		var good: bool = (st > 0) != inverted
+		parts.append("[color=#%s]%s%+d[/color]" % [
+				(GearTooltip.UP if good else GearTooltip.DOWN).to_html(false),
+				key.to_upper(), st])
 	return "  ".join(parts)
 

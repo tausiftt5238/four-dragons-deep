@@ -71,7 +71,3 @@ func _consume(n: int) -> void:
 		else:
 			return
 
-
-# "●●◐" — full icons then blinking ones. Used by the combat HUD.
-func icons_string() -> String:
-	return "●".repeat(full) + "◐".repeat(blink)

@@ -233,11 +233,11 @@ func _add_cmp_row(grid: GridContainer, stat: String, base: int, eff: int) -> voi
 	var diff: int = eff - base
 	var e: Label = Label.new()
 	if diff != 0:
-		e.text = "→ %d  (%+d)" % [eff, diff]
+		e.text = "-> %d  (%+d)" % [eff, diff]
 		e.add_theme_color_override("font_color",
 			Color(0.35, 0.90, 0.35) if diff > 0 else Color(0.90, 0.35, 0.35))
 	else:
-		e.text = "→ %d" % eff
+		e.text = "-> %d" % eff
 	grid.add_child(e)
 
 

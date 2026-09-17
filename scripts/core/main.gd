@@ -975,16 +975,20 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
+			var climbed: Array[String] = player_char.award_demon_exp(exp_reward)
 			var shown_drop: Dictionary = item_drop if result == "win" else {}
 			_show_combat_result(exp_reward, gold_reward, shown_drop,
-				before if leveled else {}, after if leveled else {})
+				before if leveled else {}, after if leveled else {},
+				_demon_level_lines(climbed))
 		"bribe":
 			var before: Dictionary = _player_snapshot()
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
+			var climbed_b: Array[String] = player_char.award_demon_exp(exp_reward)
 			_show_combat_result(exp_reward, 0, {},
-				before if leveled else {}, after if leveled else {})
+				before if leveled else {}, after if leveled else {},
+				_demon_level_lines(climbed_b))
 		"lose":
 			_pending_congratulations = false
 			_show_game_over()
@@ -994,12 +998,25 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 
 
 
+# "Bat Lv 5  STR+4 AGL+2" for each demon that gained a level in that fight.
+func _demon_level_lines(climbed: Array[String]) -> Array[String]:
+	var out: Array[String] = []
+	for demon_name: String in climbed:
+		var gains: String = player_char.demon_gain_string(demon_name)
+		out.append("%s Lv %d%s" % [demon_name,
+				int(player_char.bound_level.get(demon_name, 1)),
+				"  " + gains if gains != "" else ""])
+	return out
+
+
 func _show_combat_result(exp: int, gold: int, item: Dictionary,
-		lv_before: Dictionary, lv_after: Dictionary) -> void:
+		lv_before: Dictionary, lv_after: Dictionary,
+		demons_leveled: Array[String] = []) -> void:
 	var ui: CombatResultUI = CombatResultUI.new()
 	ui.exp_gained  = exp
 	ui.gold_gained = gold
 	ui.item_drop   = item
+	ui.demons_leveled = demons_leveled
 	ui.dismissed.connect(func():
 		ui.queue_free()
 		if not lv_before.is_empty():
@@ -1331,6 +1348,8 @@ func _gather_save_data() -> Dictionary:
 			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
 			bound_level         = p.bound_level,
+			demon_exp           = p.demon_exp,
+			demon_gains         = p.demon_gains,
 			active_demons       = p.active_demons,
 			encountered_enemies = p.encountered_enemies,
 			analyzed            = p.analyzed,
@@ -1506,6 +1525,17 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	for demon_name: String in player_char.recruited:
 		if not player_char.bound_level.has(demon_name):
 			player_char.bound_level[demon_name] = 2
+
+	player_char.demon_exp.clear()
+	for k: Variant in (pdata.get("demon_exp", {}) as Dictionary):
+		player_char.demon_exp[k] = int((pdata["demon_exp"] as Dictionary)[k])
+	player_char.demon_gains.clear()
+	for k: Variant in (pdata.get("demon_gains", {}) as Dictionary):
+		var raw: Dictionary = (pdata["demon_gains"] as Dictionary)[k] as Dictionary
+		var one: Dictionary = {}
+		for stat: String in ["str", "def", "mag", "agl"]:
+			one[stat] = int(raw.get(stat, 0))
+		player_char.demon_gains[k] = one
 
 	player_char.active_demons.clear()
 	if pdata.has("active_demons"):

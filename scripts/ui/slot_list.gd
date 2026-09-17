@@ -127,13 +127,19 @@ func add_entry(title: String, title_color: Color, detail: String,
 			btn.pressed.connect(act["press"] as Callable)
 		head.add_child(btn)
 
-	var detail_lbl: Label = Label.new()
+	# BBCode rather than a plain Label so a row can colour part of its line —
+	# a shop row marks each stat green or red against what is already worn.
+	# fit_content stays off and scrolling is disabled: the slot's own height is
+	# what decides the row, and a detail line must never change it.
+	var detail_lbl: RichTextLabel = RichTextLabel.new()
+	detail_lbl.bbcode_enabled = true
 	detail_lbl.text = detail
+	detail_lbl.fit_content = false
+	detail_lbl.scroll_active = false
 	detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_lbl.clip_text = true
-	detail_lbl.add_theme_font_size_override("font_size", 11)
-	detail_lbl.add_theme_color_override("font_color", Color(0.60, 0.62, 0.70))
+	detail_lbl.add_theme_font_size_override("normal_font_size", 11)
+	detail_lbl.add_theme_color_override("default_color", Color(0.60, 0.62, 0.70))
 	col.add_child(detail_lbl)
 	return true
 

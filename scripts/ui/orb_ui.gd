@@ -245,6 +245,9 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 	var about: String = "LV %d   HP %d   MP %d   %s" % [
 			demon.lv, demon.max_hp, demon.max_mp, element]
 	var offered_lv: int = demon.lv
+	# The same rule the recruit menu keeps: nothing above the detective's level
+	# answers to him, bought or talked down. Without it an orb is a way around it.
+	var outranks: bool = demon.lv > player.lv
 	demon.free()
 
 	list.add(enemy_name,
@@ -252,8 +255,9 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 			about,
 			"bound" if owned else "%d g" % price,
 			Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35),
-			"Bound" if owned else ("Full" if full else "Bind"),
-			owned or full or player.gold < price,
+			"Bound" if owned else ("Full" if full
+					else ("Lv %d" % offered_lv if outranks else "Bind")),
+			owned or full or outranks or player.gold < price,
 			func() -> void:
 				if player.gold < price:
 					_set_status("Not enough gold.")
@@ -266,11 +270,10 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 
 # ── Selling ───────────────────────────────────────────────────────────────────
 #
-# Demons never level, so a floor-two demon is a floor-two demon for the rest of
-# the run. This is the way out of that: it goes back for exactly what binding
-# one at its level costs, which makes the rolodex a ladder rather than a
-# collection — sell what you have outgrown and put the gold into something from
-# the floor you are standing on.
+# A demon goes back for exactly what binding one at its level costs, which makes
+# the rolodex a ladder rather than a collection — sell what you have outgrown
+# and put the gold into something from the floor you are standing on. A demon
+# you raised yourself fetches the level it reached, not the one it was caught at.
 static func sell_price(demon_name: String, lv: int) -> int:
 	var demon: Enemy = Enemy.make_at_level(demon_name, lv)
 	var price: int = bind_price(demon)
@@ -384,8 +387,14 @@ func _build_scrolls() -> void:
 func _buy_offer(list: SlotList, item: Variant) -> void:
 	var entry: Dictionary = item as Dictionary
 	var price: int = item_price(entry)
+	# What it would change, above its own description: a shop that only names a
+	# piece leaves the player no way to tell whether it is an upgrade at all.
+	var deltas: String = GearTooltip.delta_markup(entry, player)
+	var detail: String = entry.get("desc", "") as String
+	if deltas != "":
+		detail = "%s\n%s" % [deltas, detail]
 	list.add(entry["name"] as String, Color(0.85, 0.85, 0.92),
-			entry.get("desc", "") as String,
+			detail,
 			"%d g" % price, Color(1.0, 0.85, 0.35),
 			"Buy", player.gold < price,
 			func() -> void:

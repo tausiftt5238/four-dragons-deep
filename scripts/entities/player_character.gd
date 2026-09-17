@@ -84,16 +84,91 @@ func belt() -> Array[Dictionary]:
 # Every demon he has bound. The rolodex.
 var recruited: Array[String] = []
 
-# The level each one was bound at. A demon never levels, so a Bat talked down
-# on floor three is a level-four Bat for the rest of the run however deep you
-# take it — which is exactly what makes selling it on to fund a deeper one a
-# real decision rather than bookkeeping.
+# The level each bound demon is at now. It starts at the level it was caught
+# and climbs: a demon that fights alongside him grows into the run rather than
+# falling behind it. Only bound demons do this — a wild one is whatever its
+# floor makes it, and selling an outgrown demon on is still a real decision
+# because what it fetches follows the level it has reached.
 var bound_level: Dictionary = {}
 
+# Exp banked toward each bound demon's next level.
+var demon_exp: Dictionary = {}
 
-# Rebuilds a bound demon at the level it was caught, not at some default.
+# Stat points a demon has rolled on its own levels, per demon:
+# {"str": n, "def": n, "mag": n, "agl": n}. Two per level, placed at random, so
+# two Bats raised from the same floor are not the same Bat.
+var demon_gains: Dictionary = {}
+
+# Points a demon places per level, and how much exp its next level asks for.
+const DEMON_POINTS_PER_LEVEL: int = 2
+const DEMON_EXP_FACTOR: int = 6
+
+static func demon_exp_to_next(lv: int) -> int:
+	return maxi(1, Enemy.exp_for_level(lv) * DEMON_EXP_FACTOR)
+
+
+# Rebuilds a bound demon at the level it has reached, with the stat points it
+# rolled getting there laid on top of what its template says.
 func bound_demon(demon_name: String) -> Enemy:
-	return Enemy.make_at_level(demon_name, int(bound_level.get(demon_name, 1)))
+	var e: Enemy = Enemy.make_at_level(demon_name, int(bound_level.get(demon_name, 1)))
+	var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
+	if not gains.is_empty():
+		e.str = maxi(1, e.str + int(gains.get("str", 0)))
+		e.def = maxi(1, e.def + int(gains.get("def", 0)))
+		e.mag = maxi(0, e.mag + int(gains.get("mag", 0)))
+		e.agl = maxi(1, e.agl + int(gains.get("agl", 0)))
+		e.compute_max_hp()
+		e.compute_max_mp()
+	return e
+
+
+# Exp from a won fight, paid to every demon that was standing in it. A demon
+# never passes the detective: he is the one holding the case open, and a party
+# that outgrows him would make his own levels pointless. Returns the names that
+# gained a level, so the result screen can say which.
+func award_demon_exp(amount: int) -> Array[String]:
+	var climbed: Array[String] = []
+	if amount <= 0:
+		return climbed
+	for demon_name: String in active_demons:
+		var at: int = int(bound_level.get(demon_name, 1))
+		if at >= lv:
+			continue
+		var banked: int = int(demon_exp.get(demon_name, 0)) + amount
+		var gained: bool = false
+		while at < lv and banked >= demon_exp_to_next(at):
+			banked -= demon_exp_to_next(at)
+			at += 1
+			_roll_demon_gain(demon_name)
+			gained = true
+		bound_level[demon_name] = at
+		# At the detective's level it stops banking, so the overflow is not
+		# sitting there waiting to fire off three levels the moment he gains one.
+		demon_exp[demon_name] = 0 if at >= lv else banked
+		if gained:
+			climbed.append(demon_name)
+	return climbed
+
+
+func _roll_demon_gain(demon_name: String) -> void:
+	var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
+	if gains.is_empty():
+		gains = {"str": 0, "def": 0, "mag": 0, "agl": 0}
+	for i: int in range(DEMON_POINTS_PER_LEVEL):
+		var stat: String = ["str", "def", "mag", "agl"][randi() % 4]
+		gains[stat] = int(gains.get(stat, 0)) + 1
+	demon_gains[demon_name] = gains
+
+
+# What a demon has rolled, as "STR+2 AGL+1", for the party and result screens.
+func demon_gain_string(demon_name: String) -> String:
+	var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
+	var parts: Array[String] = []
+	for stat: String in ["str", "def", "mag", "agl"]:
+		var n: int = int(gains.get(stat, 0))
+		if n > 0:
+			parts.append("%s+%d" % [stat.to_upper(), n])
+	return " ".join(parts)
 
 # The ones he actually walks in with, in slot order. Chosen in the menu before
 # a fight rather than assembled mid-battle — CombatScene.MAX_PARTY - 1 of them,
@@ -129,6 +204,8 @@ func release_demon(demon_name: String) -> void:
 	recruited.erase(demon_name)
 	active_demons.erase(demon_name)
 	bound_level.erase(demon_name)
+	demon_exp.erase(demon_name)
+	demon_gains.erase(demon_name)
 
 
 # How many demons can answer to him at once, summoned and benched together.
@@ -154,7 +231,7 @@ func remember_recruit(demon_name: String, lv: int = 1) -> void:
 	activate_demon(demon_name)
 
 # Nobody walks into their first case empty-handed. A first-floor demon, not a
-# strong one — since demons never level, a powerful gift would stay powerful and
+# strong one — it will grow on its own from here, and a powerful gift would
 # flatten the whole run. One demon is already bound,
 # which is also what makes the opening floors survivable — a lone detective
 # against a pack of three loses on action economy no matter how well he reads

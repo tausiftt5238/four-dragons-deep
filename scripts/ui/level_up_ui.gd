@@ -17,7 +17,7 @@ var _allocated:     Dictionary = {str=0, def=0, mag=0, agl=0, luk=0}
 
 var _vbox:          VBoxContainer
 var _remaining_lbl: Label
-var _alloc_lbls:    Dictionary = {}   # stat_key → Label showing pending allocation
+var _alloc_lbls:    Dictionary = {}   # stat_key -> Label showing pending allocation
 var _confirm_btn:   Button
 
 
@@ -61,14 +61,14 @@ func _build() -> void:
 
 	# ── Header ────────────────────────────────────────────────────────────────
 	var header: Label = Label.new()
-	header.text = "✦   LEVEL UP!   ✦"
+	header.text = "*   LEVEL UP!   *"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_color_override("font_color", Color(1.0, 0.88, 0.18))
 	header.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(header)
 
 	var lv_lbl: Label = Label.new()
-	lv_lbl.text = "LEVEL  %d  →  %d" % [before["lv"], after["lv"]]
+	lv_lbl.text = "LEVEL  %d  ->  %d" % [before["lv"], after["lv"]]
 	lv_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lv_lbl.add_theme_color_override("font_color", Color(0.90, 0.82, 0.50))
 	vbox.add_child(lv_lbl)
@@ -148,7 +148,7 @@ func _auto_row(grid: GridContainer, label: String, b: int, a: int) -> void:
 
 	var diff: int = a - b
 	var av: Label = Label.new()
-	av.text = "→ %d  (+%d)" % [a, diff] if diff > 0 else "→ %d" % a
+	av.text = "-> %d  (+%d)" % [a, diff] if diff > 0 else "-> %d" % a
 	av.add_theme_color_override("font_color",
 		Color(0.35, 0.95, 0.45) if diff > 0 else Color(0.80, 0.80, 0.80))
 	grid.add_child(av)
@@ -172,7 +172,7 @@ func _alloc_row(grid: GridContainer, stat: String) -> void:
 	grid.add_child(btn_box)
 
 	var minus_btn: Button = Button.new()
-	minus_btn.text = "−"
+	minus_btn.text = "-"
 	minus_btn.custom_minimum_size = Vector2(28, 26)
 	minus_btn.pressed.connect(_on_minus.bind(stat))
 	btn_box.add_child(minus_btn)
@@ -231,7 +231,7 @@ func _show_skill_picker() -> void:
 	_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	var header: Label = Label.new()
-	header.text = "✦   choose a skill   ✦"
+	header.text = "*   choose a skill   *"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_color_override("font_color", Color(0.60, 0.88, 1.0))
 	header.add_theme_font_size_override("font_size", 20)
