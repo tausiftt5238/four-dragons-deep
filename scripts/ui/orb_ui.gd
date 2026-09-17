@@ -91,7 +91,7 @@ func _build() -> void:
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Bind"],
 			["sell", "Sell"], ["buy", "Supplies"],
-			["scrolls", "Scrolls"], ["save", "Save"]]:
+			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -121,6 +121,7 @@ func _switch(tab: String) -> void:
 		"bind": _build_bind()
 		"sell": _build_sell()
 		"buy":  _build_buy()
+		"gear": _build_gear()
 		"scrolls": _build_scrolls()
 		"save": _build_save()
 
@@ -310,9 +311,9 @@ func _sell_offer(list: SlotList, enemy_name: String) -> void:
 
 # ── Supplies ──────────────────────────────────────────────────────────────────
 
-# What this orb stocks. Priced off the item's own floor tier so a Hi-Potion
-# never costs the same as an antidote.
-func _stock() -> Array[Dictionary]:
+# What this orb stocks in the way of supplies. Priced off the item's own floor
+# tier so a Hi-Potion never costs the same as an antidote.
+func _supplies() -> Array[Dictionary]:
 	var out: Array[Dictionary] = [
 		Item.health_potion(), Item.hi_potion(), Item.ether(),
 		Item.antidote(), Item.stimulant(), Item.echo_gem(),
@@ -321,12 +322,27 @@ func _stock() -> Array[Dictionary]:
 	if floor_num >= 2:
 		out.append(Item.panacea())
 		out.append(Item.elixir_motion())
-	# An orb stocks gear for the depth you have reached, which is the main
-	# thing gold is for once the belt is full. Trinkets included, so the two
-	# accessory slots are a purchase rather than a run of luck.
-	out.append_array(Weapon.for_floor(floor_num))
-	out.append_array(Armor.for_floor(floor_num))
-	out.append_array(Accessory.for_floor(floor_num))
+	return out
+
+
+# Gear for the depth reached, which is the main thing gold is for once the belt
+# is full. Trinkets included, so the two accessory slots are a purchase rather
+# than a run of luck.
+#
+# Deepest tier first, and within a tier: weapon, worn piece, trinket. A shelf
+# this long is read from the front, and what a player wants at floor twenty is
+# the tier-IV row — walked forward it sat ten pages in, behind every rusty
+# dagger the run had already outgrown.
+func _gear() -> Array[Dictionary]:
+	var weapons: Array[Dictionary] = Weapon.for_floor(floor_num)
+	var worn: Array[Dictionary] = Armor.for_floor(floor_num)
+	var trinkets: Array[Dictionary] = Accessory.for_floor(floor_num)
+	var out: Array[Dictionary] = []
+	for tier: int in [4, 3, 2, 1]:
+		for shelf: Array[Dictionary] in [weapons, worn, trinkets]:
+			for g: Dictionary in shelf:
+				if int(g["floor"]) == tier:
+					out.append(g)
 	return out
 
 
@@ -338,7 +354,11 @@ static func item_price(item: Dictionary) -> int:
 
 
 func _build_buy() -> void:
-	SlotList.paged(_content, _page, "buy", _stock(), _buy_offer, _refresh)
+	SlotList.paged(_content, _page, "buy", _supplies(), _buy_offer, _refresh)
+
+
+func _build_gear() -> void:
+	SlotList.paged(_content, _page, "gear", _gear(), _buy_offer, _refresh)
 
 
 # ── Scrolls ───────────────────────────────────────────────────────────────────
