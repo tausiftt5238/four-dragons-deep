@@ -27,6 +27,41 @@ const WARDEN_OFFSET: int = 3
 static func is_warden_floor(floor_num: int) -> bool:
 	return not is_boss_floor(floor_num) and floor_num % BOSS_EVERY == WARDEN_OFFSET
 
+
+# Which band of five this floor belongs to, 1 through 4 — the same tiers the
+# gear tables and the demon pools are cut on.
+static func tier_of(floor_num: int) -> int:
+	return clampi((floor_num - 1) / BOSS_EVERY + 1, 1, 4)
+
+
+# The line colour each tier draws its walls in. The dungeon is nothing but
+# edges, so this is the one thing that says how deep you are without a number:
+# tier one keeps the cyan the run has always opened on, and each band after it
+# steps somewhere else. Boss corridors ignore this and burn red at every depth
+# — that red means "boss", not "this far down", and the two must not blur.
+const TIER_WIRE: Array[Color] = [
+	Color(0.55, 0.88, 1.00),   # I   · cold cyan, clinical
+	Color(0.45, 0.92, 0.62),   # II  · something growing in it
+	Color(0.78, 0.56, 1.00),   # III · wrong
+	Color(1.00, 0.80, 0.40),   # IV  · lit from somewhere it should not be
+]
+
+
+static func tier_wire(floor_num: int) -> Color:
+	return TIER_WIRE[tier_of(floor_num) - 1]
+
+
+# The dimmer line the floor and ceiling grids are traced in, and the near-black
+# fill behind a wall face. Both follow the tier colour rather than being tuned
+# per band, so the three always belong to each other.
+static func tier_wire_floor(floor_num: int) -> Color:
+	return tier_wire(floor_num).darkened(0.38)
+
+
+static func tier_wire_fill(floor_num: int) -> Color:
+	var c: Color = tier_wire(floor_num)
+	return Color(c.r * 0.11, c.g * 0.11, c.b * 0.13)
+
 # 2D maze layout: 1 = wall, 0 = open floor.
 var maze: Array[Array] = []
 

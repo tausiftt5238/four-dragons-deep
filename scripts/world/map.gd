@@ -16,9 +16,9 @@ func _ready() -> void:
 func _setup_normal_floor(floor_num: int = 0) -> void:
 	maze = _generate_maze()
 
-	wire_color       = Color(0.55, 0.88, 1.00)
-	wire_floor_color = Color(0.32, 0.55, 0.70)
-	wire_fill_color  = Color(0.075, 0.085, 0.115)
+	wire_color       = Level.tier_wire(floor_num)
+	wire_floor_color = Level.tier_wire_floor(floor_num)
+	wire_fill_color  = Level.tier_wire_fill(floor_num)
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 2  # South
