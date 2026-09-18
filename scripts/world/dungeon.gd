@@ -352,6 +352,20 @@ func _add_orb(pos: Vector2i) -> void:
 # recess reads as part of the architecture and the thing inside it does not.
 const _CHEST_DEPTH: float = 0.55
 
+# Two frames side by side in one 96x48 image: closed on the left, lid tipped
+# back on the right. Which half is showing is the whole of the looted state —
+# an emptied cache is the same chest standing open, not a dimmer box.
+const _CHEST_TEX: Texture2D = preload("res://resources/mapAsset/TreasureChest.png")
+const _CHEST_FRAMES: float = 2.0
+
+# The drawn chest is only the middle 28 of its frame's 48 pixels and sits 8 up
+# from the bottom edge, so the quad has to be a good deal bigger than the chest
+# looks. These two are set together: the size makes the drawn chest fill the
+# niche the way the box it replaced did (0.77 of a 1.24 mouth), and the lift
+# then puts its feet on the shelf. Changing either alone floats it or buries it.
+const _CHEST_SIZE: float = 1.32
+const _CHEST_LIFT: float = 0.52
+
 
 func _add_chests(level: Level) -> void:
 	for wall: Variant in level.chest_cells.keys():
@@ -393,22 +407,11 @@ func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) ->
 	_add_box_child(root, out * ((half + back) * 0.5) + Vector3(0.0, 0.04, 0.0),
 			_axis_box(out, across, _CHEST_DEPTH, 0.08, mouth), line_mat)
 
-	# The cache itself: a squat solid, lit from within until it is emptied.
-	var glow: Color = wire.darkened(0.70) if looted else Color(1.0, 0.80, 0.32)
-	var body_mat: StandardMaterial3D = StandardMaterial3D.new()
-	body_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	body_mat.albedo_color = glow
-	if not looted:
-		body_mat.emission_enabled = true
-		body_mat.emission = glow
-		body_mat.emission_energy_multiplier = 2.6
-
-	var centre: Vector3 = out * ((half + back) * 0.5) + Vector3(0.0, 0.30, 0.0)
-	_add_box_child(root, centre,
-			_axis_box(out, across, _CHEST_DEPTH * 0.55, 0.30, mouth * 0.62), body_mat)
-	# A lid, offset so the box reads as a container rather than a crate.
-	_add_box_child(root, centre + Vector3(0.0, 0.20, 0.0),
-			_axis_box(out, across, _CHEST_DEPTH * 0.62, 0.08, mouth * 0.70), body_mat)
+	# The cache itself. The drawn chest is the ONLY thing in the recess, and a
+	# mimic is drawn with exactly this call — nothing here may ever branch on
+	# whether the cache is real, or the disguise is over before it starts.
+	var centre: Vector3 = out * ((half + back) * 0.5) + Vector3(0.0, _CHEST_LIFT, 0.0)
+	_add_chest_sprite(root, centre, out, looted, wire)
 
 	if looted:
 		return
@@ -419,6 +422,45 @@ func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) ->
 	light.omni_range   = 3.4
 	light.position     = centre
 	root.add_child(light)
+
+
+# The chest, as a flat quad standing in the niche and turned to face the one
+# cell it can be opened from. A quad rather than a billboard: a cache is set
+# into a wall and opens one way, so a sprite that swivelled to follow the
+# player would turn the recess inside out at any angle but head-on.
+func _add_chest_sprite(parent: Node3D, pos: Vector3, out: Vector3, looted: bool,
+		wire: Color) -> void:
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.shading_mode   = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_texture = _CHEST_TEX
+	# Pixel art: without this the chest is a smear at the range you first see it.
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	# Scissor, not blend — a blended quad has to be depth-sorted against the
+	# recess lining around it, and gets it wrong from inside the niche.
+	mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	mat.alpha_scissor_threshold = 0.5
+	mat.cull_mode      = BaseMaterial3D.CULL_DISABLED
+	# Window onto one of the two frames.
+	mat.uv1_scale  = Vector3(1.0 / _CHEST_FRAMES, 1.0, 1.0)
+	mat.uv1_offset = Vector3(1.0 / _CHEST_FRAMES if looted else 0.0, 0.0, 0.0)
+	if looted:
+		# Spent, so it stops competing for the eye: pulled down and toward the
+		# wall's own colour, the way the old emptied box was.
+		mat.albedo_color = wire.darkened(0.55)
+	else:
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.80, 0.32)
+		mat.emission_energy_multiplier = 0.55
+
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(_CHEST_SIZE, _CHEST_SIZE)
+	mi.mesh = quad
+	mi.material_override = mat
+	mi.position = pos
+	# A QuadMesh faces +Z; turn it to face the way the niche opens.
+	mi.rotation = Vector3(0.0, atan2(out.x, out.z), 0.0)
+	parent.add_child(mi)
 
 
 # Box extents for something aligned to an arbitrary cardinal facing: `depth`
