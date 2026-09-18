@@ -24,11 +24,30 @@ static func consumable(id: String, name: String, desc: String,
 # a cheap one would make stacking pointless for either side.
 static func scroll(id: String, name: String, spell_id: String,
 		spell_name: String, desc: String, floor: int, price: int = 0) -> Dictionary:
-	var d: Dictionary = {id=id, name=name, type="scroll", desc=desc,
+	var d: Dictionary = {id=id, name=name, type="scroll", desc=desc_for(spell_id, desc),
 			teaches=spell_id, spell_name=spell_name, floor=floor, qty=1}
 	if price > 0:
 		d["price"] = price
 	return d
+
+
+# What a scroll teaches, led by the element it teaches it in. A shelf of
+# forty-five scrolls named "Scroll of Ashfall" is unreadable without it: the
+# name says the rung and the reach but never says whether it is the fire one.
+# Read off Spell.DATA rather than typed per scroll, and written in the same
+# shape the magic tab uses, so a spell describes itself identically in the shop
+# and in the menu.
+static func desc_for(spell_id: String, desc: String) -> String:
+	var sd: Dictionary = Spell.get_data(spell_id)
+	if sd.is_empty():
+		return desc
+	var element: String = sd.get("element", "") as String
+	# Healing and ailment scrolls have no element; their type is the heading.
+	var head: String = Affinity.element_name(element) if element != "" \
+			else (sd.get("type", "") as String).capitalize()
+	if head == "":
+		return desc
+	return "%s %s  —  %s" % [head, Spell.reach_tag(spell_id), desc]
 
 
 static func elemental_throwable(id: String, name: String, desc: String,
@@ -84,31 +103,31 @@ static func panacea() -> Dictionary:
 
 static func scroll_cure() -> Dictionary:
 	return scroll("scroll_cure", "Scroll of Cure", "cure", "Cure",
-			"Teaches the Cure healing spell.", 1)
+			"Restores a chunk of HP.", 1)
 
 static func scroll_cura() -> Dictionary:
 	return scroll("scroll_cura", "Scroll of Cura", "cura", "Cura",
-			"Teaches the Cura healing spell.", 7)
+			"Restores a good deal more HP.", 7)
 
 static func scroll_curaga() -> Dictionary:
 	return scroll("scroll_curaga", "Scroll of Curaga", "curaga", "Curaga",
-			"Teaches the Curaga healing spell.", 13)
+			"Restores all of it.", 13)
 
 static func scroll_venom() -> Dictionary:
 	return scroll("scroll_venom", "Scroll of Venom", "venom", "Venom",
-			"Teaches the Venom ailment spell.", 2)
+			"Poisons one demon.", 2)
 
 static func scroll_shock() -> Dictionary:
 	return scroll("scroll_shock", "Scroll of Shock", "shock", "Shock",
-			"Teaches the Shock ailment spell.", 2)
+			"Paralyses one demon.", 2)
 
 static func scroll_mute() -> Dictionary:
 	return scroll("scroll_mute", "Scroll of Mute", "mute", "Mute",
-			"Teaches the Mute ailment spell.", 3)
+			"Silences one demon, so it cannot cast.", 3)
 
 static func scroll_bind() -> Dictionary:
 	return scroll("scroll_bind", "Scroll of Bind", "bind", "Bind",
-			"Teaches the Bind ailment spell.", 3)
+			"Holds one demon still.", 3)
 
 # One scroll per elemental spell, built straight off Spell.DATA so a scroll can
 # never name a spell that no longer exists. `floor` is only the price tier — the
@@ -191,35 +210,35 @@ static func elemental_scrolls() -> Array[Dictionary]:
 
 static func scroll_whet() -> Dictionary:
 	return scroll("scroll_whet", "Scroll of Whet", "whet", "Whet",
-			"Teaches Whet — raises the party's attack.", 2)
+			"Raises the party's attack.", 2)
 
 static func scroll_ward() -> Dictionary:
 	return scroll("scroll_ward", "Scroll of Ward", "ward", "Ward",
-			"Teaches Ward — raises the party's defence.", 2)
+			"Raises the party's defence.", 2)
 
 static func scroll_quicken() -> Dictionary:
 	return scroll("scroll_quicken", "Scroll of Quicken", "quicken", "Quicken",
-			"Teaches Quicken — raises the party's agility.", 3)
+			"Raises the party's agility.", 3)
 
 static func scroll_stoke() -> Dictionary:
 	return scroll("scroll_stoke", "Scroll of Stoke", "stoke", "Stoke",
-			"Teaches Stoke — raises the party's magic.", 3)
+			"Raises the party's magic.", 3)
 
 static func scroll_damp() -> Dictionary:
 	return scroll("scroll_damp", "Scroll of Damp", "damp", "Damp",
-			"Teaches Damp — lowers every enemy's magic.", 4)
+			"Lowers every enemy's magic.", 4)
 
 static func scroll_blunt() -> Dictionary:
 	return scroll("scroll_blunt", "Scroll of Blunt", "blunt", "Blunt",
-			"Teaches Blunt — lowers every enemy's attack.", 3)
+			"Lowers every enemy's attack.", 3)
 
 static func scroll_sunder() -> Dictionary:
 	return scroll("scroll_sunder", "Scroll of Sunder", "sunder", "Sunder",
-			"Teaches Sunder — lowers every enemy's defence.", 4)
+			"Lowers every enemy's defence.", 4)
 
 static func scroll_mire() -> Dictionary:
 	return scroll("scroll_mire", "Scroll of Mire", "mire", "Mire",
-			"Teaches Mire — lowers every enemy's agility.", 4)
+			"Lowers every enemy's agility.", 4)
 
 # The dear ones. Everything above raises or lowers a single stage; these two
 # take a whole side's worth back in one cast, which is the only real answer to a
@@ -228,12 +247,12 @@ const DISPEL_PRICE: int = 1000
 
 static func scroll_purge() -> Dictionary:
 	return scroll("scroll_purge", "Scroll of Purge", "purge", "Purge",
-			"Teaches Purge — strips the other side of everything it has raised.",
+			"Strips the other side of everything it has raised.",
 			8, DISPEL_PRICE)
 
 static func scroll_steady() -> Dictionary:
 	return scroll("scroll_steady", "Scroll of Steady", "steady", "Steady",
-			"Teaches Steady — clears every penalty stacked on your own side.",
+			"Clears every penalty stacked on your own side.",
 			8, DISPEL_PRICE)
 
 

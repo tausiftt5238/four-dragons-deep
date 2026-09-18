@@ -373,11 +373,17 @@ func _build_gear() -> void:
 # there are forty-five of them and six fit on a page.
 func _build_scrolls() -> void:
 	# A scroll you have already read teaches nothing, so the shelf drops it
-	# rather than selling the same spell twice.
+	# rather than selling the same spell twice — and so does one already in the
+	# pack, because buying a scroll and reading it are two steps and between
+	# them the shelf was still offering the copy you had just paid for.
 	var stock: Array[Dictionary] = []
 	for scroll: Dictionary in Item.scrolls_for_floor(floor_num):
-		if scroll.get("teaches", "") not in player.known_spells:
-			stock.append(scroll)
+		var teaches: String = scroll.get("teaches", "") as String
+		if teaches in player.known_spells:
+			continue
+		if player.has_item(scroll.get("id", "") as String):
+			continue
+		stock.append(scroll)
 	if stock.is_empty():
 		SlotList.new(_content).add_note("Nothing here you have not already been taught.")
 		return
@@ -390,10 +396,29 @@ func _buy_offer(list: SlotList, item: Variant) -> void:
 	# What it would change, above its own description: a shop that only names a
 	# piece leaves the player no way to tell whether it is an upgrade at all.
 	var deltas: String = GearTooltip.delta_markup(entry, player)
-	var detail: String = entry.get("desc", "") as String
+
+	# What you already have of it. Without this the only way to answer "do I own
+	# this dagger, and how many potions am I carrying?" was to leave the orb and
+	# open the menu, which is the one thing a shop should never make you do.
+	# Worn pieces count — see PlayerCharacter.owns.
+	var item_id: String = entry.get("id", "") as String
+	var held: String = _owned_tag(entry, item_id, player.item_qty(item_id))
+	var title_color: Color = Color(0.62, 0.92, 0.74) if held != "" \
+			else Color(0.85, 0.85, 0.92)
+
+	# Shares the line the stat deltas are on rather than taking one of its own:
+	# a slot is a fixed height and the description is already the second line,
+	# so a third would simply push it out of the row.
+	var lead: Array[String] = []
+	if held != "":
+		lead.append("[color=#9ee8b8]%s[/color]" % held)
 	if deltas != "":
-		detail = "%s\n%s" % [deltas, detail]
-	list.add(entry["name"] as String, Color(0.85, 0.85, 0.92),
+		lead.append(deltas)
+	var detail: String = entry.get("desc", "") as String
+	if not lead.is_empty():
+		detail = "%s\n%s" % ["  ·  ".join(lead), detail]
+
+	list.add(entry["name"] as String, title_color,
 			detail,
 			"%d g" % price, Color(1.0, 0.85, 0.35),
 			"Buy", player.gold < price,
@@ -420,6 +445,23 @@ func _build_save() -> void:
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(func() -> void: save_requested.emit())
 	_content.add_child(btn)
+
+
+# The one-line "you have this" marker on a shop row. Says the useful thing for
+# each kind: a stack of potions is a count, a worn piece is where it is worn,
+# and a spare piece in the pack is neither.
+func _owned_tag(entry: Dictionary, item_id: String, carried: int) -> String:
+	if player.equipped_weapon.get("id", "") == item_id:
+		return "Wielding one."
+	if player.equipped_armor.get("id", "") == item_id:
+		return "Wearing one."
+	if player.is_accessory_equipped(item_id):
+		return "Worn."
+	if carried <= 0:
+		return ""
+	if entry.get("type", "") == "consumable":
+		return "Carrying %d." % carried
+	return "In the pack."
 
 
 func _note(text: String) -> Label:

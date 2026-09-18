@@ -73,17 +73,36 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 	var about: String = spell.get("desc", "") as String
 	if element != "":
 		about = "%s %s  —  %s" % [kind, Spell.reach_tag(spell_id), about]
-	list.add("%s%s" % ["* " if equipped else "", spell["name"]],
+	var cost: int = int(spell["mp"])
+	var actions: Array[Dictionary] = [{
+		text = "Drop" if equipped else "Equip",
+		disabled = not equipped and not p.has_free_slot(),
+		press = func() -> void:
+			if equipped:
+				p.unequip_spell(spell_id)
+				_m._set_status("Unequipped %s." % spell["name"])
+			elif p.equip_spell(spell_id):
+				_m._set_status("Equipped %s." % spell["name"])
+			else:
+				_m._set_status("All %d slots are full." % PlayerCharacter.SPELL_SLOTS)
+			_m._refresh()}]
+
+	# Healing is castable out here. Only healing: everything else in the grid
+	# needs something to aim at, and an orb is the only other way to get HP back
+	# — which made a known Cure useless between fights and cost gold to work
+	# around. It does not need to be equipped to be cast here; the slots are
+	# about what a battle offers, and this is not a battle.
+	if spell.get("type", "") == "heal":
+		actions.append({
+			text = "Cast",
+			disabled = p.mp < cost or p.hp >= p.max_hp,
+			press = func() -> void:
+				var before: int = p.hp
+				p.mp -= cost
+				p.heal(p.heal_amount_for(spell_id))
+				_m._set_status("Cast %s. Restored %d HP." % [spell["name"], p.hp - before])
+				_m._refresh()})
+
+	list.add_entry("%s%s" % ["* " if equipped else "", spell["name"]],
 			title_color, about,
-			"%d MP" % int(spell["mp"]), Color(0.4, 0.55, 0.95),
-			"Drop" if equipped else "Equip",
-			not equipped and not p.has_free_slot(),
-			func() -> void:
-				if equipped:
-					p.unequip_spell(spell_id)
-					_m._set_status("Unequipped %s." % spell["name"])
-				elif p.equip_spell(spell_id):
-					_m._set_status("Equipped %s." % spell["name"])
-				else:
-					_m._set_status("All %d slots are full." % PlayerCharacter.SPELL_SLOTS)
-				_m._refresh())
+			"%d MP" % cost, Color(0.4, 0.55, 0.95), actions)

@@ -5,7 +5,6 @@
 class_name Dungeon extends Node3D
 
 const CELL_SIZE: float = 2.0
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
 
 # Height of wall blocks.
 const WALL_HEIGHT: float = 2.0
@@ -264,30 +263,9 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	light.position     = out * (-half + tread) + Vector3(0.0, rise + 0.30, 0.0)
 	root.add_child(light)
 
-	# The sign hangs over the mouth of the stairwell. Lower than it sat on the old
-	# panel: at 0.95 it now runs into the shaft's ceiling slab.
-	var px: float = wall_pos.x * CELL_SIZE + dir.x * (CELL_SIZE * 0.5 + 0.05)
-	var pz: float = wall_pos.y * CELL_SIZE + dir.y * (CELL_SIZE * 0.5 + 0.05)
-	_add_wall_label("NEXT FLOOR", Vector3(px, WALL_HEIGHT * 0.88, pz), dir, Color(0.20, 1.0, 0.70))
+	# No sign. A flight of steps climbing out of the corridor already says what
+	# it is, and the label was left over from when this was a panel that did not.
 
-
-
-
-func _add_wall_label(text: String, pos: Vector3, dir: Vector2i, color: Color) -> void:
-	var lbl: Label3D = Label3D.new()
-	lbl.text             = text
-	lbl.font             = _FONT
-	lbl.uppercase        = true
-	lbl.font_size        = 28
-	lbl.pixel_size       = 0.008
-	lbl.modulate         = color
-	lbl.outline_size     = 6
-	lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
-	lbl.position         = pos
-	# Label3D default normal is -Z; rotate so it faces the entry side (toward player).
-	lbl.rotation.y       = atan2(-float(dir.x), -float(dir.y))
-	lbl.scale.x          = -1.0
-	add_child(lbl)
 
 
 
@@ -407,6 +385,7 @@ const _CHEST_DEPTH: float = 0.55
 # back on the right. Which half is showing is the whole of the looted state —
 # an emptied cache is the same chest standing open, not a dimmer box.
 const _CHEST_TEX: Texture2D = preload("res://resources/mapAsset/TreasureChest.png")
+const _CHEST_SHADER := preload("res://resources/shaders/chest_banner.gdshader")
 const _CHEST_FRAMES: float = 2.0
 
 # The drawn chest is only the middle 28 of its frame's 48 pixels and sits 8 up
@@ -416,6 +395,23 @@ const _CHEST_FRAMES: float = 2.0
 # then puts its feet on the shelf. Changing either alone floats it or buries it.
 const _CHEST_SIZE: float = 1.32
 const _CHEST_LIFT: float = 0.52
+
+# How hard the chest is worked into the niche it stands in — see the shader's
+# own notes. These are the four to move if it starts looking pasted in again,
+# and zeroing all four gives back the plain lit sprite.
+const _CHEST_BEVEL: float   = 1.2
+const _CHEST_TINT: float    = 0.45
+# Small on purpose. Specular on a flat quad is one flat highlight; this is only
+# here to keep the bands from being as matte as the recess around them.
+const _CHEST_SHEEN: float   = 0.20
+const _CHEST_CONTACT: float = 0.7
+const _CHEST_GLOW: float    = 1.15
+# How far in front of the chest its light hangs. Not optional now the sprite is
+# lit rather than unshaded: a light sitting exactly on the quad reaches every
+# point of it from a direction lying in the quad's own plane, so N·L is about
+# zero and the chest takes almost no diffuse from the one lamp that is there for
+# it. Standing the lamp off towards the corridor is what lights the face.
+const _CHEST_LIGHT_STANDOFF: float = 0.22
 
 
 func _add_chests(level: Level) -> void:
@@ -464,14 +460,17 @@ func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) ->
 	var centre: Vector3 = out * ((half + back) * 0.5) + Vector3(0.0, _CHEST_LIFT, 0.0)
 	_add_chest_sprite(root, centre, out, looted, wire)
 
-	if looted:
-		return
-
+	# Both states carry a light now, because the chest is lit geometry rather
+	# than an unshaded decal: ambient down here is 0.12, so an emptied cache with
+	# nothing on it would be a black smear in a lined hole instead of somewhere
+	# you can see you have already been. The spent one is dim and colourless —
+	# what it must not do is still look worth crossing a floor for.
 	var light: OmniLight3D = OmniLight3D.new()
-	light.light_color  = Color(1.0, 0.82, 0.40)
-	light.light_energy = 1.6
-	light.omni_range   = 3.4
-	light.position     = centre
+	light.light_color  = wire.lerp(Color(0.75, 0.78, 0.85), 0.5) if looted \
+			else Color(1.0, 0.82, 0.40)
+	light.light_energy = 0.5 if looted else 1.6
+	light.omni_range   = 2.0 if looted else 3.4
+	light.position     = centre + out * _CHEST_LIGHT_STANDOFF
 	root.add_child(light)
 
 
@@ -481,27 +480,21 @@ func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) ->
 # player would turn the recess inside out at any angle but head-on.
 func _add_chest_sprite(parent: Node3D, pos: Vector3, out: Vector3, looted: bool,
 		wire: Color) -> void:
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.shading_mode   = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_texture = _CHEST_TEX
-	# Pixel art: without this the chest is a smear at the range you first see it.
-	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	# Scissor, not blend — a blended quad has to be depth-sorted against the
-	# recess lining around it, and gets it wrong from inside the niche.
-	mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-	mat.alpha_scissor_threshold = 0.5
-	mat.cull_mode      = BaseMaterial3D.CULL_DISABLED
-	# Window onto one of the two frames.
-	mat.uv1_scale  = Vector3(1.0 / _CHEST_FRAMES, 1.0, 1.0)
-	mat.uv1_offset = Vector3(1.0 / _CHEST_FRAMES if looted else 0.0, 0.0, 0.0)
-	if looted:
-		# Spent, so it stops competing for the eye: pulled down and toward the
-		# wall's own colour, the way the old emptied box was.
-		mat.albedo_color = wire.darkened(0.55)
-	else:
-		mat.emission_enabled = true
-		mat.emission = Color(1.0, 0.80, 0.32)
-		mat.emission_energy_multiplier = 0.55
+	var mat: ShaderMaterial = ShaderMaterial.new()
+	mat.shader = _CHEST_SHADER
+	mat.set_shader_parameter("tex", _CHEST_TEX)
+	mat.set_shader_parameter("frames", _CHEST_FRAMES)
+	mat.set_shader_parameter("frame", 1.0 if looted else 0.0)
+	# What stops it sitting in front of the room rather than in it. The tint is
+	# the band's own wire colour, so the chest is recoloured by depth along with
+	# every wall around it; the rest gives a flat quad a surface.
+	mat.set_shader_parameter("bevel", _CHEST_BEVEL)
+	mat.set_shader_parameter("tint", wire)
+	mat.set_shader_parameter("tint_amount", _CHEST_TINT)
+	mat.set_shader_parameter("sheen", _CHEST_SHEEN)
+	mat.set_shader_parameter("contact", _CHEST_CONTACT)
+	# Only a full one is lit from the inside.
+	mat.set_shader_parameter("glow", 0.0 if looted else _CHEST_GLOW)
 
 	var mi: MeshInstance3D = MeshInstance3D.new()
 	var quad: QuadMesh = QuadMesh.new()

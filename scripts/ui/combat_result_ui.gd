@@ -68,8 +68,13 @@ func _build_ui() -> void:
 		_add_row(vbox, "Found", "Nothing", Color(0.38, 0.38, 0.38))
 
 	# One row however many climbed, so the panel never has to grow.
-	if not demons_leveled.is_empty():
-		_add_row(vbox, "Grew", ", ".join(demons_leveled), Color(0.80, 0.62, 1.00))
+	# One demon per line. Joined with commas this was a single run-on row —
+	# "Bat Lv 5 STR+4 AGL+2 learns Blaze, Skeleton Lv 7 DEF+3" — where the commas
+	# inside a demon's own gains and the commas between demons looked the same.
+	# Only the first line carries the label; the rest sit under it.
+	for i: int in demons_leveled.size():
+		_add_row(vbox, "Grew" if i == 0 else "", demons_leveled[i],
+				Color(0.80, 0.62, 1.00))
 
 	vbox.add_child(HSeparator.new())
 
@@ -87,7 +92,9 @@ func _add_row(parent: Control, label: String, value: String, color: Color) -> vo
 	parent.add_child(row)
 
 	var lbl: Label = Label.new()
-	lbl.text = label + ":"
+	# An empty label still holds the column open, so a continuation line indents
+	# to exactly where the first one's value started.
+	lbl.text = label + ":" if label != "" else ""
 	lbl.custom_minimum_size = Vector2(56, 0)
 	lbl.add_theme_color_override("font_color", Color(0.68, 0.68, 0.68))
 	row.add_child(lbl)

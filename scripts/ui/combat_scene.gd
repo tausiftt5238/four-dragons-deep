@@ -2527,11 +2527,8 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		return _cast_banish(bd)
 
 	if spell_type == "heal":
-		var heal_amt: int = data.get("heal", 30)
 		var before: int = player.hp
-		var bonus: int = int(float(player.effective_mag())
-				* player.stage_mult(CharacterSheet.STAT_MAG))
-		player.heal(max(1, heal_amt + bonus))
+		player.heal(player.heal_amount_for(spell_id))
 		return {msg = "[color=lime]You cast %s! Restored %d HP.[/color]" % [
 				data["name"], player.hp - before], cost = PressTurn.COST_FULL}
 

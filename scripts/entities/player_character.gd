@@ -569,6 +569,42 @@ func add_item(item: Dictionary, count: int = 1) -> void:
 		equip_item(item["id"] as String)
 
 
+# What a healing spell would restore right now. Lives here rather than in the
+# battle scene because the menu casts the same spells out of combat and the two
+# must not drift into healing different amounts for the same MP.
+func heal_amount_for(spell_id: String) -> int:
+	var data: Dictionary = Spell.get_data(spell_id)
+	var base: int = int(data.get("heal", 30))
+	var bonus: int = int(float(effective_mag()) * stage_mult(CharacterSheet.STAT_MAG))
+	return maxi(1, base + bonus)
+
+
+# How many of an item are sitting in the pack.
+func item_qty(item_id: String) -> int:
+	for it: Dictionary in inventory:
+		if it.get("id", "") == item_id:
+			return int(it.get("qty", 1))
+	return 0
+
+
+func has_item(item_id: String) -> bool:
+	return item_qty(item_id) > 0
+
+
+# Whether the run has this thing at all, worn pieces included. Equipping takes
+# an item OUT of `inventory` — so a shop that asked the pack alone would say you
+# do not own the sword you are holding, which is the one case it most needs to
+# get right.
+func owns(item_id: String) -> bool:
+	if equipped_weapon.get("id", "") == item_id:
+		return true
+	if equipped_armor.get("id", "") == item_id:
+		return true
+	if is_accessory_equipped(item_id):
+		return true
+	return has_item(item_id)
+
+
 func remove_item(item: Dictionary, count: int = 1) -> void:
 	if item.get("qty", 1) > count:
 		item["qty"] -= count
