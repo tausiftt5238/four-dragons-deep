@@ -361,7 +361,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		weakness = "thunder", nulls = ["ice"], reflect_element = "fire", phys = "resist", light = "resist",
 		attack_elements = ["thunder", "light"], reach = "few", status_attack = "immobilize", ail = 8,
 		negotiable = false, talk_difficulty = 0,
-		sprite = "", needs_art = true,
+		sprite = "res://resources/enemySprites/Gargoyle.png",
 		art_note = "A squat stone thing perched on the lintel with its knees up under its chin and "
 				+ "its wings folded flat down its back. It is the same grey as the wall and it has "
 				+ "been part of it for a long time. The only thing that moves first is the head.",
@@ -373,37 +373,42 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "drain",
 		attack_elements = ["ice", "dark"], reach = "all", status_attack = "silence", ail = 10, support = "mire",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "", needs_art = true,
+		sprite = "res://resources/enemySprites/BarrowWight.png",
 		art_note = "A dry, sunken figure in the rags of something that was once well made, wearing "
 				+ "far more rings than it has fingers left. It does not guard the door so much as "
 				+ "guard what it is holding, and the key is simply one of the things it holds.",
 		design_note = "Undead, so it follows the same chart as the Skeleton line: light takes it and "
 				+ "dark slides off. It has the key because a wight hoards, not because it was posted."},
 
-	{name = "Chained Hound",   icons = WARDEN_ICONS,
-		str =  9, def =  4, mag =  6, agl =  7,
-		weakness = "ice", absorb_element = "fire", phys = "weak",
-		attack_element = "fire", reach = "few", status_attack = "paralyzed", ail = 14,
+	{name = "Bone Sorcerer",   icons = WARDEN_ICONS,
+		str =  4, def =  7, mag = 11, agl =  4,
+		weakness = "ice", nulls = ["thunder"], reflect_element = "fire", light = "weak", dark = "drain",
+		attack_elements = ["fire", "dark", "ice"], reach = "all", caster = true,
+		status_attack = "silence", ail = 20, support = "purge",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "", needs_art = true,
-		art_note = "Lean, long-legged and already at the end of its chain when you come round the "
-				+ "corner. The collar is iron and far newer than the animal. There is a worn arc "
-				+ "scraped into the floor showing exactly how far it reaches, and the door is just "
-				+ "outside it.",
-		design_note = "Fast and fragile: it hits hard and often but a blade finds it easily. The "
-				+ "chain is why a warden does not roam — the one warden with a reason to."},
+		sprite = "res://resources/enemySprites/BoneSorcerer.png",
+		art_note = "A robed skeleton holding the door rather than standing at it, the staff planted "
+				+ "and the free hand already half through a gesture it does not need to finish.",
+		design_note = "Was the tier-two boss until the dragons took the corridors. Kept its whole "
+				+ "chart and its three lines, lost the fourth icon and the fixed level: as a warden "
+				+ "it is still the fight that punishes a party with no answer to a room-wide cast. "
+				+ "Light opens it — it is bones, and bones follow the Skeleton line."},
 
-	{name = "Basilisk",        icons = WARDEN_ICONS,
-		str =  7, def =  6, mag =  8, agl =  2,
-		weakness = "thunder", nulls = ["fire"], reflect_element = "ice", phys = "resist", dark = "resist",
-		attack_elements = ["ice", "light"], reach = "all", status_attack = "immobilize", ail = 18, support = "ward",
+	{name = "Shadow Knight",   icons = WARDEN_ICONS,
+		str = 10, def =  9, mag =  7, agl =  5,
+		weakness = "thunder", nulls = ["fire"], absorb_element = "ice", phys = "resist",
+		light = "weak", dark = "drain",
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 20,
+		support = "ward",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "", needs_art = true,
-		art_note = "A heavy crested lizard coiled across the whole width of the passage, in no hurry "
-				+ "at all. Its eyes are the only part of it that is not dull. Around it, at the edges "
-				+ "of the floor, are several things that used to be standing up.",
-		design_note = "It never has to move, so it is slow and well armoured and leans on immobilising "
-				+ "you. The highest ailment chance of any warden."},
+		sprite = "res://resources/enemySprites/ShadowKnight.png",
+		art_note = "Full plate with nothing inside it, black enough that the edges are guesswork. It "
+				+ "has been standing in front of this door long enough that the floor in front of it "
+				+ "is worn and the floor behind it is not.",
+		design_note = "The deepest warden, on floor 19 — the last thing between the player and the "
+				+ "Void Dragon. It was the tier-one boss and it hit hard for floor five; at nineteen "
+				+ "the same shape reads as a wall rather than a milestone. Light is the crack in it: "
+				+ "as a boss it nulled light and dark both, and a warden is not allowed to."},
 
 ]
 
@@ -421,7 +426,7 @@ const MIMIC_TEMPLATES: Array[Dictionary] = [
 		weakness = "fire", dark = "drain", reflect_element = "thunder", phys = "resist", light = "weak",
 		attack_elements = ["thunder", "dark"], reach = "few", status_attack = "poison", ail = 12,
 		negotiable = false, talk_difficulty = 0,
-		sprite = "", needs_art = true,
+		sprite = "res://resources/enemySprites/Mimic.png",
 		art_note = "A cache set into the wall, lit from inside exactly like the real ones, sitting a "
 				+ "little further forward than a recess should allow. When it opens, the opening keeps "
 				+ "going: the lid is the upper jaw and the shelf it was resting on is the lower one.",
@@ -435,6 +440,9 @@ const MIMIC_FROM_FLOOR: int = 6
 
 static func make_mimic(floor_num: int) -> Enemy:
 	var e: Enemy = _build(MIMIC_TEMPLATES[0], floor_num)
+	# Its own colours: the whole trick is that it looks like the chest it is
+	# imitating, and a depth tint would be the one thing giving it away.
+	e.tint = Color.WHITE
 	# Priced like a warden: it is an ambush with two icons, and being wrong
 	# about a chest should be worth something when you win.
 	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
@@ -445,37 +453,75 @@ static func make_mimic(floor_num: int) -> Enemy:
 	return e
 
 
+# Four dragons, one at the bottom of each band. A boss is no longer a different
+# kind of thing every five floors — it is the same kind of thing four times, and
+# what changes is which element it is made of. That is what makes the wall colour
+# worth reading: a band is a dragon's colour long before you meet the dragon.
+#
+# The elements chain. Each dragon is weak to the element the one before it was
+# made of, so the reward for the last boss is the key to the next one — you walk
+# out of the ice corridor holding ice, and ice is what the Thunder Dragon cannot
+# stand. The Void Dragon closes the ring back onto ice because there is no fifth
+# element to hand out, and by floor 20 finding the ice again is the point.
+#
+# All four null light and dark: a dragon is not a thing the banishing lines can
+# talk out of the room, and a run that ended on a lucky Hama would end a lot of
+# runs. Four icons each — see BOSS_ICONS.
 const BOSS_TEMPLATES: Array[Dictionary] = [
-	{name = "Shadow Knight",    lv = 12, icons = BOSS_ICONS,
-		str = 12, def =  8, mag =  8, agl =  3,
+	{name = "Ice Dragon",       lv = 12, icons = BOSS_ICONS,
+		str = 12, def =  9, mag = 10, agl =  4,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
-		weakness = "thunder", nulls = ["fire"], absorb_element = "ice", light = "null", dark = "null",
-		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 25, support = "ward",
+		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "null", dark = "null",
+		attack_elements = ["ice"], reach = "few", status_attack = "immobilize", ail = 25,
+		support = "ward",
 		negotiable = false, talk_difficulty = 0,
-		sprite = ""},
-	{name = "Bone Sorcerer",    lv = 14, icons = BOSS_ICONS,
-		str =  5, def =  6, mag = 14, agl =  4,
+		sprite = "res://resources/enemySprites/IceDragon.png",
+		design_note = "The first dragon and the only one the player is armed for on arrival: the run "
+				+ "opens holding Ember and this thing drinks its own element and burns on the other. "
+				+ "One element and a narrow reach, so the fight teaches what a dragon is before the "
+				+ "next one starts asking questions about it."},
+
+	{name = "Thunder Dragon",   lv = 14, icons = BOSS_ICONS,
+		str = 13, def =  9, mag = 13, agl = 10,
 		exp = 280, gold = 110, tier = 4, rank = 0, min_floor = 10, max_floor = -1,
-		weakness = "ice", nulls = ["thunder"], reflect_element = "fire", light = "null", dark = "drain",
-		attack_elements = ["fire", "dark", "ice"], reach = "all", caster = true,
+		weakness = "ice", nulls = ["fire"], absorb_element = "thunder", light = "null", dark = "null",
+		attack_elements = ["thunder"], reach = "all", status_attack = "paralyzed", ail = 25,
+		support = "steady",
+		negotiable = false, talk_difficulty = 0,
+		sprite = "res://resources/enemySprites/ThunderDragon.png",
+		design_note = "Fast — the only boss that outruns a party — and it hits the whole room every "
+				+ "turn it can pay for. Paralysis on a room-wide cast is the threat: it is trying to "
+				+ "take your turns, not your HP. Ice is the answer and the ice corridor is where you "
+				+ "got it."},
+
+	{name = "Fire Dragon",      lv = 16, icons = BOSS_ICONS,
+		str = 16, def = 11, mag = 13, agl =  6,
+		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
+		weakness = "thunder", nulls = ["ice"], absorb_element = "fire", phys = "resist",
+		light = "null", dark = "null",
+		attack_elements = ["fire"], reach = "all", status_attack = "poison", ail = 25,
+		support = "ward",
+		negotiable = false, talk_difficulty = 0,
+		sprite = "res://resources/enemySprites/FireDragon.png",
+		design_note = "The hardest hitter and the one that punishes the opening loadout: Ember has "
+				+ "carried the player fifteen floors and here it feeds the thing. Scales turn a blade "
+				+ "as well, so the party that has leaned on swinging has to have found a second line "
+				+ "by now."},
+
+	{name = "Void Dragon",      lv = 18, icons = BOSS_ICONS,
+		str = 15, def = 12, mag = 15, agl =  7,
+		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
+		weakness = "ice", nulls = ["fire", "thunder"], phys = "resist",
+		light = "null", dark = "drain",
+		attack_elements = ["dark", "fire", "thunder"], reach = "all",
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
-		sprite = ""},
-	{name = "Iron Titan",       lv = 16, icons = BOSS_ICONS,
-		str = 16, def = 12, mag =  8, agl =  1,
-		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
-		weakness = "thunder", nulls = ["fire"], phys = "resist", absorb_element = "ice", light = "null", dark = "null",
-		attack_elements = ["thunder", "ice"], status_attack = "paralyzed", ail = 25, support = "ward",
-		negotiable = false, talk_difficulty = 0,
-		sprite = ""},
-	{name = "Void Drake",       lv = 18, icons = BOSS_ICONS,
-		str = 14, def = 10, mag = 12, agl =  5,
-		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
-		weakness = "ice", reflect_element = "fire", absorb_element = "thunder", light = "null", dark = "null",
-		attack_elements = ["thunder", "dark", "fire"], reach = "all",
-		status_attack = "", ail = 25, support = "purge",
-		negotiable = false, talk_difficulty = 0,
-		sprite = ""},
+		sprite = "res://resources/enemySprites/VoidDragon.png",
+		design_note = "The last fight. It answers to exactly one element out of six and shrugs at a "
+				+ "blade, casts three lines room-wide, drinks the dark and purges anything put on it. "
+				+ "Silence is the real danger — it can close the one door it is vulnerable through, "
+				+ "which is why the corridor has an orb at the mouth and the player should arrive "
+				+ "with more than one way to say ice."},
 ]
 
 
@@ -621,8 +667,12 @@ static func make_warden(floor_num: int) -> Enemy:
 	var idx: int = clampi(tier_for_floor(floor_num) - 1,
 			0, WARDEN_TEMPLATES.size() - 1)
 	var e: Enemy = _build(WARDEN_TEMPLATES[idx], floor_num)
+	# Its own colours, like a boss. The depth tint exists so the same sprite read
+	# twice in one tier is visibly deeper the second time; a warden is met once in
+	# the whole run, so the tint has nothing to say and only fights the art.
+	e.tint = Color.WHITE
 	# A warden is the floor's locked door: a step above its neighbours, a step
-	# below the boss waiting five floors down.
+	# below the boss waiting one floor down.
 	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
 	e.exp_reward = exp_for_level(e.lv) * 2
 	e.gold_reward = e.lv * 6

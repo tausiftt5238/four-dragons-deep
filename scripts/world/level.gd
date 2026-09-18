@@ -17,11 +17,15 @@ static func is_boss_floor(floor_num: int) -> bool:
 	return floor_num % BOSS_EVERY == 0
 
 
-# A warden stands in the middle of its band and nowhere else — floors 3, 8, 13
-# and 18, one for each of the four of them. Every other maze floor leaves its
-# key lying somewhere instead, so finding the way down is sometimes a fight and
-# sometimes a search rather than the same errand sixteen times.
-const WARDEN_OFFSET: int = 3
+# A warden stands on the last maze floor of its band and nowhere else — floors
+# 4, 9, 14 and 19, one for each of the four of them. Every other maze floor
+# leaves its key lying somewhere instead, so finding the way down is sometimes a
+# fight and sometimes a search rather than the same errand sixteen times.
+#
+# The warden sits directly before the stairs down into the boss corridor, so the
+# last two things in a band are its two hardest fights back to back, with the
+# orb at the mouth of the corridor as the only breath between them.
+const WARDEN_OFFSET: int = 4
 
 
 static func is_warden_floor(floor_num: int) -> bool:
@@ -35,20 +39,33 @@ static func tier_of(floor_num: int) -> int:
 
 
 # The line colour each tier draws its walls in. The dungeon is nothing but
-# edges, so this is the one thing that says how deep you are without a number:
-# tier one keeps the cyan the run has always opened on, and each band after it
-# steps somewhere else. Boss corridors ignore this and burn red at every depth
-# — that red means "boss", not "this far down", and the two must not blur.
+# edges, so this is the one thing that says how deep you are without a number —
+# and what it says is whose band you are in. Each colour is read off the dragon
+# waiting at the bottom of it, so the walls have been telling you what you are
+# walking toward since the first step of the band.
+#
+# Tier one stays the cyan the run has always opened on because the Ice Dragon
+# was already that colour: the player starts holding fire, so the first dragon
+# is the one fire answers.
 const TIER_WIRE: Array[Color] = [
-	Color(0.55, 0.88, 1.00),   # I   · cold cyan, clinical
-	Color(0.45, 0.92, 0.62),   # II  · something growing in it
-	Color(0.78, 0.56, 1.00),   # III · wrong
-	Color(1.00, 0.80, 0.40),   # IV  · lit from somewhere it should not be
+	Color(0.55, 0.88, 1.00),   # I   · Ice Dragon      · cold cyan, clinical
+	Color(1.00, 0.88, 0.31),   # II  · Thunder Dragon  · too bright to look at
+	Color(1.00, 0.45, 0.24),   # III · Fire Dragon     · banked, not yet lit
+	Color(0.66, 0.58, 0.82),   # IV  · Void Dragon     · the colour draining out
 ]
 
 
 static func tier_wire(floor_num: int) -> Color:
 	return TIER_WIRE[tier_of(floor_num) - 1]
+
+
+# The boss corridor burns its band's own colour rather than a flat red: the
+# dragon is the reason the whole band was that colour, so the corridor is where
+# it finally goes up. Brightened and pushed away from grey so the corridor still
+# reads as somewhere else the moment you step into it.
+static func boss_wire(floor_num: int) -> Color:
+	var c: Color = tier_wire(floor_num)
+	return Color.from_hsv(c.h, minf(1.0, c.s * 1.35 + 0.12), 1.0)
 
 
 # The dimmer line the floor and ceiling grids are traced in, and the near-black
@@ -61,6 +78,17 @@ static func tier_wire_floor(floor_num: int) -> Color:
 static func tier_wire_fill(floor_num: int) -> Color:
 	var c: Color = tier_wire(floor_num)
 	return Color(c.r * 0.11, c.g * 0.11, c.b * 0.13)
+
+
+static func boss_wire_floor(floor_num: int) -> Color:
+	return boss_wire(floor_num).darkened(0.42)
+
+
+# Hotter than a maze fill at the same colour, so the corridor is lit from within
+# rather than merely tinted — the one place the band's colour is a light source.
+static func boss_wire_fill(floor_num: int) -> Color:
+	var c: Color = boss_wire(floor_num)
+	return Color(c.r * 0.13, c.g * 0.11, c.b * 0.13)
 
 # 2D maze layout: 1 = wall, 0 = open floor.
 var maze: Array[Array] = []

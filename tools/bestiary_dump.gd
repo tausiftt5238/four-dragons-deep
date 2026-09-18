@@ -1,6 +1,9 @@
 extends SceneTree
 
-const OUT := "/tmp/claude-1000/-home-ttausif-game-project-first-person-dungeon-crawler/30c2fcae-cc3a-4bc2-bd80-fd3c4418a61c/scratchpad/bestiary.json"
+# Inside .godot/, which is gitignored and outlives a session. This used to be an
+# absolute path into one session's scratchpad; scratchpads are wiped between
+# sessions, so the tool broke the moment the session that wrote it ended.
+const OUT := "res://.godot/bestiary.json"
 
 
 func _row(t: Dictionary, lo: Enemy, hi: Enemy) -> Dictionary:

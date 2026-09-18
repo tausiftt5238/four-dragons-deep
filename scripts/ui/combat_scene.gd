@@ -1690,37 +1690,6 @@ func _build_party_area(parent: Control) -> void:
 
 
 
-# A coat-and-hat silhouette standing in until the detective has real art. Drawn
-# rather than loaded because the engine icon at portrait size reads as a bug.
-# Flat shapes only — a shading trick here turned the whole figure into a cross.
-static func _hero_placeholder() -> ImageTexture:
-	const W: int = 48
-	const H: int = 64
-	var img: Image = Image.create(W, H, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var coat: Color = Color(0.28, 0.33, 0.47, 1.0)
-	var skin: Color = Color(0.52, 0.57, 0.72, 1.0)
-
-	for y: int in range(H):
-		for x: int in range(W):
-			var col: Color = Color(0, 0, 0, 0)
-			if y >= 5 and y < 15 and x >= 17 and x < 31:
-				col = coat                                   # crown
-			elif y >= 15 and y < 19 and x >= 7 and x < 41:
-				col = coat                                   # brim
-			elif y >= 19 and y < 31 and Vector2(x - 24, y - 25).length() < 6.2:
-				col = skin                                   # face under the brim
-			elif y >= 31 and y < 35 and x >= 22 and x < 27:
-				col = coat                                   # collar
-			elif y >= 35:
-				var t: float = float(y - 35) / float(H - 35)
-				if absf(x - 24.0) < lerpf(9.0, 18.0, t):
-					col = coat                               # coat, flaring out
-			if col.a > 0.0:
-				img.set_pixel(x, y, col)
-	return ImageTexture.create_from_image(img)
-
-
 func _member_portrait(member: CharacterSheet) -> TextureRect:
 	for slot: Dictionary in _party_slots:
 		if slot["member"] == member:
@@ -2202,8 +2171,9 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	icon.size_flags_horizontal = Control.SIZE_FILL
 	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	if is_hero:
-		icon.texture     = _hero_placeholder()
-		_player_portrait = icon
+		icon.texture        = PlayerCharacter.sprite()
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_player_portrait    = icon
 	else:
 		var demon: Enemy = member as Enemy
 		if demon.sprite_path != "":

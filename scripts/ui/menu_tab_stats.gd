@@ -17,11 +17,12 @@ func build() -> void:
 	_m._content.add_child(portrait_row)
 
 	var portrait: TextureRect = TextureRect.new()
-	portrait.texture             = load("res://icon.svg") as Texture2D
+	portrait.texture             = PlayerCharacter.portrait()
+	portrait.texture_filter      = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.custom_minimum_size = Vector2(90, 90)
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	portrait.modulate            = Color(0.55, 0.60, 0.78)
 	portrait_row.add_child(portrait)
 
 	var bars: VBoxContainer = VBoxContainer.new()

@@ -56,10 +56,11 @@ func _setup_normal_floor(floor_num: int = 0) -> void:
 func _setup_boss_floor() -> void:
 	maze = _generate_corridor()
 
-	# Boss corridors burn red.
-	wire_color       = Color(1.00, 0.34, 0.30)
-	wire_floor_color = Color(0.62, 0.18, 0.18)
-	wire_fill_color  = Color(0.115, 0.052, 0.052)
+	# A boss corridor burns its band's own colour — the dragon's colour, which
+	# every wall of the last five floors has been a dimmer version of.
+	wire_color       = Level.boss_wire(floor_num)
+	wire_floor_color = Level.boss_wire_floor(floor_num)
+	wire_fill_color  = Level.boss_wire_fill(floor_num)
 
 	player_start        = Vector2i(1, 1)
 	player_start_facing = 1  # East — face down the corridor
@@ -69,6 +70,14 @@ func _setup_boss_floor() -> void:
 	# Exit at the far east end
 	exit_pos      = Vector2i(17, 1)
 	exit_wall_pos = Vector2i(18, 1)
+
+	# An orb one step in, dead ahead of where the player arrives. A boss corridor
+	# is a one-way room — walking east is the fight and there is nothing to go
+	# back for — so the run has to be savable, healable and shoppable at its mouth
+	# or the only way to prepare for a boss is to have guessed five floors ago.
+	# It is the last orb of the band; the warden is the floor above.
+	orb_cells.clear()
+	orb_cells.append(Vector2i(2, 1))
 
 	# 2 traps along the corridor, clear of both ends
 	var trap_occupied: Dictionary = {Vector2i(1, 1): true, Vector2i(17, 1): true}

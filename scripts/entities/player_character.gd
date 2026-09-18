@@ -5,6 +5,24 @@ class_name PlayerCharacter extends CharacterSheet
 
 const DISPLAY_NAME: String = "Hero"
 
+# One drawing of him, used two ways. The battle row wants the whole figure; the
+# menu wants a face. Rather than two files that can drift apart, the portrait is
+# a window onto the same texture — head, shoulders and the hands at the bottom
+# edge, which is as much as reads at 90 px.
+const SPRITE: String = "res://resources/misc/Hero.png"
+const PORTRAIT_REGION: Rect2 = Rect2(12, 0, 40, 40)
+
+
+static func sprite() -> Texture2D:
+	return load(SPRITE) as Texture2D
+
+
+static func portrait() -> AtlasTexture:
+	var a: AtlasTexture = AtlasTexture.new()
+	a.atlas  = sprite()
+	a.region = PORTRAIT_REGION
+	return a
+
 var gold: int = 200
 
 # What he is carrying into the dark: a weapon, a worn piece, and two trinkets.

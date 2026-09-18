@@ -10,8 +10,8 @@ python3 tools/bestiary_html.py
 The first builds every template at the first and last floor of its band and
 writes the numbers to JSON; the second renders the page. Both read the live
 tables, so a change to `Enemy.TEMPLATES` or `Spell.DATA` is one rerun away from
-being on the page. The dump writes to the scratchpad path at the top of
-`bestiary_dump.gd` — point both files at the same place if you move it.
+being on the page. The dump writes `.godot/bestiary.json` and the renderer reads
+it from there — gitignored, and it survives between sessions.
 
 The page's CSS is lifted from the previous `docs/bestiary.html` on each run, so
 edit the style there and it survives the next regeneration.

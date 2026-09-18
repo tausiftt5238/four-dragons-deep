@@ -1,6 +1,6 @@
 import json, html, re, io, sys
 
-SRC = "/tmp/claude-1000/-home-ttausif-game-project-first-person-dungeon-crawler/30c2fcae-cc3a-4bc2-bd80-fd3c4418a61c/scratchpad/bestiary.json"
+SRC = ".godot/bestiary.json"
 OLD = "docs/bestiary.html"
 DST = "docs/bestiary.html"
 

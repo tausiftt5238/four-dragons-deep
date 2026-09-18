@@ -39,7 +39,9 @@ func _build() -> void:
 	vbox.add_child(HSeparator.new())
 
 	var boss: Label = Label.new()
-	boss.text = "The Void Drake has fallen."
+	# Read off the table rather than typed here: this line named a boss that had
+	# been renamed out of the game and still said so on the victory screen.
+	boss.text = "The %s has fallen." % Enemy.make_boss(Level.FLOOR_COUNT).enemy_name
 	boss.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	boss.add_theme_color_override("font_color", Color(0.90, 0.70, 0.40))
 	boss.add_theme_font_size_override("font_size", 16)
