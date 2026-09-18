@@ -29,14 +29,16 @@ func _build() -> void:
 	head.add_theme_constant_override("separation", 18)
 	upper.add_child(head)
 
-	# One word per line. Fifteen characters at this size is far wider than a
-	# phone held upright, and shrinking the type to fit would waste the only
-	# place in the game with room for a big word.
-	var title: Label = _make_lbl("DUNGEON\nCRAWLER", 54, Color(0.90, 0.75, 0.30))
+	# One word per line. The whole name on one line at this size is far wider
+	# than a phone held upright, and shrinking the type to fit would waste the
+	# only place in the game with room for a big word. DRAGONS is the widest at
+	# seven characters, which is what sets the size.
+	var title: Label = _make_lbl("FOUR\nDRAGONS\nDEEP", 54, Color(0.90, 0.75, 0.30))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(title)
 
-	var subtitle: Label = _make_lbl("descend. survive. conquer.", 15, Color(0.50, 0.45, 0.55))
+	var subtitle: Label = _make_lbl("twenty floors. four dragons. one run.", 15,
+			Color(0.50, 0.45, 0.55))
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(subtitle)
 
