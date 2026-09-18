@@ -58,6 +58,11 @@ func _build_geometry(level: Level) -> void:
 				# The cache REPLACES that face; it does not sit in front of it.
 				var cache_face: Vector2i = level.chest_cells.get(here,
 						Vector2i(-999, -999)) as Vector2i
+				# The stairwell is the same trick at cell scale: the exit wall is
+				# hollowed rather than decorated, so the face the stairs climb
+				# through has to go too or they are buried behind it.
+				if here == level.exit_wall_pos:
+					cache_face = level.exit_pos
 				for n: Vector2i in _NEIGHBOURS:
 					if not _is_open(level, col + n.x, row + n.y):
 						continue
@@ -189,35 +194,81 @@ func _commit_wire() -> void:
 
 # Glowing teal panel on the wall face adjacent to the portal floor tile.
 # dir = entry_pos - wall_pos identifies the accessible face.
+# The way on is a flight of steps cut into the wall, not a lit panel stuck to
+# it. The wall cell is hollowed out entirely (its face is dropped in
+# _build_geometry) and lined, because nothing in this maze has solid ground
+# behind it — without cheeks, a back and a ceiling you would be looking straight
+# through the level.
+const _STAIR_COUNT: int = 6
+# How far up the flight climbs before the opening above it goes dark. Short of
+# WALL_HEIGHT on purpose: steps that ran all the way to the ceiling would read
+# as a ramp into a blocked shaft rather than a way out.
+const _STAIR_RISE: float = 0.78
+
+
 func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	var dir: Vector2i = entry_pos - wall_pos
-	var wx: float = wall_pos.x * CELL_SIZE
-	var wz: float = wall_pos.y * CELL_SIZE
+	var root: Node3D = Node3D.new()
+	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)
+	add_child(root)
 
-	var px: float = wx + dir.x * (CELL_SIZE * 0.5 + 0.05)
-	var pz: float = wz + dir.y * (CELL_SIZE * 0.5 + 0.05)
-	var py: float = WALL_HEIGHT * 0.5
+	# Outward is the way the stairwell opens; the flight climbs the other way.
+	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
+	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
+	var half: float = CELL_SIZE * 0.5
 
-	var panel_size: Vector3
-	if dir.x != 0:
-		panel_size = Vector3(0.08, WALL_HEIGHT * 0.75, CELL_SIZE * 0.80)
-	else:
-		panel_size = Vector3(CELL_SIZE * 0.80, WALL_HEIGHT * 0.75, 0.08)
+	var line_mat: StandardMaterial3D = StandardMaterial3D.new()
+	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	line_mat.albedo_color = Color(0.0, 0.40, 0.28)
 
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.0, 0.55, 0.38)
-	mat.emission_enabled = true
-	mat.emission = Color(0.0, 0.55, 0.38)
-	mat.emission_energy_multiplier = 2.5
-	_add_box(Vector3(px, py, pz), panel_size, mat)
+	# Cheeks down both sides, and a ceiling over the whole shaft.
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				across * (half * side) + Vector3(0.0, WALL_HEIGHT * 0.5, 0.0),
+				_axis_box(out, across, CELL_SIZE, WALL_HEIGHT, 0.06), line_mat)
+	_add_box_child(root, Vector3(0.0, WALL_HEIGHT, 0.0),
+			_axis_box(out, across, CELL_SIZE, 0.06, CELL_SIZE), line_mat)
 
+	# The back of the shaft, above the top step: near-black rather than lined, so
+	# the flight reads as climbing into darkness instead of stopping at a wall.
+	var dark: StandardMaterial3D = StandardMaterial3D.new()
+	dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dark.albedo_color = Color(0.02, 0.05, 0.04)
+	var rise: float = WALL_HEIGHT * _STAIR_RISE
+	_add_box_child(root, out * -half + Vector3(0.0, rise + (WALL_HEIGHT - rise) * 0.5, 0.0),
+			_axis_box(out, across, 0.06, WALL_HEIGHT - rise, CELL_SIZE), dark)
+
+	# The flight itself. Each step is a solid block from the floor up to its own
+	# tread, so the stack reads as stairs from the side as well as head-on.
+	var step_mat: StandardMaterial3D = StandardMaterial3D.new()
+	step_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	step_mat.albedo_color = Color(0.0, 0.62, 0.42)
+	step_mat.emission_enabled = true
+	step_mat.emission = Color(0.0, 0.55, 0.38)
+	step_mat.emission_energy_multiplier = 0.9
+
+	var tread: float = CELL_SIZE / float(_STAIR_COUNT)
+	var riser: float = rise / float(_STAIR_COUNT)
+	for i: int in range(_STAIR_COUNT):
+		var top_y: float = float(i + 1) * riser
+		_add_box_child(root,
+				out * (half - (float(i) + 0.5) * tread) + Vector3(0.0, top_y * 0.5, 0.0),
+				_axis_box(out, across, tread, top_y, CELL_SIZE), step_mat)
+
+	# One light at the head of the flight, so what draws the eye down the
+	# corridor is the glow coming off the top of the stairs.
 	var light: OmniLight3D = OmniLight3D.new()
 	light.light_color  = Color(0.2, 1.0, 0.6)
-	light.light_energy = 1.5
-	light.omni_range   = 4.0
-	light.position     = Vector3(px, py, pz)
-	add_child(light)
-	_add_wall_label("NEXT FLOOR", Vector3(px, WALL_HEIGHT * 0.95, pz), dir, Color(0.20, 1.0, 0.70))
+	light.light_energy = 1.8
+	light.omni_range   = 4.5
+	light.position     = out * (-half + tread) + Vector3(0.0, rise + 0.30, 0.0)
+	root.add_child(light)
+
+	# The sign hangs over the mouth of the stairwell. Lower than it sat on the old
+	# panel: at 0.95 it now runs into the shaft's ceiling slab.
+	var px: float = wall_pos.x * CELL_SIZE + dir.x * (CELL_SIZE * 0.5 + 0.05)
+	var pz: float = wall_pos.y * CELL_SIZE + dir.y * (CELL_SIZE * 0.5 + 0.05)
+	_add_wall_label("NEXT FLOOR", Vector3(px, WALL_HEIGHT * 0.88, pz), dir, Color(0.20, 1.0, 0.70))
 
 
 
