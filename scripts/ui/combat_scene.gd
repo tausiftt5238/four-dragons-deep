@@ -1272,14 +1272,33 @@ func _build_enemy_area(parent: Control) -> void:
 	# get the whole width — an HP bar across the screen — and a pack of two
 	# sat at a different pitch from a pack of four, so the line-up moved every
 	# encounter. Empty columns hold the grid instead.
+	#
+	# The empty ones are split either side rather than all trailing, so a short
+	# line-up is centred: a warden or a boss comes alone, and with every blank
+	# on the right it stood in the left corner of the screen with two thirds of
+	# the room empty beside it. The thing the whole floor was leading up to
+	# belongs in the middle.
+	# One blank each side carrying HALF the spare width, not a whole blank column
+	# each side — with four slots and one boss, whole columns can only put it a
+	# quarter left or a quarter right of centre. A half-width pad on each side
+	# lands it dead centre while every foe column keeps the exact width it has
+	# in a four-strong pack.
+	var spare: float = float(MAX_PARTY - foes.size()) * 0.5
+	if spare > 0.0:
+		area.add_child(_blank_column(spare))
 	for f: Enemy in foes:
 		area.add_child(_build_foe_column(f))
-	for _i: int in range(MAX_PARTY - foes.size()):
-		var blank: Control = Control.new()
-		blank.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		blank.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-		blank.mouse_filter          = Control.MOUSE_FILTER_IGNORE
-		area.add_child(blank)
+	if spare > 0.0:
+		area.add_child(_blank_column(spare))
+
+
+func _blank_column(ratio: float) -> Control:
+	var blank: Control = Control.new()
+	blank.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
+	blank.size_flags_vertical      = Control.SIZE_EXPAND_FILL
+	blank.size_flags_stretch_ratio = ratio
+	blank.mouse_filter             = Control.MOUSE_FILTER_IGNORE
+	return blank
 
 
 # One column per demon. Identical geometry across the row so a four-strong

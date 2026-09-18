@@ -216,9 +216,12 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
 	var half: float = CELL_SIZE * 0.5
 
+	# Dark, like the fill behind a wall face. At 0.40 these read as a flat green
+	# wall the stairs are stuck to, which is louder than anything else down here
+	# and buries the step edges that do the actual work.
 	var line_mat: StandardMaterial3D = StandardMaterial3D.new()
 	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	line_mat.albedo_color = Color(0.0, 0.40, 0.28)
+	line_mat.albedo_color = Color(0.01, 0.14, 0.10)
 
 	# Cheeks down both sides, and a ceiling over the whole shaft.
 	for side: float in [1.0, -1.0]:
@@ -237,22 +240,31 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	_add_box_child(root, out * -half + Vector3(0.0, rise + (WALL_HEIGHT - rise) * 0.5, 0.0),
 			_axis_box(out, across, 0.06, WALL_HEIGHT - rise, CELL_SIZE), dark)
 
-	# The flight itself. Each step is a solid block from the floor up to its own
-	# tread, so the stack reads as stairs from the side as well as head-on.
-	var step_mat: StandardMaterial3D = StandardMaterial3D.new()
-	step_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	step_mat.albedo_color = Color(0.0, 0.62, 0.42)
-	step_mat.emission_enabled = true
-	step_mat.emission = Color(0.0, 0.55, 0.38)
-	step_mat.emission_energy_multiplier = 0.9
+	# The flight itself: each step a solid block from the floor up to its own
+	# tread, drawn the way everything else down here is drawn — a dark fill with
+	# its edges picked out in line.
+	#
+	# Solid faces do not work for this. The camera stands at exactly eye height,
+	# so every tread is edge-on and invisible, and six risers of the same flat
+	# colour merge into ONE slab: the first build of this rendered as a green
+	# door at the end of the corridor, not as a staircase. It is the line along
+	# the nose of each tread that says "steps", and the whole dungeon is lines
+	# anyway — solid geometry was the thing that looked out of place.
+	var fill_mat: StandardMaterial3D = StandardMaterial3D.new()
+	fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fill_mat.albedo_color = Color(0.02, 0.10, 0.07)
 
 	var tread: float = CELL_SIZE / float(_STAIR_COUNT)
 	var riser: float = rise / float(_STAIR_COUNT)
+	var edges: PackedVector3Array = PackedVector3Array()
 	for i: int in range(_STAIR_COUNT):
 		var top_y: float = float(i + 1) * riser
-		_add_box_child(root,
-				out * (half - (float(i) + 0.5) * tread) + Vector3(0.0, top_y * 0.5, 0.0),
-				_axis_box(out, across, tread, top_y, CELL_SIZE), step_mat)
+		var at: Vector3 = out * (half - (float(i) + 0.5) * tread) \
+				+ Vector3(0.0, top_y * 0.5, 0.0)
+		var size: Vector3 = _axis_box(out, across, tread, top_y, CELL_SIZE)
+		_add_box_child(root, at, size, fill_mat)
+		_append_box_edges(edges, at, size)
+	_add_line_mesh(root, edges, Color(0.20, 1.0, 0.70))
 
 	# One light at the head of the flight, so what draws the eye down the
 	# corridor is the glow coming off the top of the stairs.
@@ -504,6 +516,51 @@ func _add_chest_sprite(parent: Node3D, pos: Vector3, out: Vector3, looted: bool,
 	mi.position = pos
 	# A QuadMesh faces +Z; turn it to face the way the niche opens.
 	mi.rotation = Vector3(0.0, atan2(out.x, out.z), 0.0)
+	parent.add_child(mi)
+
+
+# The twelve edges of an axis-aligned box, appended as line pairs. The maze's
+# own outlines are committed once at the end of _build_geometry, long before
+# anything is placed in the level, so props that want the same look have to
+# carry their own line mesh.
+func _append_box_edges(into: PackedVector3Array, centre: Vector3,
+		size: Vector3) -> void:
+	var h: Vector3 = size * 0.5
+	var corner: Array[Vector3] = []
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				corner.append(centre + Vector3(h.x * sx, h.y * sy, h.z * sz))
+	# Indices into the xyz-ordered corner list above; each pair differs in
+	# exactly one axis, which is what makes it an edge rather than a diagonal.
+	const PAIRS: Array[int] = [
+		0, 1, 2, 3, 4, 5, 6, 7,
+		0, 2, 1, 3, 4, 6, 5, 7,
+		0, 4, 1, 5, 2, 6, 3, 7]
+	for i: int in range(0, PAIRS.size(), 2):
+		into.append(corner[PAIRS[i]])
+		into.append(corner[PAIRS[i + 1]])
+
+
+func _add_line_mesh(parent: Node3D, verts: PackedVector3Array, color: Color) -> void:
+	if verts.is_empty():
+		return
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
+
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	# Above the fill it outlines, the same way the maze's own wire sits above
+	# its wall faces — without this the edges z-fight with the box they bound.
+	mat.render_priority = 1
+
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
 	parent.add_child(mi)
 
 
