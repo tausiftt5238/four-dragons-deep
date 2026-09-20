@@ -79,15 +79,9 @@ func _setup_boss_floor() -> void:
 	orb_cells.clear()
 	orb_cells.append(Vector2i(2, 1))
 
-	# 2 traps along the corridor, clear of both ends
-	var trap_occupied: Dictionary = {Vector2i(1, 1): true, Vector2i(17, 1): true}
-	var trap_candidates: Array[Vector2i] = []
-	for x: int in range(3, 17):
-		if not trap_occupied.has(Vector2i(x, 1)):
-			trap_candidates.append(Vector2i(x, 1))
-	trap_candidates.shuffle()
-	for i: int in range(min(2, trap_candidates.size())):
-		trap_cells[trap_candidates[i]] = "spike"
+	# No traps. The corridor is one way and the orb at its mouth is the last
+	# chance to heal, so HP shaved off between there and the dragon is HP the
+	# player has no way to get back.
 
 
 func _generate_corridor() -> Array[Array]:
