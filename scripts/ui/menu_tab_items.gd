@@ -77,11 +77,15 @@ func _add_item(list: SlotList, item_id: String) -> void:
 					p.equip_item(item_id)
 					_m._set_status("Put %s on the belt." % item["name"])
 				_m._refresh()})
-		actions.append({
-			text = "Use", disabled = not p.can_use_item(item),
-			press = func() -> void:
-				_m._set_status(p.use_item(item))
-				_m._refresh()})
+		# Ailments end with the fight, so an item that only cures one has nothing
+		# to do out here. It still lists and still belts — the player wants to
+		# see what they are carrying — but the field offers no Use for it.
+		if int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0:
+			actions.append({
+				text = "Use", disabled = not p.can_use_item(item),
+				press = func() -> void:
+					_m._set_status(p.use_item(item))
+					_m._refresh()})
 	elif kind == "scroll":
 		actions.append({
 			text = "Read", disabled = not p.can_use_item(item),
