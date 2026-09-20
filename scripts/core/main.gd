@@ -966,6 +966,10 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	if not lost.is_empty() and result != "lose":
 		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
 
+	# Every ailment lasts the fight and no longer, so nothing follows the player
+	# into the corridor. Bound demons are rebuilt per fight and need no clearing.
+	player_char.active_statuses.clear()
+
 	match result:
 		"win", "talk":
 			player_char.gold += gold_reward

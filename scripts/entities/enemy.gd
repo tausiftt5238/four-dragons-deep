@@ -577,6 +577,8 @@ static func make_random(floor_num: int) -> Enemy:
 
 # Rolls an encounter. Sizes run 1-4 weighted 1:2:3:4, so a lone demon turns up
 # a tenth of the time and a full pack of four is the single likeliest outcome.
+# The opening floors cap that: the floor number is the ceiling until floor four,
+# so the first fight of a run is always one on one.
 static func make_group(floor_num: int) -> Array[Enemy]:
 	var roll: int  = randi() % 10
 	var count: int = 4
@@ -586,6 +588,7 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 		count = 2
 	elif roll < 6:
 		count = 3
+	count = mini(count, clampi(floor_num, 1, 4))
 	var group: Array[Enemy] = []
 	for _i: int in range(count):
 		group.append(make_random(floor_num))

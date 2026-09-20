@@ -150,9 +150,6 @@ static func mp_price(p: PlayerCharacter) -> int:
 	return 0 if missing <= 0 else maxi(10, missing * 2)
 
 
-const CURE_PRICE: int = 40
-
-
 func _build_rest() -> void:
 	var vitals: Label = Label.new()
 	vitals.text = "HP  %d / %d        MP  %d / %d" % [
@@ -160,15 +157,6 @@ func _build_rest() -> void:
 	vitals.add_theme_color_override("font_color",
 			CombatScene.hp_tint(player.hp, player.max_hp))
 	_content.add_child(vitals)
-
-	if not player.active_statuses.is_empty():
-		var names: Array[String] = []
-		for st: String in player.active_statuses:
-			names.append(Status.get_data(st).get("name", st) as String)
-		var ail: Label = Label.new()
-		ail.text = "Afflicted:  %s" % "  ".join(names)
-		ail.add_theme_color_override("font_color", Color(0.90, 0.78, 0.30))
-		_content.add_child(ail)
 
 	_content.add_child(HSeparator.new())
 
@@ -183,11 +171,6 @@ func _build_rest() -> void:
 			func() -> void:
 				player.mp = player.max_mp
 				_set_status("The well is full again."))
-	_rest_offer(list, "Draw off the poison", "Clears every ailment.",
-			CURE_PRICE, player.active_statuses.is_empty(),
-			func() -> void:
-				player.active_statuses.clear()
-				_set_status("Whatever was in you is gone."))
 
 
 # ── Offers ────────────────────────────────────────────────────────────────────
