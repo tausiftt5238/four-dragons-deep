@@ -13,6 +13,8 @@ const WALL_HEIGHT: float = 2.0
 # Reads all visual settings and the portal position from the Level.
 func build(level: Level) -> void:
 	_build_geometry(level)
+	_exit_wall = level.exit_wall_pos
+	_exit_cell = level.exit_pos
 	if level.exit_pos.x >= 0 and level.exit_wall_pos.x >= 0:
 		_add_exit_marker(level.exit_wall_pos, level.exit_pos)
 	_add_trap_markers(level)
@@ -277,6 +279,119 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 
 	# No sign. A flight of steps climbing out of the corridor already says what
 	# it is, and the label was left over from when this was a panel that did not.
+
+
+# The gate standing in the stairwell while the key is still out there. Until
+# this existed the only thing saying a floor was sealed was a line of HUD text,
+# so a player walking the corridor saw the way out and no reason it would not
+# open. Violet throughout, because that is the key's colour everywhere else —
+# the floating bit, the minimap mark, the warden popup.
+const _LOCK_VIOLET: Color = Color(0.70, 0.48, 1.0)
+# Dead ahead at eye height (Main.EYE_HEIGHT is 1.0), so the lock is the thing
+# the player is looking at rather than something to find.
+const _LOCK_HEIGHT: float = 1.05
+
+var _door: Node3D = null
+var _exit_wall: Vector2i = Vector2i(-1, -1)
+var _exit_cell: Vector2i = Vector2i(-1, -1)
+
+
+# The door is a node of its own rather than part of the build, because the key
+# is found mid-floor: taking it has to open the way without rebuilding the
+# maze. Safe to call with the same value twice.
+func set_locked(locked: bool) -> void:
+	if is_instance_valid(_door):
+		_door.free()
+	_door = null
+	if not locked or _exit_wall.x < 0 or _exit_cell.x < 0:
+		return
+	_door = _add_locked_door(_exit_wall, _exit_cell)
+
+
+func _add_locked_door(wall_pos: Vector2i, entry_pos: Vector2i) -> Node3D:
+	var dir: Vector2i = entry_pos - wall_pos
+	var root: Node3D = Node3D.new()
+	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)
+	add_child(root)
+
+	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
+	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
+	var half: float = CELL_SIZE * 0.5
+	# Set just inside the mouth so the flight sits behind the door rather than
+	# the top steps poking through its face.
+	var face: Vector3 = out * (half - 0.08)
+	var mid: Vector3 = face + Vector3(0.0, WALL_HEIGHT * 0.5, 0.0)
+
+	var slab: StandardMaterial3D = StandardMaterial3D.new()
+	slab.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	slab.albedo_color = Color(0.05, 0.03, 0.09)
+	var panel: Vector3 = _axis_box(out, across, 0.12, WALL_HEIGHT, CELL_SIZE)
+	_add_box_child(root, mid, panel, slab)
+
+	# Banded across, because an unbroken rectangle at the end of a corridor
+	# reads as the corridor simply stopping. The bands are what make it a door.
+	var edges: PackedVector3Array = PackedVector3Array()
+	_append_box_edges(edges, mid, panel)
+	for i: int in range(1, 4):
+		_append_box_edges(edges,
+				face + Vector3(0.0, WALL_HEIGHT * 0.25 * float(i), 0.0),
+				_axis_box(out, across, 0.14, 0.045, CELL_SIZE * 0.88))
+	_add_line_mesh(root, edges, _LOCK_VIOLET)
+
+	_add_lock(root, out, across, face)
+	return root
+
+
+# The lock plate and the recess the key drops into. The recess is the key's own
+# silhouette — a PrismMesh of the same proportions as the floating bit — so the
+# thing found on the floor and the thing it opens are legible as a pair.
+func _add_lock(root: Node3D, out: Vector3, across: Vector3, face: Vector3) -> void:
+	var at: Vector3 = face + out * 0.06 + Vector3(0.0, _LOCK_HEIGHT, 0.0)
+
+	var plate_mat: StandardMaterial3D = StandardMaterial3D.new()
+	plate_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	plate_mat.albedo_color = Color(0.20, 0.10, 0.34)
+	var plate: Vector3 = _axis_box(out, across, 0.08, 0.60, 0.46)
+	_add_box_child(root, at, plate, plate_mat)
+
+	var plate_edges: PackedVector3Array = PackedVector3Array()
+	_append_box_edges(plate_edges, at, plate)
+	_add_line_mesh(root, plate_edges, _LOCK_VIOLET)
+
+	# Turned so the triangle faces down the corridor. atan2(x, z) maps +Z to 0
+	# and +X to a quarter turn, which is exactly the four cardinal cases.
+	var hole: Node3D = Node3D.new()
+	hole.position = at + out * 0.045
+	hole.rotation = Vector3(0.0, atan2(out.x, out.z), 0.0)
+	root.add_child(hole)
+
+	# Near-black against the lit plate: unshaded, so what makes it read as a
+	# hollow is the contrast, not a light that would have to reach in.
+	const W: float = 0.26
+	const H: float = 0.38
+	var sink_mat: StandardMaterial3D = StandardMaterial3D.new()
+	sink_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sink_mat.albedo_color = Color(0.02, 0.01, 0.04)
+	var sink: MeshInstance3D = MeshInstance3D.new()
+	var bit: PrismMesh = PrismMesh.new()
+	bit.size = Vector3(W, H, 0.07)
+	sink.mesh = bit
+	sink.material_override = sink_mat
+	hole.add_child(sink)
+
+	var lip: PackedVector3Array = PackedVector3Array()
+	var apex: Vector3 = Vector3(0.0, H * 0.5, 0.035)
+	var left: Vector3 = Vector3(-W * 0.5, -H * 0.5, 0.035)
+	var right: Vector3 = Vector3(W * 0.5, -H * 0.5, 0.035)
+	lip.append_array([apex, left, left, right, right, apex])
+	_add_line_mesh(hole, lip, _LOCK_VIOLET)
+
+	var glow: OmniLight3D = OmniLight3D.new()
+	glow.light_color  = _LOCK_VIOLET
+	glow.light_energy = 1.5
+	glow.omni_range   = 3.6
+	glow.position     = at + out * 0.5
+	root.add_child(glow)
 
 
 

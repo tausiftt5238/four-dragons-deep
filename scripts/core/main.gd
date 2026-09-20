@@ -211,6 +211,9 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	_sync_player()
 	_snap_cam_yaw()
 	_spawn_roamers()
+	# After _spawn_roamers, which is what decides whether this floor holds the
+	# key at all and so whether the way on is shut.
+	dungeon.set_locked(not _has_key)
 
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -956,6 +959,8 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		_has_key = true
 		minimap_ctrl.warden_pos = Vector2i(-1, -1)
 		minimap_ctrl.queue_redraw()
+		if is_instance_valid(dungeon):
+			dungeon.set_locked(false)
 		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
 	# On a boss floor an encounter with no roamer behind it is the boss.
@@ -1227,6 +1232,7 @@ func _rebuild_dungeon() -> void:
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
+	dungeon.set_locked(not _has_key)
 
 
 func _close_chest() -> void:
@@ -1655,6 +1661,10 @@ func _restore_roamers() -> void:
 		_warden = w
 		minimap_ctrl.warden_pos = w.cell
 	minimap_ctrl.queue_redraw()
+	# A loaded run arrives here with the geometry already built, so the door is
+	# hung once _has_key is known rather than during the build.
+	if is_instance_valid(dungeon):
+		dungeon.set_locked(not _has_key)
 
 
 func _pack_trap_cells(cells: Dictionary) -> Dictionary:
