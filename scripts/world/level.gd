@@ -163,6 +163,7 @@ var looted: Dictionary = {}
 # the recess itself gives it away, which is the whole point of the thing.
 var mimic_cells: Dictionary = {}
 
-# Traps: grid position → trap type ("spike" / "poison_vent" / "binding_rune").
-# Erased by main.gd after the player triggers one.
+# Traps: grid position → trap type. Only "spike" is laid now — a trap costs HP
+# and nothing else — but the value is kept so an older save still reads.
+# A sprung trap is recorded in found_traps, not erased: it bites every crossing.
 var trap_cells: Dictionary = {}

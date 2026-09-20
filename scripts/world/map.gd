@@ -86,9 +86,8 @@ func _setup_boss_floor() -> void:
 		if not trap_occupied.has(Vector2i(x, 1)):
 			trap_candidates.append(Vector2i(x, 1))
 	trap_candidates.shuffle()
-	var trap_types: Array[String] = ["spike", "poison_vent", "binding_rune"]
 	for i: int in range(min(2, trap_candidates.size())):
-		trap_cells[trap_candidates[i]] = trap_types[randi() % trap_types.size()]
+		trap_cells[trap_candidates[i]] = "spike"
 
 
 func _generate_corridor() -> Array[Array]:
@@ -413,7 +412,6 @@ func _place_traps() -> void:
 	}
 	for orb: Vector2i in orb_cells:
 		occupied[orb] = true
-	var types: Array[String] = ["spike", "poison_vent", "binding_rune"]
 	var placed: int = 0
 	var attempts: int = 0
 	while placed < COUNT and attempts < 60:
@@ -422,7 +420,7 @@ func _place_traps() -> void:
 		if occupied.has(pos):
 			continue
 		occupied[pos] = true
-		trap_cells[pos] = types[randi() % types.size()]
+		trap_cells[pos] = "spike"
 		placed += 1
 
 

@@ -574,30 +574,16 @@ func _axis_box(out: Vector3, across: Vector3, depth: float, height: float,
 			absf(out.z) * depth + absf(across.z) * width)
 
 
-# Colored floor overlay for each trap cell so the player can see them.
-# spike = red, poison_vent = green, binding_rune = purple.
+# Colored floor overlay for each trap cell so the player can see them. Traps
+# all bite the same way now, so they all read red.
 func _add_trap_markers(level: Level) -> void:
 	for pos: Variant in level.trap_cells.keys():
-		var trap_type: String = level.trap_cells[pos] as String
 		var gp: Vector2i      = pos as Vector2i
 		var wx: float = gp.x * CELL_SIZE
 		var wz: float = gp.y * CELL_SIZE
 
-		var col: Color
-		var light_col: Color
-		match trap_type:
-			"spike":
-				col       = Color(0.72, 0.08, 0.08)
-				light_col = Color(1.0,  0.25, 0.25)
-			"poison_vent":
-				col       = Color(0.12, 0.62, 0.15)
-				light_col = Color(0.35, 1.0,  0.40)
-			"binding_rune":
-				col       = Color(0.42, 0.08, 0.78)
-				light_col = Color(0.65, 0.35, 1.0)
-			_:
-				col       = Color(0.50, 0.50, 0.50)
-				light_col = Color(0.80, 0.80, 0.80)
+		var col:       Color = Color(0.72, 0.08, 0.08)
+		var light_col: Color = Color(1.0,  0.25, 0.25)
 
 		var mat: StandardMaterial3D = StandardMaterial3D.new()
 		mat.albedo_color            = col

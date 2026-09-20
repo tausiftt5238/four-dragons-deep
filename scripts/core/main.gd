@@ -533,7 +533,6 @@ func _post_move() -> void:
 	_sync_player()
 	_recover_mp_on_step()
 	_take_key_here()
-	_check_step_poison()
 	_check_trap()
 	if not player_char.is_alive():
 		return
@@ -1108,16 +1107,6 @@ func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> voi
 	_hud_popup_tween.tween_property(_hud_popup, "modulate:a", 0.0, 0.6)
 
 
-func _check_step_poison() -> void:
-	if not player_char.has_status(Status.POISON):
-		return
-	var dmg: int = max(1, int(player_char.max_hp * 0.05))
-	player_char.take_damage(dmg)
-	_show_hud_popup("Poison  -%d HP" % dmg, Color(0.55, 0.90, 0.30))
-	if not player_char.is_alive():
-		_show_game_over()
-
-
 func _check_trap() -> void:
 	if not current_level.trap_cells.has(player_pos):
 		return
@@ -1126,21 +1115,13 @@ func _check_trap() -> void:
 	# you know about, so the map stays quiet about it until it has bitten.
 	current_level.found_traps[player_pos] = trap_type
 	minimap_ctrl.queue_redraw()
-	match trap_type:
-		"spike":
-			var dmg: int = max(1, int(player_char.max_hp * 0.15))
-			player_char.take_damage(dmg)
-			_show_hud_popup("Spike Trap!  -%d HP" % dmg, Color(0.90, 0.30, 0.30))
-			if not player_char.is_alive():
-				_show_game_over()
-		"poison_vent":
-			if not player_char.has_status(Status.POISON):
-				player_char.apply_status(Status.POISON)
-			_show_hud_popup("Poison Vent!  Poisoned!", Color(0.55, 0.90, 0.30))
-		"binding_rune":
-			if not player_char.has_status(Status.IMMOBILIZE):
-				player_char.apply_status(Status.IMMOBILIZE)
-			_show_hud_popup("Binding Rune!  Immobilized!", Color(0.70, 0.50, 1.0))
+	# Every trap costs HP and nothing else: an ailment laid out here would be
+	# gone by the end of the next fight, so it never reached the player as one.
+	var dmg: int = max(1, int(player_char.max_hp * 0.15))
+	player_char.take_damage(dmg)
+	_show_hud_popup("Spike Trap!  -%d HP" % dmg, Color(0.90, 0.30, 0.30))
+	if not player_char.is_alive():
+		_show_game_over()
 
 
 
