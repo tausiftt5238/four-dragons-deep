@@ -795,6 +795,8 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 	var pr: TextureRect = _foe_portrait(enemy)
 	if pr != null:
 		_shake_portrait(pr)
+		if melee:
+			SlashFX.strike(pr)
 	var extra: String = ""
 	if _actor_is_player() and melee \
 			and "vampiric" in player.passive_skills:
@@ -3104,6 +3106,8 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
 		_shake_portrait(hit_pr)
+		if element == Affinity.PHYS:
+			SlashFX.strike(hit_pr)
 	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s" % [
 			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted)]
 	if target == player:
