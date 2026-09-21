@@ -1366,8 +1366,16 @@ func _build_foe_column(foe: Enemy) -> Control:
 	stage_lbl.add_theme_color_override("default_color", Color(0.72, 0.78, 0.86))
 	col.add_child(stage_lbl)
 
+	# The chart hangs under the demon rather than sitting in the strip above it:
+	# five icons read at a glance where "FW IS TD" had to be decoded.
+	var chart: AffinityChart = AffinityChart.new()
+	chart.foe = foe
+	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(chart)
+
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
-			bar = bar, hp_lbl = hp_lbl, stage_lbl = stage_lbl, marker = marker})
+			bar = bar, hp_lbl = hp_lbl, stage_lbl = stage_lbl, marker = marker,
+			chart = chart})
 	return col
 
 
@@ -1450,17 +1458,16 @@ func _refresh_foe_rows() -> void:
 				hp_tint(foe.hp, foe.max_hp) if alive else Color(0.55, 0.38, 0.38))
 
 		var stage_lbl: RichTextLabel = r["stage_lbl"] as RichTextLabel
-		var bits: Array[String] = []
-		var chart: String = _foe_chart_text(foe)
-		if chart != "":
-			bits.append(chart)
 		# On a foe the colours are inverted: what raises the thing hitting you
 		# is bad news, so its buffs read as the warning and its debuffs as the
 		# good sign.
 		var stg: String = stage_markup(foe, true)
-		if stg != "":
-			bits.append(stg)
-		stage_lbl.text = "[center]%s[/center]" % "   ".join(bits) if alive else ""
+		stage_lbl.text = "[center]%s[/center]" % stg if alive and stg != "" else ""
+
+		var chart: AffinityChart = r["chart"] as AffinityChart
+		chart.visible = alive and player.has_analyzed(foe.enemy_name)
+		if chart.visible:
+			chart.queue_redraw()
 
 
 # ── Phase flow ────────────────────────────────────────────────────────────────
@@ -2504,19 +2511,6 @@ func _on_skill_chosen(action: String) -> void:
 			await _commit_action(action)
 			return
 	_with_target(func() -> void: await _commit_action(action))
-
-
-# Once read, a demon wears its chart under its name for the rest of the fight.
-func _foe_chart_text(foe: Enemy) -> String:
-	if not player.has_analyzed(foe.enemy_name):
-		return ""
-	var parts: Array[String] = []
-	for element: String in Affinity.ELEMENTS:
-		var state: String = foe.affinity_of(element)
-		if state != Affinity.NORMAL:
-			parts.append("%s%s" % [Affinity.element_name(element).substr(0, 1).to_upper(),
-					Affinity.label(state).substr(0, 1)])
-	return " ".join(parts)
 
 
 func _cast_spell(spell_id: String) -> Dictionary:
