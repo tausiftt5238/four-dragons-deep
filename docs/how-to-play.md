@@ -95,7 +95,7 @@ No letter means it simply takes the hit.
 Two ways to learn a chart:
 
 1. **Analyze** — a 0 MP spell that reads a demon's chart *and* its temper. It
-   takes one of your four spell slots, so carrying it is a choice.
+   takes one of your five spell slots, so carrying it is a choice.
 2. **Kill one.** Defeating a demon teaches you what it was made of, for the
    rest of the run.
 
@@ -148,7 +148,7 @@ it can pay for, until its MP runs out.
 
 | | |
 |---|---|
-| **4 spell slots** | Out of everything you have learned from scrolls. |
+| **5 spell slots** | Out of everything you have learned from scrolls. |
 | **6 belt slots** | Only belted items reach a battle. The rest stay in the pack. |
 | **Weapon, armour, trinkets** | Heavy armour protects more and slows you down — and agility is what decides whether you connect. |
 

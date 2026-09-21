@@ -41,7 +41,9 @@ var known_spells: Array[String] = []
 # the menu rather than mid-fight.
 # Six entries is what the battle menu shows without scrolling, and Attack is
 # always one of them — so five spells, and six items on their own belt.
-const SPELL_SLOTS: int = 4
+# Five, not four: Analyze became an ordinary spell and started taking one of
+# these, which quietly cost the player a slot they used to have for free.
+const SPELL_SLOTS: int = 5
 var equipped_spells: Array[String] = []
 
 # Item ids on the belt. Only these reach a battle; the rest stay in the pack.

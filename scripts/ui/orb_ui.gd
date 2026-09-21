@@ -266,33 +266,15 @@ static func sell_price(demon_name: String, lv: int) -> int:
 	return price
 
 
-# What a piece of gear is actually worth. `item_price` reads `floor`, which for
-# a consumable is the depth it turns up at but for gear is its TIER — so through
-# that formula a Hazel Wand and Diamond Armour both came out at 45 gold. Gear is
-# priced off what it gives instead.
-static func gear_value(item: Dictionary) -> int:
-	var tier: int = clampi(int(item.get("floor", 1)), 1, 4)
-	var bonus: int = int(item.get("str_bonus", 0)) + int(item.get("def_bonus", 0)) \
-			+ int(item.get("mag_bonus", 0)) + int(item.get("agl_bonus", 0)) \
-			+ int(item.get("luk_bonus", 0))
-	return 50 * tier + 18 * maxi(0, bonus)
-
-
-# What the counter charges for anything, buying or selling. ONE function on
-# purpose: with gear bought off `item_price` and sold off `gear_value`, Diamond
-# Armour cost 120 and sold back for 343, and the orb was a money printer.
-static func price_of(item: Dictionary) -> int:
-	var kind: String = item.get("type", "") as String
-	if kind == "weapon" or kind == "armor" or kind == "accessory":
-		return gear_value(item)
-	return item_price(item)
-
-
-# Half what the same thing costs across the counter. Gear worn right now is not
-# in the pack at all — equipping moves it out of inventory — so the list never
-# offers to sell what you are standing in.
+# Exactly half the asking price, for everything — which is also what keeps the
+# orb from being a money printer. Selling must never be derived from a
+# different formula than buying: a version that priced gear off its stat
+# bonuses had Diamond Armour cost 120 and sell back for 343.
+#
+# Gear worn right now is not in the pack at all — equipping moves it out of
+# inventory — so the list never offers to sell what you are standing in.
 static func resale_price(item: Dictionary) -> int:
-	return maxi(1, price_of(item) / 2)
+	return maxi(1, item_price(item) / 2)
 
 
 func _build_sell() -> void:
@@ -440,7 +422,7 @@ func _build_scrolls() -> void:
 
 func _buy_offer(list: SlotList, item: Variant) -> void:
 	var entry: Dictionary = item as Dictionary
-	var price: int = price_of(entry)
+	var price: int = item_price(entry)
 	# What it would change, above its own description: a shop that only names a
 	# piece leaves the player no way to tell whether it is an upgrade at all.
 	var deltas: String = GearTooltip.delta_markup(entry, player)
