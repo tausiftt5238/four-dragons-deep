@@ -914,6 +914,10 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	for foe: Enemy in group:
 		exp_reward  += foe.exp_reward
 		gold_reward += foe.gold_reward
+		# Killing a thing teaches you what it was made of. Wardens and bosses
+		# are met once each in a run and keep their chart either way.
+		if not foe.is_alive() and not foe.unreadable:
+			player_char.record_analysis(foe.enemy_name)
 		if not foe.is_alive() and item_drop.is_empty():
 			item_drop = foe.roll_drop()
 			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
@@ -1496,6 +1500,11 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.known_spells.clear()
 	player_char.known_spells.assign(pdata["known_spells"] as Array)
+	# Analyze used to be a button welded into the battle menu rather than a
+	# spell, so a save written then does not know it. Without this the skill
+	# simply vanishes from an older run.
+	if "analyze" not in player_char.known_spells:
+		player_char.known_spells.insert(0, "analyze")
 	# Saves written before loadouts existed carry no equipped list; fall back to
 	# the first few known spells so those saves still have something to cast.
 	player_char.equipped_items.clear()

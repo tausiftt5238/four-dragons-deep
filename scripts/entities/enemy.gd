@@ -47,6 +47,12 @@ const WARDEN_ICONS: int = 2
 # how they threaten a full party without inflating their damage numbers.
 var icons: int = 1
 
+# Wardens and bosses keep their chart to themselves — Analyze refuses them and
+# killing one teaches nothing. They are met once each in a whole run, so a
+# chart handed over in advance would turn the one fight that is supposed to be
+# read on the fly into a lookup.
+var unreadable: bool = false
+
 # Suffix that keeps three Bats apart in the battle UI. Assigned by CombatScene
 # when a group holds more than one of the same kind.
 var battle_tag: String = ""
@@ -620,6 +626,7 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.absorb_element  = t.get("absorb_element", "")
 	e.affinities      = _affinities_from(t)
 	e.icons           = int(t.get("icons", BOSS_ICONS))
+	e.unreadable      = true
 	e.support_skill   = t.get("support", "")
 	e.ailment_chance  = int(t.get("ail", 25))
 	# A boss keeps its own colours; it is not one of a set.
@@ -670,6 +677,7 @@ static func make_warden(floor_num: int) -> Enemy:
 	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
 	e.exp_reward = exp_for_level(e.lv) * 2
 	e.gold_reward = e.lv * 6
+	e.unreadable = true
 	e.compute_max_hp()
 	e.compute_max_mp()
 	return e

@@ -1,8 +1,7 @@
 # AffinityChart
-# The five-slot chart that appears under a demon once it has been Analyzed.
-# One box per element, left to right: fire, ice, thunder, light, dark. Phys is
-# not here — it is the one thing every swing is, so a column for it would be
-# noise on every demon in the game.
+# The chart that appears under a demon once it has been read. One box per
+# element, left to right: phys, fire, ice, thunder, light, dark — the same
+# order Affinity.ELEMENTS uses.
 #
 # A slot carries the element's icon and, when the demon is not simply normal to
 # it, the letter for what it does with it:
@@ -16,8 +15,7 @@ class_name AffinityChart extends Control
 
 const FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
 
-# Left to right, as the user asked for them.
-const SLOTS: Array[String] = ["fire", "ice", "thunder", "light", "dark"]
+const SLOTS: Array[String] = ["phys", "fire", "ice", "thunder", "light", "dark"]
 
 const SPRITES: Dictionary = {
 	"fire":    "res://resources/spellFX/fire.png",
@@ -97,8 +95,10 @@ func _draw_slot(at: Rect2, element: String, state: String, mark: String) -> void
 				false, Color(1.0, 1.0, 1.0, 0.95))
 	elif element == "light":
 		_draw_light(mid, side * 0.5, 0.95)
-	else:
+	elif element == "dark":
 		_draw_dark(mid, side * 0.5, 0.95)
+	else:
+		_draw_phys(mid, side * 0.5, 0.95)
 
 	if not lit:
 		return
@@ -124,6 +124,25 @@ func _draw_light(mid: Vector2, r: float, a: float) -> void:
 		var dir: Vector2 = Vector2(cos(ang), sin(ang))
 		draw_line(mid + dir * r * 0.45, mid + dir * r, col, maxf(1.0, r * 0.16), true)
 	draw_circle(mid, r * 0.38, Color(1.0, 0.99, 0.88, a))
+
+
+# A blade, point up. Steel rather than a colour: phys is the one line that is
+# not an element, and giving it a hue would put it in the same family as the
+# five that are.
+func _draw_phys(mid: Vector2, r: float, a: float) -> void:
+	var steel: Color = Color(0.82, 0.86, 0.94, a)
+	var w: float = maxf(1.0, r * 0.30)
+	# Blade.
+	draw_line(mid + Vector2(0.0, r * 0.75), mid + Vector2(0.0, -r * 0.85),
+			steel, w, true)
+	# Point.
+	draw_line(mid + Vector2(-w * 0.9, -r * 0.45), mid + Vector2(0.0, -r * 0.95),
+			steel, maxf(1.0, w * 0.7), true)
+	draw_line(mid + Vector2(w * 0.9, -r * 0.45), mid + Vector2(0.0, -r * 0.95),
+			steel, maxf(1.0, w * 0.7), true)
+	# Crossguard.
+	draw_line(mid + Vector2(-r * 0.62, r * 0.28), mid + Vector2(r * 0.62, r * 0.28),
+			Color(0.62, 0.66, 0.76, a), maxf(1.0, w * 0.8), true)
 
 
 func _draw_dark(mid: Vector2, r: float, a: float) -> void:

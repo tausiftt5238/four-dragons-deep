@@ -1826,9 +1826,8 @@ func _show_skills_submenu() -> void:
 			actor.has_status(Status.IMMOBILIZE)))
 
 	if _actor_is_player():
-		# Free, always carried, and the only way to see a chart before spending
-		# turns finding it out the hard way.
-		_submenu_add(_make_skill_button("Analyze", "Analyze", "Read", "\u2014", false))
+		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
+		# and comes through the loop below with everything else.
 		if player.equipped_spells.is_empty():
 			_submenu_add(_dim_label("No spells equipped."))
 			return
@@ -2522,6 +2521,9 @@ func _cast_spell(spell_id: String) -> Dictionary:
 
 	var spell_type: String = data.get("type", "dmg")
 
+	if spell_type == "analyze":
+		return _resolve_analyze()
+
 	if spell_type == "buff":
 		return _apply_stage_spell(data)
 
@@ -2876,6 +2878,11 @@ func _cast_banish_spread(data: Dictionary) -> Dictionary:
 # into the log. Costs a turn, which is the whole tension: scouting is an action
 # you are not spending on damage.
 func _resolve_analyze() -> Dictionary:
+	# A warden or a boss gives nothing up. The turn is still spent, so reading
+	# the wrong thing is a real mistake rather than a free check.
+	if enemy.unreadable:
+		return {msg = "[color=#9aa0aa]%s gives you nothing.[/color]"
+				% enemy.display_name(), cost = PressTurn.COST_FULL}
 	var already: bool = player.has_analyzed(enemy.enemy_name)
 	player.record_analysis(enemy.enemy_name)
 	var chart: String = _affinity_line(enemy)

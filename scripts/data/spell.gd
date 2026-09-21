@@ -64,6 +64,14 @@ const SPREAD_FEW_BANISH: float = 0.70
 const SPREAD_ALL_BANISH: float = 0.50
 
 static var DATA: Dictionary = {
+	# A spell like any other, and so a slot like any other. It used to be welded
+	# into the battle menu as a free extra button; now that killing a demon
+	# teaches you its chart anyway, carrying Analyze is a choice worth making
+	# rather than a freebie.
+	"analyze":       {name="Analyze",      mp=0, type="analyze", heal=0, element="",
+		shape=SHAPE_ONE, spread=1.0,
+		desc="Read a demon's chart and its temper. Wardens and bosses refuse."},
+
 	# ── Fire ──────────────────────────────────────────────────────────────────
 	"ember":         {name="Ember",        mp=8, type="dmg", heal=0, element="fire",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_I,

@@ -427,8 +427,8 @@ func _ready() -> void:
 	compute_max_hp()
 	compute_max_mp()
 
-	known_spells    = ["ember"]
-	equipped_spells = ["ember"]
+	known_spells    = ["analyze", "ember"]
+	equipped_spells = ["analyze", "ember"]
 	equipped_items  = []
 	equipped_weapon = {}
 	equipped_armor  = {}
