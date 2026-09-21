@@ -102,6 +102,12 @@ func belt() -> Array[Dictionary]:
 # Every demon he has bound. The rolodex.
 var recruited: Array[String] = []
 
+# Every demon that has EVER answered to him, kept after one is sold or falls.
+# This, not encountered_enemies, is what an orb will call back: the orb reaches
+# for something that has been bound before, and fighting a thing in a corridor
+# is not an introduction it would honour.
+var ever_bound: Array[String] = []
+
 # The level each bound demon is at now. It starts at the level it was caught
 # and climbs: a demon that fights alongside him grows into the run rather than
 # falling behind it. Only bound demons do this — a wild one is whatever its
@@ -328,6 +334,11 @@ func remember_recruit(demon_name: String, lv: int = 1) -> void:
 		return
 	if demon_name not in recruited:
 		recruited.append(demon_name)
+	# Kept even when the demon is later sold or falls. An orb can only call back
+	# something that answered to you once — meeting a thing in a corridor is not
+	# an introduction it would honour.
+	if demon_name not in ever_bound:
+		ever_bound.append(demon_name)
 	# Keep the best one ever bound: re-catching a weaker copy should never
 	# downgrade what is already in the rolodex.
 	bound_level[demon_name] = maxi(int(bound_level.get(demon_name, 0)), maxi(1, lv))
@@ -423,6 +434,7 @@ func _ready() -> void:
 	equipped_armor  = {}
 	equipped_accessories = []
 	recruited       = [STARTING_DEMON]
+	ever_bound      = [STARTING_DEMON]
 	bound_level     = {STARTING_DEMON: 2}
 	active_demons   = [STARTING_DEMON]
 

@@ -201,8 +201,10 @@ static func bind_price(demon: Enemy) -> int:
 
 
 func _build_bind() -> void:
+	# What has answered to him before, not everything he has swung at. An orb
+	# calls a demon back; it does not introduce one.
 	var offered: Array = []
-	for enemy_name: String in player.encountered_enemies:
+	for enemy_name: String in player.ever_bound:
 		var demon: Enemy = Enemy.make_from_name(enemy_name)
 		var can_bind: bool = demon.negotiable   # a mindless thing cannot be bound
 		demon.free()
@@ -210,7 +212,7 @@ func _build_bind() -> void:
 			offered.append(enemy_name)
 
 	if offered.is_empty():
-		_content.add_child(_note("You have not met anything that would come when called."))
+		_content.add_child(_note("Nothing has answered to you yet."))
 		SlotList.new(_content)
 		return
 	SlotList.paged(_content, _page, "bind", offered, _bind_offer, _refresh)

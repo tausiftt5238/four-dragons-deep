@@ -1341,6 +1341,7 @@ func _gather_save_data() -> Dictionary:
 			equipped_spells     = p.equipped_spells,
 			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
+			ever_bound          = p.ever_bound,
 			bound_level         = p.bound_level,
 			demon_exp           = p.demon_exp,
 			demon_gains         = p.demon_gains,
@@ -1511,6 +1512,11 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.recruited.clear()
 	player_char.recruited.assign(pdata.get("recruited", []) as Array)
+	player_char.ever_bound.clear()
+	# A save written before this existed knows only who is bound right now, so
+	# that is what it gets back — better than an empty orb on an old run.
+	player_char.ever_bound.assign(
+			pdata.get("ever_bound", pdata.get("recruited", [])) as Array)
 	player_char.bound_level.clear()
 	for k: Variant in (pdata.get("bound_level", {}) as Dictionary):
 		player_char.bound_level[k] = int((pdata["bound_level"] as Dictionary)[k])
