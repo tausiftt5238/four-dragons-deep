@@ -99,6 +99,40 @@ static func panacea() -> Dictionary:
 			0, 0, 4, "all")
 
 
+# ── Stones ────────────────────────────────────────────────────────────────────
+#
+# The only items that do not wear off. A flat gain rather than a scaling one:
+# early it is most of a level, deep it is a rounding error, which is what makes
+# finding one on floor two worth the walk and stops a late hoard from breaking
+# the last band. Held in _hp_bonus / _mp_bonus, which already save and load.
+
+static func heartstone() -> Dictionary:
+	var d: Dictionary = {id="heartstone", name="Heartstone", type="consumable",
+			desc="Raises maximum HP by 15, for good.",
+			hp_restore=0, mp_restore=0, floor=1, qty=1, max_hp_gain=15}
+	return d
+
+static func wellstone() -> Dictionary:
+	var d: Dictionary = {id="wellstone", name="Wellstone", type="consumable",
+			desc="Raises maximum MP by 8, for good.",
+			hp_restore=0, mp_restore=0, floor=1, qty=1, max_mp_gain=8}
+	return d
+
+
+# Stones are rolled on their own rather than sitting in the drop table. In the
+# table they were one entry among ninety, which came to ONE stone across a
+# whole twenty-floor run — too rare to be a thing the player ever notices.
+# A separate roll makes the rate a number someone can read and change.
+const STONE_FROM_CHEST: int = 10   # percent
+const STONE_FROM_KILL:  int = 3    # percent
+
+
+static func roll_stone(chance_pct: int) -> Dictionary:
+	if randi() % 100 >= chance_pct:
+		return {}
+	return heartstone() if randi() % 2 == 0 else wellstone()
+
+
 # ── Predefined scrolls ────────────────────────────────────────────────────────
 
 static func scroll_cure() -> Dictionary:

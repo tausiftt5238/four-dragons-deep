@@ -409,6 +409,10 @@ func _ready() -> void:
 	luk = 3
 	exp = 0
 	exp_to_next = 100
+	# The run opens holding one spell. On the bare formula that is 10 MP — a
+	# single cast of Ember and then nothing for the rest of the floor, which is
+	# not a loadout so much as a demonstration. Three casts is a start.
+	_mp_bonus = 14
 	compute_max_hp()
 	compute_max_mp()
 
@@ -616,6 +620,10 @@ func remove_item(item: Dictionary, count: int = 1) -> void:
 func can_use_item(item: Dictionary) -> bool:
 	match item["type"]:
 		"consumable":
+			# A stone always has something to do: the ceiling it raises is never
+			# already full.
+			if item.get("max_hp_gain", 0) > 0 or item.get("max_mp_gain", 0) > 0:
+				return true
 			if item.get("hp_restore", 0) > 0 and hp < max_hp:
 				return true
 			if item.get("mp_restore", 0) > 0 and mp < max_mp:
@@ -636,6 +644,23 @@ func use_item(item: Dictionary) -> String:
 	match item["type"]:
 		"consumable":
 			var msg: String = ""
+			var max_hp_up: int = item.get("max_hp_gain", 0)
+			var max_mp_up: int = item.get("max_mp_gain", 0)
+			if max_hp_up > 0 or max_mp_up > 0:
+				# Both pools come back full, which is compute_max_*'s own
+				# behaviour — a stone raises the ceiling and fills what it
+				# raised. That makes one worth carrying to a boss door.
+				_hp_bonus += max_hp_up
+				_mp_bonus += max_mp_up
+				compute_max_hp()
+				compute_max_mp()
+				if max_hp_up > 0:
+					msg += "Maximum HP is now %d. " % max_hp
+				if max_mp_up > 0:
+					msg += "Maximum MP is now %d. " % max_mp
+				msg += "Restored to full."
+				remove_item(item, 1)
+				return msg.strip_edges()
 			var hp_val: int  = item.get("hp_restore", 0)
 			var mp_val: int  = item.get("mp_restore", 0)
 			var cure: String = item.get("cures_status", "")

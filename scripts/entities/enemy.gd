@@ -721,6 +721,21 @@ static func level_for_floor(floor_num: int, rank: int) -> int:
 	return maxi(1, roundi(float(floor_num) * 1.5) + rank)
 
 
+# What a demon met on the opening floors keeps of its HP. The first floor is the
+# only place the player has no levels, no gear and one spell, and a tier-one
+# demon there outlasted them: 32-45 HP against a starting 22.
+#
+# Ramped over three floors rather than dropped on floor one alone, which would
+# have put a wall at floor two instead of a brutal opening at floor one.
+const OPENING_HP: Array[float] = [0.60, 0.78, 0.92]
+
+
+static func opening_hp_scale(floor_num: int) -> float:
+	if floor_num < 1 or floor_num > OPENING_HP.size():
+		return 1.0
+	return OPENING_HP[floor_num - 1]
+
+
 # Which band of demons a floor draws from. Five floors to a tier, four tiers,
 # and a boss closing each one.
 static func tier_for_floor(floor_num: int) -> int:
@@ -762,6 +777,8 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.ailment_chance  = int(t.get("ail", 12))
 	e.tint            = tint_for_floor(floor_num)
 	e.compute_max_hp()
+	e.max_hp = maxi(1, roundi(float(e.max_hp) * opening_hp_scale(floor_num)))
+	e.hp = e.max_hp
 	e.compute_max_mp()
 	return e
 
@@ -836,6 +853,10 @@ func dregs_element() -> String:
 
 # Returns a random item drop, or an empty dict if nothing drops (65% no-drop).
 func roll_drop() -> Dictionary:
+	# Rolled ahead of the table and on its own odds — see Item.roll_stone.
+	var stone: Dictionary = Item.roll_stone(Item.STONE_FROM_KILL)
+	if not stone.is_empty():
+		return stone
 	if randi() % 100 < 65:
 		return {}
 	var table: Array[Dictionary] = Item.drop_table_for_floor(spawn_floor)

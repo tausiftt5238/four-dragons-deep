@@ -80,7 +80,10 @@ func _add_item(list: SlotList, item_id: String) -> void:
 		# Ailments end with the fight, so an item that only cures one has nothing
 		# to do out here. It still lists and still belts — the player wants to
 		# see what they are carrying — but the field offers no Use for it.
-		if int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0:
+		# A stone raises a ceiling and refills it, so it is always worth using.
+		if int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0 \
+				or int(item.get("max_hp_gain", 0)) > 0 \
+				or int(item.get("max_mp_gain", 0)) > 0:
 			actions.append({
 				text = "Use", disabled = not p.can_use_item(item),
 				press = func() -> void:
