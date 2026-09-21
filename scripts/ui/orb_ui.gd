@@ -264,15 +264,78 @@ static func sell_price(demon_name: String, lv: int) -> int:
 	return price
 
 
+# What a piece of gear is actually worth. `item_price` reads `floor`, which for
+# a consumable is the depth it turns up at but for gear is its TIER — so through
+# that formula a Hazel Wand and Diamond Armour both came out at 45 gold. Gear is
+# priced off what it gives instead.
+static func gear_value(item: Dictionary) -> int:
+	var tier: int = clampi(int(item.get("floor", 1)), 1, 4)
+	var bonus: int = int(item.get("str_bonus", 0)) + int(item.get("def_bonus", 0)) \
+			+ int(item.get("mag_bonus", 0)) + int(item.get("agl_bonus", 0)) \
+			+ int(item.get("luk_bonus", 0))
+	return 50 * tier + 18 * maxi(0, bonus)
+
+
+# What the counter charges for anything, buying or selling. ONE function on
+# purpose: with gear bought off `item_price` and sold off `gear_value`, Diamond
+# Armour cost 120 and sold back for 343, and the orb was a money printer.
+static func price_of(item: Dictionary) -> int:
+	var kind: String = item.get("type", "") as String
+	if kind == "weapon" or kind == "armor" or kind == "accessory":
+		return gear_value(item)
+	return item_price(item)
+
+
+# Half what the same thing costs across the counter. Gear worn right now is not
+# in the pack at all — equipping moves it out of inventory — so the list never
+# offers to sell what you are standing in.
+static func resale_price(item: Dictionary) -> int:
+	return maxi(1, price_of(item) / 2)
+
+
 func _build_sell() -> void:
-	if player.recruited.is_empty():
-		SlotList.new(_content).add_note("Nothing bound to you.")
+	# Demons first, then the pack, in one paged list: the counter is the same
+	# counter and splitting it into two tabs would only add a tap.
+	var rows: Array = []
+	for demon_name: String in player.recruited:
+		rows.append({kind = "demon", name = demon_name})
+	for item: Dictionary in player.inventory:
+		rows.append({kind = "item", item = item})
+	if rows.is_empty():
+		SlotList.new(_content).add_note("Nothing to sell.")
 		return
-	SlotList.paged(_content, _page, "sell", player.recruited.duplicate(),
-			_sell_offer, _refresh)
+	SlotList.paged(_content, _page, "sell", rows, _sell_offer, _refresh)
 
 
-func _sell_offer(list: SlotList, enemy_name: String) -> void:
+func _sell_offer(list: SlotList, row: Dictionary) -> void:
+	if row.get("kind", "") == "item":
+		_sell_item(list, row["item"] as Dictionary)
+	else:
+		_sell_demon(list, row["name"] as String)
+
+
+func _sell_item(list: SlotList, item: Dictionary) -> void:
+	var price: int = resale_price(item)
+	var qty: int = int(item.get("qty", 1))
+	var about: String = item.get("desc", "") as String
+	if qty > 1:
+		about = "x%d   %s" % [qty, about]
+	list.add(item["name"] as String, Color(0.85, 0.85, 0.92), about,
+			"%d g" % price, Color(1.0, 0.85, 0.35),
+			"Sell", false,
+			func() -> void:
+				# The belt holds an id, not the item, and belt() only skips a
+				# dead one — the slot itself would stay spent. So the last one
+				# sold comes off the belt with it.
+				if qty <= 1:
+					player.unequip_item(item["id"] as String)
+				player.remove_item(item, 1)
+				player.gold += price
+				_set_status("Sold %s. %d gold." % [item["name"], price])
+				_refresh())
+
+
+func _sell_demon(list: SlotList, enemy_name: String) -> void:
 	var lv: int = int(player.bound_level.get(enemy_name, 1))
 	var demon: Enemy = player.bound_demon(enemy_name)
 	var lines: Array[String] = []
@@ -375,7 +438,7 @@ func _build_scrolls() -> void:
 
 func _buy_offer(list: SlotList, item: Variant) -> void:
 	var entry: Dictionary = item as Dictionary
-	var price: int = item_price(entry)
+	var price: int = price_of(entry)
 	# What it would change, above its own description: a shop that only names a
 	# piece leaves the player no way to tell whether it is an upgrade at all.
 	var deltas: String = GearTooltip.delta_markup(entry, player)

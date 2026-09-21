@@ -86,7 +86,7 @@ var orb_layer:     CanvasLayer
 var chest_layer:   CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
-var _orb_btn:         Button  # "Save", shown only while standing on an orb
+var _orb_btn:         Button  # "Orb", shown only while standing on an orb
 var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
 var _hud_popup_tween: Tween
 
@@ -329,7 +329,9 @@ func _setup_minimap() -> void:
 	# Stepping onto the tile opens the orb once; without this, leaving that
 	# panel meant walking off the tile and back on to reach it again.
 	_orb_btn = Button.new()
-	_orb_btn.text          = "Save"
+	# "Orb", not "Save": the panel it opens rests, shops, binds and sells, and
+	# saving is one row inside it.
+	_orb_btn.text          = "Orb"
 	_orb_btn.anchor_left   = 1.0
 	_orb_btn.anchor_right  = 1.0
 	_orb_btn.anchor_top    = 1.0
