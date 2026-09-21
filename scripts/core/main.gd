@@ -196,15 +196,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 		visited_by_map[scene_path] = {}
 	visited = visited_by_map[scene_path]
 
-	# Update minimap to the new map's data and its own visited reference.
-	# The reference must be reassigned here because visited was just repointed.
-	minimap_ctrl.maze      = current_level.maze
-	minimap_ctrl.visited   = visited
-	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
-	minimap_ctrl.orb_cells   = current_level.orb_cells
-	minimap_ctrl.chest_cells = current_level.chest_cells
-	minimap_ctrl.looted      = current_level.looted
-	minimap_ctrl.found_traps = current_level.found_traps
+	_point_minimap_at_level()
 	_sync_minimap_palette()
 	_resize_minimap()
 
@@ -1128,6 +1120,7 @@ func _check_trap() -> void:
 	var dmg: int = max(1, int(player_char.max_hp * 0.15))
 	player_char.take_damage(dmg)
 	_show_hud_popup("Spike Trap!  -%d HP" % dmg, Color(0.90, 0.30, 0.30))
+	_shake_camera()
 	if not player_char.is_alive():
 		_show_game_over()
 
@@ -1467,9 +1460,7 @@ func _restore_save(data: Dictionary) -> void:
 		visited_by_map[sp as String] = SaveSystem.unpack_visited(raw_visited[sp as String] as Array)
 	visited = visited_by_map.get(scene_path, {})
 
-	minimap_ctrl.maze      = current_level.maze
-	minimap_ctrl.visited   = visited
-	minimap_ctrl.exit_pos  = current_level.exit_wall_pos
+	_point_minimap_at_level()
 	_sync_minimap_palette()
 	_resize_minimap()
 
@@ -1619,6 +1610,23 @@ func _unpack_cell_set(keys: Array) -> Dictionary:
 	for key: Variant in keys:
 		out[SaveSystem.key_vec2i(key as String)] = true
 	return out
+
+
+# Every one of these is a reference INTO the level, and both the walk-in and the
+# load-a-save path build a brand new Level — so all of them have to be repointed
+# or the map is still describing the floor before this one.
+#
+# It lives in one function because it did not: _restore_save repointed three of
+# the seven, so a loaded run came back with no orb, no chest and no sprung trap
+# on the map while the level itself knew exactly where all of them were.
+func _point_minimap_at_level() -> void:
+	minimap_ctrl.maze        = current_level.maze
+	minimap_ctrl.visited     = visited
+	minimap_ctrl.exit_pos    = current_level.exit_wall_pos
+	minimap_ctrl.orb_cells   = current_level.orb_cells
+	minimap_ctrl.chest_cells = current_level.chest_cells
+	minimap_ctrl.looted      = current_level.looted
+	minimap_ctrl.found_traps = current_level.found_traps
 
 
 func _pack_orbs() -> Array:
