@@ -768,7 +768,7 @@ func _resolve_action(action: String) -> Dictionary:
 
 
 func _land_hit(res: Dictionary, element: String, prefix: String,
-		melee: bool = false) -> Dictionary:
+		melee: bool = false, rung: float = Spell.POWER_I) -> Dictionary:
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
 	var crit: bool      = res["crit"] as bool
@@ -797,6 +797,8 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 		_shake_portrait(pr)
 		if melee:
 			SlashFX.strike(pr)
+		else:
+			SpellFX.cast(pr, element, rung)
 	var extra: String = ""
 	if _actor_is_player() and melee \
 			and "vampiric" in player.passive_skills:
@@ -2564,7 +2566,8 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit(player)
 	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending)
-	return _land_hit(res, element, "You cast %s!" % data["name"])
+	return _land_hit(res, element, "You cast %s!" % data["name"], false,
+			float(data.get("power", Spell.POWER_I)))
 
 
 # ── Spells that reach more than one demon ─────────────────────────────────────
@@ -2621,6 +2624,14 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 		var outcome: String = res["outcome"] as String
 		outcomes.append(outcome)
 		var dmg: int = int(res["dmg"])
+
+		# Every demon it reaches gets its own burst. That is what makes a wide
+		# cast look wide — the count per portrait is the rung, not the reach.
+		var spread_pr: TextureRect = _foe_portrait(foe)
+		if spread_pr != null:
+			SpellFX.cast(spread_pr, element, rung)
+			if outcome != "null" and outcome != "drain":
+				_shake_portrait(spread_pr)
 
 		match outcome:
 			"drain":
@@ -2772,6 +2783,13 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 	var name: String = data["name"] as String
 	var who: String  = enemy.display_name()
 
+	# Fires on the cast, not on the result: the line reaches the demon whether
+	# or not it takes, and a failed banish with no effect at all read as a
+	# button that had not registered.
+	var banish_pr: TextureRect = _foe_portrait(enemy)
+	if banish_pr != null:
+		SpellFX.cast(banish_pr, element, Spell.rung_of(data))
+
 	match res["outcome"]:
 		"banished":
 			enemy.take_damage(enemy.max_hp * 2)
@@ -2814,10 +2832,14 @@ func _cast_banish_spread(data: Dictionary) -> Dictionary:
 	var reflected: int = 0
 	var took_weak: bool = false
 
+	var wide_rung: float = Spell.rung_of(data)
 	for foe: Enemy in targets:
 		var res: Dictionary = CombatMath.resolve_banish(
 				foe, element, power, false, player, spread, boost)
 		var outcome: String = res["outcome"] as String
+		var wide_pr: TextureRect = _foe_portrait(foe)
+		if wide_pr != null:
+			SpellFX.cast(wide_pr, element, wide_rung)
 		match outcome:
 			"banished":
 				var was_weak: bool = (foe.affinity_of(element) == Affinity.WEAK)
@@ -3108,6 +3130,8 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 		_shake_portrait(hit_pr)
 		if element == Affinity.PHYS:
 			SlashFX.strike(hit_pr)
+		else:
+			SpellFX.cast(hit_pr, element)
 	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s" % [
 			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted)]
 	if target == player:
@@ -3260,6 +3284,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
 		_shake_portrait(hit_pr)
+		SpellFX.cast(hit_pr, element)
 	var tag: String = "  [color=yellow]Weak![/color]" if res["outcome"] == "weak" else ""
 	return {msg = dry + "[color=red]%s calls the %s — %s takes %d.[/color]%s" % [
 			ename, word, tname, hurt, tag],

@@ -44,6 +44,20 @@ const BOOST_III: float = 0.20
 # Damage keeps more of itself when split than a banishing cast does. Expelling
 # three demons at once for 36 MP would end most fights outright, so the wide
 # banishing spells give up nearly half their odds to exist at all.
+# A spell's rung, whichever axis it is stored on: damage spells carry it as
+# `power`, banishing spells as `boost`. Effects scale on the rung and need one
+# answer for both.
+static func rung_of(data: Dictionary) -> float:
+	if data.has("power"):
+		return float(data["power"])
+	var boost: float = float(data.get("boost", BOOST_I))
+	if boost >= BOOST_III:
+		return POWER_III
+	if boost >= BOOST_II:
+		return POWER_II
+	return POWER_I
+
+
 const SPREAD_FEW_DMG:    float = 0.75
 const SPREAD_ALL_DMG:    float = 0.60
 const SPREAD_FEW_BANISH: float = 0.70
