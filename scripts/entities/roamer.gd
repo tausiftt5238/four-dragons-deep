@@ -36,6 +36,21 @@ var _prev_cell: Vector2i = Vector2i(-999, -999)
 var _bob_phase: float = 0.0
 var _move_tween: Tween
 var _halo: MeshInstance3D
+var _cage: Node3D
+
+# Which band it belongs to, 1-4. Set by main before the roamer enters the tree.
+var tier: int = 1
+
+# What a roamer burns as, per band. Chosen AGAINST the wall colour of that band
+# (Level.TIER_WIRE: cyan, yellow, orange, pale violet) — a roamer in its band's
+# own colour is a roamer you walk into. It gets stranger as it gets deeper,
+# which is the other half of the job.
+const TIER_HOT: Array[Color] = [
+	Color(1.00, 0.55, 0.16),   # I   · ember, against cold cyan walls
+	Color(1.00, 0.24, 0.18),   # II  · blood, against a yellow band
+	Color(1.00, 0.20, 0.72),   # III · magenta, the one colour orange cannot eat
+	Color(0.62, 1.00, 0.30),   # IV  · acid, against the violet draining out
+]
 
 
 func _ready() -> void:
@@ -50,28 +65,52 @@ func _process(delta: float) -> void:
 		_halo.rotation.y += delta * 0.9
 		var pulse: float = 1.0 + sin(_bob_phase * 1.7) * 0.045
 		_halo.scale = Vector3(pulse, pulse, pulse)
+	# Turned on two axes, slowly and at different rates, so the cage never
+	# settles into a pose that reads as a flat ring.
+	if _cage != null:
+		_cage.rotation.y += delta * 0.55
+		_cage.rotation.x += delta * 0.23
 
 
 # ── Look ──────────────────────────────────────────────────────────────────────
 
+func hot_color() -> Color:
+	if warden:
+		return Color(0.62, 0.42, 1.0)
+	return TIER_HOT[clampi(tier - 1, 0, TIER_HOT.size() - 1)]
+
+
 func _build_visual() -> void:
 	var scale_up: float = 1.45 if warden else 1.0
-	var hot: Color  = Color(0.62, 0.42, 1.0) if warden else Color(1.0, 0.55, 0.16)
-	var glow: Color = Color(0.70, 0.45, 1.0) if warden else Color(1.0, 0.55, 0.20)
+	var hot: Color  = hot_color()
+	var glow: Color = Color(hot.r, hot.g, hot.b).lightened(0.10)
 
 	# The core reads as an absence, not an object — it is darker than the walls.
-	var core: MeshInstance3D = MeshInstance3D.new()
-	var core_mesh: SphereMesh = SphereMesh.new()
-	core_mesh.radius = 0.30 * scale_up
-	core_mesh.height = 0.60 * scale_up
-	core_mesh.radial_segments = 16
-	core_mesh.rings = 8
-	core.mesh = core_mesh
+	# Four overlapping lumps rather than one sphere: unshaded, a single sphere
+	# has no interior to see and its silhouette is a circle, which is why the
+	# old roamer read as a flat disc pasted on the corridor.
 	var core_mat: StandardMaterial3D = StandardMaterial3D.new()
 	core_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	core_mat.albedo_color = Color(0.05, 0.02, 0.07)
-	core.material_override = core_mat
-	add_child(core)
+	const LUMPS: Array[Vector4] = [
+		Vector4(0.0, 0.0, 0.0, 1.00),
+		Vector4(0.14, 0.09, -0.05, 0.72),
+		Vector4(-0.12, -0.10, 0.07, 0.66),
+		Vector4(0.03, -0.14, -0.11, 0.55),
+	]
+	for l: Vector4 in LUMPS:
+		var lump: MeshInstance3D = MeshInstance3D.new()
+		var lm: SphereMesh = SphereMesh.new()
+		lm.radius = 0.30 * scale_up * l.w
+		lm.height = 0.60 * scale_up * l.w
+		lm.radial_segments = 12
+		lm.rings = 6
+		lump.mesh = lm
+		lump.material_override = core_mat
+		lump.position = Vector3(l.x, l.y, l.z) * scale_up
+		add_child(lump)
+
+	add_child(_build_cage(scale_up, hot))
 
 	# A thin shell of heat sitting just off the core.
 	_halo = MeshInstance3D.new()
@@ -98,6 +137,47 @@ func _build_visual() -> void:
 	light.light_energy = 2.1 if warden else 1.6
 	light.omni_range   = 6.0 if warden else 4.5
 	add_child(light)
+
+
+# A wire shell turning around the mass. The whole maze is drawn in lines, so
+# the thing walking it is drawn in lines too — and a cage that turns gives the
+# core a volume an unshaded sphere can never show on its own.
+func _build_cage(scale_up: float, hot: Color) -> Node3D:
+	const SEGMENTS: int = 20
+	var r: float = 0.46 * scale_up
+	var verts: PackedVector3Array = PackedVector3Array()
+	for axis: int in range(3):
+		for i: int in range(SEGMENTS):
+			verts.append(_ring_point(axis, TAU * float(i) / float(SEGMENTS), r))
+			verts.append(_ring_point(axis, TAU * float(i + 1) / float(SEGMENTS), r))
+
+	var arr: Array = []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arr)
+
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	mi.mesh = mesh
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode   = BaseMaterial3D.BLEND_MODE_ADD
+	mat.albedo_color = Color(hot.r, hot.g, hot.b, 0.85)
+	mi.material_override = mat
+
+	_cage = Node3D.new()
+	_cage.add_child(mi)
+	return _cage
+
+
+func _ring_point(axis: int, ang: float, r: float) -> Vector3:
+	var c: float = cos(ang) * r
+	var s: float = sin(ang) * r
+	match axis:
+		0: return Vector3(0.0, c, s)
+		1: return Vector3(c, 0.0, s)
+	return Vector3(c, s, 0.0)
 
 
 func _build_fire(scale_up: float = 1.0) -> CPUParticles3D:
@@ -135,11 +215,14 @@ func _build_fire(scale_up: float = 1.0) -> CPUParticles3D:
 		ramp.add_point(0.65, Color(0.36, 0.16, 0.72, 0.55))
 		ramp.add_point(1.0, Color(0.10, 0.03, 0.24, 0.0))
 	else:
-		ramp.set_color(0, Color(1.00, 0.97, 0.80, 1.0))
+		# White at the source whatever the band, then down into the band's own
+		# colour and out. An ember that starts already coloured reads as confetti.
+		var h: Color = hot_color()
+		ramp.set_color(0, Color(1.0, 0.97, 0.90, 1.0))
 		ramp.set_offset(1, 0.30)
-		ramp.set_color(1, Color(1.00, 0.58, 0.10, 0.95))
-		ramp.add_point(0.65, Color(0.92, 0.24, 0.03, 0.55))
-		ramp.add_point(1.0, Color(0.30, 0.04, 0.01, 0.0))
+		ramp.set_color(1, Color(h.r, h.g, h.b, 0.95))
+		ramp.add_point(0.65, Color(h.r * 0.80, h.g * 0.42, h.b * 0.42, 0.55))
+		ramp.add_point(1.0, Color(h.r * 0.28, h.g * 0.10, h.b * 0.12, 0.0))
 	fire.color_ramp = ramp
 
 	var quad: QuadMesh = QuadMesh.new()

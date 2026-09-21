@@ -778,6 +778,7 @@ func _spawn_roamer_in(zone: Rect2i) -> void:
 	var r: Roamer = Roamer.new()
 	r.cell = options[randi() % options.size()]
 	r.zone = zone
+	r.tier = Enemy.tier_for_floor(floor_num)
 	world.add_child(r)
 	roamers.append(r)
 
@@ -1643,6 +1644,7 @@ func _restore_roamers() -> void:
 	for key: Variant in _pending_roamers:
 		var rm: Roamer = Roamer.new()
 		rm.cell = SaveSystem.key_vec2i(key as String)
+		rm.tier = Enemy.tier_for_floor(floor_num)
 		world.add_child(rm)
 		roamers.append(rm)
 	_pending_roamers = []
