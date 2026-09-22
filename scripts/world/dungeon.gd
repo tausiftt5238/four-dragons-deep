@@ -53,15 +53,15 @@ func _build_geometry(level: Level) -> void:
 		for col: int in range(row_data.size()):
 			if row_data[col] == 1:
 				var here: Vector2i = Vector2i(col, row)
-				# Only faces that touch open floor are ever seen — and the one
-				# face a cache opens through is left out entirely, because the
-				# fill behind a wall writes depth and would bury the recess.
-				# The cache REPLACES that face; it does not sit in front of it.
-				var cache_face: Vector2i = level.chest_cells.get(here,
-						Vector2i(-999, -999)) as Vector2i
-				# The stairwell is the same trick at cell scale: the exit wall is
-				# hollowed rather than decorated, so the face the stairs climb
-				# through has to go too or they are buried behind it.
+				# Only faces that touch open floor are ever seen. A chest used
+				# to delete the face it opened through as well, because it was a
+				# recess cut into the block and the fill behind a wall writes
+				# depth, which buried it. It hangs on the wall now, so the wall
+				# stays whole and the banner sits just in front of it.
+				var cache_face: Vector2i = Vector2i(-999, -999)
+				# The stairwell is still hollowed rather than decorated, so the
+				# face the stairs climb through has to go or they are buried
+				# behind it.
 				if here == level.exit_wall_pos:
 					cache_face = level.exit_pos
 				for n: Vector2i in _NEIGHBOURS:
@@ -501,12 +501,16 @@ func _add_orb(pos: Vector2i) -> void:
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 #
-# A cache is cut INTO a wall rather than parked on the floor, which is why it
-# has to bring its own recess: no wall in this maze has anything solid behind
-# it, so without lining the niche you would be looking through the level. The
-# lining is three quads and a floor, drawn in the wall's own colour so the
-# recess reads as part of the architecture and the thing inside it does not.
-const _CHEST_DEPTH: float = 0.55
+# A cache hangs on a wall like a banner. It used to be cut INTO the block, which
+# meant it had to bring its own recess — no wall in this maze has anything solid
+# behind it, so an unlined niche looked straight through the level — and that
+# lining was three quads and a floor standing in for masonry that was never
+# there. A banner needs none of it: the wall face stays whole and the sprite
+# sits just in front of it.
+# How far the banner stands off the wall it hangs on. Enough to clear the wall
+# face without reading as a box pulled out of it — the point of the change is
+# that a chest is a picture on the stonework, not a thing with sides.
+const _CHEST_STANDOFF: float = 0.03
 
 # Two frames side by side in one 96x48 image: closed on the left, lid tipped
 # back on the right. Which half is showing is the whole of the looted state —
@@ -517,19 +521,19 @@ const _CHEST_FRAMES: float = 2.0
 
 # The drawn chest is only the middle 28 of its frame's 48 pixels and sits 8 up
 # from the bottom edge, so the quad has to be a good deal bigger than the chest
-# looks. These two are set together: the size makes the drawn chest fill the
-# niche the way the box it replaced did (0.77 of a 1.24 mouth), and the lift
-# then puts its feet on the shelf. Changing either alone floats it or buries it.
+# looks. These two are set together: the size makes the drawn chest read at the
+# scale the block it replaced did, and the lift puts its feet near the floor
+# rather than halfway up the wall. Changing either alone floats it or sinks it.
 const _CHEST_SIZE: float = 1.32
 const _CHEST_LIFT: float = 0.52
 
-# How hard the chest is worked into the niche it stands in — see the shader's
-# own notes. These are the four to move if it starts looking pasted in again,
-# and zeroing all four gives back the plain lit sprite.
+# How hard the chest is worked into the wall it hangs on — see the shader's own
+# notes. These are the four to move if it starts looking pasted on again, and
+# zeroing all four gives back the plain lit sprite.
 const _CHEST_BEVEL: float   = 1.2
 const _CHEST_TINT: float    = 0.45
 # Small on purpose. Specular on a flat quad is one flat highlight; this is only
-# here to keep the bands from being as matte as the recess around them.
+# here to keep the bands from being as matte as the wall around them.
 const _CHEST_SHEEN: float   = 0.20
 const _CHEST_CONTACT: float = 0.7
 const _CHEST_GLOW: float    = 1.15
@@ -554,37 +558,15 @@ func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) ->
 	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)
 	add_child(root)
 
-	# Outward is the direction the recess opens; across is the other axis.
+	# Outward is the direction the chest faces; the wall behind it is whole.
 	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
-	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
-	var half: float = CELL_SIZE * 0.5
-	var mouth: float = CELL_SIZE * 0.62          # how wide the niche opens
-	var back: float = half - _CHEST_DEPTH        # distance in to the back wall
-	var top: float = WALL_HEIGHT * 0.62
 
-	var line_mat: StandardMaterial3D = StandardMaterial3D.new()
-	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	line_mat.albedo_color = wire.darkened(0.55)
-
-	# Back panel and the two cheeks, so the niche has somewhere to stop.
-	_add_box_child(root, out * back + Vector3(0.0, top * 0.5, 0.0),
-			_axis_box(out, across, 0.06, top, mouth), line_mat)
-	for side: float in [1.0, -1.0]:
-		_add_box_child(root,
-				out * ((half + back) * 0.5) + across * (mouth * 0.5 * side)
-					+ Vector3(0.0, top * 0.5, 0.0),
-				_axis_box(out, across, _CHEST_DEPTH, top, 0.06), line_mat)
-	# Lintel across the top of the opening.
-	_add_box_child(root, out * ((half + back) * 0.5) + Vector3(0.0, top, 0.0),
-			_axis_box(out, across, _CHEST_DEPTH, 0.06, mouth), line_mat)
-	# Shelf the cache sits on.
-	_add_box_child(root, out * ((half + back) * 0.5) + Vector3(0.0, 0.04, 0.0),
-			_axis_box(out, across, _CHEST_DEPTH, 0.08, mouth), line_mat)
-
-	# The cache itself. The drawn chest is the ONLY thing in the recess, and a
-	# mimic is drawn with exactly this call — nothing here may ever branch on
-	# whether the cache is real, or the disguise is over before it starts.
-	var centre: Vector3 = out * ((half + back) * 0.5) + Vector3(0.0, _CHEST_LIFT, 0.0)
+	# The cache itself, hung on the face of the wall like a banner rather than
+	# set into a hole cut through it. A mimic is drawn with exactly this call —
+	# nothing here may ever branch on whether the cache is real, or the disguise
+	# is over before it starts.
+	var centre: Vector3 = out * (CELL_SIZE * 0.5 + _CHEST_STANDOFF) \
+			+ Vector3(0.0, _CHEST_LIFT, 0.0)
 	_add_chest_sprite(root, centre, out, looted, wire)
 
 	# Both states carry a light now, because the chest is lit geometry rather
@@ -601,10 +583,10 @@ func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) ->
 	root.add_child(light)
 
 
-# The chest, as a flat quad standing in the niche and turned to face the one
-# cell it can be opened from. A quad rather than a billboard: a cache is set
-# into a wall and opens one way, so a sprite that swivelled to follow the
-# player would turn the recess inside out at any angle but head-on.
+# The chest, as a flat quad hung on the wall and turned to face the one cell it
+# can be opened from. A quad rather than a billboard: a cache hangs on a wall
+# and opens one way, so a sprite that swivelled to follow the player would peel
+# off the stonework at any angle but head-on.
 func _add_chest_sprite(parent: Node3D, pos: Vector3, out: Vector3, looted: bool,
 		wire: Color) -> void:
 	var mat: ShaderMaterial = ShaderMaterial.new()
