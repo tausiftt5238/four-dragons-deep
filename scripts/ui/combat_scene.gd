@@ -1265,11 +1265,36 @@ func _ensure_target() -> void:
 		enemy = living[0]
 
 
+# The gap between foe columns, named because the bar width below has to subtract
+# it to know what a column can actually have.
+const FOE_ROW_SEP: int = 6
+
+
+# How wide a foe's HP bar is allowed to be.
+#
+# This used to be measured off the bar's own wrapper — `wrap.size.x * 0.82` —
+# which is a loop: a custom_minimum_size on the bar becomes the column's minimum
+# width, which becomes the row's, so the bar was sizing itself from a number it
+# had just set. With four foes it settled at 131 a column, and 4 x 131 plus
+# three 6px gaps is 542 in a 540 window. The row overflowed the screen and every
+# panel above and below it was dragged 2px wide with it.
+#
+# A quarter of the row, less the gaps, is all a column can EVER have, so that is
+# what the bar is measured against. It also makes the bar one fixed width at
+# every pack size, which is what the blank half-columns either side were already
+# for.
+func _foe_bar_width() -> float:
+	var row: float = get_viewport_rect().size.x
+	var column: float = (row - float(MAX_PARTY - 1) * float(FOE_ROW_SEP)) \
+			/ float(MAX_PARTY)
+	return minf(column * 0.82, 190.0)
+
+
 func _build_enemy_area(parent: Control) -> void:
 	var area: HBoxContainer = HBoxContainer.new()
 	area.size_flags_vertical       = Control.SIZE_EXPAND_FILL
 	area.size_flags_stretch_ratio  = 1.0
-	area.add_theme_constant_override("separation", 6)
+	area.add_theme_constant_override("separation", FOE_ROW_SEP)
 	parent.add_child(area)
 
 	# Always MAX_PARTY columns, whatever the pack size. A lone demon used to
@@ -1344,7 +1369,7 @@ func _build_foe_column(foe: Enemy) -> Control:
 	col.add_child(bar_wrap)
 
 	var bar: ProgressBar = _make_bar(foe.max_hp)
-	bar.custom_minimum_size = Vector2(160, 10)
+	bar.custom_minimum_size = Vector2(_foe_bar_width(), 10)
 	bar_wrap.add_child(bar)
 
 	var hp_lbl: Label = Label.new()
@@ -1449,8 +1474,8 @@ func _refresh_foe_rows() -> void:
 		bar.value     = foe.hp
 		_apply_hp_bar(bar, foe.hp, foe.max_hp)
 		var wrap: Control = bar.get_parent() as Control
-		# Never wider than a comfortable read, never wider than its own column.
-		bar.custom_minimum_size.x = minf(maxf(wrap.size.x, 120.0) * 0.82, 190.0)
+		# Never wider than a comfortable read, never wider than a column can be.
+		bar.custom_minimum_size.x = _foe_bar_width()
 		wrap.visible = alive
 		var hp_lbl: Label = r["hp_lbl"] as Label
 		hp_lbl.text = "%d / %d" % [foe.hp, foe.max_hp] if alive else "Down"
