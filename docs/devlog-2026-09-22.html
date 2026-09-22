@@ -1,0 +1,43 @@
+<p>Someone told me floor 5 was an empty corridor. They were right, and it turned out to be worse than that: <strong>no dragon in the game had ever been reachable.</strong></p>
+
+<h2>Two bugs wearing one coat</h2>
+
+<p>A boss floor is a straight corridor. You walk east, you hit the wall at the end, and the wall is the fight &mdash; the dragon fires when you try to walk <em>into</em> it from the last tile.</p>
+
+<p>The corridor was carved one cell too long. Open cells ran <code>x = 1..18</code>, but the trigger wanted you standing on 17 walking into a wall at 18. Since 18 was open floor, you simply strolled onto it, ran out of corridor and found nothing. One character: <code>range(1, 19)</code> became <code>range(1, 18)</code>.</p>
+
+<p>That would have fixed exactly one dragon per run.</p>
+
+<p>The second bug was quieter. <code>_boss_beaten</code> was raised when a dragon fell and never put back down, so after the Ice Dragon on floor 5, every later corridor counted as already beaten. Floors 10, 15 and 20 were walked straight through. Fixing only the corridor would have handed you the Ice Dragon and three more empty hallways, which is a great way to conclude your fix didn&rsquo;t work.</p>
+
+<p>Both go through one <code>_descend()</code> now, shared with the stairs. That&rsquo;s the actual lesson: a floor arrived at by one path and not the other carries stale state, and there was already a flag doing precisely that.</p>
+
+<p>All four are in: <strong>Ice</strong> at 5, <strong>Thunder</strong> at 10, <strong>Fire</strong> at 15, <strong>Void</strong> at 20.</p>
+
+<h2>The opening was the grind</h2>
+
+<p>This one came from a feeling &mdash; &ldquo;the demon on stage 2 didn&rsquo;t give me enough exp&rdquo; &mdash; so I simulated 300 runs instead of guessing.</p>
+
+<p>The feeling was right and the shape was worse than it sounded. Floor 1 took <strong>8.8 fights per level.</strong> Floor 2 took 3.5. Floor 3 onward took two.</p>
+
+<p>The curves simply didn&rsquo;t meet. Exp from a kill is <code>10 + lv&sup2;/2</code>, which is tiny at low levels, while the first level cost a flat 100. A level-2 demon paid 12 a fight against a 100 bill. So the slowest stretch of the whole game was the one place you have no levels, no gear and one spell.</p>
+
+<p>The first level costs 60 now. Floor 1 drops to 5.0 fights, floor 2 to 1.4. I deliberately left the exp formula alone &mdash; raising it pays out at every depth and would have made the last five floors worse, and they&rsquo;re already the second-worst part of the curve. Floors 10 through 20 come out where they were.</p>
+
+<h2>Scrolls were eating the loot table</h2>
+
+<p>Gear was filtered by tier. Scrolls never were, and there are 59 of them against 12 consumables.</p>
+
+<p>On floor 1 that made scrolls <strong>70% of the drop table and 24% of every kill</strong> &mdash; and 55 of those 59 were deeper than floor 1 could reach. The single most common thing an opening demon dropped was a spell you couldn&rsquo;t read for another fifteen floors.</p>
+
+<p>Scrolls now gate on their own depth, and the category is rolled before the item at a fixed share rather than picking uniformly from a table scrolls outnumber five to one. They sit at 6.1% of kills at every depth, and nothing drops a scroll that can&rsquo;t be read where it fell.</p>
+
+<h2>Two smaller things</h2>
+
+<p><strong>The chest came out of the wall.</strong> It used to be a recess cut into a block &mdash; the wall face deleted so you could see in, plus a back panel, two cheeks, a lintel and a shelf standing in for masonry that was never there. It hangs on the stonework like a banner now. Five boxes gone; a chest is a quad and a light.</p>
+
+<p><strong>A pack of four was 2px too wide for the screen.</strong> A foe&rsquo;s HP bar sized itself from its own wrapper, which is a loop &mdash; the bar&rsquo;s minimum <em>becomes</em> the column&rsquo;s minimum. It settled at 131 a column, and four of those plus three 6px gaps is 542 in a 540 window. With a full pack the enemy row overflowed and dragged every panel above and below it out with it. It measures against a quarter of the row now. All sixteen party-size &times; pack-size combinations sit at exactly 540.</p>
+
+<h2>And a key</h2>
+
+<p><strong>N</strong> drops a floor where you stand, next to <strong>Q</strong> for roamers and <strong>F9</strong> for the load menu. Twenty floors is a long way to walk when you&rsquo;re checking whether a dragon shows up.</p>
