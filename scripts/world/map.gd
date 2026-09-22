@@ -92,7 +92,11 @@ func _generate_corridor() -> Array[Array]:
 		row.resize(SIZE)
 		row.fill(1)
 		grid.append(row)
-	for x: int in range(1, 19):
+	# Open cells run x=1..17 and stop there. exit_pos is (17,1) and
+	# exit_wall_pos is (18,1), and the boss only fires when the player walks
+	# into that wall from that cell — so carving 18 as well let the player step
+	# straight past the trigger onto the last tile and find nothing there.
+	for x: int in range(1, 18):
 		(grid[1] as Array)[x] = 0
 	return grid
 
