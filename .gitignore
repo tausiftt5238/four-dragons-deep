@@ -2,3 +2,7 @@
 .godot/
 /android/
 build/
+# The real enemy art is a commercial pack, kept out of this repo.
+# See tools/real_art.sh and tools/make_placeholder_sprites.py.
+art-private/
+.claude/

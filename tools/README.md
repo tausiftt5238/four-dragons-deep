@@ -15,3 +15,10 @@ it from there — gitignored, and it survives between sessions.
 
 The page's CSS is lifted from the previous `docs/bestiary.html` on each run, so
 edit the style there and it survives the next regeneration.
+
+# The enemy art
+
+`make_placeholder_sprites.py` draws the stand-in enemy sprites that ship in this
+repository, and `real_art.sh` swaps the real commercial pack in and out of the
+working tree without letting git see it. Both are documented in their own
+headers, and the README explains why they exist.
