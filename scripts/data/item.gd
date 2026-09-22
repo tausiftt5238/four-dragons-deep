@@ -333,10 +333,17 @@ static func thunder_bead() -> Dictionary:
 
 # ── Enemy drop table ──────────────────────────────────────────────────────────
 
-# The same table, minus gear too deep for where it was found. Gear carries a
-# tier in its `floor` field while consumables and scrolls carry a raw depth, so
-# only the three gear types are gated here — without it a floor-one chest hands
-# out the Titan's Cleaver, and Excalibur would turn up before the first boss.
+# The same table, minus anything too deep for where it was found. Gear carries a
+# tier in its `floor` field while scrolls carry a raw depth, so the two are
+# gated against different numbers — without the gear gate a floor-one chest
+# hands out the Titan's Cleaver, and Excalibur would turn up before the first
+# boss.
+#
+# Scrolls went ungated for a long time and it showed: of the 59 scrolls in the
+# table, 55 were deeper than floor one could reach, so the commonest thing a
+# first-floor demon dropped was a spell the player could not read for another
+# fifteen floors. They are gated on their own depth, which is what the `floor`
+# on a scroll has always meant.
 static func drop_table_for_floor(floor_num: int) -> Array[Dictionary]:
 	var tier: int = clampi((floor_num - 1) / 5 + 1, 1, 4)
 	var out: Array[Dictionary] = []
@@ -345,8 +352,42 @@ static func drop_table_for_floor(floor_num: int) -> Array[Dictionary]:
 		if kind in ["weapon", "armor", "accessory"] \
 				and int(d.get("floor", 1)) > tier:
 			continue
+		if kind == "scroll" and int(d.get("floor", 1)) > floor_num:
+			continue
 		out.append(d)
 	return out
+
+
+# Scrolls outnumber everything else in the table — 59 of them against 12
+# consumables and, at the bottom, 58 pieces of gear — so picking uniformly made
+# them very nearly half of every drop. That is too many for a thing the player
+# reads once and then owns forever: a scroll already in the book is worth
+# nothing, while a potion or a sword is worth something every time.
+#
+# So the category is rolled first, at a fixed share, and the item is picked
+# inside it. The odds then stay put no matter how many scrolls get added to the
+# table later, which a uniform pick could never promise.
+const SCROLL_SHARE: int = 18   # percent of dropped items that are scrolls
+
+
+static func pick_drop(floor_num: int) -> Dictionary:
+	var scrolls: Array[Dictionary] = []
+	var rest: Array[Dictionary] = []
+	for d: Dictionary in drop_table_for_floor(floor_num):
+		if d.get("type", "") == "scroll":
+			scrolls.append(d)
+		else:
+			rest.append(d)
+	# The opening floors have almost no scroll in reach and the last ones have
+	# little else, so either side can come up empty; whichever has entries
+	# answers rather than the roll failing.
+	if randi() % 100 < SCROLL_SHARE and not scrolls.is_empty():
+		return scrolls[randi() % scrolls.size()]
+	if not rest.is_empty():
+		return rest[randi() % rest.size()]
+	if not scrolls.is_empty():
+		return scrolls[randi() % scrolls.size()]
+	return {}
 
 
 static func drop_table() -> Array[Dictionary]:

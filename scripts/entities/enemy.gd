@@ -867,5 +867,4 @@ func roll_drop() -> Dictionary:
 		return stone
 	if randi() % 100 < 65:
 		return {}
-	var table: Array[Dictionary] = Item.drop_table_for_floor(spawn_floor)
-	return table[randi() % table.size()]
+	return Item.pick_drop(spawn_floor)
