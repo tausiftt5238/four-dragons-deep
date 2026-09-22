@@ -452,8 +452,22 @@ func _check_portal() -> void:
 
 	if current_level.next_scene == "":
 		return
+	_descend()
+
+
+# Going down one floor. The stairs and the debug skip both come through here so
+# the two cannot drift, which is the whole reason it is a function: a floor
+# arrived at by one path and not the other is a floor carrying stale state.
+func _descend() -> void:
+	if current_level == null or current_level.next_scene == "":
+		return
 	floor_num += 1
 	floor_label.text = "Floor %d" % floor_num
+	# Cleared per floor. It used to be raised when a dragon fell and never put
+	# back down, so beating the Ice Dragon on floor five left every later boss
+	# corridor already counted as beaten — floors ten, fifteen and twenty were
+	# walked straight through, and only the first dragon in a run ever fought.
+	_boss_beaten = false
 	visited_by_map.erase(current_level.next_scene)
 	_load_level(current_level.next_scene, true)
 
@@ -587,6 +601,20 @@ func _input(event: InputEvent) -> void:
 	if event.keycode == KEY_Q and not in_combat:
 		_encounters_enabled = not _encounters_enabled
 		_update_encounter_debug_label()
+		return
+
+	# N drops a floor where you stand. Debug, alongside Q and F9, and it goes
+	# through _descend so a skipped floor arrives in exactly the state a walked
+	# one does — key, boss flag, fog and minimap all reset the same way.
+	if event.keycode == KEY_N and not in_combat and not save_open and not orb_open \
+			and not chest_open and not menu_open:
+		if floor_num >= Level.FLOOR_COUNT:
+			_show_hud_popup("[DEBUG] Floor %d is the last one." % floor_num,
+					Color(0.55, 0.85, 1.0))
+		else:
+			_descend()
+			_show_hud_popup("[DEBUG] Skipped to floor %d" % floor_num,
+					Color(0.55, 0.85, 1.0))
 		return
 
 	if event.keycode == KEY_F9 and not in_combat and not save_open and not orb_open \
