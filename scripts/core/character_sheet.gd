@@ -14,7 +14,17 @@ var agl: int = 1
 var luk: int = 1
 var exp: int = 0
 
-var exp_to_next: int = 100
+# The first level used to cost 100, which nothing on the opening floors could
+# pay. A tier-one demon sits at level 2-3 and exp_for_level is 10 + lv*lv/2, so
+# floor one paid 12 a fight against a 100 bill -- nine fights for one level,
+# where floors three onward wanted two. The opening was the grind, in the one
+# place the player has no levels, no gear and one spell.
+#
+# 60 roughly halves that (floor one to five fights, floor two to one or two)
+# and leaves the rest of the run where it was: the cost compounds from here at
+# x1.15-1.25 a level, so by floor ten the difference has washed out -- measured
+# at 3.1 fights per level against 3.5, and floor twenty at 6.9 against 7.2.
+var exp_to_next: int = 60
 var hp:          int = 0
 var max_hp:      int = 0
 var mp:          int = 0
