@@ -3,6 +3,7 @@
 A first-person dungeon crawler built in portrait orientation, for phones. Twenty
 floors of a fantasy gauntlet: you descend, you fight what lives there, and you
 talk some of it into coming with you.
+This is the implemention of the press turn system, my favorite way of playing a jrpg. 
 
 Made in Godot 4.6 against the GL Compatibility renderer, and shipped as a web
 build.
