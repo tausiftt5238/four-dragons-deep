@@ -18,18 +18,9 @@ config/icon="res://icon.svg"
 
 [display]
 
-; A phone game held upright, and held upright everywhere. The viewport is
-; ALWAYS exactly 540x1170 — "keep" letterboxes rather than reflowing, so a
-; desktop window gets black down both sides and the layout never changes shape.
-; That is the point: one orientation means one set of layouts to build and
-; maintain, instead of every screen carrying two arrangements forever.
-;
-; 540x1170 is 19.5:9, which is what most phones actually are. The obvious 9:16
-; (540x960) would letterbox about 18% of a modern phone's height away.
 window/size/viewport_width=540
 window/size/viewport_height=1170
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 window/handheld/orientation="portrait"
 
 [physics]
