@@ -1016,20 +1016,22 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
+			var demons_before: Dictionary = _demon_snapshots()
 			var grew: Dictionary = player_char.award_demon_exp(exp_reward)
 			var shown_drop: Dictionary = item_drop if result == "win" else {}
 			_show_combat_result(exp_reward, gold_reward, shown_drop,
 				before if leveled else {}, after if leveled else {},
-				_demon_level_lines(grew))
+				_demon_level_ups(grew, demons_before))
 		"bribe":
 			var before: Dictionary = _player_snapshot()
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
+			var demons_before_b: Dictionary = _demon_snapshots()
 			var grew_b: Dictionary = player_char.award_demon_exp(exp_reward)
 			_show_combat_result(exp_reward, 0, {},
 				before if leveled else {}, after if leveled else {},
-				_demon_level_lines(grew_b))
+				_demon_level_ups(grew_b, demons_before_b))
 		"lose":
 			_pending_congratulations = false
 			_show_game_over()
@@ -1039,34 +1041,68 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 
 
 
-# "Bat Lv 5  STR+4 AGL+2  learns Blaze" for each demon that grew in that fight.
-func _demon_level_lines(grew: Dictionary) -> Array[String]:
-	var out: Array[String] = []
+# Stats of one bound demon as it would walk into a fight right now.
+func _demon_snapshot(demon_name: String) -> Dictionary:
+	var e: Enemy = player_char.bound_demon(demon_name)
+	var snap: Dictionary = {lv = e.lv, max_hp = e.max_hp, max_mp = e.max_mp,
+			str = e.str, def = e.def, mag = e.mag, agl = e.agl}
+	e.free()
+	return snap
+
+
+# Taken before demon exp is paid, so each level-up popup can show before -> after.
+func _demon_snapshots() -> Dictionary:
+	var out: Dictionary = {}
+	for demon_name: String in player_char.active_demons:
+		out[demon_name] = _demon_snapshot(demon_name)
+	return out
+
+
+# One entry per demon that grew in that fight: {name, before, after, learned}.
+func _demon_level_ups(grew: Dictionary, before: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	var learned: Dictionary = grew.get("learned", {}) as Dictionary
 	for demon_name: String in (grew.get("climbed", []) as Array):
-		var gains: String = player_char.demon_gain_string(demon_name)
-		var picked: Array = learned.get(demon_name, []) as Array
-		out.append("%s Lv %d%s%s" % [demon_name,
-				int(player_char.bound_level.get(demon_name, 1)),
-				"  " + gains if gains != "" else "",
-				"  learns " + ", ".join(picked) if not picked.is_empty() else ""])
+		out.append({name = demon_name,
+				before = before.get(demon_name, {}),
+				after = _demon_snapshot(demon_name),
+				learned = learned.get(demon_name, [])})
 	return out
 
 
 func _show_combat_result(exp: int, gold: int, item: Dictionary,
 		lv_before: Dictionary, lv_after: Dictionary,
-		demons_leveled: Array[String] = []) -> void:
+		demon_ups: Array[Dictionary] = []) -> void:
 	var ui: CombatResultUI = CombatResultUI.new()
 	ui.exp_gained  = exp
 	ui.gold_gained = gold
 	ui.item_drop   = item
-	ui.demons_leveled = demons_leveled
 	ui.dismissed.connect(func():
 		ui.queue_free()
 		if not lv_before.is_empty():
-			_show_level_up(lv_before, lv_after)
+			_show_level_up(lv_before, lv_after, demon_ups)
 		else:
-			_resume_from_overlay()
+			_show_demon_level_ups(demon_ups)
+	)
+	_get_overlay_layer().add_child(ui)
+
+
+# Each demon that grew gets its own popup, one after another, and the corridor
+# comes back after the last of them.
+func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
+	if queue.is_empty():
+		_resume_from_overlay()
+		return
+	var entry: Dictionary = queue[0]
+	var rest: Array[Dictionary] = queue.slice(1)
+	var ui: DemonLevelUpUI = DemonLevelUpUI.new()
+	ui.demon_name = entry["name"] as String
+	ui.before     = entry["before"] as Dictionary
+	ui.after      = entry["after"] as Dictionary
+	ui.learned    = entry["learned"] as Array
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_show_demon_level_ups(rest)
 	)
 	_get_overlay_layer().add_child(ui)
 
@@ -1107,14 +1143,15 @@ func _get_overlay_layer() -> CanvasLayer:
 	return overlay_layer
 
 
-func _show_level_up(before: Dictionary, after: Dictionary) -> void:
+func _show_level_up(before: Dictionary, after: Dictionary,
+		demon_ups: Array[Dictionary] = []) -> void:
 	var ui: LevelUpUI = LevelUpUI.new()
 	ui.before  = before
 	ui.after   = after
 	ui.player  = player_char
 	ui.dismissed.connect(func():
 		ui.queue_free()
-		_resume_from_overlay()
+		_show_demon_level_ups(demon_ups)
 	)
 	_get_overlay_layer().add_child(ui)
 

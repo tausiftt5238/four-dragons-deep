@@ -312,7 +312,7 @@ func _show_item_submenu() -> void:
 
 func _show_talk_submenu() -> void:
 	_hide_actions()
-	_set_back(_show_main_actions)
+	_set_back(_talk_back)
 	_right_title.text = "Talk to %s" % enemy.display_name()
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
 	_submenu_clear()
@@ -337,6 +337,15 @@ func _show_talk_submenu() -> void:
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_submenu_add(btn)
 
+
+
+# Back out of the Talk menu one step: to the demon you picked it on, when there
+# was a choice to make, and only otherwise all the way out.
+func _talk_back() -> void:
+	if _living_foes().size() > 1:
+		_on_action("Talk")
+	else:
+		_show_main_actions()
 
 
 func _on_talk(approach: String) -> void:
@@ -667,7 +676,9 @@ func _beg_resolved() -> void:
 	await get_tree().create_timer(0.9).timeout
 	if not is_instance_valid(self):
 		return
-	if foes.is_empty():
+	# The dead keep their place in `foes` until the fight ends, so an empty list
+	# is not the test: a field of bodies has nobody left to fight either.
+	if _living_foes().is_empty():
 		_end_combat("talk")
 		return
 	_press.begin(_living_party().size())
@@ -1634,7 +1645,7 @@ func _foe_departs(reason: String) -> void:
 	_departed.append(leaving)
 	_ensure_target()
 	_refresh_hp()
-	if foes.is_empty():
+	if _living_foes().is_empty():
 		await get_tree().create_timer(0.4).timeout
 		if is_instance_valid(self):
 			_end_combat(reason)
@@ -2536,9 +2547,21 @@ func _on_skill_chosen(action: String) -> void:
 		var spell_id: String = action.substr(6)
 		var data: Dictionary = Spell.get_data(spell_id)
 		var kind: String = data.get("type", "dmg") as String
-		if kind == "heal" or kind == "buff" or Spell.is_multi(spell_id):
+		if kind == "heal" or kind == "buff" or kind == "dispel" or Spell.is_multi(spell_id):
 			await _commit_action(action)
 			return
+	# A bound demon's buffs and debuffs take a whole side, and its wide lines
+	# draw their own targets, so only a single-target line needs picking.
+	if action.begins_with("Skill:") and not _actor_is_player():
+		var demon: Enemy = _actor() as Enemy
+		var known: Array = player.skills_of(demon.enemy_name)
+		var idx: int = action.substr(6).to_int()
+		if idx >= 0 and idx < known.size():
+			var skill: Dictionary = known[idx] as Dictionary
+			if skill.get("kind", "") == "support" \
+					or demon.attack_reach != Spell.SHAPE_ONE:
+				await _commit_action(action)
+				return
 	_with_target(func() -> void: await _commit_action(action))
 
 

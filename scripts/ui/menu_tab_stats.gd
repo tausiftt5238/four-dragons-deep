@@ -66,6 +66,64 @@ func build() -> void:
 			s_lbl.add_theme_color_override("font_color", sdata.get("color", Color(0.9, 0.9, 0.9)))
 			_m._content.add_child(s_lbl)
 
+	# The demons walking in with him, in slot order. They are rebuilt whole for
+	# every fight, so their bars read full: what matters here is their ceiling.
+	for demon_name: String in p.active_demons:
+		_m._content.add_child(HSeparator.new())
+		_add_demon(p, demon_name)
+
+
+func _add_demon(p: PlayerCharacter, demon_name: String) -> void:
+	var demon: Enemy = p.bound_demon(demon_name)
+
+	var header: Label = _make_header("%s   LV %d" % [demon_name, demon.lv])
+	header.add_theme_color_override("font_color", Color(0.80, 0.62, 1.00))
+	_m._content.add_child(header)
+
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	_m._content.add_child(row)
+
+	var portrait: TextureRect = TextureRect.new()
+	if demon.sprite_path != "" and ResourceLoader.exists(demon.sprite_path):
+		portrait.texture = load(demon.sprite_path) as Texture2D
+	portrait.texture_filter      = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.custom_minimum_size = Vector2(64, 64)
+	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(portrait)
+
+	var bars: VBoxContainer = VBoxContainer.new()
+	bars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bars.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
+	bars.add_theme_constant_override("separation", 6)
+	row.add_child(bars)
+
+	bars.add_child(_make_bar_row("HP", demon.max_hp, demon.max_hp, Color(0.20, 0.78, 0.25)))
+	bars.add_child(_make_bar_row("MP", demon.max_mp, demon.max_mp, Color(0.28, 0.50, 1.00)))
+	# A demon stops banking exp at the detective's level, so there is no bar to
+	# fill until he climbs.
+	if demon.lv >= p.lv:
+		var capped: Label = Label.new()
+		capped.text = "EXP   at your level"
+		capped.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
+		bars.add_child(capped)
+	else:
+		bars.add_child(_make_bar_row("EXP", int(p.demon_exp.get(demon_name, 0)),
+				PlayerCharacter.demon_exp_to_next(demon.lv), Color(0.90, 0.70, 0.10)))
+
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 5)
+	_m._content.add_child(grid)
+	for pair: Array in [["STR", demon.str], ["DEF", demon.def],
+			["MAG", demon.mag], ["AGL", demon.agl]]:
+		_add_stat_row(grid, pair[0] as String, int(pair[1]), int(pair[1]))
+
+	demon.free()
+
 
 func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) -> void:
 	var name_lbl: Label = Label.new()
