@@ -426,7 +426,8 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 func _check_counter() -> String:
 	if "counter" not in player.passive_skills or not player.is_alive() or randi() % 4 != 0:
 		return ""
-	var dmg: int = _apply_variance(player.effective_str() - enemy.def / 2)
+	var dmg: int = _apply_variance(int(player.effective_str() * CombatMath.PHYS_POWER)
+			- enemy.def / 2)
 	var crit: bool = _roll_crit()
 	if crit:
 		dmg = int(dmg * 1.75)
@@ -520,8 +521,11 @@ func _begin_player_phase() -> void:
 # That also means the old single check on phase two had to go: almost nothing is
 # hurt that early, so the event would have stopped firing altogether. It is
 # rolled at the top of every phase from the second on, still only once a battle,
-# and still at five per cent.
-const BEG_CHANCE: int = 5
+# and at five per cent, plus half a point per point of the detective's luck,
+# capped at fifteen.
+const BEG_CHANCE: float = 0.05
+const BEG_PER_LUK: float = 0.005
+const BEG_CAP: float = 0.15
 const BEG_FROM_PHASE: int = 2
 
 var _beg_used: bool = false
@@ -545,7 +549,7 @@ func _try_begging() -> bool:
 	var pool: Array[Enemy] = _begging_candidates()
 	if pool.is_empty():
 		return false
-	if randi() % 100 >= BEG_CHANCE:
+	if randf() >= minf(BEG_CAP, BEG_CHANCE + BEG_PER_LUK * float(player.battle_luck())):
 		return false
 	_beg_used = true
 
@@ -1998,6 +2002,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 		banishing: bool, boost: float = 0.0) -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
+	var split: float = CombatMath.split_share(targets.size())
 	var lines: Array[String] = ["[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
 			actor.display_name(), Affinity.element_name(element), targets.size()]]
 	var outcomes: Array[String] = []
@@ -2033,7 +2038,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 			continue
 
 		var res: Dictionary = CombatMath.resolve(
-				int(base * spread) - _guarded_def(foe), element, foe,
+				int(base * split) - _guarded_def(foe), element, foe,
 				CombatMath.roll_crit(actor), foe.defending)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
@@ -2626,8 +2631,8 @@ static func _spread_cost(outcomes: Array[String]) -> String:
 
 func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
-	var spread: float = float(data.get("spread", 1.0))
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
+	var split: float = CombatMath.split_share(targets.size())
 	var power: float = float(player.effective_mag()) \
 			* player.stage_mult(CharacterSheet.STAT_MAG)
 
@@ -2637,7 +2642,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 
 	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
-		var base: int = int(power * rung * spread) - _guarded_def(foe)
+		var base: int = int(power * rung * split) - _guarded_def(foe)
 		if "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
@@ -2942,7 +2947,8 @@ func _resolve_attack() -> Dictionary:
 	if not CombatMath.lands(actor, enemy):
 		return {msg = "[color=#9aa0aa]%s swings at %s and misses![/color]" % [
 				_actor_name(), enemy.display_name()], cost = PressTurn.COST_MISS}
-	var atk: float = float(player.effective_str() if _actor_is_player() else actor.str)
+	var atk: float = float(player.effective_str()) * CombatMath.PHYS_POWER \
+			if _actor_is_player() else float(actor.str)
 	atk *= actor.stage_mult(CharacterSheet.STAT_ATK)
 	if _actor_is_player() and "last_stand" in player.passive_skills \
 			and player.hp * 4 < player.max_hp:
@@ -3184,6 +3190,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 	var banishing: bool = Affinity.is_banishing(element)
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[CharacterSheet] = _enemy_spread_targets(actor)
+	var split: float = CombatMath.split_share(targets.size())
 	var reach_word: String = "across" if actor.attack_reach == Spell.SHAPE_FEW else "over"
 
 	var lines: Array[String] = [dry + "[color=#ff9a6a]%s calls up %s %s %d of you![/color]" % [
@@ -3199,7 +3206,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
 			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * spread) - _guarded_def(who), element, who,
+				int(base * split) - _guarded_def(who), element, who,
 				CombatMath.roll_crit(actor), who.defending)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
