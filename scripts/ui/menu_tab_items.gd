@@ -43,10 +43,25 @@ func build() -> void:
 		SlotList.new(_m._content).add_note("Your pack is empty.")
 		return
 
-	var ids: Array[String] = []
+	# One shelf per kind, in the order the pack is sorted into. Anything of a
+	# kind not named here still lists, under Other, rather than vanishing.
+	var shelves: Array[Array] = [["consumable", "Consumables"], ["scroll", "Scrolls"],
+			["weapon", "Weapons"], ["armor", "Armour"], ["accessory", "Trinkets"]]
+	var by_type: Dictionary = {}
+	var other: Array = []
+	for shelf: Array in shelves:
+		by_type[shelf[0]] = []
 	for item: Dictionary in _m.player.inventory:
-		ids.append(item["id"] as String)
-	_m.add_paged_list(_m._content, "items", ids,
+		var kind: String = item.get("type", "") as String
+		if by_type.has(kind):
+			(by_type[kind] as Array).append(item["id"] as String)
+		else:
+			other.append(item["id"] as String)
+	var groups: Array = []
+	for shelf: Array in shelves:
+		groups.append({title = shelf[1], entries = by_type[shelf[0]]})
+	groups.append({title = "Other", entries = other})
+	_m.add_sections(_m._content, "items", groups,
 			func(list: SlotList, item_id: String) -> void: _add_item(list, item_id))
 
 

@@ -386,12 +386,42 @@ static func item_price(item: Dictionary) -> int:
 	return int(item.get("price", 20 + int(item.get("floor", 1)) * 25))
 
 
+# Split the way the belt is used in a fight: what patches you up, and what you
+# throw. The test is the one the battle's item menu uses.
 func _build_buy() -> void:
-	SlotList.paged(_content, _page, "buy", _supplies(), _buy_offer, _refresh)
+	var mend: Array = []
+	var throw: Array = []
+	for item: Dictionary in _supplies():
+		if item.has("inflicts_status") or (item.has("element") and int(item.get("dmg", 0)) > 0):
+			throw.append(item)
+		else:
+			mend.append(item)
+	SlotList.sections(_content, _page, "buy", [
+		{title = "Recovery", entries = mend},
+		{title = "Throwables", entries = throw},
+	], _buy_offer)
 
 
 func _build_gear() -> void:
-	SlotList.paged(_content, _page, "gear", _gear(), _buy_offer, _refresh)
+	SlotList.sections(_content, _page, "gear", gear_groups(_gear()), _buy_offer)
+
+
+# One shelf per slot it fills, each keeping the order it came in.
+static func gear_groups(items: Array) -> Array:
+	var by_type: Dictionary = {weapon = [], armor = [], accessory = []}
+	for item: Variant in items:
+		var kind: String = _item_type(item)
+		if by_type.has(kind):
+			(by_type[kind] as Array).append(item)
+	return [
+		{title = "Weapons", entries = by_type["weapon"]},
+		{title = "Armour", entries = by_type["armor"]},
+		{title = "Trinkets", entries = by_type["accessory"]},
+	]
+
+
+static func _item_type(item: Variant) -> String:
+	return (item as Dictionary).get("type", "") as String if item is Dictionary else ""
 
 
 # ── Scrolls ───────────────────────────────────────────────────────────────────
