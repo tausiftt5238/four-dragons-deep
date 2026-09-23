@@ -1347,11 +1347,16 @@ func _blank_column(ratio: float) -> Control:
 
 # One column per demon. Identical geometry across the row so a four-strong
 # pack reads as one line-up rather than four separate widgets.
+#
+# A column is a fixed slot: its width comes from its share of the row and
+# nothing inside it may ask for more. Text shrinks to fit (FitLabel), the
+# sprite scales to the slot, and anything left over is clipped at the edge.
 func _build_foe_column(foe: Enemy) -> Control:
 	var col: VBoxContainer = VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	col.alignment = BoxContainer.ALIGNMENT_END
+	col.clip_contents = true
 	col.add_theme_constant_override("separation", 3)
 
 	var icon: TextureRect = TextureRect.new()
@@ -1361,6 +1366,9 @@ func _build_foe_column(foe: Enemy) -> Control:
 	else:
 		icon.texture  = load("res://icon.svg") as Texture2D
 		icon.modulate = Color(0.95, 0.28, 0.28)
+	# Scaled to the slot rather than sized by the picture, so a wide sprite
+	# cannot push its column wider than its neighbours.
+	icon.expand_mode           = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.size_flags_horizontal = Control.SIZE_FILL
 	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
@@ -1372,10 +1380,9 @@ func _build_foe_column(foe: Enemy) -> Control:
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
 	col.add_child(marker)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = FitLabel.new(13, 8)
 	name_lbl.text                 = foe.display_name()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 13)
 	col.add_child(name_lbl)
 
 	# Centred and width-capped: a lone demon used to stretch its bar across the
@@ -1387,22 +1394,15 @@ func _build_foe_column(foe: Enemy) -> Control:
 	bar.custom_minimum_size = Vector2(_foe_bar_width(), 10)
 	bar_wrap.add_child(bar)
 
-	var hp_lbl: Label = Label.new()
+	var hp_lbl: Label = FitLabel.new(11, 7)
 	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_lbl.add_theme_font_size_override("font_size", 11)
 	hp_lbl.add_theme_color_override("font_color", Color(0.90, 0.60, 0.60))
 	col.add_child(hp_lbl)
 
 	# BBCode, so a buff and a debuff in the same stack read as two colours
-	# instead of one averaged verdict. fit_content with a floor under it keeps
-	# the strip exactly one line tall either way.
-	var stage_lbl: RichTextLabel = RichTextLabel.new()
-	stage_lbl.bbcode_enabled = true
-	stage_lbl.fit_content = true
-	stage_lbl.scroll_active = false
-	stage_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	stage_lbl.custom_minimum_size = Vector2(0, 14)
-	stage_lbl.add_theme_font_size_override("normal_font_size", 10)
+	# instead of one averaged verdict. Always one line tall, and it shrinks
+	# rather than widening the column when the stack is long.
+	var stage_lbl: RichTextLabel = FitRichText.new(10, 7, 2)
 	stage_lbl.add_theme_color_override("default_color", Color(0.72, 0.78, 0.86))
 	col.add_child(stage_lbl)
 
@@ -1501,8 +1501,8 @@ func _refresh_foe_rows() -> void:
 		# On a foe the colours are inverted: what raises the thing hitting you
 		# is bad news, so its buffs read as the warning and its debuffs as the
 		# good sign.
-		var stg: String = stage_markup(foe, true)
-		stage_lbl.text = "[center]%s[/center]" % stg if alive and stg != "" else ""
+		var stg: Array[String] = stage_parts(foe, true)
+		stage_lbl.text = two_rows(stg) if alive else ""
 
 		var chart: AffinityChart = r["chart"] as AffinityChart
 		chart.visible = alive and player.has_analyzed(foe.enemy_name)
@@ -2213,9 +2213,11 @@ func _rebuild_party_slots() -> void:
 
 
 func _build_party_slot(member: CharacterSheet) -> Control:
+	# A fixed slot, the same rule as a foe column: nothing inside sets its width.
 	var col: VBoxContainer = VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_stretch_ratio = 1.0
+	col.clip_contents = true
 	col.add_theme_constant_override("separation", 2)
 
 	if member == null:
@@ -2257,9 +2259,8 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))
 	col.add_child(marker)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = FitLabel.new(12, 7)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 12)
 	col.add_child(name_lbl)
 
 	var bar_wrap: MarginContainer = MarginContainer.new()
@@ -2280,19 +2281,12 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	mp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.32, 0.46, 0.95)))
 	bars.add_child(mp_bar)
 
-	var val_lbl: Label = Label.new()
+	var val_lbl: Label = FitLabel.new(11, 7)
 	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val_lbl.add_theme_font_size_override("font_size", 11)
 	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
 	col.add_child(val_lbl)
 
-	var sts_lbl: RichTextLabel = RichTextLabel.new()
-	sts_lbl.bbcode_enabled = true
-	sts_lbl.fit_content = true
-	sts_lbl.scroll_active = false
-	sts_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	sts_lbl.custom_minimum_size = Vector2(0, 14)
-	sts_lbl.add_theme_font_size_override("normal_font_size", 10)
+	var sts_lbl: RichTextLabel = FitRichText.new(10, 7, 2)
 	sts_lbl.add_theme_color_override("default_color", Color(0.90, 0.78, 0.30))
 	col.add_child(sts_lbl)
 
@@ -2349,11 +2343,8 @@ func _refresh_party_slots() -> void:
 		var ail: String = _format_statuses(member.active_statuses)
 		if ail != "":
 			tags.append("[color=#e6c74d]%s[/color]" % ail)
-		var stg: String = stage_markup(member, false)
-		if stg != "":
-			tags.append(stg)
-		(slot["sts_lbl"] as RichTextLabel).text = \
-				"[center]%s[/center]" % "  ".join(tags) if not tags.is_empty() else ""
+		tags.append_array(stage_parts(member, false))
+		(slot["sts_lbl"] as RichTextLabel).text = two_rows(tags)
 
 
 # ── The menu strip ────────────────────────────────────────────────────────────
@@ -3347,10 +3338,10 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}
 
 
-# A compact readout of what is stacked on someone: "ATK+2 AGL-1".
-# The same stack, with every stat carrying its own colour. `inverted` is for
-# the other side of the fight, where a raised stat is the thing to worry about.
-static func stage_markup(member: CharacterSheet, inverted: bool) -> String:
+# A compact readout of what is stacked on someone, one entry per stat ("ATK+2",
+# "AGL-1"), each carrying its own colour. `inverted` is for the other side of
+# the fight, where a raised stat is the thing to worry about.
+static func stage_parts(member: CharacterSheet, inverted: bool) -> Array[String]:
 	var parts: Array[String] = []
 	for key: String in CharacterSheet.STAT_KEYS:
 		var st: int = member.stage(key)
@@ -3360,5 +3351,17 @@ static func stage_markup(member: CharacterSheet, inverted: bool) -> String:
 		parts.append("[color=#%s]%s%+d[/color]" % [
 				(GearTooltip.UP if good else GearTooltip.DOWN).to_html(false),
 				key.to_upper(), st])
-	return "  ".join(parts)
+	return parts
+
+
+# Centred entries over at most two lines, the first taking the odd one, so a
+# full four-stat stack is two short lines instead of one that cannot fit a slot.
+static func two_rows(parts: Array[String]) -> String:
+	if parts.is_empty():
+		return ""
+	if parts.size() <= 1:
+		return "[center]%s[/center]" % parts[0]
+	var split: int = ceili(float(parts.size()) / 2.0)
+	return "[center]%s\n%s[/center]" % ["  ".join(parts.slice(0, split)),
+			"  ".join(parts.slice(split))]
 
