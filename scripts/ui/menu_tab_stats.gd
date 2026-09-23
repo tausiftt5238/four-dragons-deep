@@ -133,6 +133,8 @@ func _add_demon(p: PlayerCharacter, demon_name: String) -> void:
 func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) -> void:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = stat_name
+	name_lbl.add_theme_color_override("font_color",
+			StageArrows.tint_for(stat_name, Color(0.85, 0.85, 0.88)))
 	grid.add_child(name_lbl)
 
 	var val_lbl: Label = Label.new()

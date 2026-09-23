@@ -77,7 +77,8 @@ func _build() -> void:
 		var key: String = row[1] as String
 		var was: int = int(before.get(key, 0))
 		var now: int = int(after.get(key, 0))
-		_cell(grid, row[0] as String, Color(0.68, 0.68, 0.68))
+		_cell(grid, row[0] as String,
+				StageArrows.tint_for(row[0] as String, Color(0.68, 0.68, 0.68)))
 		_cell(grid, "%d  ->  %d" % [was, now], Color(0.90, 0.90, 0.90))
 		_cell(grid, "+%d" % (now - was) if now > was else "",
 				Color(0.55, 0.90, 0.55))

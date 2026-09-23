@@ -105,6 +105,22 @@ Two ways to learn a chart:
 the turn; killing one teaches you nothing. Those fights are read as they
 happen.
 
+### Buffs and debuffs
+
+Under every name in a fight is a row of coloured arrows: one place for each
+stat, always in the same order and the same colour.
+
+| Colour | Stat |
+| --- | --- |
+| Orange | Attack (STR) |
+| Violet | Magic (MAG) |
+| Blue | Defence (DEF) |
+| Green | Agility (AGL) |
+
+**Up arrows are a buff, down arrows a debuff, and each arrow is one stack**, up
+to four. The same colours mark those stats in the menu and on the level-up
+screen.
+
 ---
 
 ## Talking

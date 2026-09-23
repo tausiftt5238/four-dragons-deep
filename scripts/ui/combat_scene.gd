@@ -1402,9 +1402,9 @@ func _build_foe_column(foe: Enemy) -> Control:
 	# BBCode, so a buff and a debuff in the same stack read as two colours
 	# instead of one averaged verdict. Always one line tall, and it shrinks
 	# rather than widening the column when the stack is long.
-	var stage_lbl: RichTextLabel = FitRichText.new(10, 7, 2)
-	stage_lbl.add_theme_color_override("default_color", Color(0.72, 0.78, 0.86))
-	col.add_child(stage_lbl)
+	var stages: StageArrows = StageArrows.new()
+	stages.member = foe
+	col.add_child(stages)
 
 	# The chart hangs under the demon rather than sitting in the strip above it:
 	# five icons read at a glance where "FW IS TD" had to be decoded.
@@ -1414,7 +1414,7 @@ func _build_foe_column(foe: Enemy) -> Control:
 	col.add_child(chart)
 
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
-			bar = bar, hp_lbl = hp_lbl, stage_lbl = stage_lbl, marker = marker,
+			bar = bar, hp_lbl = hp_lbl, stages = stages, marker = marker,
 			chart = chart})
 	return col
 
@@ -1471,7 +1471,7 @@ func _refresh_foe_rows() -> void:
 			(r["hp_lbl"] as Label).text = "Left"
 			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
 					Color(0.45, 0.45, 0.52))
-			(r["stage_lbl"] as RichTextLabel).text = ""
+			(r["stages"] as StageArrows).visible = false
 			continue
 		var alive: bool = foe.is_alive()
 		var targeted: bool = (foe == enemy) and alive
@@ -1497,12 +1497,9 @@ func _refresh_foe_rows() -> void:
 		hp_lbl.add_theme_color_override("font_color",
 				hp_tint(foe.hp, foe.max_hp) if alive else Color(0.55, 0.38, 0.38))
 
-		var stage_lbl: RichTextLabel = r["stage_lbl"] as RichTextLabel
-		# On a foe the colours are inverted: what raises the thing hitting you
-		# is bad news, so its buffs read as the warning and its debuffs as the
-		# good sign.
-		var stg: Array[String] = stage_parts(foe, true)
-		stage_lbl.text = two_rows(stg) if alive else ""
+		var stages: StageArrows = r["stages"] as StageArrows
+		stages.visible = alive
+		stages.queue_redraw()
 
 		var chart: AffinityChart = r["chart"] as AffinityChart
 		chart.visible = alive and player.has_analyzed(foe.enemy_name)
@@ -2286,13 +2283,19 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
 	col.add_child(val_lbl)
 
-	var sts_lbl: RichTextLabel = FitRichText.new(10, 7, 2)
+	# Ailments stay words — there is no arrow for being poisoned — and the stat
+	# stages sit under them as arrows.
+	var sts_lbl: RichTextLabel = FitRichText.new(10, 7, 1)
 	sts_lbl.add_theme_color_override("default_color", Color(0.90, 0.78, 0.30))
 	col.add_child(sts_lbl)
 
+	var stages: StageArrows = StageArrows.new()
+	stages.member = member
+	col.add_child(stages)
+
 	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
 			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl,
-			sts_lbl = sts_lbl, marker = marker})
+			sts_lbl = sts_lbl, stages = stages, marker = marker})
 	return col
 
 
@@ -2339,12 +2342,12 @@ func _refresh_party_slots() -> void:
 			mp_bar.value     = member.mp
 			val_lbl.text = "%d/%d   %d MP" % [member.hp, member.max_hp, member.mp]
 
-		var tags: Array[String] = []
 		var ail: String = _format_statuses(member.active_statuses)
-		if ail != "":
-			tags.append("[color=#e6c74d]%s[/color]" % ail)
-		tags.append_array(stage_parts(member, false))
-		(slot["sts_lbl"] as RichTextLabel).text = two_rows(tags)
+		(slot["sts_lbl"] as RichTextLabel).text = \
+				"[center][color=#e6c74d]%s[/color][/center]" % ail if ail != "" else ""
+		var stages: StageArrows = slot["stages"] as StageArrows
+		stages.visible = alive
+		stages.queue_redraw()
 
 
 # ── The menu strip ────────────────────────────────────────────────────────────
@@ -2790,13 +2793,17 @@ func _cast_dispel(data: Dictionary, by_player: bool) -> Dictionary:
 			cost = PressTurn.COST_FULL}
 
 
+# In the stat's own colour, the one its arrows are drawn in.
 static func _stat_name(stat: String) -> String:
+	var word: String = stat
 	match stat:
-		CharacterSheet.STAT_ATK: return "Attack"
-		CharacterSheet.STAT_MAG: return "Magic"
-		CharacterSheet.STAT_DEF: return "Defence"
-		CharacterSheet.STAT_AGL: return "Agility"
-	return stat
+		CharacterSheet.STAT_ATK: word = "Attack"
+		CharacterSheet.STAT_MAG: word = "Magic"
+		CharacterSheet.STAT_DEF: word = "Defence"
+		CharacterSheet.STAT_AGL: word = "Agility"
+	if not StageArrows.COLORS.has(stat):
+		return word
+	return "[color=#%s]%s[/color]" % [StageArrows.color_of(stat).to_html(false), word]
 
 
 # Defence as it counts right now: the stat, the guard stance, and the stage.
@@ -3337,31 +3344,4 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			ename, word, tname, hurt, tag],
 			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}
 
-
-# A compact readout of what is stacked on someone, one entry per stat ("ATK+2",
-# "AGL-1"), each carrying its own colour. `inverted` is for the other side of
-# the fight, where a raised stat is the thing to worry about.
-static func stage_parts(member: CharacterSheet, inverted: bool) -> Array[String]:
-	var parts: Array[String] = []
-	for key: String in CharacterSheet.STAT_KEYS:
-		var st: int = member.stage(key)
-		if st == 0:
-			continue
-		var good: bool = (st > 0) != inverted
-		parts.append("[color=#%s]%s%+d[/color]" % [
-				(GearTooltip.UP if good else GearTooltip.DOWN).to_html(false),
-				key.to_upper(), st])
-	return parts
-
-
-# Centred entries over at most two lines, the first taking the odd one, so a
-# full four-stat stack is two short lines instead of one that cannot fit a slot.
-static func two_rows(parts: Array[String]) -> String:
-	if parts.is_empty():
-		return ""
-	if parts.size() <= 1:
-		return "[center]%s[/center]" % parts[0]
-	var split: int = ceili(float(parts.size()) / 2.0)
-	return "[center]%s\n%s[/center]" % ["  ".join(parts.slice(0, split)),
-			"  ".join(parts.slice(split))]
 
