@@ -312,7 +312,7 @@ func _show_item_submenu() -> void:
 
 func _show_talk_submenu() -> void:
 	_hide_actions()
-	_set_back(_show_main_actions)
+	_set_back(_talk_back)
 	_right_title.text = "Talk to %s" % enemy.display_name()
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
 	_submenu_clear()
@@ -337,6 +337,15 @@ func _show_talk_submenu() -> void:
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_submenu_add(btn)
 
+
+
+# Back out of the Talk menu one step: to the demon you picked it on, when there
+# was a choice to make, and only otherwise all the way out.
+func _talk_back() -> void:
+	if _living_foes().size() > 1:
+		_on_action("Talk")
+	else:
+		_show_main_actions()
 
 
 func _on_talk(approach: String) -> void:
@@ -395,6 +404,7 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 			var element: String = item.get("element", "")
 			var base_dmg: int = item.get("dmg", 0)
 			if element != "" and base_dmg > 0:
+				_reveal(enemy, element)
 				var state: String = enemy.affinity_of(element)
 				var dmg: int = base_dmg
 				player.remove_item(item, 1)
@@ -426,7 +436,8 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 func _check_counter() -> String:
 	if "counter" not in player.passive_skills or not player.is_alive() or randi() % 4 != 0:
 		return ""
-	var dmg: int = _apply_variance(player.effective_str() - enemy.def / 2)
+	var dmg: int = _apply_variance(int(player.effective_str() * CombatMath.PHYS_POWER)
+			- enemy.def / 2)
 	var crit: bool = _roll_crit()
 	if crit:
 		dmg = int(dmg * 1.75)
@@ -520,8 +531,11 @@ func _begin_player_phase() -> void:
 # That also means the old single check on phase two had to go: almost nothing is
 # hurt that early, so the event would have stopped firing altogether. It is
 # rolled at the top of every phase from the second on, still only once a battle,
-# and still at five per cent.
-const BEG_CHANCE: int = 5
+# and at five per cent, plus half a point per point of the detective's luck,
+# capped at fifteen.
+const BEG_CHANCE: float = 0.05
+const BEG_PER_LUK: float = 0.005
+const BEG_CAP: float = 0.15
 const BEG_FROM_PHASE: int = 2
 
 var _beg_used: bool = false
@@ -545,7 +559,7 @@ func _try_begging() -> bool:
 	var pool: Array[Enemy] = _begging_candidates()
 	if pool.is_empty():
 		return false
-	if randi() % 100 >= BEG_CHANCE:
+	if randf() >= minf(BEG_CAP, BEG_CHANCE + BEG_PER_LUK * float(player.battle_luck())):
 		return false
 	_beg_used = true
 
@@ -663,7 +677,9 @@ func _beg_resolved() -> void:
 	await get_tree().create_timer(0.9).timeout
 	if not is_instance_valid(self):
 		return
-	if foes.is_empty():
+	# The dead keep their place in `foes` until the fight ends, so an empty list
+	# is not the test: a field of bodies has nobody left to fight either.
+	if _living_foes().is_empty():
 		_end_combat("talk")
 		return
 	_press.begin(_living_party().size())
@@ -769,6 +785,7 @@ func _resolve_action(action: String) -> Dictionary:
 
 func _land_hit(res: Dictionary, element: String, prefix: String,
 		melee: bool = false, rung: float = Spell.POWER_I) -> Dictionary:
+	_reveal(enemy, element)
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
 	var crit: bool      = res["crit"] as bool
@@ -1332,11 +1349,16 @@ func _blank_column(ratio: float) -> Control:
 
 # One column per demon. Identical geometry across the row so a four-strong
 # pack reads as one line-up rather than four separate widgets.
+#
+# A column is a fixed slot: its width comes from its share of the row and
+# nothing inside it may ask for more. Text shrinks to fit (FitLabel), the
+# sprite scales to the slot, and anything left over is clipped at the edge.
 func _build_foe_column(foe: Enemy) -> Control:
 	var col: VBoxContainer = VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	col.alignment = BoxContainer.ALIGNMENT_END
+	col.clip_contents = true
 	col.add_theme_constant_override("separation", 3)
 
 	var icon: TextureRect = TextureRect.new()
@@ -1346,6 +1368,9 @@ func _build_foe_column(foe: Enemy) -> Control:
 	else:
 		icon.texture  = load("res://icon.svg") as Texture2D
 		icon.modulate = Color(0.95, 0.28, 0.28)
+	# Scaled to the slot rather than sized by the picture, so a wide sprite
+	# cannot push its column wider than its neighbours.
+	icon.expand_mode           = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.size_flags_horizontal = Control.SIZE_FILL
 	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
@@ -1357,10 +1382,9 @@ func _build_foe_column(foe: Enemy) -> Control:
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
 	col.add_child(marker)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = FitLabel.new(13, 8)
 	name_lbl.text                 = foe.display_name()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 13)
 	col.add_child(name_lbl)
 
 	# Centred and width-capped: a lone demon used to stretch its bar across the
@@ -1372,34 +1396,31 @@ func _build_foe_column(foe: Enemy) -> Control:
 	bar.custom_minimum_size = Vector2(_foe_bar_width(), 10)
 	bar_wrap.add_child(bar)
 
-	var hp_lbl: Label = Label.new()
+	var hp_lbl: Label = FitLabel.new(11, 7)
 	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_lbl.add_theme_font_size_override("font_size", 11)
 	hp_lbl.add_theme_color_override("font_color", Color(0.90, 0.60, 0.60))
 	col.add_child(hp_lbl)
 
 	# BBCode, so a buff and a debuff in the same stack read as two colours
-	# instead of one averaged verdict. fit_content with a floor under it keeps
-	# the strip exactly one line tall either way.
-	var stage_lbl: RichTextLabel = RichTextLabel.new()
-	stage_lbl.bbcode_enabled = true
-	stage_lbl.fit_content = true
-	stage_lbl.scroll_active = false
-	stage_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	stage_lbl.custom_minimum_size = Vector2(0, 14)
-	stage_lbl.add_theme_font_size_override("normal_font_size", 10)
-	stage_lbl.add_theme_color_override("default_color", Color(0.72, 0.78, 0.86))
-	col.add_child(stage_lbl)
+	# instead of one averaged verdict. Always one line tall, and it shrinks
+	# rather than widening the column when the stack is long.
+	var stages: StageArrows = StageArrows.new()
+	stages.member = foe
+	col.add_child(stages)
 
 	# The chart hangs under the demon rather than sitting in the strip above it:
 	# five icons read at a glance where "FW IS TD" had to be decoded.
+	# Always there; a line not yet learned shows "?" until Analyze, a kill, or
+	# hitting it with that element fills it in.
 	var chart: AffinityChart = AffinityChart.new()
 	chart.foe = foe
+	chart.knows = func(element: String) -> bool:
+		return player.knows_affinity(foe.enemy_name, element)
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(chart)
 
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
-			bar = bar, hp_lbl = hp_lbl, stage_lbl = stage_lbl, marker = marker,
+			bar = bar, hp_lbl = hp_lbl, stages = stages, marker = marker,
 			chart = chart})
 	return col
 
@@ -1409,6 +1430,18 @@ func _foe_portrait(foe: Enemy) -> TextureRect:
 		if r["foe"] == foe:
 			return r["portrait"] as TextureRect
 	return null
+
+
+# A hit shows what the target does with that one element, on its chart, from
+# this moment and for the rest of the run. Bosses and wardens too: Analyze is
+# the only thing they refuse.
+func _reveal(foe: Enemy, element: String) -> void:
+	if foe == null or element == "":
+		return
+	player.learn_affinity(foe.enemy_name, element)
+	for r: Dictionary in _foe_rows:
+		if r["foe"] == foe or (r["foe"] as Enemy).enemy_name == foe.enemy_name:
+			(r["chart"] as AffinityChart).queue_redraw()
 
 
 # ── Target picking ────────────────────────────────────────────────────────────
@@ -1456,7 +1489,7 @@ func _refresh_foe_rows() -> void:
 			(r["hp_lbl"] as Label).text = "Left"
 			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
 					Color(0.45, 0.45, 0.52))
-			(r["stage_lbl"] as RichTextLabel).text = ""
+			(r["stages"] as StageArrows).visible = false
 			continue
 		var alive: bool = foe.is_alive()
 		var targeted: bool = (foe == enemy) and alive
@@ -1482,15 +1515,12 @@ func _refresh_foe_rows() -> void:
 		hp_lbl.add_theme_color_override("font_color",
 				hp_tint(foe.hp, foe.max_hp) if alive else Color(0.55, 0.38, 0.38))
 
-		var stage_lbl: RichTextLabel = r["stage_lbl"] as RichTextLabel
-		# On a foe the colours are inverted: what raises the thing hitting you
-		# is bad news, so its buffs read as the warning and its debuffs as the
-		# good sign.
-		var stg: String = stage_markup(foe, true)
-		stage_lbl.text = "[center]%s[/center]" % stg if alive and stg != "" else ""
+		var stages: StageArrows = r["stages"] as StageArrows
+		stages.visible = alive
+		stages.queue_redraw()
 
 		var chart: AffinityChart = r["chart"] as AffinityChart
-		chart.visible = alive and player.has_analyzed(foe.enemy_name)
+		chart.visible = alive
 		if chart.visible:
 			chart.queue_redraw()
 
@@ -1630,7 +1660,7 @@ func _foe_departs(reason: String) -> void:
 	_departed.append(leaving)
 	_ensure_target()
 	_refresh_hp()
-	if foes.is_empty():
+	if _living_foes().is_empty():
 		await get_tree().create_timer(0.4).timeout
 		if is_instance_valid(self):
 			_end_combat(reason)
@@ -1968,6 +1998,7 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 		power: float, boost: float = 0.0) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
 			maxi(1, int(power)), false, actor, 1.0, boost)
+	_reveal(foe, element)
 	var lead: String = "%s calls the %s!" % [
 			actor.display_name(), Affinity.element_name(element)]
 	match res["outcome"]:
@@ -1998,6 +2029,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 		banishing: bool, boost: float = 0.0) -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
+	var split: float = CombatMath.split_share(targets.size())
 	var lines: Array[String] = ["[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
 			actor.display_name(), Affinity.element_name(element), targets.size()]]
 	var outcomes: Array[String] = []
@@ -2009,6 +2041,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 			var br: Dictionary = CombatMath.resolve_banish(
 					foe, element, maxi(1, int(base * spread)), false, actor,
 					spread, boost)
+			_reveal(foe, element)
 			match br["outcome"]:
 				"banished":
 					var was_weak: bool = foe.affinity_of(element) == Affinity.WEAK
@@ -2033,8 +2066,9 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 			continue
 
 		var res: Dictionary = CombatMath.resolve(
-				int(base * spread) - _guarded_def(foe), element, foe,
+				int(base * split) - _guarded_def(foe), element, foe,
 				CombatMath.roll_crit(actor), foe.defending)
+		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
 		outcomes.append(outcome)
@@ -2197,9 +2231,11 @@ func _rebuild_party_slots() -> void:
 
 
 func _build_party_slot(member: CharacterSheet) -> Control:
+	# A fixed slot, the same rule as a foe column: nothing inside sets its width.
 	var col: VBoxContainer = VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_stretch_ratio = 1.0
+	col.clip_contents = true
 	col.add_theme_constant_override("separation", 2)
 
 	if member == null:
@@ -2241,9 +2277,8 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))
 	col.add_child(marker)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = FitLabel.new(12, 7)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 12)
 	col.add_child(name_lbl)
 
 	var bar_wrap: MarginContainer = MarginContainer.new()
@@ -2264,25 +2299,24 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	mp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.32, 0.46, 0.95)))
 	bars.add_child(mp_bar)
 
-	var val_lbl: Label = Label.new()
+	var val_lbl: Label = FitLabel.new(11, 7)
 	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val_lbl.add_theme_font_size_override("font_size", 11)
 	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
 	col.add_child(val_lbl)
 
-	var sts_lbl: RichTextLabel = RichTextLabel.new()
-	sts_lbl.bbcode_enabled = true
-	sts_lbl.fit_content = true
-	sts_lbl.scroll_active = false
-	sts_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	sts_lbl.custom_minimum_size = Vector2(0, 14)
-	sts_lbl.add_theme_font_size_override("normal_font_size", 10)
+	# Ailments stay words — there is no arrow for being poisoned — and the stat
+	# stages sit under them as arrows.
+	var sts_lbl: RichTextLabel = FitRichText.new(10, 7, 1)
 	sts_lbl.add_theme_color_override("default_color", Color(0.90, 0.78, 0.30))
 	col.add_child(sts_lbl)
 
+	var stages: StageArrows = StageArrows.new()
+	stages.member = member
+	col.add_child(stages)
+
 	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
 			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl,
-			sts_lbl = sts_lbl, marker = marker})
+			sts_lbl = sts_lbl, stages = stages, marker = marker})
 	return col
 
 
@@ -2329,15 +2363,12 @@ func _refresh_party_slots() -> void:
 			mp_bar.value     = member.mp
 			val_lbl.text = "%d/%d   %d MP" % [member.hp, member.max_hp, member.mp]
 
-		var tags: Array[String] = []
 		var ail: String = _format_statuses(member.active_statuses)
-		if ail != "":
-			tags.append("[color=#e6c74d]%s[/color]" % ail)
-		var stg: String = stage_markup(member, false)
-		if stg != "":
-			tags.append(stg)
 		(slot["sts_lbl"] as RichTextLabel).text = \
-				"[center]%s[/center]" % "  ".join(tags) if not tags.is_empty() else ""
+				"[center][color=#e6c74d]%s[/color][/center]" % ail if ail != "" else ""
+		var stages: StageArrows = slot["stages"] as StageArrows
+		stages.visible = alive
+		stages.queue_redraw()
 
 
 # ── The menu strip ────────────────────────────────────────────────────────────
@@ -2531,9 +2562,21 @@ func _on_skill_chosen(action: String) -> void:
 		var spell_id: String = action.substr(6)
 		var data: Dictionary = Spell.get_data(spell_id)
 		var kind: String = data.get("type", "dmg") as String
-		if kind == "heal" or kind == "buff" or Spell.is_multi(spell_id):
+		if kind == "heal" or kind == "buff" or kind == "dispel" or Spell.is_multi(spell_id):
 			await _commit_action(action)
 			return
+	# A bound demon's buffs and debuffs take a whole side, and its wide lines
+	# draw their own targets, so only a single-target line needs picking.
+	if action.begins_with("Skill:") and not _actor_is_player():
+		var demon: Enemy = _actor() as Enemy
+		var known: Array = player.skills_of(demon.enemy_name)
+		var idx: int = action.substr(6).to_int()
+		if idx >= 0 and idx < known.size():
+			var skill: Dictionary = known[idx] as Dictionary
+			if skill.get("kind", "") == "support" \
+					or demon.attack_reach != Spell.SHAPE_ONE:
+				await _commit_action(action)
+				return
 	_with_target(func() -> void: await _commit_action(action))
 
 
@@ -2626,8 +2669,8 @@ static func _spread_cost(outcomes: Array[String]) -> String:
 
 func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
-	var spread: float = float(data.get("spread", 1.0))
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
+	var split: float = CombatMath.split_share(targets.size())
 	var power: float = float(player.effective_mag()) \
 			* player.stage_mult(CharacterSheet.STAT_MAG)
 
@@ -2637,11 +2680,12 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 
 	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
-		var base: int = int(power * rung * spread) - _guarded_def(foe)
+		var base: int = int(power * rung * split) - _guarded_def(foe)
 		if "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
 		var res: Dictionary = CombatMath.resolve(base, element, foe, crit, foe.defending)
+		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		outcomes.append(outcome)
 		var dmg: int = int(res["dmg"])
@@ -2771,13 +2815,17 @@ func _cast_dispel(data: Dictionary, by_player: bool) -> Dictionary:
 			cost = PressTurn.COST_FULL}
 
 
+# In the stat's own colour, the one its arrows are drawn in.
 static func _stat_name(stat: String) -> String:
+	var word: String = stat
 	match stat:
-		CharacterSheet.STAT_ATK: return "Attack"
-		CharacterSheet.STAT_MAG: return "Magic"
-		CharacterSheet.STAT_DEF: return "Defence"
-		CharacterSheet.STAT_AGL: return "Agility"
-	return stat
+		CharacterSheet.STAT_ATK: word = "Attack"
+		CharacterSheet.STAT_MAG: word = "Magic"
+		CharacterSheet.STAT_DEF: word = "Defence"
+		CharacterSheet.STAT_AGL: word = "Agility"
+	if not StageArrows.COLORS.has(stat):
+		return word
+	return "[color=#%s]%s[/color]" % [StageArrows.color_of(stat).to_html(false), word]
 
 
 # Defence as it counts right now: the stat, the guard stance, and the stage.
@@ -2801,6 +2849,7 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
 	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false, player,
 			1.0, float(data.get("boost", Spell.BOOST_I)))
+	_reveal(enemy, element)
 	var name: String = data["name"] as String
 	var who: String  = enemy.display_name()
 
@@ -2857,6 +2906,7 @@ func _cast_banish_spread(data: Dictionary) -> Dictionary:
 	for foe: Enemy in targets:
 		var res: Dictionary = CombatMath.resolve_banish(
 				foe, element, power, false, player, spread, boost)
+		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		var wide_pr: TextureRect = _foe_portrait(foe)
 		if wide_pr != null:
@@ -2942,7 +2992,8 @@ func _resolve_attack() -> Dictionary:
 	if not CombatMath.lands(actor, enemy):
 		return {msg = "[color=#9aa0aa]%s swings at %s and misses![/color]" % [
 				_actor_name(), enemy.display_name()], cost = PressTurn.COST_MISS}
-	var atk: float = float(player.effective_str() if _actor_is_player() else actor.str)
+	var atk: float = float(player.effective_str()) * CombatMath.PHYS_POWER \
+			if _actor_is_player() else float(actor.str)
 	atk *= actor.stage_mult(CharacterSheet.STAT_ATK)
 	if _actor_is_player() and "last_stand" in player.passive_skills \
 			and player.hp * 4 < player.max_hp:
@@ -2965,6 +3016,7 @@ func _resolve_attack() -> Dictionary:
 func _resolve_banishing_swing(element: String, power: int) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(
 			enemy, element, power, false, player)
+	_reveal(enemy, element)
 	var prefix: String = "%s strikes!" % _actor_name()
 	var who: String = enemy.display_name()
 
@@ -3184,6 +3236,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 	var banishing: bool = Affinity.is_banishing(element)
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[CharacterSheet] = _enemy_spread_targets(actor)
+	var split: float = CombatMath.split_share(targets.size())
 	var reach_word: String = "across" if actor.attack_reach == Spell.SHAPE_FEW else "over"
 
 	var lines: Array[String] = [dry + "[color=#ff9a6a]%s calls up %s %s %d of you![/color]" % [
@@ -3199,7 +3252,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
 			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * spread) - _guarded_def(who), element, who,
+				int(base * split) - _guarded_def(who), element, who,
 				CombatMath.roll_crit(actor), who.defending)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
@@ -3316,19 +3369,4 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			ename, word, tname, hurt, tag],
 			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}
 
-
-# A compact readout of what is stacked on someone: "ATK+2 AGL-1".
-# The same stack, with every stat carrying its own colour. `inverted` is for
-# the other side of the fight, where a raised stat is the thing to worry about.
-static func stage_markup(member: CharacterSheet, inverted: bool) -> String:
-	var parts: Array[String] = []
-	for key: String in CharacterSheet.STAT_KEYS:
-		var st: int = member.stage(key)
-		if st == 0:
-			continue
-		var good: bool = (st > 0) != inverted
-		parts.append("[color=#%s]%s%+d[/color]" % [
-				(GearTooltip.UP if good else GearTooltip.DOWN).to_html(false),
-				key.to_upper(), st])
-	return "  ".join(parts)
 

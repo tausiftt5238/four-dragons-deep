@@ -11,12 +11,14 @@ You move a square at a time and turn in place. The map on the upper half fills
 in as you walk, and remembers what you have already found.
 
 **Every floor is locked.** The way down is a flight of steps cut into a wall,
-and until you hold the floor's key there is a door across it with a violet lock
-— shaped like the key that opens it.
+and there is a door across it with a violet lock — shaped like the key that
+opens it.
 
 - On most floors the **key lies somewhere in the maze**. Walk onto it to take it.
 - On floors **4, 9, 14 and 19** a **warden** holds it instead. Beat the warden
-  and the door opens.
+  to take it.
+- While you carry the key, a **key icon** shows at the right edge of the screen.
+  Walk into the door to **unlock** it, then walk forward again to go down.
 
 **Other things on a floor:**
 
@@ -80,7 +82,8 @@ can never be banished by it at all, and **every dragon is immune to both**.
 
 ### Reading a demon
 
-Once you know a demon's chart, it appears as a row of six boxes beneath it:
+Every demon has a row of six boxes beneath it, one per line. A box you have
+not learned yet shows **?**. Once learned, it shows:
 
 | Letter | Meaning |
 |---|---|
@@ -92,16 +95,32 @@ Once you know a demon's chart, it appears as a row of six boxes beneath it:
 
 No letter means it simply takes the hit.
 
-Two ways to learn a chart:
+Three ways to learn a chart, all of which last the rest of the run:
 
-1. **Analyze** — a 0 MP spell that reads a demon's chart *and* its temper. It
-   takes one of your five spell slots, so carrying it is a choice.
-2. **Kill one.** Defeating a demon teaches you what it was made of, for the
-   rest of the run.
+1. **Hit it.** Landing an element on a demon fills in that one box straight
+   away, whatever the result. A swing that misses teaches nothing.
+2. **Analyze** — a 0 MP spell that reads the whole chart *and* the demon's
+   temper. It takes one of your five spell slots, so carrying it is a choice.
+3. **Kill one.** Defeating a demon fills in its whole chart.
 
-**Wardens and bosses give up nothing.** Analyze refuses them and still spends
-the turn; killing one teaches you nothing. Those fights are read as they
-happen.
+**Wardens and bosses refuse Analyze** (it still spends the turn), but hitting
+them and beating them teach you their chart like anything else.
+
+### Buffs and debuffs
+
+Under every name in a fight is a row of stacked coloured arrows: one place for
+each stat, always in the same order and the same colour.
+
+| Colour | Stat |
+| --- | --- |
+| Orange | Attack (STR) |
+| Violet | Magic (MAG) |
+| Blue | Defence (DEF) |
+| Green | Agility (AGL) |
+
+**Arrows pointing up are a buff, pointing down a debuff, and they stack** — one
+arrow per stack, up to four, so a taller stack is a bigger shift. The same colours mark those stats in the menu and on the level-up
+screen.
 
 ---
 

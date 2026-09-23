@@ -8,7 +8,8 @@
 #   type    – "dmg" | "banish" | "heal" | "buff" | "dispel" | "ailment"
 #   element – affinity key it is scored against ("" for the ones that aren't)
 #   shape   – SHAPE_ONE | SHAPE_FEW | SHAPE_ALL, how many demons it reaches
-#   spread  – what each target gets when the cast is split; 1.0 for single
+#   spread  – banishing only: what each target's odds keep when the cast is
+#             split. Damage splits by how many it reaches (CombatMath.split_share)
 #   power   – multiplier on MAG (damage spells); the rung it sits on
 #   boost   – added to the expulsion odds (banishing spells); the same rung
 #   heal    – HP restored (heals only)
@@ -58,6 +59,8 @@ static func rung_of(data: Dictionary) -> float:
 	return POWER_I
 
 
+# The two _DMG values are no longer read for damage, which now thins out by
+# the number of targets actually reached (CombatMath.split_share).
 const SPREAD_FEW_DMG:    float = 0.75
 const SPREAD_ALL_DMG:    float = 0.60
 const SPREAD_FEW_BANISH: float = 0.70

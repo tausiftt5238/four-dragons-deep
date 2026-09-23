@@ -1,5 +1,6 @@
 # CombatResultUI
-# Victory screen shown after winning a combat encounter.
+# Victory screen shown after winning a combat encounter. Demons that grew get
+# their own DemonLevelUpUI afterwards rather than a line here.
 # Set fields before adding to the tree, then listen for dismissed.
 class_name CombatResultUI extends Control
 
@@ -8,8 +9,6 @@ signal dismissed
 var exp_gained:  int = 0
 var gold_gained: int = 0
 var item_drop:   Dictionary = {}
-# One entry per demon that gained a level in that fight, already formatted.
-var demons_leveled: Array[String] = []
 
 
 func _ready() -> void:
@@ -66,15 +65,6 @@ func _build_ui() -> void:
 		_add_row(vbox, "Found", item_drop["name"], Color(0.50, 0.85, 1.00))
 	else:
 		_add_row(vbox, "Found", "Nothing", Color(0.38, 0.38, 0.38))
-
-	# One row however many climbed, so the panel never has to grow.
-	# One demon per line. Joined with commas this was a single run-on row —
-	# "Bat Lv 5 STR+4 AGL+2 learns Blaze, Skeleton Lv 7 DEF+3" — where the commas
-	# inside a demon's own gains and the commas between demons looked the same.
-	# Only the first line carries the label; the rest sit under it.
-	for i: int in demons_leveled.size():
-		_add_row(vbox, "Grew" if i == 0 else "", demons_leveled[i],
-				Color(0.80, 0.62, 1.00))
 
 	vbox.add_child(HSeparator.new())
 

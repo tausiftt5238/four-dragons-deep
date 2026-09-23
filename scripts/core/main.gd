@@ -72,6 +72,11 @@ const _RESPAWN_STEPS: int = 25
 # it has, so every maze floor has one thing that must be found.
 var _warden: Roamer = null
 var _has_key: bool  = false
+# Holding the key is not the same as having used it: the door stays shut until
+# the player walks into it with the key. Floors with no locked door start open.
+var _door_open: bool = false
+# Top right of the dungeon view while the key is carried and not yet used.
+var _key_icon: KeyIcon
 # Set once the boss at the end of the corridor is down.
 var _boss_beaten: bool = false
 var _pending_congratulations:  bool = false
@@ -205,7 +210,8 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	_spawn_roamers()
 	# After _spawn_roamers, which is what decides whether this floor holds the
 	# key at all and so whether the way on is shut.
-	dungeon.set_locked(not _has_key)
+	_door_open = _has_key
+	_sync_door()
 
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -338,6 +344,20 @@ func _setup_minimap() -> void:
 			_open_orb("save"))
 	layer.add_child(_orb_btn)
 
+	# Right edge of the dungeon view, just under the map, while the key is
+	# carried. A popup says it once; this keeps saying it.
+	_key_icon = KeyIcon.new()
+	_key_icon.anchor_left   = 1.0
+	_key_icon.anchor_right  = 1.0
+	_key_icon.anchor_top    = 0.0
+	_key_icon.anchor_bottom = 0.0
+	_key_icon.offset_left   = -62.0
+	_key_icon.offset_right  = -14.0
+	_key_icon.offset_top    = float(MAP_PANE_H) + 12.0
+	_key_icon.offset_bottom = float(MAP_PANE_H) + 60.0
+	_key_icon.visible       = false
+	layer.add_child(_key_icon)
+
 	# Push debug label below the MENU button
 	_encounter_debug_lbl.offset_top    = 70.0
 	_encounter_debug_lbl.offset_bottom = 94.0
@@ -446,8 +466,15 @@ func _check_portal() -> void:
 			return
 
 	if not _has_key:
-		_show_hud_popup("The door is sealed. Find the warden.", Color(0.75, 0.55, 1.0))
+		_show_hud_popup("The door is locked. Find the key.", Color(0.75, 0.55, 1.0))
 		_shake_camera()
+		return
+
+	# The first push with the key turns it; the next one goes through.
+	if not _door_open:
+		_door_open = true
+		_sync_door()
+		_show_hud_popup("You turn the key. The door opens.", Color(0.75, 0.55, 1.0))
 		return
 
 	if current_level.next_scene == "":
@@ -691,6 +718,14 @@ func _spawn_roamers() -> void:
 	_spawn_warden()
 
 
+# The door and the HUD key follow the same two flags, so they are set together.
+func _sync_door() -> void:
+	if is_instance_valid(dungeon):
+		dungeon.set_locked(not _door_open)
+	if _key_icon != null:
+		_key_icon.visible = _has_key and not _door_open
+
+
 # Walking onto the loose key takes it. No prompt: there is one thing to do with
 # a key and asking whether to do it is a dialog box in front of a door.
 func _take_key_here() -> void:
@@ -703,7 +738,7 @@ func _take_key_here() -> void:
 	minimap_ctrl.key_pos = Vector2i(-1, -1)
 	minimap_ctrl.queue_redraw()
 	_rebuild_dungeon()
-	_show_hud_popup("You take the key.", Color(0.75, 0.55, 1.0))
+	_show_hud_popup("You take the key. Find the door.", Color(0.75, 0.55, 1.0))
 
 
 # The thing holding the key, if anything is. A warden stands in the middle of
@@ -942,9 +977,9 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	for foe: Enemy in group:
 		exp_reward  += foe.exp_reward
 		gold_reward += foe.gold_reward
-		# Killing a thing teaches you what it was made of. Wardens and bosses
-		# are met once each in a run and keep their chart either way.
-		if not foe.is_alive() and not foe.unreadable:
+		# Killing a thing teaches you what it was made of — wardens and bosses
+		# too. Analyze is the only thing they refuse.
+		if not foe.is_alive():
 			player_char.record_analysis(foe.enemy_name)
 		if not foe.is_alive() and item_drop.is_empty():
 			item_drop = foe.roll_drop()
@@ -986,8 +1021,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		_has_key = true
 		minimap_ctrl.warden_pos = Vector2i(-1, -1)
 		minimap_ctrl.queue_redraw()
-		if is_instance_valid(dungeon):
-			dungeon.set_locked(false)
+		_sync_door()
 		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
 	# On a boss floor an encounter with no roamer behind it is the boss.
@@ -996,6 +1030,12 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 
 	if not lost.is_empty() and result != "lose":
 		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
+
+	# A fight the demons finish after the detective fell is still a win, but he
+	# walks out of it on his feet: at 0 HP the corridor stops treating him as
+	# alive, and nothing on the floor would move or open for him again.
+	if result != "lose":
+		player_char.hp = maxi(1, player_char.hp)
 
 	# Every ailment lasts the fight and no longer, so nothing follows the player
 	# into the corridor. Bound demons are rebuilt per fight and need no clearing.
@@ -1010,20 +1050,22 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
+			var demons_before: Dictionary = _demon_snapshots()
 			var grew: Dictionary = player_char.award_demon_exp(exp_reward)
 			var shown_drop: Dictionary = item_drop if result == "win" else {}
 			_show_combat_result(exp_reward, gold_reward, shown_drop,
 				before if leveled else {}, after if leveled else {},
-				_demon_level_lines(grew))
+				_demon_level_ups(grew, demons_before))
 		"bribe":
 			var before: Dictionary = _player_snapshot()
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
+			var demons_before_b: Dictionary = _demon_snapshots()
 			var grew_b: Dictionary = player_char.award_demon_exp(exp_reward)
 			_show_combat_result(exp_reward, 0, {},
 				before if leveled else {}, after if leveled else {},
-				_demon_level_lines(grew_b))
+				_demon_level_ups(grew_b, demons_before_b))
 		"lose":
 			_pending_congratulations = false
 			_show_game_over()
@@ -1033,34 +1075,68 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 
 
 
-# "Bat Lv 5  STR+4 AGL+2  learns Blaze" for each demon that grew in that fight.
-func _demon_level_lines(grew: Dictionary) -> Array[String]:
-	var out: Array[String] = []
+# Stats of one bound demon as it would walk into a fight right now.
+func _demon_snapshot(demon_name: String) -> Dictionary:
+	var e: Enemy = player_char.bound_demon(demon_name)
+	var snap: Dictionary = {lv = e.lv, max_hp = e.max_hp, max_mp = e.max_mp,
+			str = e.str, def = e.def, mag = e.mag, agl = e.agl}
+	e.free()
+	return snap
+
+
+# Taken before demon exp is paid, so each level-up popup can show before -> after.
+func _demon_snapshots() -> Dictionary:
+	var out: Dictionary = {}
+	for demon_name: String in player_char.active_demons:
+		out[demon_name] = _demon_snapshot(demon_name)
+	return out
+
+
+# One entry per demon that grew in that fight: {name, before, after, learned}.
+func _demon_level_ups(grew: Dictionary, before: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	var learned: Dictionary = grew.get("learned", {}) as Dictionary
 	for demon_name: String in (grew.get("climbed", []) as Array):
-		var gains: String = player_char.demon_gain_string(demon_name)
-		var picked: Array = learned.get(demon_name, []) as Array
-		out.append("%s Lv %d%s%s" % [demon_name,
-				int(player_char.bound_level.get(demon_name, 1)),
-				"  " + gains if gains != "" else "",
-				"  learns " + ", ".join(picked) if not picked.is_empty() else ""])
+		out.append({name = demon_name,
+				before = before.get(demon_name, {}),
+				after = _demon_snapshot(demon_name),
+				learned = learned.get(demon_name, [])})
 	return out
 
 
 func _show_combat_result(exp: int, gold: int, item: Dictionary,
 		lv_before: Dictionary, lv_after: Dictionary,
-		demons_leveled: Array[String] = []) -> void:
+		demon_ups: Array[Dictionary] = []) -> void:
 	var ui: CombatResultUI = CombatResultUI.new()
 	ui.exp_gained  = exp
 	ui.gold_gained = gold
 	ui.item_drop   = item
-	ui.demons_leveled = demons_leveled
 	ui.dismissed.connect(func():
 		ui.queue_free()
 		if not lv_before.is_empty():
-			_show_level_up(lv_before, lv_after)
+			_show_level_up(lv_before, lv_after, demon_ups)
 		else:
-			_resume_from_overlay()
+			_show_demon_level_ups(demon_ups)
+	)
+	_get_overlay_layer().add_child(ui)
+
+
+# Each demon that grew gets its own popup, one after another, and the corridor
+# comes back after the last of them.
+func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
+	if queue.is_empty():
+		_resume_from_overlay()
+		return
+	var entry: Dictionary = queue[0]
+	var rest: Array[Dictionary] = queue.slice(1)
+	var ui: DemonLevelUpUI = DemonLevelUpUI.new()
+	ui.demon_name = entry["name"] as String
+	ui.before     = entry["before"] as Dictionary
+	ui.after      = entry["after"] as Dictionary
+	ui.learned    = entry["learned"] as Array
+	ui.dismissed.connect(func():
+		ui.queue_free()
+		_show_demon_level_ups(rest)
 	)
 	_get_overlay_layer().add_child(ui)
 
@@ -1101,14 +1177,15 @@ func _get_overlay_layer() -> CanvasLayer:
 	return overlay_layer
 
 
-func _show_level_up(before: Dictionary, after: Dictionary) -> void:
+func _show_level_up(before: Dictionary, after: Dictionary,
+		demon_ups: Array[Dictionary] = []) -> void:
 	var ui: LevelUpUI = LevelUpUI.new()
 	ui.before  = before
 	ui.after   = after
 	ui.player  = player_char
 	ui.dismissed.connect(func():
 		ui.queue_free()
-		_resume_from_overlay()
+		_show_demon_level_ups(demon_ups)
 	)
 	_get_overlay_layer().add_child(ui)
 
@@ -1263,7 +1340,7 @@ func _rebuild_dungeon() -> void:
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
-	dungeon.set_locked(not _has_key)
+	_sync_door()
 
 
 func _close_chest() -> void:
@@ -1381,6 +1458,7 @@ func _gather_save_data() -> Dictionary:
 			active_demons       = p.active_demons,
 			encountered_enemies = p.encountered_enemies,
 			analyzed            = p.analyzed,
+			learned_affinities  = p.learned_affinities,
 			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
@@ -1404,6 +1482,7 @@ func _gather_save_data() -> Dictionary:
 			key_taken   = current_level.key_taken,
 			found_traps = _pack_trap_cells(current_level.found_traps),
 			has_key     = _has_key,
+			door_open   = _door_open,
 		},
 		visited = visited_serial,
 	}
@@ -1480,6 +1559,8 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.found_traps     = _unpack_trap_cells(
 			map_data.get("found_traps", {}) as Dictionary)
 	_pending_has_key              = bool(map_data.get("has_key", true))
+	# Saves from before the door needed turning: holding the key meant open.
+	_pending_door_open            = bool(map_data.get("door_open", _pending_has_key))
 
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
@@ -1609,6 +1690,7 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.analyzed.clear()
 	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
+	player_char.learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
 
 	player_char.passive_skills.clear()
 	player_char.passive_skills.assign(pdata.get("passive_skills", []) as Array)
@@ -1687,6 +1769,7 @@ func _pack_roamers() -> Array:
 
 
 var _pending_has_key: bool = true
+var _pending_door_open: bool = true
 
 
 func _restore_roamers() -> void:
@@ -1706,6 +1789,7 @@ func _restore_roamers() -> void:
 	_pending_roamers = []
 
 	_has_key = _pending_has_key
+	_door_open = _pending_door_open
 	minimap_ctrl.warden_pos = Vector2i(-1, -1)
 	minimap_ctrl.key_pos = Vector2i(-1, -1)
 	if not _has_key and current_level.key_pos.x >= 0 and not current_level.key_taken:
@@ -1721,8 +1805,7 @@ func _restore_roamers() -> void:
 	minimap_ctrl.queue_redraw()
 	# A loaded run arrives here with the geometry already built, so the door is
 	# hung once _has_key is known rather than during the build.
-	if is_instance_valid(dungeon):
-		dungeon.set_locked(not _has_key)
+	_sync_door()
 
 
 func _pack_trap_cells(cells: Dictionary) -> Dictionary:
