@@ -49,6 +49,10 @@ func build() -> void:
 	_add_stat_row(grid, "AGL", p.agl, p.effective_agl())
 	_add_stat_row(grid, "LUK", p.luk, p.effective_luk())
 
+	# What he takes from each line, gear included — the same chart a demon gets
+	# in a fight once it has been read.
+	_m._content.add_child(AffinityChart.snapshot(p))
+
 	_m._content.add_child(HSeparator.new())
 
 	var gold_lbl: Label = Label.new()
@@ -122,6 +126,7 @@ func _add_demon(p: PlayerCharacter, demon_name: String) -> void:
 			["MAG", demon.mag], ["AGL", demon.agl]]:
 		_add_stat_row(grid, pair[0] as String, int(pair[1]), int(pair[1]))
 
+	_m._content.add_child(AffinityChart.snapshot(demon))
 	demon.free()
 
 

@@ -39,20 +39,27 @@ func build() -> void:
 
 	_m._content.add_child(HSeparator.new())
 
-	if _m.player.inventory.is_empty():
+	var has_any: bool = false
+	for item: Dictionary in _m.player.inventory:
+		if not (item.get("type", "") in ["weapon", "armor", "accessory"]):
+			has_any = true
+			break
+	if not has_any:
 		SlotList.new(_m._content).add_note("Your pack is empty.")
 		return
 
-	# One shelf per kind, in the order the pack is sorted into. Anything of a
-	# kind not named here still lists, under Other, rather than vanishing.
-	var shelves: Array[Array] = [["consumable", "Consumables"], ["scroll", "Scrolls"],
-			["weapon", "Weapons"], ["armor", "Armour"], ["accessory", "Trinkets"]]
+	# One shelf per kind. Weapons, armour and trinkets live on the Carried tab,
+	# where they can be compared against what is worn, so they are left out
+	# here. Anything of a kind not named still lists, under Other.
+	var shelves: Array[Array] = [["consumable", "Consumables"], ["scroll", "Scrolls"]]
 	var by_type: Dictionary = {}
 	var other: Array = []
 	for shelf: Array in shelves:
 		by_type[shelf[0]] = []
 	for item: Dictionary in _m.player.inventory:
 		var kind: String = item.get("type", "") as String
+		if kind in ["weapon", "armor", "accessory"]:
+			continue
 		if by_type.has(kind):
 			(by_type[kind] as Array).append(item["id"] as String)
 		else:

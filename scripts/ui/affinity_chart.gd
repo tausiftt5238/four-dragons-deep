@@ -28,7 +28,18 @@ const SPRITES: Dictionary = {
 # being able to tell to what, which is the only thing the chart is for.
 const ROW_HEIGHT: float = 34.0
 
-var foe: Enemy = null
+var foe: CharacterSheet = null
+# element -> state, read instead of `foe` when set. A menu builds a bound demon
+# only long enough to read it, so it hands over the answers rather than the
+# demon.
+var states: Dictionary = {}
+
+
+static func snapshot(sheet: CharacterSheet) -> AffinityChart:
+	var chart: AffinityChart = AffinityChart.new()
+	for element: String in SLOTS:
+		chart.states[element] = sheet.affinity_of(element)
+	return chart
 
 static var _tex: Dictionary = {}
 
@@ -60,7 +71,7 @@ static func _icon(element: String) -> Texture2D:
 
 
 func _draw() -> void:
-	if foe == null or size.x <= 0.0:
+	if (foe == null and states.is_empty()) or size.x <= 0.0:
 		return
 	var slot_w: float = size.x / float(SLOTS.size())
 	var pad: float = clampf(slot_w * 0.08, 1.0, 3.0)
@@ -69,7 +80,8 @@ func _draw() -> void:
 
 	for i: int in range(SLOTS.size()):
 		var element: String = SLOTS[i]
-		var state: String = foe.affinity_of(element)
+		var state: String = states.get(element, Affinity.NORMAL) as String \
+				if not states.is_empty() else foe.affinity_of(element)
 		var mark: String = mark_for(state)
 		var at: Rect2 = Rect2(float(i) * slot_w + pad, 1.0, box_w, box_h)
 		_draw_slot(at, element, state, mark)

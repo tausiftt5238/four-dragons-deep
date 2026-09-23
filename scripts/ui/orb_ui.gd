@@ -447,7 +447,31 @@ func _build_scrolls() -> void:
 	if stock.is_empty():
 		SlotList.new(_content).add_note("Nothing here you have not already been taught.")
 		return
-	SlotList.paged(_content, _page, "scrolls", stock, _buy_offer, _refresh)
+	SlotList.sections(_content, _page, "scrolls", scroll_groups(stock), _buy_offer)
+
+
+# One shelf per element the scroll teaches, then healing, then everything that
+# moves a stage, lays an ailment or clears one.
+static func scroll_groups(scrolls: Array) -> Array:
+	var order: Array[String] = ["fire", "ice", "thunder", "light", "dark"]
+	var by_key: Dictionary = {heal = [], support = []}
+	for element: String in order:
+		by_key[element] = []
+	for scroll: Variant in scrolls:
+		var data: Dictionary = Spell.get_data((scroll as Dictionary).get("teaches", "") as String)
+		var element: String = data.get("element", "") as String
+		if by_key.has(element):
+			(by_key[element] as Array).append(scroll)
+		elif data.get("type", "") == "heal":
+			(by_key["heal"] as Array).append(scroll)
+		else:
+			(by_key["support"] as Array).append(scroll)
+	var out: Array = []
+	for element: String in order:
+		out.append({title = Affinity.element_name(element), entries = by_key[element]})
+	out.append({title = "Healing", entries = by_key["heal"]})
+	out.append({title = "Support", entries = by_key["support"]})
+	return out
 
 
 func _buy_offer(list: SlotList, item: Variant) -> void:
