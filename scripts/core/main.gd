@@ -72,6 +72,11 @@ const _RESPAWN_STEPS: int = 25
 # it has, so every maze floor has one thing that must be found.
 var _warden: Roamer = null
 var _has_key: bool  = false
+# Holding the key is not the same as having used it: the door stays shut until
+# the player walks into it with the key. Floors with no locked door start open.
+var _door_open: bool = false
+# Top right of the dungeon view while the key is carried and not yet used.
+var _key_icon: KeyIcon
 # Set once the boss at the end of the corridor is down.
 var _boss_beaten: bool = false
 var _pending_congratulations:  bool = false
@@ -205,7 +210,8 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	_spawn_roamers()
 	# After _spawn_roamers, which is what decides whether this floor holds the
 	# key at all and so whether the way on is shut.
-	dungeon.set_locked(not _has_key)
+	_door_open = _has_key
+	_sync_door()
 
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -338,6 +344,20 @@ func _setup_minimap() -> void:
 			_open_orb("save"))
 	layer.add_child(_orb_btn)
 
+	# Right edge of the dungeon view, just under the map, while the key is
+	# carried. A popup says it once; this keeps saying it.
+	_key_icon = KeyIcon.new()
+	_key_icon.anchor_left   = 1.0
+	_key_icon.anchor_right  = 1.0
+	_key_icon.anchor_top    = 0.0
+	_key_icon.anchor_bottom = 0.0
+	_key_icon.offset_left   = -62.0
+	_key_icon.offset_right  = -14.0
+	_key_icon.offset_top    = float(MAP_PANE_H) + 12.0
+	_key_icon.offset_bottom = float(MAP_PANE_H) + 60.0
+	_key_icon.visible       = false
+	layer.add_child(_key_icon)
+
 	# Push debug label below the MENU button
 	_encounter_debug_lbl.offset_top    = 70.0
 	_encounter_debug_lbl.offset_bottom = 94.0
@@ -446,8 +466,15 @@ func _check_portal() -> void:
 			return
 
 	if not _has_key:
-		_show_hud_popup("The door is sealed. Find the warden.", Color(0.75, 0.55, 1.0))
+		_show_hud_popup("The door is locked. Find the key.", Color(0.75, 0.55, 1.0))
 		_shake_camera()
+		return
+
+	# The first push with the key turns it; the next one goes through.
+	if not _door_open:
+		_door_open = true
+		_sync_door()
+		_show_hud_popup("You turn the key. The door opens.", Color(0.75, 0.55, 1.0))
 		return
 
 	if current_level.next_scene == "":
@@ -691,6 +718,14 @@ func _spawn_roamers() -> void:
 	_spawn_warden()
 
 
+# The door and the HUD key follow the same two flags, so they are set together.
+func _sync_door() -> void:
+	if is_instance_valid(dungeon):
+		dungeon.set_locked(not _door_open)
+	if _key_icon != null:
+		_key_icon.visible = _has_key and not _door_open
+
+
 # Walking onto the loose key takes it. No prompt: there is one thing to do with
 # a key and asking whether to do it is a dialog box in front of a door.
 func _take_key_here() -> void:
@@ -703,7 +738,7 @@ func _take_key_here() -> void:
 	minimap_ctrl.key_pos = Vector2i(-1, -1)
 	minimap_ctrl.queue_redraw()
 	_rebuild_dungeon()
-	_show_hud_popup("You take the key.", Color(0.75, 0.55, 1.0))
+	_show_hud_popup("You take the key. Find the door.", Color(0.75, 0.55, 1.0))
 
 
 # The thing holding the key, if anything is. A warden stands in the middle of
@@ -986,8 +1021,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		_has_key = true
 		minimap_ctrl.warden_pos = Vector2i(-1, -1)
 		minimap_ctrl.queue_redraw()
-		if is_instance_valid(dungeon):
-			dungeon.set_locked(false)
+		_sync_door()
 		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
 	# On a boss floor an encounter with no roamer behind it is the boss.
@@ -1306,7 +1340,7 @@ func _rebuild_dungeon() -> void:
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
-	dungeon.set_locked(not _has_key)
+	_sync_door()
 
 
 func _close_chest() -> void:
@@ -1447,6 +1481,7 @@ func _gather_save_data() -> Dictionary:
 			key_taken   = current_level.key_taken,
 			found_traps = _pack_trap_cells(current_level.found_traps),
 			has_key     = _has_key,
+			door_open   = _door_open,
 		},
 		visited = visited_serial,
 	}
@@ -1523,6 +1558,8 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.found_traps     = _unpack_trap_cells(
 			map_data.get("found_traps", {}) as Dictionary)
 	_pending_has_key              = bool(map_data.get("has_key", true))
+	# Saves from before the door needed turning: holding the key meant open.
+	_pending_door_open            = bool(map_data.get("door_open", _pending_has_key))
 
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
@@ -1730,6 +1767,7 @@ func _pack_roamers() -> Array:
 
 
 var _pending_has_key: bool = true
+var _pending_door_open: bool = true
 
 
 func _restore_roamers() -> void:
@@ -1749,6 +1787,7 @@ func _restore_roamers() -> void:
 	_pending_roamers = []
 
 	_has_key = _pending_has_key
+	_door_open = _pending_door_open
 	minimap_ctrl.warden_pos = Vector2i(-1, -1)
 	minimap_ctrl.key_pos = Vector2i(-1, -1)
 	if not _has_key and current_level.key_pos.x >= 0 and not current_level.key_taken:
@@ -1764,8 +1803,7 @@ func _restore_roamers() -> void:
 	minimap_ctrl.queue_redraw()
 	# A loaded run arrives here with the geometry already built, so the door is
 	# hung once _has_key is known rather than during the build.
-	if is_instance_valid(dungeon):
-		dungeon.set_locked(not _has_key)
+	_sync_door()
 
 
 func _pack_trap_cells(cells: Dictionary) -> Dictionary:

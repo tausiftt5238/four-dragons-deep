@@ -11,12 +11,14 @@ You move a square at a time and turn in place. The map on the upper half fills
 in as you walk, and remembers what you have already found.
 
 **Every floor is locked.** The way down is a flight of steps cut into a wall,
-and until you hold the floor's key there is a door across it with a violet lock
-— shaped like the key that opens it.
+and there is a door across it with a violet lock — shaped like the key that
+opens it.
 
 - On most floors the **key lies somewhere in the maze**. Walk onto it to take it.
 - On floors **4, 9, 14 and 19** a **warden** holds it instead. Beat the warden
-  and the door opens.
+  to take it.
+- While you carry the key, a **key icon** shows at the right edge of the screen.
+  Walk into the door to **unlock** it, then walk forward again to go down.
 
 **Other things on a floor:**
 
