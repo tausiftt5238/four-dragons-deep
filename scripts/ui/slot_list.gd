@@ -25,6 +25,7 @@ const SLOT_COUNT: int = 6
 const SLOT_H:     int = 96
 const BTN_W:      int = 150
 const BTN_H:      int = 24     # becomes 36 after the restyle hook
+const EXTRA_H:    int = 34     # one AffinityChart row
 
 var _host:   VBoxContainer
 var _slots:  Array[MarginContainer] = []
@@ -70,11 +71,15 @@ func add(title: String, title_color: Color, detail: String,
 # they share the width the single-button case gives to one.
 func add_entry(title: String, title_color: Color, detail: String,
 		value: String, value_color: Color, actions: Array[Dictionary],
-		icon: Texture2D = null) -> bool:
+		icon: Texture2D = null, extra: Control = null) -> bool:
 	if _filled >= _count:
 		return false
 	var slot: MarginContainer = _slots[_filled]
 	_filled += 1
+	# A row that carries an extra line (an affinity chart) is taller by exactly
+	# that line, so the description keeps the room it always had.
+	if extra != null:
+		slot.custom_minimum_size.y = SLOT_H + EXTRA_H
 
 	var outer: HBoxContainer = HBoxContainer.new()
 	outer.add_theme_constant_override("separation", 8)
@@ -132,6 +137,10 @@ func add_entry(title: String, title_color: Color, detail: String,
 		if not btn.disabled:
 			btn.pressed.connect(act["press"] as Callable)
 		head.add_child(btn)
+
+	if extra != null:
+		extra.custom_minimum_size.y = EXTRA_H
+		col.add_child(extra)
 
 	# BBCode rather than a plain Label so a row can colour part of its line —
 	# a shop row marks each stat green or red against what is already worn.

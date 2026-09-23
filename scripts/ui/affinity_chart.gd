@@ -27,6 +27,8 @@ const SPRITES: Dictionary = {
 # and the icon lost: you could see the demon was weak to SOMETHING without
 # being able to tell to what, which is the only thing the chart is for.
 const ROW_HEIGHT: float = 34.0
+# Six boxes a little wider than tall, when the chart sits inside a list row.
+const ROW_WIDTH: float = 264.0
 
 var foe: CharacterSheet = null
 # element -> state, read instead of `foe` when set. A menu builds a bound demon
@@ -39,6 +41,14 @@ static func snapshot(sheet: CharacterSheet) -> AffinityChart:
 	var chart: AffinityChart = AffinityChart.new()
 	for element: String in SLOTS:
 		chart.states[element] = sheet.affinity_of(element)
+	return chart
+
+
+# The same, sized to sit inside a list row instead of spanning the page.
+static func compact(sheet: CharacterSheet) -> AffinityChart:
+	var chart: AffinityChart = snapshot(sheet)
+	chart.custom_minimum_size.x = ROW_WIDTH
+	chart.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	return chart
 
 static var _tex: Dictionary = {}
