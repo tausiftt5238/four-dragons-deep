@@ -107,8 +107,8 @@ happen.
 
 ### Buffs and debuffs
 
-Under every name in a fight is a row of coloured arrows: one place for each
-stat, always in the same order and the same colour.
+Under every name in a fight is a row of stacked coloured arrows: one place for
+each stat, always in the same order and the same colour.
 
 | Colour | Stat |
 | --- | --- |
@@ -117,8 +117,8 @@ stat, always in the same order and the same colour.
 | Blue | Defence (DEF) |
 | Green | Agility (AGL) |
 
-**Up arrows are a buff, down arrows a debuff, and each arrow is one stack**, up
-to four. The same colours mark those stats in the menu and on the level-up
+**Arrows pointing up are a buff, pointing down a debuff, and they stack** — one
+arrow per stack, up to four, so a taller stack is a bigger shift. The same colours mark those stats in the menu and on the level-up
 screen.
 
 ---
