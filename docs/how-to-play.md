@@ -82,7 +82,8 @@ can never be banished by it at all, and **every dragon is immune to both**.
 
 ### Reading a demon
 
-Once you know a demon's chart, it appears as a row of six boxes beneath it:
+Every demon has a row of six boxes beneath it, one per line. A box you have
+not learned yet shows **?**. Once learned, it shows:
 
 | Letter | Meaning |
 |---|---|
@@ -94,16 +95,16 @@ Once you know a demon's chart, it appears as a row of six boxes beneath it:
 
 No letter means it simply takes the hit.
 
-Two ways to learn a chart:
+Three ways to learn a chart, all of which last the rest of the run:
 
-1. **Analyze** — a 0 MP spell that reads a demon's chart *and* its temper. It
-   takes one of your five spell slots, so carrying it is a choice.
-2. **Kill one.** Defeating a demon teaches you what it was made of, for the
-   rest of the run.
+1. **Hit it.** Landing an element on a demon fills in that one box straight
+   away, whatever the result. A swing that misses teaches nothing.
+2. **Analyze** — a 0 MP spell that reads the whole chart *and* the demon's
+   temper. It takes one of your five spell slots, so carrying it is a choice.
+3. **Kill one.** Defeating a demon fills in its whole chart.
 
-**Wardens and bosses give up nothing.** Analyze refuses them and still spends
-the turn; killing one teaches you nothing. Those fights are read as they
-happen.
+**Wardens and bosses refuse Analyze** (it still spends the turn), but hitting
+them and beating them teach you their chart like anything else.
 
 ### Buffs and debuffs
 

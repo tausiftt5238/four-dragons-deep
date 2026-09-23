@@ -404,6 +404,7 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 			var element: String = item.get("element", "")
 			var base_dmg: int = item.get("dmg", 0)
 			if element != "" and base_dmg > 0:
+				_reveal(enemy, element)
 				var state: String = enemy.affinity_of(element)
 				var dmg: int = base_dmg
 				player.remove_item(item, 1)
@@ -784,6 +785,7 @@ func _resolve_action(action: String) -> Dictionary:
 
 func _land_hit(res: Dictionary, element: String, prefix: String,
 		melee: bool = false, rung: float = Spell.POWER_I) -> Dictionary:
+	_reveal(enemy, element)
 	var outcome: String = res["outcome"] as String
 	var dmg: int        = res["dmg"] as int
 	var crit: bool      = res["crit"] as bool
@@ -1408,8 +1410,12 @@ func _build_foe_column(foe: Enemy) -> Control:
 
 	# The chart hangs under the demon rather than sitting in the strip above it:
 	# five icons read at a glance where "FW IS TD" had to be decoded.
+	# Always there; a line not yet learned shows "?" until Analyze, a kill, or
+	# hitting it with that element fills it in.
 	var chart: AffinityChart = AffinityChart.new()
 	chart.foe = foe
+	chart.knows = func(element: String) -> bool:
+		return player.knows_affinity(foe.enemy_name, element)
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(chart)
 
@@ -1424,6 +1430,18 @@ func _foe_portrait(foe: Enemy) -> TextureRect:
 		if r["foe"] == foe:
 			return r["portrait"] as TextureRect
 	return null
+
+
+# A hit shows what the target does with that one element, on its chart, from
+# this moment and for the rest of the run. Bosses and wardens too: Analyze is
+# the only thing they refuse.
+func _reveal(foe: Enemy, element: String) -> void:
+	if foe == null or element == "":
+		return
+	player.learn_affinity(foe.enemy_name, element)
+	for r: Dictionary in _foe_rows:
+		if r["foe"] == foe or (r["foe"] as Enemy).enemy_name == foe.enemy_name:
+			(r["chart"] as AffinityChart).queue_redraw()
 
 
 # ── Target picking ────────────────────────────────────────────────────────────
@@ -1502,7 +1520,7 @@ func _refresh_foe_rows() -> void:
 		stages.queue_redraw()
 
 		var chart: AffinityChart = r["chart"] as AffinityChart
-		chart.visible = alive and player.has_analyzed(foe.enemy_name)
+		chart.visible = alive
 		if chart.visible:
 			chart.queue_redraw()
 
@@ -1980,6 +1998,7 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 		power: float, boost: float = 0.0) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
 			maxi(1, int(power)), false, actor, 1.0, boost)
+	_reveal(foe, element)
 	var lead: String = "%s calls the %s!" % [
 			actor.display_name(), Affinity.element_name(element)]
 	match res["outcome"]:
@@ -2022,6 +2041,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 			var br: Dictionary = CombatMath.resolve_banish(
 					foe, element, maxi(1, int(base * spread)), false, actor,
 					spread, boost)
+			_reveal(foe, element)
 			match br["outcome"]:
 				"banished":
 					var was_weak: bool = foe.affinity_of(element) == Affinity.WEAK
@@ -2048,6 +2068,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 		var res: Dictionary = CombatMath.resolve(
 				int(base * split) - _guarded_def(foe), element, foe,
 				CombatMath.roll_crit(actor), foe.defending)
+		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
 		outcomes.append(outcome)
@@ -2664,6 +2685,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
 		var res: Dictionary = CombatMath.resolve(base, element, foe, crit, foe.defending)
+		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		outcomes.append(outcome)
 		var dmg: int = int(res["dmg"])
@@ -2827,6 +2849,7 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
 	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false, player,
 			1.0, float(data.get("boost", Spell.BOOST_I)))
+	_reveal(enemy, element)
 	var name: String = data["name"] as String
 	var who: String  = enemy.display_name()
 
@@ -2883,6 +2906,7 @@ func _cast_banish_spread(data: Dictionary) -> Dictionary:
 	for foe: Enemy in targets:
 		var res: Dictionary = CombatMath.resolve_banish(
 				foe, element, power, false, player, spread, boost)
+		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		var wide_pr: TextureRect = _foe_portrait(foe)
 		if wide_pr != null:
@@ -2992,6 +3016,7 @@ func _resolve_attack() -> Dictionary:
 func _resolve_banishing_swing(element: String, power: int) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(
 			enemy, element, power, false, player)
+	_reveal(enemy, element)
 	var prefix: String = "%s strikes!" % _actor_name()
 	var who: String = enemy.display_name()
 

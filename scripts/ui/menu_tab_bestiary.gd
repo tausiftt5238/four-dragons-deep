@@ -42,20 +42,14 @@ func _add_demon(list: SlotList, enemy_name: String) -> void:
 	# Everything the bestiary knows, as one wrapped paragraph rather than six
 	# stacked lines of wildly different length.
 	var parts: Array[String] = []
-	# The chart once it has been read; until then the same line says so, so a
-	# row of quiet icons never passes for "no affinities".
-	var chart: Control
-	if _m.player.has_analyzed(enemy_name):
-		var demon: Enemy = Enemy.make_from_name(enemy_name, 1)
-		chart = AffinityChart.compact(demon)
-		demon.free()
-	else:
-		var unread: Label = Label.new()
-		unread.text = "Affinities unread \u2014 analyze it in battle."
-		unread.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		unread.add_theme_font_size_override("font_size", 11)
-		unread.add_theme_color_override("font_color", Color(0.55, 0.55, 0.62))
-		chart = unread
+	# The same chart the fight shows: every line it has been hit with, or all
+	# six once analyzed or killed, and "?" for the rest.
+	var p: PlayerCharacter = _m.player
+	var demon: Enemy = Enemy.make_from_name(enemy_name, 1)
+	var chart: AffinityChart = AffinityChart.compact(demon)
+	demon.free()
+	chart.knows = func(element: String) -> bool:
+		return p.knows_affinity(enemy_name, element)
 	var atk: String = tmpl.get("attack_element", "") as String
 	if atk != "":
 		parts.append("Attacks with %s" % Affinity.element_name(atk))

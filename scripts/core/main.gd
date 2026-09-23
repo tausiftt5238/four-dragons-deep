@@ -977,9 +977,9 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	for foe: Enemy in group:
 		exp_reward  += foe.exp_reward
 		gold_reward += foe.gold_reward
-		# Killing a thing teaches you what it was made of. Wardens and bosses
-		# are met once each in a run and keep their chart either way.
-		if not foe.is_alive() and not foe.unreadable:
+		# Killing a thing teaches you what it was made of — wardens and bosses
+		# too. Analyze is the only thing they refuse.
+		if not foe.is_alive():
 			player_char.record_analysis(foe.enemy_name)
 		if not foe.is_alive() and item_drop.is_empty():
 			item_drop = foe.roll_drop()
@@ -1458,6 +1458,7 @@ func _gather_save_data() -> Dictionary:
 			active_demons       = p.active_demons,
 			encountered_enemies = p.encountered_enemies,
 			analyzed            = p.analyzed,
+			learned_affinities  = p.learned_affinities,
 			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
 			inventory       = p.inventory,
@@ -1689,6 +1690,7 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.analyzed.clear()
 	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
+	player_char.learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
 
 	player_char.passive_skills.clear()
 	player_char.passive_skills.assign(pdata.get("passive_skills", []) as Array)
