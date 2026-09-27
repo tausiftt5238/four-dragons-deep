@@ -27,7 +27,7 @@ func build() -> void:
 	header.add_child(slots_lbl)
 
 	var bound_lbl: Label = Label.new()
-	bound_lbl.text = "Recruited %d/%d" % [p.recruited.size(), PlayerCharacter.ROSTER_SIZE]
+	bound_lbl.text = "Roster %d/%d" % [p.recruited.size(), PlayerCharacter.ROSTER_SIZE]
 	bound_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bound_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92))
 	header.add_child(bound_lbl)
