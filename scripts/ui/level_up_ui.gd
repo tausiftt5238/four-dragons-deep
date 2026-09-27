@@ -157,6 +157,8 @@ func _auto_row(grid: GridContainer, label: String, b: int, a: int) -> void:
 func _alloc_row(grid: GridContainer, stat: String) -> void:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = stat.to_upper()
+	name_lbl.add_theme_color_override("font_color",
+			StageArrows.tint_for(stat, Color(0.85, 0.85, 0.88)))
 	name_lbl.custom_minimum_size = Vector2(40, 0)
 	grid.add_child(name_lbl)
 

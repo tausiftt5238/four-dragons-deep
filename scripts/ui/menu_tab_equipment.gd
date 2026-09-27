@@ -57,16 +57,17 @@ func build() -> void:
 	_m._content.add_child(HSeparator.new())
 	_m._content.add_child(_make_section_label("In the coat"))
 
-	var spare: Array[String] = []
+	var spare: Array[Dictionary] = []
 	for item: Dictionary in p.inventory:
 		if item.get("type", "") in ["accessory", "weapon", "armor"]:
-			spare.append(item["id"] as String)
+			spare.append(item)
 
 	if spare.is_empty():
 		SlotList.new(_m._content).add_note("Nothing else worth carrying.")
 	else:
-		_m.add_paged_list(_m._content, "carried", spare,
-				func(list: SlotList, item_id: String) -> void: _add_spare(list, item_id))
+		_m.add_sections(_m._content, "carried", OrbUI.gear_groups(spare),
+				func(list: SlotList, item: Dictionary) -> void:
+					_add_spare(list, item["id"] as String))
 
 
 func _add_spare(list: SlotList, item_id: String) -> void:

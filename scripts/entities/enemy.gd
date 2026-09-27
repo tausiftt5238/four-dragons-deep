@@ -43,6 +43,10 @@ var reflect_element:  String = ""
 const BOSS_ICONS:   int = 4
 const WARDEN_ICONS: int = 2
 
+# A boss's HP as a multiple of what the ordinary formula (lv*10 + def*3) gives
+# it, so a dragon is a long fight rather than a few good rounds.
+const BOSS_HP_MULT: int = 20
+
 # Press-turn icons this enemy opens its phase with. Bosses get more, which is
 # how they threaten a full party without inflating their damage numbers.
 var icons: int = 1
@@ -632,6 +636,8 @@ static func make_boss(floor_num: int) -> Enemy:
 	# A boss keeps its own colours; it is not one of a set.
 	e.tint            = Color.WHITE
 	e.compute_max_hp()
+	e.max_hp *= BOSS_HP_MULT
+	e.hp = e.max_hp
 	e.compute_max_mp()
 	return e
 

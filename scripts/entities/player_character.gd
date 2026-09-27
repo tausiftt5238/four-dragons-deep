@@ -406,6 +406,25 @@ func record_analysis(enemy_name: String) -> void:
 	if enemy_name not in analyzed:
 		analyzed.append(enemy_name)
 
+
+# Single lines learned the hard way: hitting a demon with an element shows what
+# it does with that element, one box of its chart at a time, before Analyze or
+# a kill hands over the whole thing. enemy name -> [elements].
+var learned_affinities: Dictionary = {}
+
+
+func knows_affinity(enemy_name: String, element: String) -> bool:
+	return has_analyzed(enemy_name) \
+			or element in (learned_affinities.get(enemy_name, []) as Array)
+
+
+func learn_affinity(enemy_name: String, element: String) -> void:
+	if element == "" or knows_affinity(enemy_name, element):
+		return
+	if not learned_affinities.has(enemy_name):
+		learned_affinities[enemy_name] = []
+	(learned_affinities[enemy_name] as Array).append(element)
+
 # Passive skills gained at level-up.
 var passive_skills: Array[String] = []
 

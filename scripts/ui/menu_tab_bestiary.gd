@@ -42,10 +42,14 @@ func _add_demon(list: SlotList, enemy_name: String) -> void:
 	# Everything the bestiary knows, as one wrapped paragraph rather than six
 	# stacked lines of wildly different length.
 	var parts: Array[String] = []
-	if _m.player.has_analyzed(enemy_name):
-		parts.append(_chart_text(tmpl))
-	else:
-		parts.append("Affinities unread \u2014 analyze it in battle.")
+	# The same chart the fight shows: every line it has been hit with, or all
+	# six once analyzed or killed, and "?" for the rest.
+	var p: PlayerCharacter = _m.player
+	var demon: Enemy = Enemy.make_from_name(enemy_name, 1)
+	var chart: AffinityChart = AffinityChart.compact(demon)
+	demon.free()
+	chart.knows = func(element: String) -> bool:
+		return p.knows_affinity(enemy_name, element)
 	var atk: String = tmpl.get("attack_element", "") as String
 	if atk != "":
 		parts.append("Attacks with %s" % Affinity.element_name(atk))
@@ -72,16 +76,4 @@ func _add_demon(list: SlotList, enemy_name: String) -> void:
 	list.add_entry(enemy_name,
 			Color(0.30, 1.0, 0.55) if bound else Color(0.95, 0.82, 0.45),
 			"   ".join(parts), where, Color(0.60, 0.60, 0.60),
-			[] as Array[Dictionary], icon)
-
-
-# Every element that is not ordinary, written the way the battle log writes it.
-func _chart_text(tmpl: Dictionary) -> String:
-	var demon: Enemy = Enemy.make_from_name(tmpl["name"] as String, 1)
-	var parts: Array[String] = []
-	for element: String in Affinity.ELEMENTS:
-		var state: String = demon.affinity_of(element)
-		if state != Affinity.NORMAL:
-			parts.append("%s %s" % [Affinity.element_name(element), Affinity.label(state)])
-	demon.free()
-	return "no affinities" if parts.is_empty() else "  ".join(parts)
+			[] as Array[Dictionary], icon, chart)

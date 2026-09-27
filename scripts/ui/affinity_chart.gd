@@ -27,8 +27,34 @@ const SPRITES: Dictionary = {
 # and the icon lost: you could see the demon was weak to SOMETHING without
 # being able to tell to what, which is the only thing the chart is for.
 const ROW_HEIGHT: float = 34.0
+# Not an Affinity state: the slot has not been learned yet.
+const UNKNOWN: String = "?"
+# Six boxes a little wider than tall, when the chart sits inside a list row.
+const ROW_WIDTH: float = 264.0
 
-var foe: Enemy = null
+var foe: CharacterSheet = null
+# element -> state, read instead of `foe` when set. A menu builds a bound demon
+# only long enough to read it, so it hands over the answers rather than the
+# demon.
+var states: Dictionary = {}
+# element -> bool, called per slot when set. A slot it says no to draws "?" in
+# place of the answer: the chart is always there, and fills in as it is learned.
+var knows: Callable = Callable()
+
+
+static func snapshot(sheet: CharacterSheet) -> AffinityChart:
+	var chart: AffinityChart = AffinityChart.new()
+	for element: String in SLOTS:
+		chart.states[element] = sheet.affinity_of(element)
+	return chart
+
+
+# The same, sized to sit inside a list row instead of spanning the page.
+static func compact(sheet: CharacterSheet) -> AffinityChart:
+	var chart: AffinityChart = snapshot(sheet)
+	chart.custom_minimum_size.x = ROW_WIDTH
+	chart.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	return chart
 
 static var _tex: Dictionary = {}
 
@@ -60,7 +86,7 @@ static func _icon(element: String) -> Texture2D:
 
 
 func _draw() -> void:
-	if foe == null or size.x <= 0.0:
+	if (foe == null and states.is_empty()) or size.x <= 0.0:
 		return
 	var slot_w: float = size.x / float(SLOTS.size())
 	var pad: float = clampf(slot_w * 0.08, 1.0, 3.0)
@@ -69,15 +95,21 @@ func _draw() -> void:
 
 	for i: int in range(SLOTS.size()):
 		var element: String = SLOTS[i]
-		var state: String = foe.affinity_of(element)
-		var mark: String = mark_for(state)
 		var at: Rect2 = Rect2(float(i) * slot_w + pad, 1.0, box_w, box_h)
+		if knows.is_valid() and not bool(knows.call(element)):
+			_draw_slot(at, element, UNKNOWN, "?")
+			continue
+		var state: String = states.get(element, Affinity.NORMAL) as String \
+				if not states.is_empty() else foe.affinity_of(element)
+		var mark: String = mark_for(state)
 		_draw_slot(at, element, state, mark)
 
 
 func _draw_slot(at: Rect2, element: String, state: String, mark: String) -> void:
 	var lit: bool = mark != ""
-	var tint: Color = Affinity.color(state) if lit else Color(0.42, 0.46, 0.54)
+	var unknown: bool = state == UNKNOWN
+	var tint: Color = Color(0.62, 0.64, 0.70) if unknown \
+			else (Affinity.color(state) if lit else Color(0.42, 0.46, 0.54))
 
 	draw_rect(at, Color(0.06, 0.07, 0.10, 0.85), true)
 	draw_rect(at, Color(tint.r, tint.g, tint.b, 0.95 if lit else 0.40), false, 1.0)
@@ -88,17 +120,20 @@ func _draw_slot(at: Rect2, element: String, state: String, mark: String) -> void
 	var mid: Vector2 = top.position + top.size * 0.5
 	var side: float = minf(top.size.x, top.size.y) * 0.88
 
+	# An unlearned slot still says which element it is, dimmed, so the row
+	# reads as "these six, not yet known" rather than as empty boxes.
+	var a: float = 0.35 if unknown else 0.95
 	var tex: Texture2D = _icon(element)
 	if tex != null:
 		draw_texture_rect(tex,
 				Rect2(mid.x - side * 0.5, mid.y - side * 0.5, side, side),
-				false, Color(1.0, 1.0, 1.0, 0.95))
+				false, Color(1.0, 1.0, 1.0, a))
 	elif element == "light":
-		_draw_light(mid, side * 0.5, 0.95)
+		_draw_light(mid, side * 0.5, a)
 	elif element == "dark":
-		_draw_dark(mid, side * 0.5, 0.95)
+		_draw_dark(mid, side * 0.5, a)
 	else:
-		_draw_phys(mid, side * 0.5, 0.95)
+		_draw_phys(mid, side * 0.5, a)
 
 	if not lit:
 		return

@@ -62,25 +62,26 @@ func _add_demon(list: SlotList, demon_name: String) -> void:
 	var p: PlayerCharacter = _m.player
 	var active: bool = p.is_active(demon_name)
 	var demon: Enemy = p.bound_demon(demon_name)
-	var about: String = "Lv %d   HP %d   MP %d   %s\n%s" % [
-			demon.lv, demon.max_hp, demon.max_mp, _chart(demon),
-			_skill_text(p, demon_name)]
+	var about: String = "Lv %d   HP %d   MP %d\n%s" % [
+			demon.lv, demon.max_hp, demon.max_mp, _skill_text(p, demon_name)]
+	var chart: AffinityChart = AffinityChart.compact(demon)
 	demon.free()
 
-	list.add("%s%s" % ["* " if active else "", demon_name],
+	list.add_entry("%s%s" % ["* " if active else "", demon_name],
 			Color(0.62, 0.92, 0.74) if active else Color(0.52, 0.52, 0.56),
 			about, "", Color.WHITE,
-			"Dismiss" if active else "Summon",
-			not active and not p.has_free_demon_slot(),
-			func() -> void:
-				if active:
-					p.deactivate_demon(demon_name)
-					_m._set_status("Dismissed %s." % demon_name)
-				elif p.activate_demon(demon_name):
-					_m._set_status("%s will walk in with you." % demon_name)
-				else:
-					_m._set_status("All %d slots are taken." % PlayerCharacter.ACTIVE_SLOTS)
-				_m._refresh())
+			[{text = "Dismiss" if active else "Summon",
+				disabled = not active and not p.has_free_demon_slot(),
+				press = func() -> void:
+					if active:
+						p.deactivate_demon(demon_name)
+						_m._set_status("Dismissed %s." % demon_name)
+					elif p.activate_demon(demon_name):
+						_m._set_status("%s will walk in with you." % demon_name)
+					else:
+						_m._set_status("All %d slots are taken." % PlayerCharacter.ACTIVE_SLOTS)
+					_m._refresh()}] as Array[Dictionary],
+			null, chart)
 
 
 # ── Row pieces ───────────────────────────────────
@@ -100,14 +101,3 @@ func _skill_text(p: PlayerCharacter, demon_name: String) -> String:
 	return "%s   [color=#8b8f99]%d/%d[/color]" % [
 			"  ".join(names), known.size(), PlayerCharacter.DEMON_SKILL_CAP]
 
-
-# Its affinities, written the way the battle log writes them.
-func _chart(demon: Enemy) -> String:
-	var parts: Array[String] = []
-	for element: String in Affinity.ELEMENTS:
-		var state: String = demon.affinity_of(element)
-		if state != Affinity.NORMAL:
-			parts.append("%s %s" % [Affinity.element_name(element), Affinity.label(state)])
-	if parts.is_empty():
-		return "no affinities"
-	return "   ".join(parts)
