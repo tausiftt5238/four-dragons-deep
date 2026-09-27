@@ -44,7 +44,7 @@ func _build_shell() -> void:
 	panel.add_child(margin)
 
 	# The content on top, and every button that moves between pages along the
-	# bottom: two rows of three tabs with Load and Close under them, where a
+	# bottom: two rows of three tabs with System and Close under them, where a
 	# thumb already is. A sidebar down the left would eat a quarter of a
 	# 540-wide screen.
 	var shell: VBoxContainer = VBoxContainer.new()
@@ -85,30 +85,21 @@ func _build_shell() -> void:
 		grid.add_child(btn)
 		_tab_btns[tab_id] = btn
 
+	# Everything that is not about the run itself — Options, loading, going
+	# back to the title — sits behind one System button, so the footer is
+	# two buttons a thumb cannot miss.
 	var foot: HBoxContainer = HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 6)
 	shell.add_child(foot)
 
-	var load_btn: Button = Button.new()
-	load_btn.text = "Load  [F9]"
-	load_btn.custom_minimum_size   = Vector2(0, 32)
-	load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	load_btn.pressed.connect(func(): load_requested.emit())
-	foot.add_child(load_btn)
-
-	# Back to the title, for a new run without reloading the page. Two taps,
-	# since anything not saved at an orb goes with it.
-	var title_btn: Button = Button.new()
-	title_btn.text = "Title"
-	title_btn.custom_minimum_size   = Vector2(0, 32)
-	title_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_btn.pressed.connect(func():
-		if title_btn.text == "Title":
-			title_btn.text = "Sure?"
-			_set_status("Unsaved progress will be lost. Tap again to leave.")
-		else:
-			title_requested.emit())
-	foot.add_child(title_btn)
+	var system_btn: Button = Button.new()
+	system_btn.text = "System"
+	system_btn.toggle_mode = true
+	system_btn.custom_minimum_size   = Vector2(0, 32)
+	system_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	system_btn.pressed.connect(_switch_tab.bind("system"))
+	foot.add_child(system_btn)
+	_tab_btns["system"] = system_btn
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Close  [ESC]"
@@ -116,6 +107,45 @@ func _build_shell() -> void:
 	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	close_btn.pressed.connect(func(): menu_closed.emit())
 	foot.add_child(close_btn)
+
+
+# ── System page ───────────────────────────────────────────────────────────────
+
+func _build_system() -> void:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(col)
+
+	var options_btn: Button = _system_button("Options")
+	options_btn.pressed.connect(func():
+		var ui: OptionsUI = OptionsUI.new()
+		ui.closed.connect(func(): ui.queue_free())
+		add_child(ui))
+	col.add_child(options_btn)
+
+	var load_btn: Button = _system_button("Load Game  [F9]")
+	load_btn.pressed.connect(func(): load_requested.emit())
+	col.add_child(load_btn)
+
+	# Back to the title, for a new run without reloading the page. Two taps,
+	# since anything not saved at an orb goes with it.
+	var title_btn: Button = _system_button("Title")
+	title_btn.pressed.connect(func():
+		if title_btn.text == "Title":
+			title_btn.text = "Sure? Tap again"
+			_set_status("Unsaved progress will be lost.")
+		else:
+			title_requested.emit())
+	col.add_child(title_btn)
+
+
+func _system_button(text: String) -> Button:
+	var btn: Button = Button.new()
+	btn.text = text
+	btn.custom_minimum_size   = Vector2(0, 40)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return btn
 
 
 # ── Tab routing ───────────────────────────────────────────────────────────────
@@ -144,6 +174,7 @@ func _switch_tab(tab_id: String) -> void:
 		"party":     _tabs.build_party()
 		"magic":     _tabs.build_magic()
 		"bestiary":  _tabs.build_bestiary()
+		"system":    _build_system()
 
 
 func _refresh() -> void:

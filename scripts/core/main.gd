@@ -603,6 +603,12 @@ func _handle_swipe(delta: Vector2) -> void:
 		return
 	if delta.length() < _SWIPE_MIN:
 		return
+	# Either axis can be flipped in Options. Keys are left alone: W means
+	# forward whichever way a thumb likes to drag.
+	if Settings.invert_turn():
+		delta.x = -delta.x
+	if Settings.invert_move():
+		delta.y = -delta.y
 	if abs(delta.x) > abs(delta.y):
 		if delta.x > 0:
 			_action_turn_right()

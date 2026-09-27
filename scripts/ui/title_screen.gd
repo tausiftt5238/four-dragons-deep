@@ -73,6 +73,10 @@ func _build() -> void:
 	tut_btn.pressed.connect(_on_tutorial)
 	vbox.add_child(tut_btn)
 
+	var opt_btn: Button = _make_btn("OPTIONS", Vector2(220, 46))
+	opt_btn.pressed.connect(_on_options)
+	vbox.add_child(opt_btn)
+
 	vbox.add_child(HSeparator.new())
 
 	# The keyboard hints were desktop-only and are a lie on a phone, which is
@@ -94,6 +98,12 @@ func _on_tutorial() -> void:
 	var tut: TutorialUI = TutorialUI.new()
 	tut.closed.connect(func() -> void: tut.queue_free())
 	add_child(tut)
+
+
+func _on_options() -> void:
+	var ui: OptionsUI = OptionsUI.new()
+	ui.closed.connect(func() -> void: ui.queue_free())
+	add_child(ui)
 
 
 func _on_load_game() -> void:
