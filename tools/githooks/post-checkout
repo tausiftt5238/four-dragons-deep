@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Git writes the committed silhouettes on checkout; put the real art back.
+cd "$(git rev-parse --show-toplevel)" && python3 tools/restore_sprites.py

@@ -22,3 +22,12 @@ edit the style there and it survives the next regeneration.
 repository, and `real_art.sh` swaps the real commercial pack in and out of the
 working tree without letting git see it. Both are documented in their own
 headers, and the README explains why they exist.
+
+# The character art
+
+The character sprites in `resources/characterSprites/` are also a commercial
+pack. Git stores only silhouettes of them: run `install_git_hooks.sh` once per
+clone to set up the clean filter (`silhouette_sprites.py`) and the hooks in
+`githooks/`. The real art stays in your working tree, with a copy in the
+gitignored `art-private/characterSprites/`, and `restore_sprites.py` puts it
+back whenever a checkout writes the silhouettes.

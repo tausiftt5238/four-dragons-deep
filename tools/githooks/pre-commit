@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Refuse to commit real characterSprite art. The silhouette clean filter
+# normally guarantees this; this catches a clone where the filter isn't set up.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+mapfile -t files < <(git diff --cached --name-only --diff-filter=AM -- 'resources/characterSprites/*.png')
+[ ${#files[@]} -eq 0 ] && exit 0
+if ! python3 tools/silhouette_sprites.py --check "${files[@]}"; then
+  echo "pre-commit: real sprite art is staged. Run tools/install_git_hooks.sh, then re-add." >&2
+  exit 1
+fi
