@@ -35,9 +35,7 @@ func _add_demon(list: SlotList, enemy_name: String) -> void:
 	if tmpl.is_empty():
 		return
 
-	var max_fl: int = tmpl.get("max_floor", -1)
-	var where: String = "Floors %d" % int(tmpl.get("min_floor", 1))
-	where += "+" if max_fl == -1 else "-%d" % max_fl
+	var where: String = Enemy.where_found(tmpl)
 
 	# Everything the bestiary knows, as one wrapped paragraph rather than six
 	# stacked lines of wildly different length.

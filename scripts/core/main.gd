@@ -1024,8 +1024,10 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		_sync_door()
 		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
-	# On a boss floor an encounter with no roamer behind it is the boss.
-	if result != "lose" and Level.is_boss_floor(floor_num) and met.is_empty():
+	# On a boss floor an encounter with no roamer behind it is the boss. Only a
+	# win counts: a flee used to pass as "not a loss", so slipping away from the
+	# Ice Dragon marked it beaten and the corridor let you walk on past it.
+	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty():
 		_boss_beaten = true
 
 	if not lost.is_empty() and result != "lose":
@@ -1085,9 +1087,10 @@ func _demon_snapshot(demon_name: String) -> Dictionary:
 
 
 # Taken before demon exp is paid, so each level-up popup can show before -> after.
+# The whole roster, since the bench earns a share and can level too.
 func _demon_snapshots() -> Dictionary:
 	var out: Dictionary = {}
-	for demon_name: String in player_char.active_demons:
+	for demon_name: String in player_char.recruited:
 		out[demon_name] = _demon_snapshot(demon_name)
 	return out
 
@@ -1259,6 +1262,9 @@ func _open_menu() -> void:
 	menu.load_requested.connect(func():
 		_close_menu()
 		_open_load_menu()
+	)
+	menu.title_requested.connect(func():
+		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
 	menu_layer.add_child(menu)
 
@@ -1692,8 +1698,9 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
 	player_char.learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
 
+	# Passive skills are off while they are reworked, so a save that picked some
+	# comes back without them rather than keeping powers a new run cannot get.
 	player_char.passive_skills.clear()
-	player_char.passive_skills.assign(pdata.get("passive_skills", []) as Array)
 
 	player_char.active_statuses.clear()
 	player_char.active_statuses.assign(pdata["active_statuses"] as Array)

@@ -111,8 +111,8 @@ var absorb_element:   String = ""
 # its level and the points it rolled — lives on PlayerCharacter, so this table
 # stays the fixed thing both sides are measured against.
 # Template data for all enemy types. Stats are base values for floor 1.
-# min_floor / max_floor control which dungeon floors they appear on.
-# max_floor = -1 means no upper limit.
+# min_floor / max_floor are left over from before the pack drew by tier, and
+# nothing reads them: `tier` decides the floors now (see where_found).
 #
 # Every row is written in the same shape, one concern per line, so a demon's
 # chart or its talk data can be found by position rather than by reading:
@@ -668,6 +668,29 @@ static func needing_art() -> Array[Dictionary]:
 		if bool(t.get("needs_art", false)):
 			out.append(t)
 	return out
+
+
+# Where a template is actually met, worked out from the same rules that place
+# it rather than from its min_floor/max_floor, which nothing spawns from any
+# more: the pack draws by tier, wardens and bosses stand on fixed floors, and a
+# mimic waits in a chest. Reading the old fields put the floor-four warden down
+# as "Floors 1+".
+static func where_found(tmpl: Dictionary) -> String:
+	var tname: String = tmpl.get("name", "") as String
+	for i: int in WARDEN_TEMPLATES.size():
+		if WARDEN_TEMPLATES[i]["name"] == tname:
+			return "Floor %d" % (i * Level.BOSS_EVERY + Level.WARDEN_OFFSET)
+	for i: int in BOSS_TEMPLATES.size():
+		if BOSS_TEMPLATES[i]["name"] == tname:
+			return "Floor %d" % ((i + 1) * Level.BOSS_EVERY)
+	for t: Dictionary in MIMIC_TEMPLATES:
+		if t["name"] == tname:
+			return "Chests, floor %d+" % MIMIC_FROM_FLOOR
+	# A tier's band is five floors, the last of which is the boss corridor and
+	# carries no pack.
+	var tier: int = int(tmpl.get("tier", 1))
+	var first: int = (tier - 1) * Level.BOSS_EVERY + 1
+	return "Floors %d-%d" % [first, first + Level.BOSS_EVERY - 2]
 
 
 static func all_templates() -> Array[Dictionary]:

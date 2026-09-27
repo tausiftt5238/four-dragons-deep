@@ -83,7 +83,7 @@ func _build() -> void:
 
 func _on_new_game() -> void:
 	GameBoot.pending_slot = 0
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
 
 
 func _on_load_game() -> void:
@@ -91,7 +91,7 @@ func _on_load_game() -> void:
 	picker.mode = "load"
 	picker.slot_chosen.connect(func(slot: int) -> void:
 		GameBoot.pending_slot = slot
-		get_tree().change_scene_to_file("res://scenes/main.tscn")
+		LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
 	)
 	picker.cancelled.connect(func() -> void:
 		picker.queue_free()

@@ -177,9 +177,16 @@ func bound_demon(demon_name: String) -> Enemy:
 	return e
 
 
-# Exp from a won fight, paid to every demon that was standing in it. A demon
-# never passes the detective: he is the one holding the case open, and a party
-# that outgrows him would make his own levels pointless.
+# What a benched demon banks of a fight it sat out. Without a share the bench
+# froze at the level it was caught at, so the demon a boss finally called for
+# was six levels behind the three that did all the walking.
+const BENCH_EXP_PERCENT: int = 50
+
+
+# Exp from a won fight: in full to every demon that was standing in it, and a
+# share to the rest of the roster on the bench. A demon never passes the
+# detective: he is the one holding the case open, and a party that outgrows him
+# would make his own levels pointless.
 #
 # Returns {climbed = [names], learned = {name: [what it picked up]}} so the
 # result screen can say both what grew and what it can now call on.
@@ -188,11 +195,13 @@ func award_demon_exp(amount: int) -> Dictionary:
 	var learned: Dictionary = {}
 	if amount <= 0:
 		return {climbed = climbed, learned = learned}
-	for demon_name: String in active_demons:
+	for demon_name: String in recruited:
 		var at: int = int(bound_level.get(demon_name, 1))
 		if at >= lv:
 			continue
-		var banked: int = int(demon_exp.get(demon_name, 0)) + amount
+		var share: int = amount if is_active(demon_name) \
+				else maxi(1, amount * BENCH_EXP_PERCENT / 100)
+		var banked: int = int(demon_exp.get(demon_name, 0)) + share
 		var gained: bool = false
 		while at < lv and banked >= demon_exp_to_next(at):
 			banked -= demon_exp_to_next(at)

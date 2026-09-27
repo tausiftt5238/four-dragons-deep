@@ -5,6 +5,7 @@ class_name MenuUI extends Control
 
 signal menu_closed
 signal load_requested
+signal title_requested
 
 
 var player: PlayerCharacter
@@ -94,6 +95,20 @@ func _build_shell() -> void:
 	load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	load_btn.pressed.connect(func(): load_requested.emit())
 	foot.add_child(load_btn)
+
+	# Back to the title, for a new run without reloading the page. Two taps,
+	# since anything not saved at an orb goes with it.
+	var title_btn: Button = Button.new()
+	title_btn.text = "Title"
+	title_btn.custom_minimum_size   = Vector2(0, 32)
+	title_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_btn.pressed.connect(func():
+		if title_btn.text == "Title":
+			title_btn.text = "Sure?"
+			_set_status("Unsaved progress will be lost. Tap again to leave.")
+		else:
+			title_requested.emit())
+	foot.add_child(title_btn)
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Close  [ESC]"

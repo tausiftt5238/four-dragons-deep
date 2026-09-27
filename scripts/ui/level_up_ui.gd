@@ -224,59 +224,7 @@ func _refresh_ui() -> void:
 
 func _on_confirm() -> void:
 	player.apply_stat_bonus(_allocated)
-	_show_skill_picker()
-
-
-func _show_skill_picker() -> void:
-	for c: Node in _vbox.get_children():
-		c.queue_free()
-	_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-
-	var header: Label = Label.new()
-	header.text = "*   choose a skill   *"
-	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.add_theme_color_override("font_color", Color(0.60, 0.88, 1.0))
-	header.add_theme_font_size_override("font_size", 20)
-	_vbox.add_child(header)
-
-	_vbox.add_child(HSeparator.new())
-
-	var choices: Array[String] = PassiveSkill.random_pick(3, player.passive_skills)
-
-	if choices.is_empty():
-		var lbl: Label = Label.new()
-		lbl.text = "All skills mastered!"
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.add_theme_color_override("font_color", Color(0.80, 0.80, 0.80))
-		_vbox.add_child(lbl)
-		var cont: Button = Button.new()
-		cont.text = "Continue"
-		cont.custom_minimum_size = Vector2(160, 34)
-		cont.pressed.connect(func(): dismissed.emit())
-		var row: HBoxContainer = HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_child(cont)
-		_vbox.add_child(row)
-		return
-
-	for skill_id: String in choices:
-		var sdata: Dictionary = PassiveSkill.get_data(skill_id)
-		_vbox.add_child(HSeparator.new())
-
-		var btn: Button = Button.new()
-		btn.text = sdata["name"] as String
-		btn.custom_minimum_size = Vector2(300, 34)
-		btn.pressed.connect(_on_skill_chosen.bind(skill_id))
-		_vbox.add_child(btn)
-
-		var desc: Label = Label.new()
-		desc.text = sdata["desc"] as String
-		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		desc.add_theme_color_override("font_color", Color(0.60, 0.60, 0.60))
-		desc.add_theme_font_size_override("font_size", 11)
-		_vbox.add_child(desc)
-
-
-func _on_skill_chosen(skill_id: String) -> void:
-	player.passive_skills.append(skill_id)
+	# Passive skills used to be picked here, three at a time, until the eight of
+	# them ran out a handful of levels in. They are off while they get reworked;
+	# PassiveSkill and the checks for each id are still in place for that.
 	dismissed.emit()

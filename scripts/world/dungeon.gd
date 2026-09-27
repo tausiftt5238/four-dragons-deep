@@ -450,10 +450,22 @@ func _add_orbs(level: Level) -> void:
 		_add_orb(pos)
 
 
+# How high the shard hangs. It used to sit at 1.0, which is eye height: dead on
+# the horizon, where the far wall's centre is too, so an orb one cell ahead was
+# drawn on top of the wall two cells ahead and read as being out there with it.
+# Lower, and stood on a plinth, its foot lands on the floor of its own cell.
+const _ORB_HEIGHT: float = 0.72
+
+
 func _add_orb(pos: Vector2i) -> void:
+	var base: Node3D = Node3D.new()
+	base.position = Vector3(pos.x * CELL_SIZE, 0.0, pos.y * CELL_SIZE)
+	add_child(base)
+	_add_orb_footing(base)
+
 	var root: Node3D = Node3D.new()
-	root.position = Vector3(pos.x * CELL_SIZE, 1.0, pos.y * CELL_SIZE)
-	add_child(root)
+	root.position = Vector3(0.0, _ORB_HEIGHT, 0.0)
+	base.add_child(root)
 
 	var core_mat: StandardMaterial3D = StandardMaterial3D.new()
 	core_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -497,6 +509,29 @@ func _add_orb(pos: Vector2i) -> void:
 	# A slow turn, so it reads as alive from down a corridor.
 	var spin: Tween = create_tween().set_loops()
 	spin.tween_property(core, "rotation:y", TAU, 6.0).from(0.0)
+
+
+# What ties the orb to its cell: a plinth up to the shard and a pale square of
+# light on the floor under it. Perspective does the rest — the square sits on
+# the grid line you would walk over, so the eye can count the cells to it the
+# same way it counts them on the minimap.
+func _add_orb_footing(base: Node3D) -> void:
+	var glow_mat: StandardMaterial3D = StandardMaterial3D.new()
+	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glow_mat.blend_mode   = BaseMaterial3D.BLEND_MODE_ADD
+	glow_mat.albedo_color = Color(0.55, 0.85, 1.0, 0.16)
+	_add_box_child(base, Vector3(0.0, 0.012, 0.0),
+			Vector3(CELL_SIZE * 0.80, 0.01, CELL_SIZE * 0.80), glow_mat)
+
+	var stone_mat: StandardMaterial3D = StandardMaterial3D.new()
+	stone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	stone_mat.albedo_color = Color(0.20, 0.32, 0.40)
+	# A wide foot and a narrow neck, so the silhouette is a plinth and not a
+	# post the shard happens to be floating in front of.
+	_add_box_child(base, Vector3(0.0, 0.06, 0.0), Vector3(0.52, 0.12, 0.52), stone_mat)
+	_add_box_child(base, Vector3(0.0, 0.26, 0.0), Vector3(0.20, 0.30, 0.20), stone_mat)
+	_add_box_child(base, Vector3(0.0, 0.44, 0.0), Vector3(0.36, 0.06, 0.36), stone_mat)
 
 
 # ── Caches ────────────────────────────────────────────────────────────────────
