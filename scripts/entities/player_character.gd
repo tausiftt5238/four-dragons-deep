@@ -5,22 +5,29 @@ class_name PlayerCharacter extends CharacterSheet
 
 const DISPLAY_NAME: String = "Hero"
 
-# One drawing of him, used two ways. The battle row wants the whole figure; the
-# menu wants a face. Rather than two files that can drift apart, the portrait is
-# a window onto the same texture — head, shoulders and the hands at the bottom
-# edge, which is as much as reads at 90 px.
-const SPRITE: String = "res://resources/misc/Hero.png"
-const PORTRAIT_REGION: Rect2 = Rect2(12, 0, 40, 40)
+const SPRITE_KNIGHT: String = "Knight"
+const SPRITE_MAGE:   String = "Wizard"
+
+
+func hero_sprite_id() -> String:
+	if not equipped_weapon.is_empty() \
+			and int(equipped_weapon.get("mag_bonus", 0)) > 0 \
+			and int(equipped_weapon.get("str_bonus", 0)) == 0:
+		return SPRITE_MAGE
+	return SPRITE_KNIGHT
 
 
 static func sprite() -> Texture2D:
-	return load(SPRITE) as Texture2D
+	return AnimatedPortrait.first_frame_texture(SPRITE_KNIGHT)
 
 
 static func portrait() -> AtlasTexture:
+	var tex: Texture2D = sprite()
+	if tex is AtlasTexture:
+		return tex as AtlasTexture
 	var a: AtlasTexture = AtlasTexture.new()
-	a.atlas  = sprite()
-	a.region = PORTRAIT_REGION
+	a.atlas  = tex
+	a.region = Rect2(0, 0, tex.get_width(), tex.get_height())
 	return a
 
 var gold: int = 200
@@ -388,7 +395,7 @@ static func skill_name(skill: Dictionary) -> String:
 # which is also what makes the opening floors survivable — a lone detective
 # against a pack of three loses on action economy no matter how well he reads
 # the affinity chart.
-const STARTING_DEMON: String = "Cave Bat"
+const STARTING_DEMON: String = "Hellbat"
 
 # Enemy names encountered at least once in combat (bestiary unlock).
 var encountered_enemies: Array[String] = []

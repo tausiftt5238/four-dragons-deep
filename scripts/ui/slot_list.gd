@@ -88,7 +88,8 @@ func add_entry(title: String, title_color: Color, detail: String,
 	if icon != null:
 		var pic: TextureRect = TextureRect.new()
 		pic.texture = icon
-		pic.custom_minimum_size = Vector2(48, 48)
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		pic.custom_minimum_size = Vector2(72, 72)
 		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER

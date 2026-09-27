@@ -1,9 +1,9 @@
 # CombatScene
-# Press-turn combat. Layout:
+# Press-turn combat. FF side-view layout:
 #   top    – combat log (slim strip)
-#   middle – enemy sprite + name + HP bar (fills remaining space)
-#   strip  – press-turn icons for both sides
-#   bottom – [party roster] | [action buttons] | [item/magic submenu]
+#   field  – [enemies left | party right], each side stacked vertically
+#   bottom – [action buttons] | [item/magic submenu]
+# Active character steps forward toward the centre on their turn.
 #
 # A side opens its phase with one icon per living combatant and keeps acting
 # until the icons run out, so weakness hits and criticals buy extra actions for
@@ -22,7 +22,7 @@ var player: PlayerCharacter
 var foes: Array[Enemy] = []
 var enemy: Enemy
 
-# One row widget per foe: {foe, portrait, name_lbl, bar, hp_lbl, marker}.
+# One row widget per foe: {foe, portrait, name_lbl, bar, hp_lbl, marker, chart}.
 var _foe_rows: Array[Dictionary] = []
 var _foe_turn_idx: int = 0
 
@@ -57,9 +57,13 @@ var _player_portrait: TextureRect
 
 var _icon_pips:     UIGlyph   # player-side press-turn icons, drawn
 var _foe_icon_pips: UIGlyph   # enemy-side press-turn icons, drawn
-var _party_box:   HBoxContainer
-# One slot per party member, mirroring _foe_rows so both sides read the same.
+var _enemy_side: VBoxContainer
+var _party_box:  VBoxContainer
 var _party_slots: Array[Dictionary] = []
+
+const STEP_DISTANCE: float = 60.0
+const STEP_DURATION: float = 0.25
+var _stepped_node: Control = null
 
 
 # The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
@@ -123,8 +127,7 @@ func _build_ui() -> void:
 	add_child(root)
 
 	_build_log_strip(root)
-	_build_enemy_area(root)
-	_build_party_area(root)
+	_build_battlefield(root)
 	_build_menu_panel(root)
 	# Added to the scene rather than the column so it floats over the corner.
 	_build_icon_overlay()
@@ -243,13 +246,53 @@ func _bar_fill(color: Color) -> StyleBoxFlat:
 	return s
 
 
-func _shake_portrait(node: TextureRect) -> void:
+func _shake_portrait(node: TextureRect, guarding: bool = false) -> void:
+	_play_anim(node, "block" if guarding else "hurt")
 	node.pivot_offset = node.size / 2.0
 	var tween: Tween = create_tween()
 	tween.tween_property(node, "scale", Vector2(1.18, 0.82), 0.05)
 	tween.tween_property(node, "scale", Vector2(0.88, 1.14), 0.06)
 	tween.tween_property(node, "scale", Vector2(1.07, 0.94), 0.05)
 	tween.tween_property(node, "scale", Vector2(1.0,  1.0),  0.05)
+
+
+func _play_anim(node: TextureRect, anim_name: String) -> void:
+	if node is AnimatedPortrait:
+		(node as AnimatedPortrait).play_once(anim_name)
+
+
+func _step_forward(card: Control, is_enemy: bool) -> void:
+	_step_back_immediate()
+	_stepped_node = card
+	var dir: float = STEP_DISTANCE if is_enemy else -STEP_DISTANCE
+	var portrait: TextureRect = _card_portrait(card)
+	if portrait != null:
+		_play_anim(portrait, "walk")
+	var tween: Tween = create_tween()
+	tween.tween_property(card, "position:x", dir, STEP_DURATION) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_callback(func() -> void:
+		if portrait != null and portrait is AnimatedPortrait:
+			(portrait as AnimatedPortrait).play("idle"))
+
+
+func _step_back_immediate() -> void:
+	if _stepped_node != null and is_instance_valid(_stepped_node):
+		_stepped_node.position.x = 0.0
+		var portrait: TextureRect = _card_portrait(_stepped_node)
+		if portrait != null and portrait is AnimatedPortrait:
+			(portrait as AnimatedPortrait).play("idle")
+	_stepped_node = null
+
+
+func _card_portrait(card: Control) -> TextureRect:
+	for r: Dictionary in _foe_rows:
+		if r.get("card") == card:
+			return r["portrait"] as TextureRect
+	for s: Dictionary in _party_slots:
+		if s.get("card") == card:
+			return s["portrait"] as TextureRect
+	return null
 
 
 func _log(line: String) -> void:
@@ -503,8 +546,7 @@ func _next_living(from_idx: int) -> int:
 # One icon per living party member. A demon bound during this phase does not
 # add its icon until the next one, which is what stops summoning from looping.
 func _begin_player_phase() -> void:
-	# A brace covers the enemy phase it was raised against and expires here,
-	# rather than being spent on the first hit that lands.
+	_step_back_immediate()
 	for member: CharacterSheet in party:
 		member.defending = false
 	_phases += 1
@@ -689,9 +731,25 @@ func _beg_resolved() -> void:
 
 func _prompt_actor() -> void:
 	_refresh_hp()
+	_step_forward_actor()
 	_show_main_actions()
 	_set_buttons(true)
 	_refresh_button_states()
+
+
+func _step_forward_actor() -> void:
+	var member: CharacterSheet = _actor()
+	for s: Dictionary in _party_slots:
+		if s.get("card") != null and s["member"] == member:
+			_step_forward(s["card"] as Control, false)
+			return
+
+
+func _step_forward_foe(foe: Enemy) -> void:
+	for r: Dictionary in _foe_rows:
+		if r.get("card") != null and r["foe"] == foe:
+			_step_forward(r["card"] as Control, true)
+			return
 
 
 # Every player-side action funnels through here, so the icon economy has
@@ -729,9 +787,21 @@ func _do_end_of_round() -> void:
 func _commit_action(action: String) -> void:
 	_show_main_actions()
 	_set_buttons(false)
+	var actor_pr: TextureRect = _actor_portrait()
+	if actor_pr != null:
+		_play_anim(actor_pr, "block" if action == "Defend" else "attack")
 	var res: Dictionary = _resolve_action(action)
 	_log(res["msg"] as String)
 	await _after_action(res["cost"] as String)
+
+
+func _actor_portrait() -> TextureRect:
+	if _actor_is_player():
+		return _member_portrait(_actor())
+	var a: CharacterSheet = _actor()
+	if a is Enemy:
+		return _foe_portrait(a as Enemy)
+	return _member_portrait(a)
 
 
 
@@ -1282,147 +1352,96 @@ func _ensure_target() -> void:
 		enemy = living[0]
 
 
-# The gap between foe columns, named because the bar width below has to subtract
-# it to know what a column can actually have.
-const FOE_ROW_SEP: int = 6
+const CARD_SEP:       int = 2
+const CARD_PORTRAIT:  int = 140
 
 
-# How wide a foe's HP bar is allowed to be.
-#
-# This used to be measured off the bar's own wrapper — `wrap.size.x * 0.82` —
-# which is a loop: a custom_minimum_size on the bar becomes the column's minimum
-# width, which becomes the row's, so the bar was sizing itself from a number it
-# had just set. With four foes it settled at 131 a column, and 4 x 131 plus
-# three 6px gaps is 542 in a 540 window. The row overflowed the screen and every
-# panel above and below it was dragged 2px wide with it.
-#
-# A quarter of the row, less the gaps, is all a column can EVER have, so that is
-# what the bar is measured against. It also makes the bar one fixed width at
-# every pack size, which is what the blank half-columns either side were already
-# for.
-func _foe_bar_width() -> float:
-	var row: float = get_viewport_rect().size.x
-	var column: float = (row - float(MAX_PARTY - 1) * float(FOE_ROW_SEP)) \
-			/ float(MAX_PARTY)
-	return minf(column * 0.82, 190.0)
+func _build_battlefield(parent: Control) -> void:
+	var field: HBoxContainer = HBoxContainer.new()
+	field.size_flags_vertical      = Control.SIZE_EXPAND_FILL
+	field.size_flags_stretch_ratio = 1.0
+	field.add_theme_constant_override("separation", 0)
+	parent.add_child(field)
 
+	_enemy_side = VBoxContainer.new()
+	_enemy_side.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
+	_enemy_side.size_flags_vertical      = Control.SIZE_EXPAND_FILL
+	_enemy_side.size_flags_stretch_ratio = 2.0
+	_enemy_side.alignment = BoxContainer.ALIGNMENT_CENTER
+	_enemy_side.add_theme_constant_override("separation", CARD_SEP)
+	field.add_child(_enemy_side)
 
-func _build_enemy_area(parent: Control) -> void:
-	var area: HBoxContainer = HBoxContainer.new()
-	area.size_flags_vertical       = Control.SIZE_EXPAND_FILL
-	area.size_flags_stretch_ratio  = 1.0
-	area.add_theme_constant_override("separation", FOE_ROW_SEP)
-	parent.add_child(area)
+	var spacer: Control = Control.new()
+	spacer.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
+	spacer.size_flags_stretch_ratio = 1.0
+	spacer.mouse_filter             = Control.MOUSE_FILTER_IGNORE
+	field.add_child(spacer)
 
-	# Always MAX_PARTY columns, whatever the pack size. A lone demon used to
-	# get the whole width — an HP bar across the screen — and a pack of two
-	# sat at a different pitch from a pack of four, so the line-up moved every
-	# encounter. Empty columns hold the grid instead.
-	#
-	# The empty ones are split either side rather than all trailing, so a short
-	# line-up is centred: a warden or a boss comes alone, and with every blank
-	# on the right it stood in the left corner of the screen with two thirds of
-	# the room empty beside it. The thing the whole floor was leading up to
-	# belongs in the middle.
-	# One blank each side carrying HALF the spare width, not a whole blank column
-	# each side — with four slots and one boss, whole columns can only put it a
-	# quarter left or a quarter right of centre. A half-width pad on each side
-	# lands it dead centre while every foe column keeps the exact width it has
-	# in a four-strong pack.
-	var spare: float = float(MAX_PARTY - foes.size()) * 0.5
-	if spare > 0.0:
-		area.add_child(_blank_column(spare))
+	_party_box = VBoxContainer.new()
+	_party_box.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
+	_party_box.size_flags_vertical      = Control.SIZE_EXPAND_FILL
+	_party_box.size_flags_stretch_ratio = 2.0
+	_party_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_party_box.add_theme_constant_override("separation", CARD_SEP)
+	field.add_child(_party_box)
+
 	for f: Enemy in foes:
-		area.add_child(_build_foe_column(f))
-	if spare > 0.0:
-		area.add_child(_blank_column(spare))
+		_enemy_side.add_child(_build_foe_card(f))
 
 
-func _blank_column(ratio: float) -> Control:
-	var blank: Control = Control.new()
-	blank.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
-	blank.size_flags_vertical      = Control.SIZE_EXPAND_FILL
-	blank.size_flags_stretch_ratio = ratio
-	blank.mouse_filter             = Control.MOUSE_FILTER_IGNORE
-	return blank
+func _build_foe_card(foe: Enemy) -> Control:
+	var card: VBoxContainer = VBoxContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_theme_constant_override("separation", 1)
 
-
-# One column per demon. Identical geometry across the row so a four-strong
-# pack reads as one line-up rather than four separate widgets.
-#
-# A column is a fixed slot: its width comes from its share of the row and
-# nothing inside it may ask for more. Text shrinks to fit (FitLabel), the
-# sprite scales to the slot, and anything left over is clipped at the edge.
-func _build_foe_column(foe: Enemy) -> Control:
-	var col: VBoxContainer = VBoxContainer.new()
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-	col.alignment = BoxContainer.ALIGNMENT_END
-	col.clip_contents = true
-	col.add_theme_constant_override("separation", 3)
-
-	var icon: TextureRect = TextureRect.new()
-	if foe.sprite_path != "":
-		icon.texture        = load(foe.sprite_path) as Texture2D
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var icon: AnimatedPortrait = AnimatedPortrait.new()
+	if foe.sprite_id != "":
+		icon.load_sprite_id(foe.sprite_id)
+	elif foe.sprite_path != "":
+		icon.load_static(load(foe.sprite_path) as Texture2D)
 	else:
-		icon.texture  = load("res://icon.svg") as Texture2D
+		icon.load_static(load("res://icon.svg") as Texture2D)
 		icon.modulate = Color(0.95, 0.28, 0.28)
-	# Scaled to the slot rather than sized by the picture, so a wide sprite
-	# cannot push its column wider than its neighbours.
-	icon.expand_mode           = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size_flags_horizontal = Control.SIZE_FILL
-	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-	icon.modulate              = foe.tint
-	col.add_child(icon)
+	icon.custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
+	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	icon.set_zoom(3.0)
+	icon.modulate = foe.tint
+	card.add_child(icon)
 
-	# The marker sits directly over the name so it reads as pointing at this
-	# demon rather than floating at the top of the column.
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
-	col.add_child(marker)
+	card.add_child(marker)
 
-	var name_lbl: Label = FitLabel.new(13, 8)
-	name_lbl.text                 = foe.display_name()
+	var name_lbl: Label = FitLabel.new(9, 5)
+	name_lbl.text = foe.display_name()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(name_lbl)
-
-	# Centred and width-capped: a lone demon used to stretch its bar across the
-	# whole screen, which read as a boss rather than a rat.
-	var bar_wrap: CenterContainer = CenterContainer.new()
-	col.add_child(bar_wrap)
+	card.add_child(name_lbl)
 
 	var bar: ProgressBar = _make_bar(foe.max_hp)
-	bar.custom_minimum_size = Vector2(_foe_bar_width(), 10)
-	bar_wrap.add_child(bar)
+	bar.custom_minimum_size = Vector2(0, 5)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(bar)
 
-	var hp_lbl: Label = FitLabel.new(11, 7)
+	var hp_lbl: Label = FitLabel.new(8, 5)
 	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_lbl.add_theme_color_override("font_color", Color(0.90, 0.60, 0.60))
-	col.add_child(hp_lbl)
+	card.add_child(hp_lbl)
 
-	# BBCode, so a buff and a debuff in the same stack read as two colours
-	# instead of one averaged verdict. Always one line tall, and it shrinks
-	# rather than widening the column when the stack is long.
 	var stages: StageArrows = StageArrows.new()
 	stages.member = foe
-	col.add_child(stages)
+	card.add_child(stages)
 
-	# The chart hangs under the demon rather than sitting in the strip above it:
-	# five icons read at a glance where "FW IS TD" had to be decoded.
-	# Always there; a line not yet learned shows "?" until Analyze, a kill, or
-	# hitting it with that element fills it in.
 	var chart: AffinityChart = AffinityChart.new()
 	chart.foe = foe
 	chart.knows = func(element: String) -> bool:
 		return player.knows_affinity(foe.enemy_name, element)
-	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_child(chart)
+	chart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.add_child(chart)
 
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
 			bar = bar, hp_lbl = hp_lbl, stages = stages, marker = marker,
-			chart = chart})
-	return col
+			chart = chart, card = card})
+	return card
 
 
 func _foe_portrait(foe: Enemy) -> TextureRect:
@@ -1477,15 +1496,14 @@ func _refresh_foe_rows() -> void:
 	for r: Dictionary in _foe_rows:
 		var foe: Enemy = r["foe"] as Enemy
 		if foe in _departed:
-			# Ghosted rather than erased. Blanking the column outright made a
-			# demon that walked away look like one that had glitched out of
-			# existence — it still has a name and a place in the line.
+			# Ghosted rather than erased — it still has a name and a place
+			# in the list.
 			(r["marker"] as UIGlyph).visible = false
 			(r["portrait"] as TextureRect).modulate = Color(1, 1, 1, 0.10)
 			var gone_lbl: Label = r["name_lbl"] as Label
 			gone_lbl.text = foe.display_name()
 			gone_lbl.add_theme_color_override("font_color", Color(0.40, 0.40, 0.46))
-			((r["bar"] as ProgressBar).get_parent() as Control).visible = false
+			(r["bar"] as ProgressBar).visible = false
 			(r["hp_lbl"] as Label).text = "Left"
 			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
 					Color(0.45, 0.45, 0.52))
@@ -1495,6 +1513,9 @@ func _refresh_foe_rows() -> void:
 		var targeted: bool = (foe == enemy) and alive
 		(r["marker"] as UIGlyph).visible = targeted and multiple
 		(r["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
+		if not alive and not r.get("_death_played", false):
+			_play_anim(r["portrait"] as TextureRect, "death")
+			r["_death_played"] = true
 		var name_lbl: Label = r["name_lbl"] as Label
 		if not alive:
 			name_lbl.add_theme_color_override("font_color", Color(0.38, 0.30, 0.30))
@@ -1506,10 +1527,7 @@ func _refresh_foe_rows() -> void:
 		bar.max_value = foe.max_hp
 		bar.value     = foe.hp
 		_apply_hp_bar(bar, foe.hp, foe.max_hp)
-		var wrap: Control = bar.get_parent() as Control
-		# Never wider than a comfortable read, never wider than a column can be.
-		bar.custom_minimum_size.x = _foe_bar_width()
-		wrap.visible = alive
+		bar.visible = alive
 		var hp_lbl: Label = r["hp_lbl"] as Label
 		hp_lbl.text = "%d / %d" % [foe.hp, foe.max_hp] if alive else "Down"
 		hp_lbl.add_theme_color_override("font_color",
@@ -1560,6 +1578,7 @@ func _after_action(cost: String) -> void:
 
 
 func _enemy_phase() -> void:
+	_step_back_immediate()
 	_set_buttons(false)
 	_show_main_actions()
 	# One icon per demon still standing — the same rule the player side runs on,
@@ -1578,6 +1597,7 @@ func _enemy_phase() -> void:
 		var actors: Array[Enemy] = _living_foes()
 		var actor: Enemy = actors[_foe_turn_idx % actors.size()]
 		_foe_turn_idx += 1
+		_step_forward_foe(actor)
 		var res: Dictionary = _enemy_act(actor)
 		_log(res["msg"] as String)
 		# Their phase ends on a repel or a drain exactly as yours does, and it
@@ -1748,29 +1768,6 @@ func _refresh_button_states() -> void:
 	_buttons["Flee"].disabled   = not is_p
 
 
-# ── The party line-up ─────────────────────────────────────────────────────────
-
-# The player's side is built the same way as the enemy's — a row of portraits
-# with a name and a bar under each — so the two halves of the screen read as
-# one fight rather than as a roster facing a picture.
-func _build_party_area(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	# Same stretch ratio as the enemy row, so the two sides get equal height.
-	panel.size_flags_vertical      = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 1.0
-	parent.add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	for side: String in ["margin_left", "margin_right"]:
-		m.add_theme_constant_override(side, 8)
-	for side2: String in ["margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(side2, 5)
-	panel.add_child(m)
-
-	_party_box = HBoxContainer.new()
-	_party_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_party_box.add_theme_constant_override("separation", 6)
-	m.add_child(_party_box)
 
 
 
@@ -2219,105 +2216,77 @@ func _make_skill_button(action: String, label: String, element: String,
 	return btn
 
 
-# Always MAX_PARTY columns, filled or not. Sizing the row to the head count
-# would shuffle everyone sideways the moment a demon is bound or falls.
+# Rebuild the party side only. Foes are built once in _build_battlefield.
 func _rebuild_party_slots() -> void:
 	for child: Node in _party_box.get_children():
 		child.queue_free()
 	_party_slots.clear()
-	for i: int in range(MAX_PARTY):
-		var member: CharacterSheet = party[i] if i < party.size() else null
-		_party_box.add_child(_build_party_slot(member))
+	for i: int in range(party.size()):
+		_party_box.add_child(_build_party_slot(party[i]))
 
 
 func _build_party_slot(member: CharacterSheet) -> Control:
-	# A fixed slot, the same rule as a foe column: nothing inside sets its width.
-	var col: VBoxContainer = VBoxContainer.new()
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_stretch_ratio = 1.0
-	col.clip_contents = true
-	col.add_theme_constant_override("separation", 2)
-
-	if member == null:
-		# An empty slot still holds its ground so the filled ones never move.
-		var spacer: Control = Control.new()
-		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		col.add_child(spacer)
-		var empty_lbl: Label = Label.new()
-		empty_lbl.text                 = "\u2014"
-		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty_lbl.add_theme_font_size_override("font_size", 12)
-		empty_lbl.add_theme_color_override("font_color", Color(0.28, 0.28, 0.34))
-		col.add_child(empty_lbl)
-		_party_slots.append({member = null})
-		return col
+	var card: VBoxContainer = VBoxContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_theme_constant_override("separation", 1)
 
 	var is_hero: bool = (member == player)
 
-	var icon: TextureRect = TextureRect.new()
-	icon.expand_mode           = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode          = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size   = Vector2(0, 54)
-	icon.size_flags_horizontal = Control.SIZE_FILL
-	icon.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	var icon: AnimatedPortrait = AnimatedPortrait.new()
+	icon.custom_minimum_size   = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
+	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	icon.set_zoom(3.0)
+	icon.flip_h = true
 	if is_hero:
-		icon.texture        = PlayerCharacter.sprite()
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_player_portrait    = icon
+		icon.load_sprite_id(player.hero_sprite_id())
+		_player_portrait = icon
 	else:
 		var demon: Enemy = member as Enemy
-		if demon.sprite_path != "":
-			icon.texture        = load(demon.sprite_path) as Texture2D
-			icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		if demon.sprite_id != "":
+			icon.load_sprite_id(demon.sprite_id)
+		elif demon.sprite_path != "":
+			icon.load_static(load(demon.sprite_path) as Texture2D)
 		else:
-			icon.texture  = load("res://icon.svg") as Texture2D
+			icon.load_static(load("res://icon.svg") as Texture2D)
 			icon.modulate = Color(0.55, 0.85, 0.65)
-	col.add_child(icon)
+	card.add_child(icon)
 
 	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))
-	col.add_child(marker)
+	card.add_child(marker)
 
-	var name_lbl: Label = FitLabel.new(12, 7)
+	var name_lbl: Label = FitLabel.new(9, 5)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(name_lbl)
-
-	var bar_wrap: MarginContainer = MarginContainer.new()
-	for side: String in ["margin_left", "margin_right"]:
-		bar_wrap.add_theme_constant_override(side, 6)
-	col.add_child(bar_wrap)
-
-	var bars: VBoxContainer = VBoxContainer.new()
-	bars.add_theme_constant_override("separation", 2)
-	bar_wrap.add_child(bars)
+	card.add_child(name_lbl)
 
 	var hp_bar: ProgressBar = _make_bar(member.max_hp)
-	hp_bar.custom_minimum_size = Vector2(0, 9)
-	bars.add_child(hp_bar)
+	hp_bar.custom_minimum_size   = Vector2(0, 5)
+	hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(hp_bar)
 
 	var mp_bar: ProgressBar = _make_bar(maxi(1, member.max_mp))
-	mp_bar.custom_minimum_size = Vector2(0, 6)
+	mp_bar.custom_minimum_size   = Vector2(0, 3)
+	mp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.32, 0.46, 0.95)))
-	bars.add_child(mp_bar)
+	card.add_child(mp_bar)
 
-	var val_lbl: Label = FitLabel.new(11, 7)
+	var val_lbl: Label = FitLabel.new(8, 5)
 	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
-	col.add_child(val_lbl)
+	card.add_child(val_lbl)
 
-	# Ailments stay words — there is no arrow for being poisoned — and the stat
-	# stages sit under them as arrows.
-	var sts_lbl: RichTextLabel = FitRichText.new(10, 7, 1)
+	var sts_lbl: RichTextLabel = FitRichText.new(8, 5, 1)
 	sts_lbl.add_theme_color_override("default_color", Color(0.90, 0.78, 0.30))
-	col.add_child(sts_lbl)
+	card.add_child(sts_lbl)
 
 	var stages: StageArrows = StageArrows.new()
 	stages.member = member
-	col.add_child(stages)
+	card.add_child(stages)
 
 	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
 			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl,
-			sts_lbl = sts_lbl, stages = stages, marker = marker})
-	return col
+			sts_lbl = sts_lbl, stages = stages, marker = marker, card = card})
+	return card
 
 
 func _refresh_party_slots() -> void:
@@ -2332,6 +2301,9 @@ func _refresh_party_slots() -> void:
 
 		(slot["marker"] as UIGlyph).visible = is_actor
 		(slot["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
+		if not alive and not slot.get("_death_played", false):
+			_play_anim(slot["portrait"] as TextureRect, "death")
+			slot["_death_played"] = true
 
 		var name_lbl: Label = slot["name_lbl"] as Label
 		name_lbl.text = _member_name(member)
@@ -2350,7 +2322,7 @@ func _refresh_party_slots() -> void:
 		hp_bar.max_value = member.max_hp
 		hp_bar.value     = member.hp
 		_apply_hp_bar(hp_bar, member.hp, member.max_hp)
-		(hp_bar.get_parent() as Control).visible = alive
+		hp_bar.visible = alive
 
 		var val_lbl: Label = slot["val_lbl"] as Label
 		if not alive:
@@ -2361,11 +2333,12 @@ func _refresh_party_slots() -> void:
 			var mp_bar: ProgressBar = slot["mp_bar"] as ProgressBar
 			mp_bar.max_value = maxi(1, member.max_mp)
 			mp_bar.value     = member.mp
+			mp_bar.visible = alive
 			val_lbl.text = "%d/%d   %d MP" % [member.hp, member.max_hp, member.mp]
 
 		var ail: String = _format_statuses(member.active_statuses)
 		(slot["sts_lbl"] as RichTextLabel).text = \
-				"[center][color=#e6c74d]%s[/color][/center]" % ail if ail != "" else ""
+				"[color=#e6c74d]%s[/color]" % ail if ail != "" else ""
 		var stages: StageArrows = slot["stages"] as StageArrows
 		stages.visible = alive
 		stages.queue_redraw()
@@ -3065,6 +3038,9 @@ func _can_spare_support(actor: Enemy) -> bool:
 
 
 func _enemy_act(actor: Enemy) -> Dictionary:
+	var epr: TextureRect = _foe_portrait(actor)
+	if epr != null:
+		_play_anim(epr, "attack")
 	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
@@ -3205,7 +3181,7 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	target.take_damage(dmg)
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
-		_shake_portrait(hit_pr)
+		_shake_portrait(hit_pr, guarding)
 		if element == Affinity.PHYS:
 			SlashFX.strike(hit_pr)
 		else:
@@ -3271,7 +3247,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 				who.take_damage(dmg)
 				var pr: TextureRect = _member_portrait(who)
 				if pr != null:
-					_shake_portrait(pr)
+					_shake_portrait(pr, who.defending)
 				lines.append("[color=red]%s takes %d.[/color]%s" % [
 						_member_name(who), dmg,
 						CombatMath.outcome_tag(outcome, false, bool(res.get("suppressed", false)))])
@@ -3337,7 +3313,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			target.take_damage(target.max_hp * 2)
 			var pr: TextureRect = _member_portrait(target)
 			if pr != null:
-				_shake_portrait(pr)
+				_shake_portrait(pr, target.defending)
 			return {msg = dry + "[color=#c9a6ff]%s calls the %s — %s is taken.[/color]" % [
 					ename, word, tname],
 					cost = PressTurn.COST_HALF if
@@ -3362,7 +3338,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	target.take_damage(hurt)
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
-		_shake_portrait(hit_pr)
+		_shake_portrait(hit_pr, target.defending)
 		SpellFX.cast(hit_pr, element)
 	var tag: String = "  [color=yellow]Weak![/color]" if res["outcome"] == "weak" else ""
 	return {msg = dry + "[color=red]%s calls the %s — %s takes %d.[/color]%s" % [

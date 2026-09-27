@@ -68,9 +68,13 @@ func _add_demon(list: SlotList, enemy_name: String) -> void:
 		parts.append("Talks \u2014 temperament unread")
 
 	var icon: Texture2D = null
-	var sprite: String = tmpl.get("sprite", "") as String
-	if sprite != "":
-		icon = load(sprite) as Texture2D
+	var sid: String = tmpl.get("sprite_id", "") as String
+	if sid != "":
+		icon = AnimatedPortrait.first_frame_texture(sid, 3.0)
+	else:
+		var sprite: String = tmpl.get("sprite", "") as String
+		if sprite != "":
+			icon = load(sprite) as Texture2D
 
 	var bound: bool = enemy_name in _m.player.recruited
 	list.add_entry(enemy_name,

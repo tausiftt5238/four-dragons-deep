@@ -16,11 +16,9 @@ func build() -> void:
 	portrait_row.add_theme_constant_override("separation", 16)
 	_m._content.add_child(portrait_row)
 
-	var portrait: TextureRect = TextureRect.new()
-	portrait.texture             = PlayerCharacter.portrait()
-	portrait.texture_filter      = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var portrait: AnimatedPortrait = AnimatedPortrait.new()
+	portrait.load_sprite_id(_m.player.hero_sprite_id())
+	portrait.set_zoom(3.0)
 	portrait.custom_minimum_size = Vector2(90, 90)
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	portrait_row.add_child(portrait)
@@ -88,12 +86,14 @@ func _add_demon(p: PlayerCharacter, demon_name: String) -> void:
 	row.add_theme_constant_override("separation", 16)
 	_m._content.add_child(row)
 
-	var portrait: TextureRect = TextureRect.new()
-	if demon.sprite_path != "" and ResourceLoader.exists(demon.sprite_path):
-		portrait.texture = load(demon.sprite_path) as Texture2D
-	portrait.texture_filter      = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var portrait: AnimatedPortrait = AnimatedPortrait.new()
+	if demon.sprite_id != "":
+		portrait.load_sprite_id(demon.sprite_id)
+	else:
+		var ptex: Texture2D = demon.static_portrait()
+		if ptex != null:
+			portrait.load_static(ptex)
+	portrait.set_zoom(3.0)
 	portrait.custom_minimum_size = Vector2(64, 64)
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(portrait)
