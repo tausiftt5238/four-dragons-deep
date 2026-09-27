@@ -24,11 +24,11 @@ opens it.
 
 | | |
 |---|---|
-| **Save orbs** | Rest, shop, save, and manage your demons. Press **Orb** while standing on one. |
+| **Save orbs** | Rest, shop, save, and manage your monsters. Press **Orb** while standing on one. |
 | **Chests** | Set into the walls. Gold, and usually an item. |
 | **Mimics** | From floor 6, some of those chests are not chests. Nothing tells you which. |
 | **Spike traps** | 15% of your maximum HP. Once sprung, they stay marked on your map — but they bite every time you cross them. |
-| **Roamers** | Demons walking the floor. They come for you when you get close; touching one starts a fight. Their colour tells you which band you are in. |
+| **Roamers** | Monsters walking the floor. They come for you when you get close; touching one starts a fight. Their colour tells you which band you are in. |
 
 Your MP creeps back up as you walk, so exploring is never wasted.
 
@@ -39,8 +39,8 @@ Your MP creeps back up as you walk, so exploring is never wasted.
 The only place you can save, heal or shop. Stand on one and every tab is there:
 
 - **Rest** — restore HP and MP for gold.
-- **Bind** — buy back a demon that has answered to you before.
-- **Sell** — demons *and* anything in your pack. Sells for half the asking price.
+- **Recruit** — buy back a monster that has answered to you before.
+- **Sell** — monsters *and* anything in your pack. Sells for half the asking price.
 - **Supplies / Gear / Scrolls** — potions, weapons and armour, and every spell
   the depth you have reached has opened up.
 - **Save** — write the run to a slot.
@@ -66,7 +66,7 @@ pool.
 
 That last row is the whole game. Throwing fire at something that drinks fire
 does not just fail — it ends your round on the spot, whatever you had left.
-The same rules apply to the demons attacking you, so a resistance of yours can
+The same rules apply to the monsters attacking you, so a resistance of yours can
 end *their* phase just as hard.
 
 ### The six lines
@@ -74,15 +74,15 @@ end *their* phase just as hard.
 **Phys, fire, ice, thunder, light** and **dark**. Every creature answers each
 one in one of six ways, and the chart is the fight.
 
-Light and dark do not wound. They **banish** — either the demon is expelled
+Light and dark do not wound. They **banish** — either the monster is expelled
 outright or nothing happens at all. Roughly **3 in 5** against something the
-line is made to expel, **1 in 4** against a demon with no opinion, and almost
-never against one that resists. A demon that nulls, reflects or drains the line
+line is made to expel, **1 in 4** against a monster with no opinion, and almost
+never against one that resists. A monster that nulls, reflects or drains the line
 can never be banished by it at all, and **every dragon is immune to both**.
 
-### Reading a demon
+### Reading a monster
 
-Every demon has a row of six boxes beneath it, one per line. A box you have
+Every monster has a row of six boxes beneath it, one per line. A box you have
 not learned yet shows **?**. Once learned, it shows:
 
 | Letter | Meaning |
@@ -97,11 +97,11 @@ No letter means it simply takes the hit.
 
 Three ways to learn a chart, all of which last the rest of the run:
 
-1. **Hit it.** Landing an element on a demon fills in that one box straight
+1. **Hit it.** Landing an element on a monster fills in that one box straight
    away, whatever the result. A swing that misses teaches nothing.
-2. **Analyze** — a 0 MP spell that reads the whole chart *and* the demon's
+2. **Analyze** — a 0 MP spell that reads the whole chart *and* the monster's
    temper. It takes one of your five spell slots, so carrying it is a choice.
-3. **Kill one.** Defeating a demon fills in its whole chart.
+3. **Kill one.** Defeating a monster fills in its whole chart.
 
 **Wardens and bosses refuse Analyze** (it still spends the turn), but hitting
 them and beating them teach you their chart like anything else.
@@ -129,9 +129,9 @@ screen.
 You do not have to fight everything. **Talk** opens four approaches:
 
 - **Negotiate**, **Bribe**, **Threaten** — end the fight without killing.
-- **Recruit** — bind the demon to you. It fights alongside you afterwards.
+- **Recruit** — the monster joins you. It fights alongside you afterwards.
 
-Negotiation is **two rounds, one roll each**, and the demon's band sets the bar.
+Negotiation is **two rounds, one roll each**, and the monster's band sets the bar.
 Read its temperament right and the odds are simply its tier:
 
 | Band | Read it right | Guessed |
@@ -141,7 +141,7 @@ Read its temperament right and the odds are simply its tier:
 | Tier III (11–15) | 38% | 11% |
 | Tier IV (16–20) | 19% | 0% |
 
-Temperament is a secret until you **Analyze** the demon — which is what makes
+Temperament is a secret until you **Analyze** the monster — which is what makes
 guessing a real gamble rather than a formality. Nothing above your own level
 will answer to you at all.
 
@@ -149,16 +149,16 @@ will answer to you at all.
 
 ## Your party
 
-- Up to **four in a fight**: you and three demons.
+- Up to **four in a fight**: you and three monsters.
 - **Six on the roster.** Past that, something has to be sold or turned away.
-- Bound demons **grow as they fight**, and one sold on fetches the level it
+- Recruited monsters **grow as they fight**, and one sold on fetches the level it
   actually reached.
-- **Summon** calls a demon in, swaps one out, or revives a fallen one at half
+- **Summon** calls a monster in, swaps one out, or revives a fallen one at half
   HP for a single icon.
-- A demon that falls and is not revived **before the last enemy drops is gone
+- A monster that falls and is not revived **before the last enemy drops is gone
   for good** — off the roster, not just out of the fight.
 
-**Casters never swing.** A demon built to cast will cast its element every turn
+**Casters never swing.** A monster built to cast will cast its element every turn
 it can pay for, until its MP runs out.
 
 ---

@@ -89,7 +89,7 @@ func _build() -> void:
 	tabs.add_theme_constant_override("h_separation", 6)
 	tabs.add_theme_constant_override("v_separation", 6)
 	col.add_child(tabs)
-	for pair: Array in [["rest", "Rest"], ["bind", "Bind"],
+	for pair: Array in [["rest", "Rest"], ["bind", "Recruit"],
 			["sell", "Sell"], ["buy", "Supplies"],
 			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"]]:
 		var btn: Button = Button.new()
@@ -238,10 +238,10 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 	list.add(enemy_name,
 			Color(0.62, 0.92, 0.74) if owned else Color(0.85, 0.85, 0.92),
 			about,
-			"bound" if owned else "%d g" % price,
+			"recruited" if owned else "%d g" % price,
 			Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35),
-			"Bound" if owned else ("Full" if full
-					else ("Lv %d" % offered_lv if outranks else "Bind")),
+			"Owned" if owned else ("Full" if full
+					else ("Lv %d" % offered_lv if outranks else "Recruit")),
 			owned or full or outranks or player.gold < price,
 			func() -> void:
 				if player.gold < price:
@@ -536,7 +536,7 @@ func _build_save() -> void:
 # and a spare piece in the pack is neither.
 func _owned_tag(entry: Dictionary, item_id: String, carried: int) -> String:
 	if player.equipped_weapon.get("id", "") == item_id:
-		return "Wielding one."
+		return "One equipped."
 	if player.equipped_armor.get("id", "") == item_id:
 		return "Wearing one."
 	if player.is_accessory_equipped(item_id):

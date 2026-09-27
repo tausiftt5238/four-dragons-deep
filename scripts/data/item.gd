@@ -149,19 +149,19 @@ static func scroll_curaga() -> Dictionary:
 
 static func scroll_venom() -> Dictionary:
 	return scroll("scroll_venom", "Scroll of Venom", "venom", "Venom",
-			"Poisons one demon.", 2)
+			"Poisons one monster.", 2)
 
 static func scroll_shock() -> Dictionary:
 	return scroll("scroll_shock", "Scroll of Shock", "shock", "Shock",
-			"Paralyses one demon.", 2)
+			"Paralyses one monster.", 2)
 
 static func scroll_mute() -> Dictionary:
 	return scroll("scroll_mute", "Scroll of Mute", "mute", "Mute",
-			"Silences one demon, so it cannot cast.", 3)
+			"Silences one monster, so it cannot cast.", 3)
 
 static func scroll_bind() -> Dictionary:
 	return scroll("scroll_bind", "Scroll of Bind", "bind", "Bind",
-			"Holds one demon still.", 3)
+			"Holds one monster still.", 3)
 
 # One scroll per elemental spell, built straight off Spell.DATA so a scroll can
 # never name a spell that no longer exists. `floor` is only the price tier — the

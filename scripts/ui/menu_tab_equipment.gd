@@ -89,10 +89,10 @@ func _add_spare(list: SlotList, item_id: String) -> void:
 			_m._set_status("Both slots are taken.")
 		_m._refresh()
 	if kind == "weapon":
-		label = "Wield"
+		label = "Equip"
 		act = func() -> void:
 			p.equip_weapon(item)
-			_m._set_status("Wielding %s." % item["name"])
+			_m._set_status("Equipped %s." % item["name"])
 			_m._refresh()
 	elif kind == "armor":
 		act = func() -> void:

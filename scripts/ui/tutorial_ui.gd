@@ -27,7 +27,7 @@ const PAGES: Array[Dictionary] = [
 			+ "Chests hang on the walls. Walk into one to open it. From floor 6, some are mimics."},
 	{title = "Save orbs", shot = "orb.png",
 		text = "Orbs are the only place to save. Stand on one and tap Orb to rest, shop, sell, "
-			+ "buy back demons and save.\n\n"
+			+ "buy back monsters and save.\n\n"
 			+ "Save often. Death ends the run.\n\n"
 			+ "Every dragon's corridor has an orb just inside it."},
 	{title = "Fighting", shot = "combat.png",
@@ -35,16 +35,16 @@ const PAGES: Array[Dictionary] = [
 			+ "Hit a weakness or crit: half an icon.\n"
 			+ "Miss, or it nulls you: two icons.\n"
 			+ "It reflects or drains you: your turn ends.\n\n"
-			+ "The boxes under a demon are its chart: W weak, S strong, N null, R reflect, D drain. "
+			+ "The boxes under a monster are its chart: W weak, S strong, N null, R reflect, D drain. "
 			+ "Hit it, Analyze it or kill one to fill them in."},
 	{title = "Talking", shot = "talk.png",
 		text = "You don't have to fight everything. Tap Talk to Negotiate, Bribe or Threaten your "
-			+ "way out, or Recruit the demon to your side.\n\n"
+			+ "way out, or Recruit the monster to your side.\n\n"
 			+ "Analyze shows its temper, so you can pick the approach it answers to."},
 	{title = "Your party", shot = "party.png",
-		text = "Three demons fight with you, and six can be on your roster. Swap them in the "
+		text = "Three monsters fight with you, and six can be on your roster. Swap them in the "
 			+ "menu's Party tab. The bench still earns half the EXP.\n\n"
-			+ "A demon that falls and isn't revived before the fight ends is gone for good."},
+			+ "A monster that falls and isn't revived before the fight ends is gone for good."},
 	{title = "Four dragons", shot = "dragon.png",
 		text = "A dragon waits at floors 5, 10, 15 and 20: Ice, Thunder, Fire, then Void.\n\n"
 			+ "Each one is weak to the dragon before it. You start with Ember, which is why "

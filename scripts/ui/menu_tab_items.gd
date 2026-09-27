@@ -48,7 +48,7 @@ func build() -> void:
 		SlotList.new(_m._content).add_note("Your pack is empty.")
 		return
 
-	# One shelf per kind. Weapons, armour and trinkets live on the Carried tab,
+	# One shelf per kind. Weapons, armour and trinkets live on the Equipment tab,
 	# where they can be compared against what is worn, so they are left out
 	# here. Anything of a kind not named still lists, under Other.
 	var shelves: Array[Array] = [["consumable", "Consumables"], ["scroll", "Scrolls"]]
@@ -119,10 +119,10 @@ func _add_item(list: SlotList, item_id: String) -> void:
 				_m._refresh()})
 	elif kind == "weapon":
 		actions.append({
-			text = "Wield", disabled = p.equipped_weapon.get("id", "") == item_id,
+			text = "Equip", disabled = p.equipped_weapon.get("id", "") == item_id,
 			press = func() -> void:
 				p.equip_weapon(item)
-				_m._set_status("Wielding %s." % item["name"])
+				_m._set_status("Equipped %s." % item["name"])
 				_m._refresh()})
 	elif kind == "armor":
 		actions.append({

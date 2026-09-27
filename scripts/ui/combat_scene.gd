@@ -638,12 +638,12 @@ func _prompt_beg() -> void:
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.83, 0.47))
 	_submenu_clear()
 
-	var take: Button = _big_button("Bind it",
-			"%s joins the rolodex. Costs nothing." % enemy.enemy_name, false)
+	var take: Button = _big_button("Recruit it",
+			"%s joins your roster. Costs nothing." % enemy.enemy_name, false)
 	take.pressed.connect(func() -> void:
 		var who: String = enemy.enemy_name
 		_remember_recruit(who, enemy.lv)
-		_log("[color=lime]%s is bound. It walks in behind you.[/color]" % who)
+		_log("[color=lime]%s is recruited. It walks in behind you.[/color]" % who)
 		await _beg_resolved())
 	_submenu_add(take)
 

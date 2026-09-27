@@ -73,12 +73,12 @@ static var DATA: Dictionary = {
 	# rather than a freebie.
 	"analyze":       {name="Analyze",      mp=0, type="analyze", heal=0, element="",
 		shape=SHAPE_ONE, spread=1.0,
-		desc="Read a demon's chart and its temper. Wardens and bosses refuse."},
+		desc="Read a monster's chart and its temper. Wardens and bosses refuse."},
 
 	# ── Fire ──────────────────────────────────────────────────────────────────
 	"ember":         {name="Ember",        mp=8, type="dmg", heal=0, element="fire",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_I,
-		desc="A flame set on one demon."},
+		desc="A flame set on one monster."},
 	"cinderfall":    {name="Cinderfall",   mp=14, type="dmg", heal=0, element="fire",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_I,
 		desc="Embers fall across two or three of them."},
@@ -98,7 +98,7 @@ static var DATA: Dictionary = {
 
 	"immolate":      {name="Immolate",     mp=32, type="dmg", heal=0, element="fire",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_III,
-		desc="One demon, and nothing left of it to bury."},
+		desc="One monster, and nothing left of it to bury."},
 	"ashfall":       {name="Ashfall",      mp=54, type="dmg", heal=0, element="fire",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_III,
 		desc="Two or three of them go up and come down as ash."},
@@ -109,7 +109,7 @@ static var DATA: Dictionary = {
 	# ── Ice ───────────────────────────────────────────────────────────────────
 	"rime":          {name="Rime",         mp=8, type="dmg", heal=0, element="ice",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_I,
-		desc="Frost closes over one demon."},
+		desc="Frost closes over one monster."},
 	"hailfall":      {name="Hailfall",     mp=14, type="dmg", heal=0, element="ice",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_I,
 		desc="Hail comes down on two or three of them."},
@@ -119,7 +119,7 @@ static var DATA: Dictionary = {
 
 	"frostbite":     {name="Frostbite",    mp=18, type="dmg", heal=0, element="ice",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_II,
-		desc="The cold gets into one demon and stays."},
+		desc="The cold gets into one monster and stays."},
 	"blizzard":      {name="Blizzard",     mp=30, type="dmg", heal=0, element="ice",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_II,
 		desc="A wind full of ice, across two or three."},
@@ -129,7 +129,7 @@ static var DATA: Dictionary = {
 
 	"glaciate":      {name="Glaciate",     mp=32, type="dmg", heal=0, element="ice",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_III,
-		desc="One demon, taken down to still."},
+		desc="One monster, taken down to still."},
 	"shardfall":     {name="Shardfall",    mp=54, type="dmg", heal=0, element="ice",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_III,
 		desc="Ice falls in pieces on two or three of them."},
@@ -140,7 +140,7 @@ static var DATA: Dictionary = {
 	# ── Thunder ───────────────────────────────────────────────────────────────
 	"arc":           {name="Arc",          mp=8, type="dmg", heal=0, element="thunder",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_I,
-		desc="Current jumps to one demon."},
+		desc="Current jumps to one monster."},
 	"forkfall":      {name="Forkfall",     mp=14, type="dmg", heal=0, element="thunder",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_I,
 		desc="The current forks into two or three of them."},
@@ -150,7 +150,7 @@ static var DATA: Dictionary = {
 
 	"bolt":          {name="Bolt",         mp=18, type="dmg", heal=0, element="thunder",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_II,
-		desc="One line of it, straight through one demon."},
+		desc="One line of it, straight through one monster."},
 	"thunderstorm":  {name="Thunderstorm",  mp=30, type="dmg", heal=0, element="thunder",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_II,
 		desc="It keeps finding two or three of them."},
@@ -160,7 +160,7 @@ static var DATA: Dictionary = {
 
 	"levin":         {name="Levin",        mp=32, type="dmg", heal=0, element="thunder",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_III,
-		desc="White fire, and one demon in the way of it."},
+		desc="White fire, and one monster in the way of it."},
 	"skyfall":       {name="Skyfall",      mp=54, type="dmg", heal=0, element="thunder",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_III,
 		desc="It comes down on two or three at once."},
@@ -171,17 +171,17 @@ static var DATA: Dictionary = {
 	# ── Light: expels, or does nothing ────────────────────────────────────────
 	"banish":        {name="Banish",       mp=14, type="banish", heal=0, element="light",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_I,
-		desc="Tries to expel one demon outright. Some things cannot abide the light."},
+		desc="Tries to expel one monster outright. Some things cannot abide the light."},
 	"winnow":        {name="Winnow",       mp=24, type="banish", heal=0, element="light",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_I,
 		desc="Reaches for two or three at once, and holds each of them less firmly."},
 	"daybreak":      {name="Daybreak",     mp=36, type="banish", heal=0, element="light",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_I,
-		desc="Opens the light on every demon standing. Thin, across that many."},
+		desc="Opens the light on every monster standing. Thin, across that many."},
 
 	"exile":         {name="Exile",        mp=26, type="banish", heal=0, element="light",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_II,
-		desc="A firmer hand on one demon than Banish can manage."},
+		desc="A firmer hand on one monster than Banish can manage."},
 	"scour":         {name="Scour",        mp=44, type="banish", heal=0, element="light",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_II,
 		desc="Two or three of them, and it does not let go as easily."},
@@ -191,7 +191,7 @@ static var DATA: Dictionary = {
 
 	"absolve":       {name="Absolve",      mp=42, type="banish", heal=0, element="light",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_III,
-		desc="One demon, and very little argument about it."},
+		desc="One monster, and very little argument about it."},
 	"sunburst":      {name="Sunburst",     mp=70, type="banish", heal=0, element="light",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_III,
 		desc="Two or three caught in the open at once."},
@@ -202,7 +202,7 @@ static var DATA: Dictionary = {
 	# ── Dark: unmakes, or does nothing ────────────────────────────────────────
 	"consign":       {name="Consign",      mp=14, type="banish", heal=0, element="dark",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_I,
-		desc="Tries to unmake one demon outright. Some things cannot abide the dark."},
+		desc="Tries to unmake one monster outright. Some things cannot abide the dark."},
 	"cull":          {name="Cull",         mp=24, type="banish", heal=0, element="dark",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_I,
 		desc="Takes two or three together, and takes each of them less surely."},
@@ -212,7 +212,7 @@ static var DATA: Dictionary = {
 
 	"erase":         {name="Erase",        mp=26, type="banish", heal=0, element="dark",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_II,
-		desc="One demon, and a better chance there is nothing left."},
+		desc="One monster, and a better chance there is nothing left."},
 	"reap":          {name="Reap",         mp=44, type="banish", heal=0, element="dark",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_II,
 		desc="Two or three of them, cut down in one pass."},
@@ -222,7 +222,7 @@ static var DATA: Dictionary = {
 
 	"unmake":        {name="Unmake",       mp=42, type="banish", heal=0, element="dark",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_III,
-		desc="One demon, and very little of it survives the asking."},
+		desc="One monster, and very little of it survives the asking."},
 	"harvest":       {name="Harvest",      mp=70, type="banish", heal=0, element="dark",
 		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_III,
 		desc="Two or three taken together and not given back."},
