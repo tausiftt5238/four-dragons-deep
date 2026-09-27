@@ -31,3 +31,10 @@ clone to set up the clean filter (`silhouette_sprites.py`) and the hooks in
 `githooks/`. The real art stays in your working tree, with a copy in the
 gitignored `art-private/characterSprites/`, and `restore_sprites.py` puts it
 back whenever a checkout writes the silhouettes.
+
+# The tutorial screenshots
+
+The title screen's Tutorial shows pictures from `resources/tutorial/`, and
+`tutorial_shots.gd` takes them by playing a short scripted run. It needs a real
+display (or `xvfb-run`); the header has the command. Run it with the real art
+in the working tree, or the shots show the silhouettes git stores.

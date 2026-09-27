@@ -69,6 +69,10 @@ func _build() -> void:
 	load_btn.pressed.connect(_on_load_game)
 	vbox.add_child(load_btn)
 
+	var tut_btn: Button = _make_btn("TUTORIAL", Vector2(220, 46))
+	tut_btn.pressed.connect(_on_tutorial)
+	vbox.add_child(tut_btn)
+
 	vbox.add_child(HSeparator.new())
 
 	# The keyboard hints were desktop-only and are a lie on a phone, which is
@@ -84,6 +88,12 @@ func _build() -> void:
 func _on_new_game() -> void:
 	GameBoot.pending_slot = 0
 	LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
+
+
+func _on_tutorial() -> void:
+	var tut: TutorialUI = TutorialUI.new()
+	tut.closed.connect(func() -> void: tut.queue_free())
+	add_child(tut)
 
 
 func _on_load_game() -> void:

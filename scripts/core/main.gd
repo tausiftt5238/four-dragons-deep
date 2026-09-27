@@ -282,14 +282,27 @@ func _setup_minimap() -> void:
 	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layer.add_child(floor_label)
 
+	# Top of the screen, just under the floor number, on a dark band. It used to
+	# sit at the bottom over the dungeon floor, where a spike trap's red text
+	# landed on the trap's own red slab and could not be read.
 	_hud_popup = Label.new()
 	_hud_popup.anchor_left   = 0.0
 	_hud_popup.anchor_right  = 1.0
-	_hud_popup.anchor_top    = 1.0
-	_hud_popup.anchor_bottom = 1.0
-	_hud_popup.offset_top    = -80.0
-	_hud_popup.offset_bottom = -46.0
+	_hud_popup.anchor_top    = 0.0
+	_hud_popup.anchor_bottom = 0.0
+	_hud_popup.offset_left   = 12.0
+	_hud_popup.offset_right  = -12.0
+	_hud_popup.offset_top    = 44.0
+	_hud_popup.offset_bottom = 84.0
 	_hud_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hud_popup.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	_hud_popup.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+	var band: StyleBoxFlat = StyleBoxFlat.new()
+	band.bg_color = Color(0.02, 0.02, 0.04, 0.88)
+	band.set_corner_radius_all(4)
+	band.content_margin_left  = 8.0
+	band.content_margin_right = 8.0
+	_hud_popup.add_theme_stylebox_override("normal", band)
 	_hud_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
 	_hud_popup.modulate.a = 0.0
 	layer.add_child(_hud_popup)
@@ -358,9 +371,9 @@ func _setup_minimap() -> void:
 	_key_icon.visible       = false
 	layer.add_child(_key_icon)
 
-	# Push debug label below the MENU button
-	_encounter_debug_lbl.offset_top    = 70.0
-	_encounter_debug_lbl.offset_bottom = 94.0
+	# Under the popup band, which now owns the top of the map.
+	_encounter_debug_lbl.offset_top    = 90.0
+	_encounter_debug_lbl.offset_bottom = 114.0
 
 
 # The map is drawn in the dungeon's own colours: wall faces lifted enough to
