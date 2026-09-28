@@ -154,7 +154,7 @@ func add_paged_list(parent: Control, key: String, entries: Array[String],
 	SlotList.paged(parent, page, key, entries, fill, _refresh)
 
 
-# Collapsible shelves with their own scroll bars — see SlotList.sections.
+# Collapsible shelves that open into the page — see SlotList.sections.
 func add_sections(parent: Control, key: String, groups: Array, fill: Callable) -> void:
 	SlotList.sections(parent, page, key, groups, fill)
 

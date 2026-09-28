@@ -36,7 +36,7 @@ var _count: int = SLOT_COUNT
 
 
 # `count` is SLOT_COUNT for a page; a section sizes itself to what it holds and
-# lets its own scroll bar do the paging.
+# leaves the scrolling to the page.
 func _init(parent: Control, count: int = SLOT_COUNT) -> void:
 	_count = maxi(1, count)
 	_host = VBoxContainer.new()
@@ -226,15 +226,14 @@ static func paged(parent: Control, state: Dictionary, key: String,
 # ── Sections ──────────────────────────────────────────────────────────────────
 #
 # A long mixed shelf split by kind: Weapons, Armour, Trinkets. Each is a header
-# that opens and closes on a tap, and an open one shows every row it has in a
-# box of its own with its own scroll bar, rather than pages behind Back/More.
+# that opens and closes on a tap, and an open one lays every row it has out in
+# the page, rather than pages behind Back/More. The page's own scroll is the
+# only one: a scroll box per shelf nested inside it fought it for the drag on a
+# phone, and a swipe would move the wrong one or neither.
 #
-# `groups` is [{title, entries}]; empty ones are left out. Which are open and
-# how far each is scrolled live in `state` under `key`, because a purchase
-# rebuilds the whole tab and the player should land where they were.
-const SECTION_ROWS: int = 3
-
-
+# `groups` is [{title, entries}]; empty ones are left out. Which are open lives
+# in `state` under `key`, because a purchase rebuilds the whole tab and the
+# player should land where they were.
 static func sections(parent: Control, state: Dictionary, key: String,
 		groups: Array, fill: Callable) -> void:
 	var first: bool = true
@@ -244,7 +243,6 @@ static func sections(parent: Control, state: Dictionary, key: String,
 			continue
 		var title: String = group.get("title", "") as String
 		var open_key: String = "%s:%s:open" % [key, title]
-		var scroll_key: String = "%s:%s:scroll" % [key, title]
 		# Nothing is open on a first visit except the first shelf, so the tab
 		# never opens onto a column of closed headers.
 		var open: bool = bool(state.get(open_key, first))
@@ -256,12 +254,8 @@ static func sections(parent: Control, state: Dictionary, key: String,
 		header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		parent.add_child(header)
 
-		var box: ScrollContainer = ScrollContainer.new()
-		box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		box.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS \
-				if entries.size() > SECTION_ROWS else ScrollContainer.SCROLL_MODE_DISABLED
-		box.custom_minimum_size = Vector2(0,
-				mini(entries.size(), SECTION_ROWS) * (SLOT_H + 2))
+		var box: VBoxContainer = VBoxContainer.new()
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.visible = open
 		parent.add_child(box)
 
@@ -277,15 +271,3 @@ static func sections(parent: Control, state: Dictionary, key: String,
 			state[open_key] = box.visible
 			header.text = label.call(box.visible))
 
-		# Put the scroll back where it was once the rows have been laid out;
-		# before that the bar has no range and the value would be clamped to 0.
-		var bar: VScrollBar = box.get_v_scroll_bar()
-		var saved: float = float(state.get(scroll_key, 0.0))
-		var restore: Dictionary = {pending = saved > 0.0}
-		bar.changed.connect(func() -> void:
-			if restore["pending"] and bar.max_value > 0.0:
-				restore["pending"] = false
-				bar.value = saved)
-		bar.value_changed.connect(func(v: float) -> void:
-			if not restore["pending"]:
-				state[scroll_key] = v)
