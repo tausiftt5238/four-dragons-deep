@@ -730,6 +730,7 @@ func _beg_resolved() -> void:
 
 
 func _prompt_actor() -> void:
+	_clear_floats()
 	_refresh_hp()
 	_step_forward_actor()
 	_show_main_actions()
@@ -1598,6 +1599,7 @@ func _enemy_phase() -> void:
 		var actors: Array[Enemy] = _living_foes()
 		var actor: Enemy = actors[_foe_turn_idx % actors.size()]
 		_foe_turn_idx += 1
+		_clear_floats()
 		_step_forward_foe(actor)
 		var res: Dictionary = _enemy_act(actor)
 		_log(res["msg"] as String)
@@ -2231,18 +2233,18 @@ func _rebuild_party_slots() -> void:
 # ── Damage numbers ────────────────────────────────────────────────────────────
 #
 # Every hit and every heal floats its number over whoever took it: red for HP
-# lost, green for HP back. It holds long enough to read before it fades, and a
-# second number on the same target while the first is still up stacks above it
-# rather than landing on top.
-const FLOAT_HOLD:  float = 1.3
-const FLOAT_FADE:  float = 0.5
+# lost, green for HP back. A number belongs to the action that caused it, so it
+# is gone before the next one starts: the next turn opens 0.5s after yours and
+# the foes act 0.8s apart, and a number pops, holds and fades inside that.
+# Anything still up when a turn begins is cleared then, whatever the timing.
+const FLOAT_HOLD:  float = 0.2
+const FLOAT_FADE:  float = 0.25
 const FLOAT_RISE:  float = 36.0
-const FLOAT_STACK: float = 36.0
 const FLOAT_HURT:  Color = Color(1.0, 0.30, 0.28)
 const FLOAT_HEAL:  Color = Color(0.40, 1.0, 0.50)
 
-# How many numbers are up over each target right now, for stacking.
-var _floats_up: Dictionary = {}
+# The number showing over each target right now, if any.
+var _float_of: Dictionary = {}
 
 
 # Hooked once per fighter. The hero lives on between fights, so a second fight
@@ -2256,6 +2258,13 @@ func _watch_hp(who: CharacterSheet) -> void:
 		who.hp_gained.connect(gained)
 
 
+func _clear_floats() -> void:
+	for lbl: Variant in _float_of.values():
+		if is_instance_valid(lbl):
+			(lbl as Label).queue_free()
+	_float_of.clear()
+
+
 func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: String) -> void:
 	if not is_inside_tree():
 		return
@@ -2267,9 +2276,10 @@ func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: Stri
 	# and a card can start hiding on the same frame.
 	if portrait == null:
 		return
+	var old: Variant = _float_of.get(who)
+	if old != null and is_instance_valid(old):
+		(old as Label).queue_free()
 	var rect: Rect2 = portrait.get_global_rect()
-	var stacked: int = int(_floats_up.get(who, 0))
-	_floats_up[who] = stacked + 1
 
 	var lbl: Label = Label.new()
 	lbl.text = "%s%d" % [prefix, amount]
@@ -2279,27 +2289,28 @@ func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: Stri
 	lbl.add_theme_constant_override("outline_size", 8)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Over the spell effects, which are added after it and would bury it.
+	lbl.z_index = 50
 	lbl.size = Vector2(rect.size.x, 40)
 	var start: Vector2 = rect.position - get_global_rect().position \
-			+ Vector2(0.0, rect.size.y * 0.30 - FLOAT_STACK * float(stacked))
+			+ Vector2(0.0, rect.size.y * 0.30)
 	lbl.position = start
 	add_child(lbl)
+	_float_of[who] = lbl
 
-	# A quick pop in, a slow drift up while it holds, then the fade.
+	# Tweens belong to the label, so replacing it takes its animation with it.
 	lbl.pivot_offset = lbl.size / 2.0
 	lbl.scale = Vector2(0.6, 0.6)
-	var pop: Tween = create_tween()
+	var pop: Tween = lbl.create_tween()
 	pop.tween_property(lbl, "scale", Vector2(1.15, 1.15), 0.08)
 	pop.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.08)
-	var drift: Tween = create_tween()
+	var drift: Tween = lbl.create_tween()
 	drift.tween_property(lbl, "position:y", start.y - FLOAT_RISE, FLOAT_HOLD + FLOAT_FADE) \
 			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	var fade: Tween = create_tween()
+	var fade: Tween = lbl.create_tween()
 	fade.tween_interval(FLOAT_HOLD)
 	fade.tween_property(lbl, "modulate:a", 0.0, FLOAT_FADE)
-	fade.tween_callback(func() -> void:
-		_floats_up[who] = maxi(0, int(_floats_up.get(who, 1)) - 1)
-		lbl.queue_free())
+	fade.tween_callback(lbl.queue_free)
 
 
 # The smallest a portrait is allowed to get while making a column fit.
