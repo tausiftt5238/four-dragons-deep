@@ -1,5 +1,8 @@
 class_name AnimatedPortrait extends TextureRect
 
+# Frames are square and as tall as the sheet. The character packs draw 100px
+# frames with the figure small in the middle, which is what zoom crops into; the
+# dragons are 16px frames drawn edge to edge, so zoom leaves them whole.
 const FRAME_SIZE: int = 100
 const BASE_DIR: String = "res://resources/characterSprites/"
 
@@ -37,7 +40,7 @@ func load_sprite_id(sprite_id: String) -> void:
 		if ResourceLoader.exists(path):
 			var sheet: Texture2D = load(path) as Texture2D
 			_anims[anim_name.to_lower()] = {
-				sheet = sheet, frames = sheet.get_width() / FRAME_SIZE}
+				sheet = sheet, frames = sheet.get_width() / sheet.get_height()}
 	_loaded = not _anims.is_empty()
 	if _loaded:
 		_play_default()
@@ -126,10 +129,15 @@ func set_zoom(z: float) -> void:
 
 
 func _update_frame() -> void:
-	var cropped: float = float(FRAME_SIZE) / _zoom
-	var offset: float = (float(FRAME_SIZE) - cropped) / 2.0
-	_atlas.region = Rect2(
-		_frame * FRAME_SIZE + offset, offset, cropped, cropped)
+	var size: int = _atlas.atlas.get_height()
+	_atlas.region = _frame_region(size, _frame, _zoom)
+
+
+static func _frame_region(size: int, frame: int, zoom: float) -> Rect2:
+	var z: float = maxf(zoom, 1.0) if size >= FRAME_SIZE else 1.0
+	var cropped: float = float(size) / z
+	var offset: float = (float(size) - cropped) / 2.0
+	return Rect2(frame * size + offset, offset, cropped, cropped)
 
 
 static func first_frame_texture(sprite_id: String, zoom: float = 1.0) -> Texture2D:
@@ -141,9 +149,6 @@ static func first_frame_texture(sprite_id: String, zoom: float = 1.0) -> Texture
 		if ResourceLoader.exists(path):
 			var a: AtlasTexture = AtlasTexture.new()
 			a.atlas = load(path) as Texture2D
-			var z: float = maxf(zoom, 1.0)
-			var cropped: float = float(FRAME_SIZE) / z
-			var off: float = (float(FRAME_SIZE) - cropped) / 2.0
-			a.region = Rect2(off, off, cropped, cropped)
+			a.region = _frame_region(a.atlas.get_height(), 0, zoom)
 			return a
 	return null

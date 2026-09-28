@@ -455,7 +455,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		attack_elements = ["ice"], reach = "few", status_attack = "immobilize", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "res://resources/enemySprites/IceDragon.png",
+		sprite_id = "Ice_Dragon",
 		design_note = "The first dragon and the only one the player is armed for on arrival: the run "
 				+ "opens holding Ember and this thing drinks its own element and burns on the other. "
 				+ "One element and a narrow reach, so the fight teaches what a dragon is before the "
@@ -468,7 +468,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		attack_elements = ["thunder"], reach = "all", status_attack = "paralyzed", ail = 25,
 		support = "steady",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "res://resources/enemySprites/ThunderDragon.png",
+		sprite_id = "Thunder_Dragon",
 		design_note = "Fast — the only boss that outruns a party — and it hits the whole room every "
 				+ "turn it can pay for. Paralysis on a room-wide cast is the threat: it is trying to "
 				+ "take your turns, not your HP. Ice is the answer and the ice corridor is where you "
@@ -482,7 +482,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		attack_elements = ["fire"], reach = "all", status_attack = "poison", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "res://resources/enemySprites/FireDragon.png",
+		sprite_id = "Fire_Dragon",
 		design_note = "The hardest hitter and the one that punishes the opening loadout: Ember has "
 				+ "carried the player fifteen floors and here it feeds the thing. Scales turn a blade "
 				+ "as well, so the party that has leaned on swinging has to have found a second line "
@@ -496,7 +496,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		attack_elements = ["dark", "fire", "thunder"], reach = "all",
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
-		sprite = "res://resources/enemySprites/VoidDragon.png",
+		sprite_id = "Void_Dragon",
 		design_note = "The last fight. It answers to exactly one element out of six and shrugs at a "
 				+ "blade, casts three lines room-wide, drinks the dark and purges anything put on it. "
 				+ "Silence is the real danger — it can close the one door it is vulnerable through, "
