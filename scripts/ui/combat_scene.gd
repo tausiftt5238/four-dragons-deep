@@ -2223,6 +2223,48 @@ func _rebuild_party_slots() -> void:
 	_party_slots.clear()
 	for i: int in range(party.size()):
 		_party_box.add_child(_build_party_slot(party[i]))
+	_fit_columns.call_deferred()
+
+
+# The smallest a portrait is allowed to get while making a column fit.
+const CARD_PORTRAIT_MIN: int = 56
+
+
+# Four cards down one side are taller than the space between the log strip and
+# the menu, and a column that will not fit pushes the menu off the bottom of
+# the screen — the second row of actions, Talk, Summon and Flee, with it. So a
+# column that would overflow shrinks its own portraits until it fits; three or
+# fewer a side never needed to and keep the full size.
+func _fit_columns() -> void:
+	if not is_inside_tree():
+		return
+	var avail: float = size.y - float(LOG_LINES * LOG_LINE_H + LOG_PAD * 2) \
+			- float(MENU_STRIP_H)
+	var foe_cards: Array = []
+	for r: Dictionary in _foe_rows:
+		foe_cards.append([r["card"], r["portrait"]])
+	var party_cards: Array = []
+	for slot: Dictionary in _party_slots:
+		party_cards.append([slot["card"], slot["portrait"]])
+	for column: Array in [foe_cards, party_cards]:
+		_fit_column(column, avail)
+
+
+func _fit_column(cards: Array, avail: float) -> void:
+	if cards.is_empty():
+		return
+	# Measured at full size, so a column that has since lost a card grows back.
+	for pair: Array in cards:
+		(pair[1] as Control).custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
+	var need: float = float(CARD_SEP * (cards.size() - 1))
+	for pair: Array in cards:
+		need += (pair[0] as Control).get_combined_minimum_size().y
+	if need <= avail:
+		return
+	var cut: int = ceili((need - avail) / float(cards.size()))
+	var side: int = maxi(CARD_PORTRAIT_MIN, CARD_PORTRAIT - cut)
+	for pair: Array in cards:
+		(pair[1] as Control).custom_minimum_size = Vector2(side, side)
 
 
 func _build_party_slot(member: CharacterSheet) -> Control:
