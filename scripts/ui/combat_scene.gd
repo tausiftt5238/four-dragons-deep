@@ -1438,6 +1438,7 @@ func _build_foe_card(foe: Enemy) -> Control:
 	chart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	card.add_child(chart)
 
+	_watch_hp(foe)
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
 			bar = bar, hp_lbl = hp_lbl, stages = stages, marker = marker,
 			chart = chart, card = card})
@@ -2223,7 +2224,82 @@ func _rebuild_party_slots() -> void:
 	_party_slots.clear()
 	for i: int in range(party.size()):
 		_party_box.add_child(_build_party_slot(party[i]))
+		_watch_hp(party[i])
 	_fit_columns.call_deferred()
+
+
+# ── Damage numbers ────────────────────────────────────────────────────────────
+#
+# Every hit and every heal floats its number over whoever took it: red for HP
+# lost, green for HP back. It holds long enough to read before it fades, and a
+# second number on the same target while the first is still up stacks above it
+# rather than landing on top.
+const FLOAT_HOLD:  float = 1.3
+const FLOAT_FADE:  float = 0.5
+const FLOAT_RISE:  float = 36.0
+const FLOAT_STACK: float = 36.0
+const FLOAT_HURT:  Color = Color(1.0, 0.30, 0.28)
+const FLOAT_HEAL:  Color = Color(0.40, 1.0, 0.50)
+
+# How many numbers are up over each target right now, for stacking.
+var _floats_up: Dictionary = {}
+
+
+# Hooked once per fighter. The hero lives on between fights, so a second fight
+# must not stack a second connection; the scene going away drops its own.
+func _watch_hp(who: CharacterSheet) -> void:
+	var lost: Callable = _on_hp_changed.bind(who, FLOAT_HURT, "-")
+	var gained: Callable = _on_hp_changed.bind(who, FLOAT_HEAL, "+")
+	if not who.hp_lost.is_connected(lost):
+		who.hp_lost.connect(lost)
+	if not who.hp_gained.is_connected(gained):
+		who.hp_gained.connect(gained)
+
+
+func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: String) -> void:
+	if not is_inside_tree():
+		return
+	# A bound demon is an Enemy too, but only foes have a row in _foe_rows.
+	var portrait: TextureRect = _foe_portrait(who as Enemy) if who is Enemy else null
+	if portrait == null:
+		portrait = _member_portrait(who)
+	# Not "visible in tree": the blow that kills is the one most worth seeing,
+	# and a card can start hiding on the same frame.
+	if portrait == null:
+		return
+	var rect: Rect2 = portrait.get_global_rect()
+	var stacked: int = int(_floats_up.get(who, 0))
+	_floats_up[who] = stacked + 1
+
+	var lbl: Label = Label.new()
+	lbl.text = "%s%d" % [prefix, amount]
+	lbl.add_theme_font_size_override("font_size", 30)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
+	lbl.add_theme_constant_override("outline_size", 8)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.size = Vector2(rect.size.x, 40)
+	var start: Vector2 = rect.position - get_global_rect().position \
+			+ Vector2(0.0, rect.size.y * 0.30 - FLOAT_STACK * float(stacked))
+	lbl.position = start
+	add_child(lbl)
+
+	# A quick pop in, a slow drift up while it holds, then the fade.
+	lbl.pivot_offset = lbl.size / 2.0
+	lbl.scale = Vector2(0.6, 0.6)
+	var pop: Tween = create_tween()
+	pop.tween_property(lbl, "scale", Vector2(1.15, 1.15), 0.08)
+	pop.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.08)
+	var drift: Tween = create_tween()
+	drift.tween_property(lbl, "position:y", start.y - FLOAT_RISE, FLOAT_HOLD + FLOAT_FADE) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	var fade: Tween = create_tween()
+	fade.tween_interval(FLOAT_HOLD)
+	fade.tween_property(lbl, "modulate:a", 0.0, FLOAT_FADE)
+	fade.tween_callback(func() -> void:
+		_floats_up[who] = maxi(0, int(_floats_up.get(who, 1)) - 1)
+		lbl.queue_free())
 
 
 # The smallest a portrait is allowed to get while making a column fit.

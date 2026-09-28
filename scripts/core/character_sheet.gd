@@ -124,13 +124,26 @@ func compute_max_mp() -> void:
 	mp = max_mp
 
 
+# What actually came off or went back on, after the floor and the ceiling —
+# the battle screen floats these over the portrait. A banish that deals twice
+# max HP reports what was left, and a heal at full reports nothing.
+signal hp_lost(amount: int)
+signal hp_gained(amount: int)
+
+
 func take_damage(amount: int) -> int:
+	var before: int = hp
 	hp = max(0, hp - amount)
+	if before > hp:
+		hp_lost.emit(before - hp)
 	return amount
 
 
 func heal(amount: int) -> void:
+	var before: int = hp
 	hp = min(max_hp, hp + amount)
+	if hp > before:
+		hp_gained.emit(hp - before)
 
 
 func restore_mp(amount: int) -> void:
