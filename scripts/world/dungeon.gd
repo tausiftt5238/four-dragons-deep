@@ -12,6 +12,7 @@ const WALL_HEIGHT: float = 2.0
 # Entry point — call once after adding Dungeon to the scene tree.
 # Reads all visual settings and the portal position from the Level.
 func build(level: Level) -> void:
+	_tint = level.wire_color
 	_build_geometry(level)
 	_exit_wall = level.exit_wall_pos
 	_exit_cell = level.exit_pos
@@ -44,6 +45,13 @@ const _STONE_SHADER: Shader = preload("res://resources/shaders/stone.gdshader")
 # The two stone materials, kept so the player's light and the nearby torches
 # can be handed to them as the player moves.
 var _stone_mats: Array[ShaderMaterial] = []
+# The band's colour, for the stone pieces built after the maze itself.
+var _tint: Color = Color.WHITE
+# The last lighting handed out, so a door built mid-floor starts lit.
+var _viewer: Vector3 = Vector3.ZERO
+var _near_torches: PackedVector3Array = PackedVector3Array()
+var _near_count: int = 0
+var _glow: Array = [Vector3.ZERO, Color.BLACK, 4.0]
 
 # Cardinal neighbours as (column, row) offsets.
 const _NEIGHBOURS: Array[Vector2i] = [
@@ -361,22 +369,45 @@ func set_viewer(pos: Vector3) -> void:
 	var sent: PackedVector3Array = PackedVector3Array()
 	for i: int in mini(_TORCH_SENT, near.size()):
 		sent.append(near[i])
-	var count: int = sent.size()
+	_near_count = sent.size()
 	sent.resize(_TORCH_SENT)
+	_viewer = pos
+	_near_torches = sent
 	for mat: ShaderMaterial in _stone_mats:
-		mat.set_shader_parameter("viewer", pos)
-		mat.set_shader_parameter("torches", sent)
-		mat.set_shader_parameter("torch_count", count)
+		_light(mat)
+
+
+func _light(mat: ShaderMaterial) -> void:
+	mat.set_shader_parameter("viewer", _viewer)
+	mat.set_shader_parameter("torches", _near_torches)
+	mat.set_shader_parameter("torch_count", _near_count)
+	mat.set_shader_parameter("glow_pos", _glow[0])
+	mat.set_shader_parameter("glow_color", _glow[1])
+	mat.set_shader_parameter("glow_range", _glow[2])
+
+
+# The one coloured light the way out throws onto the stone round it.
+func _set_glow(pos: Vector3, color: Color, reach: float) -> void:
+	_glow = [pos, color, reach]
+	for mat: ShaderMaterial in _stone_mats:
+		_light(mat)
 
 
 # Opaque, so a wall hides what is behind it — the see-through fill this
 # replaced had to go opaque for the same reason.
 func _stone_material(level: Level, surface: int) -> ShaderMaterial:
+	_tint = level.wire_color
+	return _stone(surface)
+
+
+func _stone(surface: int, brightness: float = 1.0) -> ShaderMaterial:
 	var mat: ShaderMaterial = ShaderMaterial.new()
 	mat.shader = _STONE_SHADER
 	mat.set_shader_parameter("surface", surface)
-	mat.set_shader_parameter("tint", level.wire_color)
+	mat.set_shader_parameter("tint", _tint)
+	mat.set_shader_parameter("brightness", brightness)
 	_stone_mats.append(mat)
+	_light(mat)
 	return mat
 
 
@@ -403,18 +434,21 @@ func _commit_wire() -> void:
 	add_child(mi)
 
 
-# Glowing teal panel on the wall face adjacent to the portal floor tile.
-# dir = entry_pos - wall_pos identifies the accessible face.
-# The way on is a flight of steps cut into the wall, not a lit panel stuck to
-# it. The wall cell is hollowed out entirely (its face is dropped in
-# _build_geometry) and lined, because nothing in this maze has solid ground
-# behind it — without cheeks, a back and a ceiling you would be looking straight
-# through the level.
+# The way on is a flight of stone steps cut into the wall. The wall cell is
+# hollowed out entirely (its face is dropped in _build_geometry) and lined with
+# stone, because nothing in this maze has solid ground behind it — without
+# cheeks, a back and a ceiling you would be looking straight through the level.
 const _STAIR_COUNT: int = 6
 # How far up the flight climbs before the opening above it goes dark. Short of
 # WALL_HEIGHT on purpose: steps that ran all the way to the ceiling would read
-# as a ramp into a blocked shaft rather than a way out.
-const _STAIR_RISE: float = 0.78
+# as a ramp into a blocked shaft rather than a way out. 0.75 makes each riser a
+# quarter unit, five texels: one course of stone per step.
+const _STAIR_RISE: float = 0.75
+const _STAIR_GREEN: Color = Color(0.25, 1.0, 0.62)
+# Enough to tint the stone round the stairwell, not to dye the corridor.
+const _STAIR_GLOW: float = 0.8
+
+var _stair_glow: Vector3 = Vector3.ZERO
 
 
 func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
@@ -428,80 +462,62 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
 	var half: float = CELL_SIZE * 0.5
 
-	# Dark, like the fill behind a wall face. At 0.40 these read as a flat green
-	# wall the stairs are stuck to, which is louder than anything else down here
-	# and buries the step edges that do the actual work.
-	var line_mat: StandardMaterial3D = StandardMaterial3D.new()
-	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	line_mat.albedo_color = Color(0.01, 0.14, 0.10)
-
-	# Cheeks down both sides, and a ceiling over the whole shaft.
+	# Cheeks down both sides and a ceiling over the whole shaft, in the same
+	# stone as the walls, so the stairwell is cut into the rock, not built in it.
+	var wall: ShaderMaterial = _stone(0)
 	for side: float in [1.0, -1.0]:
 		_add_box_child(root,
 				across * (half * side) + Vector3(0.0, WALL_HEIGHT * 0.5, 0.0),
-				_axis_box(out, across, CELL_SIZE, WALL_HEIGHT, 0.06), line_mat)
+				_axis_box(out, across, CELL_SIZE, WALL_HEIGHT, 0.06), wall)
 	_add_box_child(root, Vector3(0.0, WALL_HEIGHT, 0.0),
-			_axis_box(out, across, CELL_SIZE, 0.06, CELL_SIZE), line_mat)
+			_axis_box(out, across, CELL_SIZE, 0.06, CELL_SIZE), _stone(2))
 
-	# The back of the shaft, above the top step: near-black rather than lined, so
-	# the flight reads as climbing into darkness instead of stopping at a wall.
+	# The back of the shaft, above the top step: near-black, so the flight reads
+	# as climbing on into the dark instead of stopping at a wall.
 	var dark: StandardMaterial3D = StandardMaterial3D.new()
 	dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	dark.albedo_color = Color(0.02, 0.05, 0.04)
+	dark.albedo_color = Color(0.01, 0.02, 0.02)
 	var rise: float = WALL_HEIGHT * _STAIR_RISE
 	_add_box_child(root, out * -half + Vector3(0.0, rise + (WALL_HEIGHT - rise) * 0.5, 0.0),
 			_axis_box(out, across, 0.06, WALL_HEIGHT - rise, CELL_SIZE), dark)
 
-	# The flight itself: each step a solid block from the floor up to its own
-	# tread, drawn the way everything else down here is drawn — a dark fill with
-	# its edges picked out in line.
-	#
-	# Solid faces do not work for this. The camera stands at exactly eye height,
-	# so every tread is edge-on and invisible, and six risers of the same flat
-	# colour merge into ONE slab: the first build of this rendered as a green
-	# door at the end of the corridor, not as a staircase. It is the line along
-	# the nose of each tread that says "steps", and the whole dungeon is lines
-	# anyway — solid geometry was the thing that looked out of place.
-	var fill_mat: StandardMaterial3D = StandardMaterial3D.new()
-	fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	fill_mat.albedo_color = Color(0.02, 0.10, 0.07)
-
+	# The flight: each step a solid block of stone from the floor up to its
+	# tread. The camera stands at eye height, so the treads are all but
+	# edge-on; what says "steps" is each riser being one course of stone whose
+	# top row catches the light, and the green from above growing up the flight.
+	var step: ShaderMaterial = _stone(4)
+	step.set_shader_parameter("course_h", 5.0)
 	var tread: float = CELL_SIZE / float(_STAIR_COUNT)
 	var riser: float = rise / float(_STAIR_COUNT)
-	var edges: PackedVector3Array = PackedVector3Array()
 	for i: int in range(_STAIR_COUNT):
 		var top_y: float = float(i + 1) * riser
 		var at: Vector3 = out * (half - (float(i) + 0.5) * tread) \
 				+ Vector3(0.0, top_y * 0.5, 0.0)
-		var size: Vector3 = _axis_box(out, across, tread, top_y, CELL_SIZE)
-		_add_box_child(root, at, size, fill_mat)
-		_append_box_edges(edges, at, size)
-	_add_line_mesh(root, edges, Color(0.20, 1.0, 0.70))
+		_add_box_child(root, at, _axis_box(out, across, tread, top_y, CELL_SIZE), step)
 
-	# One light at the head of the flight, so what draws the eye down the
-	# corridor is the glow coming off the top of the stairs.
-	var light: OmniLight3D = OmniLight3D.new()
-	light.light_color  = Color(0.2, 1.0, 0.6)
-	light.light_energy = 1.8
-	light.omni_range   = 4.5
-	light.position     = out * (-half + tread) + Vector3(0.0, rise + 0.30, 0.0)
-	root.add_child(light)
-
-	# No sign. A flight of steps climbing out of the corridor already says what
-	# it is, and the label was left over from when this was a panel that did not.
+	# The light at the head of the flight, poured down the steps and out onto
+	# the corridor, so what draws the eye is the glow coming off the stairs.
+	_stair_glow = root.position + out * (-half + tread) + Vector3(0.0, rise + 0.30, 0.0)
+	_set_glow(_stair_glow, _STAIR_GREEN * _STAIR_GLOW, 3.6)
 
 
 # The gate standing in the stairwell while the key is still out there. Until
 # this existed the only thing saying a floor was sealed was a line of HUD text,
 # so a player walking the corridor saw the way out and no reason it would not
-# open. Violet throughout, because that is the key's colour everywhere else —
-# the floating bit, the minimap mark, the warden popup.
+# open. The lock is violet, because that is the key's colour everywhere else —
+# the floating bit, the minimap mark, the warden popup — and its light is what
+# colours the stone round the door.
 const _LOCK_VIOLET: Color = Color(0.70, 0.48, 1.0)
 # Dead ahead at eye height (Main.EYE_HEIGHT is 1.0), so the lock is the thing
 # the player is looking at rather than something to find.
 const _LOCK_HEIGHT: float = 1.05
+# The doorway in the wall: narrower and lower than the cell, so the stone round
+# it is what says "door" rather than the corridor simply stopping.
+const _DOOR_W: float = 1.2
+const _DOOR_H: float = 1.6
 
 var _door: Node3D = null
+var _door_mats: Array[ShaderMaterial] = []
 var _exit_wall: Vector2i = Vector2i(-1, -1)
 var _exit_cell: Vector2i = Vector2i(-1, -1)
 
@@ -513,9 +529,15 @@ func set_locked(locked: bool) -> void:
 	if is_instance_valid(_door):
 		_door.free()
 	_door = null
+	for mat: ShaderMaterial in _door_mats:
+		_stone_mats.erase(mat)
+	_door_mats.clear()
 	if not locked or _exit_wall.x < 0 or _exit_cell.x < 0:
+		_set_glow(_stair_glow, _STAIR_GREEN * _STAIR_GLOW, 3.6)
 		return
+	var before: int = _stone_mats.size()
 	_door = _add_locked_door(_exit_wall, _exit_cell)
+	_door_mats.assign(_stone_mats.slice(before))
 
 
 func _add_locked_door(wall_pos: Vector2i, entry_pos: Vector2i) -> Node3D:
@@ -527,83 +549,94 @@ func _add_locked_door(wall_pos: Vector2i, entry_pos: Vector2i) -> Node3D:
 	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
 	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
 	var half: float = CELL_SIZE * 0.5
-	# Set just inside the mouth so the flight sits behind the door rather than
-	# the top steps poking through its face.
+	var side_w: float = (CELL_SIZE - _DOOR_W) * 0.5
+
+	# The wall the doorway is cut through: two piers and a lintel of the same
+	# stone as every other wall, flush with them, so the door sits in the rock.
+	var wall: ShaderMaterial = _stone(0)
+	var back: Vector3 = out * (half - 0.10)
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				back + across * (side * (_DOOR_W * 0.5 + side_w * 0.5))
+				+ Vector3(0.0, WALL_HEIGHT * 0.5, 0.0),
+				_axis_box(out, across, 0.20, WALL_HEIGHT, side_w), wall)
+	_add_box_child(root, back + Vector3(0.0, (_DOOR_H + WALL_HEIGHT) * 0.5, 0.0),
+			_axis_box(out, across, 0.20, WALL_HEIGHT - _DOOR_H, _DOOR_W), wall)
+
+	# A dressed frame standing proud of the wall: jambs and a heavier lintel,
+	# lighter than the rough stone so the opening has an edge.
+	var frame: ShaderMaterial = _stone(0, 1.15)
+	var proud: Vector3 = out * (half + 0.04)
+	const JAMB: float = 0.12
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				proud + across * (side * (_DOOR_W + JAMB) * 0.5)
+				+ Vector3(0.0, _DOOR_H * 0.5, 0.0),
+				_axis_box(out, across, 0.08, _DOOR_H, JAMB), frame)
+	_add_box_child(root, proud + Vector3(0.0, _DOOR_H + 0.09, 0.0),
+			_axis_box(out, across, 0.10, 0.18, _DOOR_W + JAMB * 2.0 + 0.08), frame)
+
+	# The door: planks and iron straps, drawn by the stone shader so the torches
+	# and the lock's own light fall on it like everything else.
+	var wood: ShaderMaterial = _stone(3)
+	var world_across: Vector3 = root.position + across * (-_DOOR_W * 0.5)
+	var origin: float = minf(world_across.x, (root.position + across * (_DOOR_W * 0.5)).x) \
+			if absf(across.x) > 0.5 \
+			else minf(world_across.z, (root.position + across * (_DOOR_W * 0.5)).z)
+	wood.set_shader_parameter("plank_origin", origin)
 	var face: Vector3 = out * (half - 0.08)
-	var mid: Vector3 = face + Vector3(0.0, WALL_HEIGHT * 0.5, 0.0)
+	_add_box_child(root, face + Vector3(0.0, _DOOR_H * 0.5, 0.0),
+			_axis_box(out, across, 0.08, _DOOR_H, _DOOR_W), wood)
 
-	var slab: StandardMaterial3D = StandardMaterial3D.new()
-	slab.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	slab.albedo_color = Color(0.05, 0.03, 0.09)
-	var panel: Vector3 = _axis_box(out, across, 0.12, WALL_HEIGHT, CELL_SIZE)
-	_add_box_child(root, mid, panel, slab)
-
-	# Banded across, because an unbroken rectangle at the end of a corridor
-	# reads as the corridor simply stopping. The bands are what make it a door.
-	var edges: PackedVector3Array = PackedVector3Array()
-	_append_box_edges(edges, mid, panel)
-	for i: int in range(1, 4):
-		_append_box_edges(edges,
-				face + Vector3(0.0, WALL_HEIGHT * 0.25 * float(i), 0.0),
-				_axis_box(out, across, 0.14, 0.045, CELL_SIZE * 0.88))
-	_add_line_mesh(root, edges, _LOCK_VIOLET)
-
-	_add_lock(root, out, across, face)
+	_add_lock(root, out, face + out * 0.04)
+	_set_glow(root.position + face + out * 0.6 + Vector3(0.0, _LOCK_HEIGHT, 0.0),
+			_LOCK_VIOLET * 0.95, 2.6)
 	return root
 
 
 # The lock plate and the recess the key drops into. The recess is the key's own
 # silhouette — a PrismMesh of the same proportions as the floating bit — so the
-# thing found on the floor and the thing it opens are legible as a pair.
-func _add_lock(root: Node3D, out: Vector3, across: Vector3, face: Vector3) -> void:
-	var at: Vector3 = face + out * 0.06 + Vector3(0.0, _LOCK_HEIGHT, 0.0)
+# thing found on the floor and the thing it opens are legible as a pair, and it
+# glows from inside because that is where the key goes.
+func _add_lock(root: Node3D, out: Vector3, front: Vector3) -> void:
+	var at: Vector3 = front + out * 0.02 + Vector3(0.0, _LOCK_HEIGHT, 0.0)
+	var across: Vector3 = Vector3(out.z, 0.0, -out.x)
 
 	var plate_mat: StandardMaterial3D = StandardMaterial3D.new()
 	plate_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	plate_mat.albedo_color = Color(0.20, 0.10, 0.34)
-	var plate: Vector3 = _axis_box(out, across, 0.08, 0.60, 0.46)
+	plate_mat.albedo_color = Color(0.13, 0.10, 0.17)
+	var plate: Vector3 = _axis_box(out, across, 0.04, 0.46, 0.34)
 	_add_box_child(root, at, plate, plate_mat)
 
 	var plate_edges: PackedVector3Array = PackedVector3Array()
 	_append_box_edges(plate_edges, at, plate)
-	_add_line_mesh(root, plate_edges, _LOCK_VIOLET)
+	_add_line_mesh(root, plate_edges, _LOCK_VIOLET.darkened(0.25))
 
 	# Turned so the triangle faces down the corridor. atan2(x, z) maps +Z to 0
 	# and +X to a quarter turn, which is exactly the four cardinal cases.
 	var hole: Node3D = Node3D.new()
-	hole.position = at + out * 0.045
+	hole.position = at + out * 0.02
 	hole.rotation = Vector3(0.0, atan2(out.x, out.z), 0.0)
 	root.add_child(hole)
 
-	# Near-black against the lit plate: unshaded, so what makes it read as a
-	# hollow is the contrast, not a light that would have to reach in.
-	const W: float = 0.26
-	const H: float = 0.38
+	const W: float = 0.18
+	const H: float = 0.27
 	var sink_mat: StandardMaterial3D = StandardMaterial3D.new()
 	sink_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sink_mat.albedo_color = Color(0.02, 0.01, 0.04)
+	sink_mat.albedo_color = Color(0.38, 0.22, 0.62)
 	var sink: MeshInstance3D = MeshInstance3D.new()
 	var bit: PrismMesh = PrismMesh.new()
-	bit.size = Vector3(W, H, 0.07)
+	bit.size = Vector3(W, H, 0.03)
 	sink.mesh = bit
 	sink.material_override = sink_mat
 	hole.add_child(sink)
 
 	var lip: PackedVector3Array = PackedVector3Array()
-	var apex: Vector3 = Vector3(0.0, H * 0.5, 0.035)
-	var left: Vector3 = Vector3(-W * 0.5, -H * 0.5, 0.035)
-	var right: Vector3 = Vector3(W * 0.5, -H * 0.5, 0.035)
+	var apex: Vector3 = Vector3(0.0, H * 0.5, 0.016)
+	var left: Vector3 = Vector3(-W * 0.5, -H * 0.5, 0.016)
+	var right: Vector3 = Vector3(W * 0.5, -H * 0.5, 0.016)
 	lip.append_array([apex, left, left, right, right, apex])
 	_add_line_mesh(hole, lip, _LOCK_VIOLET)
-
-	var glow: OmniLight3D = OmniLight3D.new()
-	glow.light_color  = _LOCK_VIOLET
-	glow.light_energy = 1.5
-	glow.omni_range   = 3.6
-	glow.position     = at + out * 0.5
-	root.add_child(glow)
-
-
 
 
 # A save orb: a pale, slowly turning shard hanging at eye height. Cold white so
@@ -935,7 +968,7 @@ func _add_trap_markers(level: Level) -> void:
 
 
 func _add_box_child(parent: Node3D, pos: Vector3, size: Vector3,
-		mat: StandardMaterial3D) -> void:
+		mat: Material) -> void:
 	var mi: MeshInstance3D = MeshInstance3D.new()
 	var mesh: BoxMesh = BoxMesh.new()
 	mesh.size = size
