@@ -656,7 +656,7 @@ func _add_orbs(level: Level) -> void:
 # How high the shard hangs. It used to sit at 1.0, which is eye height: dead on
 # the horizon, where the far wall's centre is too, so an orb one cell ahead was
 # drawn on top of the wall two cells ahead and read as being out there with it.
-# Lower, and stood on a plinth, its foot lands on the floor of its own cell.
+# Lower, over a glow on its own flagstones, it reads as standing in its cell.
 const _ORB_HEIGHT: float = 0.72
 
 
@@ -714,10 +714,9 @@ func _add_orb(pos: Vector2i) -> void:
 	spin.tween_property(core, "rotation:y", TAU, 6.0).from(0.0)
 
 
-# What ties the orb to its cell: a plinth up to the shard and a pale square of
-# light on the floor under it. Perspective does the rest — the square sits on
-# the grid line you would walk over, so the eye can count the cells to it the
-# same way it counts them on the minimap.
+# What ties the orb to its cell: a pale square of light on the floor under it.
+# Perspective does the rest — the square sits on the flagstones you would walk
+# over, so the eye can count the cells to it the same way it does on the map.
 func _add_orb_footing(base: Node3D) -> void:
 	var glow_mat: StandardMaterial3D = StandardMaterial3D.new()
 	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -726,15 +725,6 @@ func _add_orb_footing(base: Node3D) -> void:
 	glow_mat.albedo_color = Color(0.55, 0.85, 1.0, 0.16)
 	_add_box_child(base, Vector3(0.0, 0.012, 0.0),
 			Vector3(CELL_SIZE * 0.80, 0.01, CELL_SIZE * 0.80), glow_mat)
-
-	var stone_mat: StandardMaterial3D = StandardMaterial3D.new()
-	stone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	stone_mat.albedo_color = Color(0.20, 0.32, 0.40)
-	# A wide foot and a narrow neck, so the silhouette is a plinth and not a
-	# post the shard happens to be floating in front of.
-	_add_box_child(base, Vector3(0.0, 0.06, 0.0), Vector3(0.52, 0.12, 0.52), stone_mat)
-	_add_box_child(base, Vector3(0.0, 0.26, 0.0), Vector3(0.20, 0.30, 0.20), stone_mat)
-	_add_box_child(base, Vector3(0.0, 0.44, 0.0), Vector3(0.36, 0.06, 0.36), stone_mat)
 
 
 # ── Caches ────────────────────────────────────────────────────────────────────
