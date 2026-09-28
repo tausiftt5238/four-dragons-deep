@@ -30,6 +30,19 @@ func build(level: Level) -> void:
 var _wire_v: PackedVector3Array = PackedVector3Array()
 var _wire_c: PackedColorArray   = PackedColorArray()
 var _fill_v: PackedVector3Array = PackedVector3Array()
+var _fill_n: PackedVector3Array = PackedVector3Array()
+var _floor_v: PackedVector3Array = PackedVector3Array()
+
+# The outlines stay, but faint: the stone is the wall now, and the lines are
+# only there so the grid still counts your steps for you.
+const _WALL_LINE_ALPHA:  float = 0.18
+const _FLOOR_LINE_ALPHA: float = 0.30
+const _CEIL_LINE_ALPHA:  float = 0.12
+
+const _STONE_SHADER: Shader = preload("res://resources/shaders/stone.gdshader")
+# The two stone materials, kept so the player's light and the nearby torches
+# can be handed to them as the player moves.
+var _stone_mats: Array[ShaderMaterial] = []
 
 # Cardinal neighbours as (column, row) offsets.
 const _NEIGHBOURS: Array[Vector2i] = [
@@ -47,6 +60,8 @@ func _build_geometry(level: Level) -> void:
 	_wire_v = PackedVector3Array()
 	_wire_c = PackedColorArray()
 	_fill_v = PackedVector3Array()
+	_fill_n = PackedVector3Array()
+	_floor_v = PackedVector3Array()
 
 	for row: int in range(level.maze.size()):
 		var row_data: Array = level.maze[row]
@@ -69,13 +84,17 @@ func _build_geometry(level: Level) -> void:
 						continue
 					if here + n == cache_face:
 						continue
-					_add_wall_face(col, row, n, level.wire_color)
+					_add_wall_face(col, row, n, _faint(level.wire_color, _WALL_LINE_ALPHA))
 			else:
-				_add_cell_outline(col, row, 0.0, level.wire_floor_color)
-				_add_cell_outline(col, row, WALL_HEIGHT, level.wire_floor_color.darkened(0.35))
+				_add_floor_quad(col, row)
+				_add_cell_outline(col, row, 0.0, _faint(level.wire_floor_color, _FLOOR_LINE_ALPHA))
+				_add_cell_outline(col, row, WALL_HEIGHT,
+						_faint(level.wire_floor_color.darkened(0.35), _CEIL_LINE_ALPHA))
 
 	_commit_fill(level)
+	_commit_floor(level)
 	_commit_wire()
+	_place_torches(level)
 
 
 func _is_open(level: Level, col: int, row: int) -> bool:
@@ -106,6 +125,9 @@ func _add_wall_face(col: int, row: int, dir: Vector2i, color: Color) -> void:
 
 	var up: Vector3 = Vector3(0.0, WALL_HEIGHT, 0.0)
 	_fill_v.append_array([a, b, b + up, a, b + up, a + up])
+	var facing: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
+	for i: int in 6:
+		_fill_n.append(facing)
 
 	var push: Vector3 = Vector3(dir.x, 0.0, dir.y) * _LINE_OFFSET
 	var p0: Vector3 = a + push
@@ -133,6 +155,22 @@ func _add_cell_outline(col: int, row: int, y: float, color: Color) -> void:
 	_add_line(c3, c0, color)
 
 
+func _faint(c: Color, alpha: float) -> Color:
+	return Color(c.r, c.g, c.b, alpha)
+
+
+# The flagstones under an open cell.
+func _add_floor_quad(col: int, row: int) -> void:
+	var wx: float = col * CELL_SIZE
+	var wz: float = row * CELL_SIZE
+	var h: float  = CELL_SIZE * 0.5
+	var c0: Vector3 = Vector3(wx - h, 0.0, wz - h)
+	var c1: Vector3 = Vector3(wx + h, 0.0, wz - h)
+	var c2: Vector3 = Vector3(wx + h, 0.0, wz + h)
+	var c3: Vector3 = Vector3(wx - h, 0.0, wz + h)
+	_floor_v.append_array([c0, c1, c2, c0, c2, c3])
+
+
 func _add_line(a: Vector3, b: Vector3, color: Color) -> void:
 	_wire_v.append(a)
 	_wire_v.append(b)
@@ -141,33 +179,198 @@ func _add_line(a: Vector3, b: Vector3, color: Color) -> void:
 
 
 func _commit_fill(level: Level) -> void:
-	if _fill_v.is_empty() or level.wire_fill_alpha <= 0.0:
+	if _fill_v.is_empty():
 		return
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = _fill_v
+	arrays[Mesh.ARRAY_NORMAL] = _fill_n
 	var mesh: ArrayMesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.cull_mode    = BaseMaterial3D.CULL_DISABLED
-	if level.wire_fill_alpha >= 0.999:
-		# Opaque fill writes depth, so a wall actually hides what is behind it.
-		# An alpha-blended material never does, which is why a half-lit fill
-		# and no fill at all look identical.
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		mat.albedo_color = level.wire_fill_color
-	else:
-		mat.transparency    = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-		mat.albedo_color    = Color(level.wire_fill_color.r, level.wire_fill_color.g,
-				level.wire_fill_color.b, level.wire_fill_alpha)
-
 	var mi: MeshInstance3D = MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.material_override = mat
+	mi.material_override = _stone_material(level, 0)
 	add_child(mi)
+
+
+func _commit_floor(level: Level) -> void:
+	if _floor_v.is_empty():
+		return
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = _floor_v
+	var normals: PackedVector3Array = PackedVector3Array()
+	normals.resize(_floor_v.size())
+	normals.fill(Vector3.UP)
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = _stone_material(level, 1)
+	add_child(mi)
+
+
+# ── Torches ───────────────────────────────────────────────────────────────────
+#
+# Iron brackets on the walls with a flame in each, spread through the maze so
+# no two sit closer than a few steps. Their light is worked out in the stone
+# shader, not by OmniLights — see stone.gdshader — so there is no ceiling on
+# how many a floor can carry beyond taste.
+const _TORCH_SPACING: int   = 5      # fewest steps between two torches
+const _TORCH_PER_CELLS: int = 22     # one torch for about this many open cells
+const _TORCH_HEIGHT: float  = 1.30
+const _TORCH_SENT: int      = 12     # nearest torches handed to the shader
+
+# Where each flame's light comes from, a little out from its wall.
+var _torch_pts: Array[Vector3] = []
+
+
+func _place_torches(level: Level) -> void:
+	_torch_pts.clear()
+	# Seeded from the floor, so rebuilding the dungeon mid-floor (a chest
+	# opened, a key taken) hangs every torch back exactly where it was.
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = hash([level.floor_num, level.maze.size(), level.exit_pos])
+
+	var spots: Array = []
+	var open: int = 0
+	for row: int in range(level.maze.size()):
+		for col: int in range((level.maze[row] as Array).size()):
+			if not _is_open(level, col, row):
+				continue
+			open += 1
+			var cell: Vector2i = Vector2i(col, row)
+			if cell in level.orb_cells or cell == level.exit_pos:
+				continue
+			for n: Vector2i in _NEIGHBOURS:
+				var wall: Vector2i = cell + n
+				if _is_open(level, wall.x, wall.y):
+					continue
+				if wall == level.exit_wall_pos or level.chest_cells.has(wall):
+					continue
+				spots.append([cell, n])
+	# Shuffled with the seeded generator, not Array.shuffle, which would not
+	# repeat between builds.
+	for i: int in range(spots.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: Variant = spots[i]
+		spots[i] = spots[j]
+		spots[j] = tmp
+
+	var want: int = maxi(3, open / _TORCH_PER_CELLS)
+	var taken: Array[Vector2i] = []
+	for spot: Array in spots:
+		if taken.size() >= want:
+			break
+		var cell: Vector2i = spot[0]
+		var clear: bool = true
+		for t: Vector2i in taken:
+			if absi(t.x - cell.x) + absi(t.y - cell.y) < _TORCH_SPACING:
+				clear = false
+				break
+		if not clear:
+			continue
+		taken.append(cell)
+		_add_torch(cell, spot[1] as Vector2i)
+
+
+# `toward_wall` points from the open cell at the wall the torch hangs on.
+func _add_torch(cell: Vector2i, toward_wall: Vector2i) -> void:
+	var into: Vector3 = Vector3(float(toward_wall.x), 0.0, float(toward_wall.y))
+	var half: float = CELL_SIZE * 0.5
+	var face: Vector3 = Vector3(cell.x * CELL_SIZE, _TORCH_HEIGHT, cell.y * CELL_SIZE) \
+			+ into * half
+	var root: Node3D = Node3D.new()
+	root.position = face
+	add_child(root)
+
+	var iron: StandardMaterial3D = StandardMaterial3D.new()
+	iron.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	iron.albedo_color = Color(0.10, 0.08, 0.07)
+	# Plate on the wall, an arm out of it, a cup at the end.
+	_add_box_child(root, -into * 0.02, _flat_box(into, 0.04, 0.26, 0.14), iron)
+	_add_box_child(root, -into * 0.12 + Vector3(0.0, 0.02, 0.0),
+			_flat_box(into, 0.20, 0.04, 0.04), iron)
+	_add_box_child(root, -into * 0.22 + Vector3(0.0, 0.06, 0.0),
+			_flat_box(into, 0.10, 0.08, 0.10), iron)
+
+	var flame: Node3D = Node3D.new()
+	flame.position = -into * 0.22 + Vector3(0.0, 0.18, 0.0)
+	root.add_child(flame)
+
+	var outer_mat: StandardMaterial3D = StandardMaterial3D.new()
+	outer_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	outer_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	outer_mat.blend_mode   = BaseMaterial3D.BLEND_MODE_ADD
+	outer_mat.albedo_color = Color(1.0, 0.45, 0.12, 0.55)
+	var outer: MeshInstance3D = MeshInstance3D.new()
+	var outer_mesh: SphereMesh = SphereMesh.new()
+	outer_mesh.radius = 0.09
+	outer_mesh.height = 0.26
+	outer_mesh.radial_segments = 6
+	outer_mesh.rings = 3
+	outer.mesh = outer_mesh
+	outer.material_override = outer_mat
+	flame.add_child(outer)
+
+	var core_mat: StandardMaterial3D = StandardMaterial3D.new()
+	core_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	core_mat.albedo_color = Color(1.0, 0.86, 0.45)
+	var core: MeshInstance3D = MeshInstance3D.new()
+	var core_mesh: SphereMesh = SphereMesh.new()
+	core_mesh.radius = 0.045
+	core_mesh.height = 0.14
+	core_mesh.radial_segments = 6
+	core_mesh.rings = 3
+	core.mesh = core_mesh
+	core.material_override = core_mat
+	core.position = Vector3(0.0, -0.02, 0.0)
+	flame.add_child(core)
+
+	# A flame breathes: uneven stretches up and back, never in step with the
+	# torch next to it.
+	var tw: Tween = create_tween().set_loops()
+	var beat: float = 0.11 + randf() * 0.05
+	tw.tween_property(flame, "scale", Vector3(0.92, 1.14, 0.92), beat)
+	tw.tween_property(flame, "scale", Vector3(1.06, 0.90, 1.06), beat * 1.3)
+	tw.tween_property(flame, "scale", Vector3(0.97, 1.05, 0.97), beat * 0.8)
+
+	_torch_pts.append(face - into * 0.45 + Vector3(0.0, 0.15, 0.0))
+
+
+# A box `depth` deep along `out` and `width` across it.
+func _flat_box(out: Vector3, depth: float, height: float, width: float) -> Vector3:
+	return Vector3(depth, height, width) if absf(out.x) > 0.5 \
+			else Vector3(width, height, depth)
+
+
+# Where the player's light is, and which torches are near enough to matter.
+# Called on every step; the flicker itself runs in the shader on its own.
+func set_viewer(pos: Vector3) -> void:
+	var near: Array[Vector3] = _torch_pts.duplicate()
+	near.sort_custom(func(a: Vector3, b: Vector3) -> bool:
+		return a.distance_squared_to(pos) < b.distance_squared_to(pos))
+	var sent: PackedVector3Array = PackedVector3Array()
+	for i: int in mini(_TORCH_SENT, near.size()):
+		sent.append(near[i])
+	var count: int = sent.size()
+	sent.resize(_TORCH_SENT)
+	for mat: ShaderMaterial in _stone_mats:
+		mat.set_shader_parameter("viewer", pos)
+		mat.set_shader_parameter("torches", sent)
+		mat.set_shader_parameter("torch_count", count)
+
+
+# Opaque, so a wall hides what is behind it — the see-through fill this
+# replaced had to go opaque for the same reason.
+func _stone_material(level: Level, surface: int) -> ShaderMaterial:
+	var mat: ShaderMaterial = ShaderMaterial.new()
+	mat.shader = _STONE_SHADER
+	mat.set_shader_parameter("surface", surface)
+	mat.set_shader_parameter("tint", level.wire_color)
+	_stone_mats.append(mat)
+	return mat
 
 
 func _commit_wire() -> void:

@@ -425,6 +425,8 @@ func _sync_player() -> void:
 	cam_base_pos     = pos
 	cam_rig.position = pos
 	torch.position = pos + Vector3(0.0, 0.3, 0.0)
+	if is_instance_valid(dungeon):
+		dungeon.set_viewer(pos)
 	_mark_visited()
 	minimap_ctrl.player_pos    = player_pos
 	minimap_ctrl.player_facing = player_facing
@@ -1365,6 +1367,7 @@ func _rebuild_dungeon() -> void:
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
+	dungeon.set_viewer(cam_base_pos)
 	_sync_door()
 
 
