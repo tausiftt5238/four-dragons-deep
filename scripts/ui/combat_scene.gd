@@ -1436,7 +1436,9 @@ func _build_foe_card(foe: Enemy) -> Control:
 	chart.foe = foe
 	chart.knows = func(element: String) -> bool:
 		return player.knows_affinity(foe.enemy_name, element)
-	chart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Fill, not shrink: the chart is drawn, so it has no width of its own to
+	# shrink to, and centred it came out zero pixels wide.
+	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(chart)
 
 	_watch_hp(foe)
