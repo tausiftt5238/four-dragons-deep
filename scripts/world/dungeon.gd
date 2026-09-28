@@ -32,6 +32,7 @@ var _wire_c: PackedColorArray   = PackedColorArray()
 var _fill_v: PackedVector3Array = PackedVector3Array()
 var _fill_n: PackedVector3Array = PackedVector3Array()
 var _floor_v: PackedVector3Array = PackedVector3Array()
+var _ceil_v: PackedVector3Array = PackedVector3Array()
 
 # The outlines stay, but faint: the stone is the wall now, and the lines are
 # only there so the grid still counts your steps for you.
@@ -62,6 +63,7 @@ func _build_geometry(level: Level) -> void:
 	_fill_v = PackedVector3Array()
 	_fill_n = PackedVector3Array()
 	_floor_v = PackedVector3Array()
+	_ceil_v = PackedVector3Array()
 
 	for row: int in range(level.maze.size()):
 		var row_data: Array = level.maze[row]
@@ -92,7 +94,8 @@ func _build_geometry(level: Level) -> void:
 						_faint(level.wire_floor_color.darkened(0.35), _CEIL_LINE_ALPHA))
 
 	_commit_fill(level)
-	_commit_floor(level)
+	_commit_flat(level, _floor_v, 1, Vector3.UP)
+	_commit_flat(level, _ceil_v, 2, Vector3.DOWN)
 	_commit_wire()
 	_place_torches(level)
 
@@ -159,7 +162,7 @@ func _faint(c: Color, alpha: float) -> Color:
 	return Color(c.r, c.g, c.b, alpha)
 
 
-# The flagstones under an open cell.
+# The flagstones under an open cell, and the slab over it.
 func _add_floor_quad(col: int, row: int) -> void:
 	var wx: float = col * CELL_SIZE
 	var wz: float = row * CELL_SIZE
@@ -169,6 +172,8 @@ func _add_floor_quad(col: int, row: int) -> void:
 	var c2: Vector3 = Vector3(wx + h, 0.0, wz + h)
 	var c3: Vector3 = Vector3(wx - h, 0.0, wz + h)
 	_floor_v.append_array([c0, c1, c2, c0, c2, c3])
+	var up: Vector3 = Vector3(0.0, WALL_HEIGHT, 0.0)
+	_ceil_v.append_array([c0 + up, c2 + up, c1 + up, c0 + up, c3 + up, c2 + up])
 
 
 func _add_line(a: Vector3, b: Vector3, color: Color) -> void:
@@ -193,21 +198,23 @@ func _commit_fill(level: Level) -> void:
 	add_child(mi)
 
 
-func _commit_floor(level: Level) -> void:
-	if _floor_v.is_empty():
+# A flat stone surface — the floor or the ceiling — as its own mesh.
+func _commit_flat(level: Level, verts: PackedVector3Array, surface: int,
+		normal: Vector3) -> void:
+	if verts.is_empty():
 		return
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = _floor_v
+	arrays[Mesh.ARRAY_VERTEX] = verts
 	var normals: PackedVector3Array = PackedVector3Array()
-	normals.resize(_floor_v.size())
-	normals.fill(Vector3.UP)
+	normals.resize(verts.size())
+	normals.fill(normal)
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	var mesh: ArrayMesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var mi: MeshInstance3D = MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.material_override = _stone_material(level, 1)
+	mi.material_override = _stone_material(level, surface)
 	add_child(mi)
 
 

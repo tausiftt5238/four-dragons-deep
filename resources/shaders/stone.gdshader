@@ -1,4 +1,5 @@
-// Stone for the maze: coursed blocks on the walls, flagstones on the floor.
+// Stone for the maze: coursed blocks on the walls, flagstones on the floor and
+// the ceiling.
 //
 // Drawn from world position rather than UVs, so the maze mesh stays the bare
 // list of quads it always was and the pattern runs on unbroken round corners
@@ -13,7 +14,7 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled;
 
-// 0 = walls, 1 = floor.
+// 0 = walls, 1 = floor, 2 = ceiling.
 uniform int surface = 0;
 // The band's line colour. The stone takes a little of it, so each band's rock
 // is its own without the walls turning into coloured plastic.
@@ -110,7 +111,7 @@ void fragment() {
 	// "up" on it. The maze is all axis-aligned quads, so this is exact.
 	vec3 n = abs(world_normal);
 	vec2 plane;
-	if (surface == 1) {
+	if (surface >= 1) {
 		plane = world_pos.xz;
 	} else if (n.x > n.z) {
 		plane = vec2(world_pos.z, world_pos.y);
@@ -120,7 +121,10 @@ void fragment() {
 	vec2 p = floor(plane * texel);
 
 	// Walls: courses 6 texels high, blocks 7 to 13 long. Floor: bigger slabs.
-	vec3 b = surface == 1 ? coursed(p, 9.0, 24.0, 8.0, 16.0)
+	// The ceiling is laid the other way from the floor, so looking up and down
+	// in the same spot does not show the same slabs mirrored.
+	vec3 b = surface == 2 ? coursed(p.yx, 9.0, 24.0, 8.0, 16.0)
+			: surface == 1 ? coursed(p, 9.0, 24.0, 8.0, 16.0)
 			: coursed(p, 6.0, 20.0, 7.0, 13.0);
 	float id = b.x;
 	float edge = b.y;
@@ -139,7 +143,7 @@ void fragment() {
 	// the light, its bottom row sits in shadow.
 	vec3 col = rock;
 	if (edge < 1.0) {
-		col = rock * (surface == 1 ? 0.50 : 0.30);
+		col = rock * (surface >= 1 ? 0.50 : 0.30);
 	} else if (surface == 0 && b.z < 1.5) {
 		col = rock * 1.20;
 	} else if (surface == 0 && b.z > 4.5) {
@@ -148,6 +152,10 @@ void fragment() {
 
 	if (surface == 1) {
 		col *= 0.50;
+	} else if (surface == 2) {
+		// Darker again: light from a flame or the player's lamp reaches it,
+		// but it is the one surface nobody is meant to look at.
+		col *= 0.32;
 	}
 
 	vec3 light = light_at(world_pos);
