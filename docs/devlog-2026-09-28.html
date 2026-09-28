@@ -1,0 +1,63 @@
+<p>Two people played it properly this week and wrote everything down. The last devlog was about dragons you couldn&rsquo;t reach. This one opens with a dragon you didn&rsquo;t have to fight.</p>
+
+<h2>Running counted as winning</h2>
+
+<p>On floor 5 you could <strong>flee from the Ice Dragon</strong>, walk back up to the end of the corridor, and go straight down to floor 6. No fight.</p>
+
+<p>A fight ends in one of five ways: win, talk, bribe, lose or flee. The check that marks a boss beaten asked for <code>result != "lose"</code>, and fleeing isn&rsquo;t losing &mdash; so slipping away counted as a win. It asks for a real win now. You can still run from a dragon to catch your breath; it&rsquo;ll be there when you come back.</p>
+
+<p>Last week&rsquo;s fix made every dragon reachable. This week&rsquo;s makes them required. Progress.</p>
+
+<p>The same tester reported that the monsters on the next floor acted as though they were already in the party &mdash; Talk just had them pay up and leave. That one isn&rsquo;t a bug: with a full roster of six, nothing new can join, so every monster you talk to pays its way out instead. It does say so, but I can see why a new floor full of monsters doing it looks broken.</p>
+
+<h2>The orb was on the wrong wall</h2>
+
+<p>The minimap would show the save orb on the next tile while the view made it look two or three away.</p>
+
+<p>It hung at 1.0, which is eye height &mdash; exactly the horizon, and exactly where the middle of the far wall is. So an orb one step ahead was drawn on top of the wall two steps ahead, and the eye filed it with the wall. Nothing tied it to the floor.</p>
+
+<p>It stands on a plinth now, lower, with a pale square of light on its own tile. Perspective does the rest: you can count the floor lines to it the same way you count cells on the map.</p>
+
+<h2>The bestiary was reading a map nobody used</h2>
+
+<p>&ldquo;Floor 1+&rdquo; for a warden that only lives on floor 4.</p>
+
+<p>Every monster row still carries a <code>min_floor</code> and <code>max_floor</code>, left over from before floors drew monsters by tier. Nothing spawns from them any more &mdash; but the bestiary was still printing them, and wardens and bosses never had them at all, so they fell through to &ldquo;1+&rdquo;. It works the answer out from the real rules now: tier I is floors 1&ndash;4, the Floor 4 warden says Floor 4, the Ice Dragon says Floor 5, the Mimic says &ldquo;Chests, floor 6+&rdquo;.</p>
+
+<p>The 81% that &ldquo;never changes&rdquo; is not a completion counter &mdash; it&rsquo;s the odds of talking round a tier I monster once you&rsquo;ve read its temper. It&rsquo;s meant to sit still.</p>
+
+<h2>Red text on a red floor</h2>
+
+<p>Step on a spike trap and &ldquo;Spike Trap! -3 HP&rdquo; popped up at the bottom of the screen &mdash; directly over the trap&rsquo;s own red slab. One tester stepped on the same trap three times trying to work out whether it did anything.</p>
+
+<p>Every popup lives at the top now, under the floor number, on a dark band.</p>
+
+<h2>The title screen grew up</h2>
+
+<p><strong>Tutorial.</strong> Eight pages &mdash; moving, keys and doors, traps and chests, orbs, fighting, talking, your party, the dragons &mdash; each a screenshot and a few lines in type you can read at arm&rsquo;s length. The screenshots come from a script that plays a short run and photographs it, so they can be retaken whenever the game changes instead of going quietly stale.</p>
+
+<p><strong>Options.</strong> Invert turn and invert movement. Swipe right to turn left, or swipe down to step forward, if that&rsquo;s how your thumb thinks. It only changes swipes &mdash; W still means forward.</p>
+
+<p><strong>A loading screen.</strong> Pressing New Game used to freeze on the title for a beat while the first floor built, with nothing to say the press had landed. The Knight walks on the spot while it loads now.</p>
+
+<p><strong>A way back.</strong> There was no way to start a new run without reloading the page. The in-game menu has a <strong>System</strong> button now &mdash; Options, Load Game and Title behind it, so the footer is just System and Close.</p>
+
+<h2>The bench</h2>
+
+<p>Three monsters fight with you; up to six can be on the roster. The other three earned nothing. So the one a boss finally called for was six levels behind the ones that had done all the walking &mdash; one tester had a party at 9 and a bench at 3.</p>
+
+<p>Benched monsters take <strong>half the exp</strong> of every won fight now. Still capped at your own level.</p>
+
+<h2>Passives are off</h2>
+
+<p>Level-ups offered three passive skills out of eight, so you ran out around the fifth or sixth level and were told &ldquo;All skills mastered!&rdquo; for the rest of the run. Rather than pad the list, they&rsquo;re off while I rework them properly. Old saves come back without theirs.</p>
+
+<h2>Words</h2>
+
+<p>Some of the vocabulary was mine and nobody else&rsquo;s. <strong>Carried</strong> is <strong>Equipment</strong>, <strong>Wield</strong> is <strong>Equip</strong>, <strong>demons</strong> are <strong>monsters</strong>, and binding one is <strong>recruiting</strong> it &mdash; the orb tab, the party screen, the battle log, the tutorial.</p>
+
+<p>Two things kept their names on purpose. <strong>Bind</strong> the spell still holds a monster in place; that&rsquo;s the Ice Dragon&rsquo;s favourite move and it has nothing to do with recruiting. And the monsters actually <em>called</em> Demon &mdash; Fell Demon, Arch Demon, Demoness and the rest &mdash; are species, not a category.</p>
+
+<h2>Still on the list</h2>
+
+<p>No sound. Both testers noticed; one called it the biggest thing holding the game back, and they&rsquo;re right. And nothing on the page says up front that it&rsquo;s built for a phone. Those are next.</p>
