@@ -168,7 +168,7 @@ it can pay for, until its MP runs out.
 | | |
 |---|---|
 | **5 spell slots** | Out of everything you have learned from scrolls. |
-| **6 belt slots** | Only belted items reach a battle. The rest stay in the pack. |
+| **Your pack** | Every potion and throwable you carry can be used in a fight. |
 | **Weapon, armour, trinkets** | Heavy armour protects more and slows you down — and agility is what decides whether you connect. |
 
 **Level-ups give you 3 points** to place across STR, DEF, MAG, AGL and LUK.

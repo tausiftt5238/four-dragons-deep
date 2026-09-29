@@ -277,18 +277,51 @@ static func resale_price(item: Dictionary) -> int:
 	return maxi(1, item_price(item) / 2)
 
 
+# One tab, the same shelves every other list uses: monsters, then the pack cut
+# the way the Items and Gear tabs cut it, so a thing sits under the same heading
+# here as it does everywhere else.
 func _build_sell() -> void:
-	# Demons first, then the pack, in one paged list: the counter is the same
-	# counter and splitting it into two tabs would only add a tap.
-	var rows: Array = []
+	var monsters: Array = []
 	for demon_name: String in player.recruited:
-		rows.append({kind = "demon", name = demon_name})
+		monsters.append({kind = "demon", name = demon_name})
+	var mend: Array = []
+	var throw: Array = []
+	var scrolls: Array = []
+	var gear: Dictionary = {weapon = [], armor = [], accessory = []}
+	var other: Array = []
 	for item: Dictionary in player.inventory:
-		rows.append({kind = "item", item = item})
-	if rows.is_empty():
+		var row: Dictionary = {kind = "item", item = item}
+		var kind: String = item.get("type", "") as String
+		if kind == "consumable":
+			if item.has("inflicts_status") \
+					or (item.has("element") and int(item.get("dmg", 0)) > 0):
+				throw.append(row)
+			else:
+				mend.append(row)
+		elif kind == "scroll":
+			scrolls.append(row)
+		elif gear.has(kind):
+			(gear[kind] as Array).append(row)
+		else:
+			other.append(row)
+	var groups: Array = [
+		{title = "Monsters", entries = monsters},
+		{title = "Recovery", entries = mend},
+		{title = "Throwables", entries = throw},
+		{title = "Scrolls", entries = scrolls},
+		{title = "Weapons", entries = gear["weapon"]},
+		{title = "Armour", entries = gear["armor"]},
+		{title = "Trinkets", entries = gear["accessory"]},
+		{title = "Other", entries = other},
+	]
+	var any: bool = false
+	for g: Dictionary in groups:
+		if not (g["entries"] as Array).is_empty():
+			any = true
+	if not any:
 		SlotList.new(_content).add_note("Nothing to sell.")
 		return
-	SlotList.paged(_content, _page, "sell", rows, _sell_offer, _refresh)
+	SlotList.sections(_content, _page, "sell", groups, _sell_offer)
 
 
 func _sell_offer(list: SlotList, row: Dictionary) -> void:
@@ -308,11 +341,6 @@ func _sell_item(list: SlotList, item: Dictionary) -> void:
 			"%d g" % price, Color(1.0, 0.85, 0.35),
 			"Sell", false,
 			func() -> void:
-				# The belt holds an id, not the item, and belt() only skips a
-				# dead one — the slot itself would stay spent. So the last one
-				# sold comes off the belt with it.
-				if qty <= 1:
-					player.unequip_item(item["id"] as String)
 				player.remove_item(item, 1)
 				player.gold += price
 				_set_status("Sold %s. %d gold." % [item["name"], price])
@@ -358,8 +386,8 @@ func _supplies() -> Array[Dictionary]:
 	return out
 
 
-# Gear for the depth reached, which is the main thing gold is for once the belt
-# is full. Trinkets included, so the two accessory slots are a purchase rather
+# Gear for the depth reached, which is the main thing gold is for once the pack
+# is stocked. Trinkets included, so the two accessory slots are a purchase rather
 # than a run of luck.
 #
 # Deepest tier first, and within a tier: weapon, worn piece, trinket. A shelf
@@ -386,7 +414,7 @@ static func item_price(item: Dictionary) -> int:
 	return int(item.get("price", 20 + int(item.get("floor", 1)) * 25))
 
 
-# Split the way the belt is used in a fight: what patches you up, and what you
+# Split the way the pack is used in a fight: what patches you up, and what you
 # throw. The test is the one the battle's item menu uses.
 func _build_buy() -> void:
 	var mend: Array = []

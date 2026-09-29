@@ -1475,7 +1475,6 @@ func _gather_save_data() -> Dictionary:
 			gold = p.gold,
 			known_spells        = p.known_spells,
 			equipped_spells     = p.equipped_spells,
-			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
 			ever_bound          = p.ever_bound,
 			bound_level         = p.bound_level,
@@ -1643,9 +1642,8 @@ func _apply_player_data(pdata: Dictionary) -> void:
 		player_char.known_spells.insert(0, "analyze")
 	# Saves written before loadouts existed carry no equipped list; fall back to
 	# the first few known spells so those saves still have something to cast.
-	player_char.equipped_items.clear()
-	if pdata.has("equipped_items"):
-		player_char.equipped_items.assign(pdata["equipped_items"] as Array)
+	# equipped_items, the old belt, is ignored: every consumable reaches a
+	# fight now.
 
 	player_char.equipped_spells.clear()
 	if pdata.has("equipped_spells"):

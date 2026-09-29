@@ -83,7 +83,6 @@ const MENU_HEADER_H: int = 39
 var _action_bar: GridContainer
 var _sub_bar:    GridContainer
 var _sub_slots:  Array[MarginContainer] = []
-var _actor_banner: Label
 var _buttons: Dictionary = {}
 
 var _right_title:    Label
@@ -339,18 +338,19 @@ func _show_item_submenu() -> void:
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.40))
 	_submenu_clear()
 
-	var belt: Array[Dictionary] = player.belt()
-	if belt.is_empty():
-		_submenu_add(_dim_label("Nothing on your belt."))
+	var carried: Array[Dictionary] = player.battle_items()
+	if carried.is_empty():
+		_submenu_add(_dim_label("Nothing in your pack."))
 		return
-	for item: Dictionary in belt:
+	var entries: Array[Dictionary] = []
+	for item: Dictionary in carried:
 		var is_throwable: bool = item.has("inflicts_status") \
 			or (item.has("element") and item.get("dmg", 0) > 0)
-		var btn: Button = _big_button(item["name"] as String,
-				"x%d" % int(item.get("qty", 1)),
-				not is_throwable and not player.can_use_item(item))
-		btn.pressed.connect(_on_use_item.bind(item))
-		_submenu_add(btn)
+		entries.append({title = item["name"] as String,
+				detail = "x%d" % int(item.get("qty", 1)),
+				disabled = not is_throwable and not player.can_use_item(item),
+				press = _on_use_item.bind(item)})
+	_fill_submenu(entries, _show_item_submenu)
 
 
 func _show_talk_submenu() -> void:
@@ -1156,7 +1156,8 @@ func _fill_submenu(entries: Array[Dictionary], rebuild: Callable) -> void:
 
 
 func _entry_button(e: Dictionary) -> Button:
-	var btn: Button = _big_button(e["title"] as String, e["detail"] as String, false)
+	var btn: Button = _big_button(e["title"] as String, e["detail"] as String,
+			bool(e.get("disabled", false)))
 	btn.pressed.connect(e["press"] as Callable)
 	return btn
 
@@ -1705,6 +1706,7 @@ func _on_action(action: String) -> void:
 			_show_skills_submenu()
 			return
 		"Item":
+			_sub_page = 0
 			_show_item_submenu()
 			return
 		"Talk":
@@ -1795,16 +1797,6 @@ func _member_portrait(member: CharacterSheet) -> TextureRect:
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
 func _refresh_hp() -> void:
-	if _actor_banner != null:
-		if _press != null and _press.has_turns():
-			_actor_banner.text = "%s's turn" % _actor_name()
-			_actor_banner.add_theme_color_override("font_color",
-					Color(1.0, 0.92, 0.45) if _actor_is_player()
-					else Color(0.62, 1.0, 0.78))
-		else:
-			_actor_banner.text = "Enemy phase"
-			_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
-
 	_refresh_party_slots()
 	_refresh_foe_rows()
 	_refresh_icons()
@@ -2504,15 +2496,16 @@ func _build_menu_panel(parent: Control) -> void:
 	_right_back_btn.hide()
 	header.add_child(_right_back_btn)
 
-	_actor_banner = Label.new()
-	_actor_banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_actor_banner.add_theme_font_size_override("font_size", 16)
-	_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
-	header.add_child(_actor_banner)
-
+	# No "X's turn" banner: whoever is acting already steps forward with the
+	# caret over them, and a long name ("Skeleton Archer's turn") next to a long
+	# title pushed the header, and the whole battle with it, off the right edge.
+	# The title takes the rest of the row and trims itself instead of growing.
 	_right_title = Label.new()
 	_right_title.text = "\u2014"
 	_right_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_right_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right_title.clip_text = true
+	_right_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
 	header.add_child(_right_title)
 

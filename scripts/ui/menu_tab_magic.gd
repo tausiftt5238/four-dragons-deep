@@ -75,7 +75,7 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 		about = "%s %s  —  %s" % [kind, Spell.reach_tag(spell_id), about]
 	var cost: int = int(spell["mp"])
 	var actions: Array[Dictionary] = [{
-		text = "Drop" if equipped else "Equip",
+		text = "Unequip" if equipped else "Equip",
 		disabled = not equipped and not p.has_free_slot(),
 		press = func() -> void:
 			if equipped:

@@ -1,6 +1,6 @@
 # MenuTabItems
-# The pack, and the belt. Only consumables on the belt reach a battle, and the
-# belt is capped so the in-battle menu never needs scrolling.
+# The pack. Everything consumable in it reaches a battle; the battle's item
+# menu pages when the pack runs past six.
 class_name MenuTabItems extends RefCounted
 
 var _m
@@ -27,15 +27,6 @@ func build() -> void:
 			_m._refresh()
 		)
 		sort_row.add_child(btn)
-
-	var belt_lbl: Label = Label.new()
-	belt_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	belt_lbl.text = "Belt:  %d / %d" % [
-			_m.player.equipped_items.size(), PlayerCharacter.ITEM_SLOTS]
-	belt_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	belt_lbl.add_theme_color_override("font_color",
-		Color(1.0, 0.85, 0.35) if _m.player.has_free_item_slot() else Color(0.60, 0.62, 0.68))
-	sort_row.add_child(belt_lbl)
 
 	_m._content.add_child(HSeparator.new())
 
@@ -83,25 +74,13 @@ func _add_item(list: SlotList, item_id: String) -> void:
 		return
 
 	var kind: String = item["type"] as String
-	var belted: bool = kind == "consumable" and p.is_item_equipped(item_id)
 	var qty: int = int(item.get("qty", 1))
 
 	var actions: Array[Dictionary] = []
 	if kind == "consumable":
-		actions.append({
-			text = "Off" if belted else "Belt",
-			disabled = not belted and not p.has_free_item_slot(),
-			press = func() -> void:
-				if belted:
-					p.unequip_item(item_id)
-					_m._set_status("Took %s off the belt." % item["name"])
-				else:
-					p.equip_item(item_id)
-					_m._set_status("Put %s on the belt." % item["name"])
-				_m._refresh()})
 		# Ailments end with the fight, so an item that only cures one has nothing
-		# to do out here. It still lists and still belts — the player wants to
-		# see what they are carrying — but the field offers no Use for it.
+		# to do out here. It still lists — the player wants to see what they are
+		# carrying — but the field offers no Use for it.
 		# A stone raises a ceiling and refills it, so it is always worth using.
 		if int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0 \
 				or int(item.get("max_hp_gain", 0)) > 0 \
@@ -143,19 +122,11 @@ func _add_item(list: SlotList, item_id: String) -> void:
 					_m._set_status("Both slots are taken.")
 				_m._refresh()})
 
-	actions.append({
-		text = "Drop", disabled = false,
-		press = func() -> void:
-			p.remove_item(item, 1)
-			_m._set_status("Discarded %s." % item["name"])
-			_m._refresh()})
-
 	var about: String = item.get("desc", "") as String
 	if kind in ["accessory", "weapon", "armor"]:
 		about = "%s%s" % [about, GearTooltip.bonus_string(item)]
 
-	list.add_entry("%s%s" % ["* " if belted else "", item["name"]],
-			Color(0.85, 0.85, 0.92) if belted else Color(0.72, 0.72, 0.78),
+	list.add_entry(item["name"] as String, Color(0.85, 0.85, 0.92),
 			about,
 			"x%d" % qty if qty > 1 else "", Color(0.66, 0.66, 0.74),
 			actions)

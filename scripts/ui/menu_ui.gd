@@ -101,7 +101,7 @@ func _build_shell() -> void:
 	_tab_btns["system"] = system_btn
 
 	var close_btn: Button = Button.new()
-	close_btn.text = "Close  [ESC]"
+	close_btn.text = "Close"
 	close_btn.custom_minimum_size   = Vector2(0, 32)
 	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	close_btn.pressed.connect(func(): menu_closed.emit())
@@ -123,7 +123,7 @@ func _build_system() -> void:
 		add_child(ui))
 	col.add_child(options_btn)
 
-	var load_btn: Button = _system_button("Load Game  [F9]")
+	var load_btn: Button = _system_button("Load Game")
 	load_btn.pressed.connect(func(): load_requested.emit())
 	col.add_child(load_btn)
 
