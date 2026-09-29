@@ -1,0 +1,58 @@
+<p>Until this week the dungeon was drawn the way the old grid crawlers drew it: every wall an outline, every floor a square of lines, dark fill behind. It read fine. It never looked like a place.</p>
+
+<p>It&rsquo;s stone now.</p>
+
+<h2>Walls, floors, a ceiling</h2>
+
+<p>The walls are coursed blocks, the floor is big flagstones, and the ceiling is the same slabs laid the other way and darker, so looking up and looking down don&rsquo;t show you the same thing mirrored. None of it is a texture. A shader works the stone out from where each pixel sits in the world and snaps it to a coarse grid, so it comes out as pixel art at the same chunkiness as the sprites instead of a smooth 3D surface sitting next to them.</p>
+
+<p>Each band&rsquo;s rock takes a little of that band&rsquo;s colour: cold on floor 1, sandy further down, burnt near the bottom. You can tell roughly how deep you are from the walls alone.</p>
+
+<p>The outlines are still there, just faint. The grid on the floor is how you count steps, and I didn&rsquo;t want to lose that.</p>
+
+<h2>Torches</h2>
+
+<p>Iron brackets with a flame in each, a few steps apart, and they hang in the same places every time a floor is rebuilt.</p>
+
+<p>They aren&rsquo;t real lights. The web version lights any one mesh from at most eight lights, and the whole floor&rsquo;s walls are one mesh, so a corridor of real torches would have lost most of them. The stone shader adds up the nearest dozen torches and your own lamp itself, flicker included.</p>
+
+<h2>The orb loses its plinth</h2>
+
+<p>Last devlog the orb got a plinth so you could tell which tile it was on. With flagstones under it, the square of light on its own tile does that job alone. It floats again.</p>
+
+<h2>A door and a way down</h2>
+
+<p>The two things you walk the whole floor for were the last things still drawn in lines: a violet slab with bands across it, and a flight of glowing green edges.</p>
+
+<p><strong>The door</strong> is iron-strapped planks now, set in a doorway cut through the wall, with a dressed stone frame and the bottom step showing under it as a threshold. The lock is a dark iron plate with the key&rsquo;s shape glowing violet inside it, and that violet falls on the stone around the door. From down the corridor, the glow is how you know what&rsquo;s at the end.</p>
+
+<p><strong>The stairs</strong> were harder. You stand at eye height, so every tread is almost edge-on, and six stone risers of the same colour merge into one wall. The first try looked exactly like that: a brick wall with a green tint. What fixed it was making each riser exactly one course of stone, with a bright worn nosing along its top and shadow at its foot. Six light lines stepping back into the dark read as a flight straight away. Green light pours down from the top onto the corridor mouth.</p>
+
+<p>Both had OmniLights on them before. They never did anything. The stone ignores real lights (see torches), so the glow had been decoration on a decoration. The shader carries one coloured glow now, violet while the door is shut and green once it&rsquo;s open.</p>
+
+<h2>The dragons have faces</h2>
+
+<p>The four dragons used to be four still pictures. They have animated pixel sprites now:</p>
+
+<ul>
+<li><strong>Ice Dragon</strong>: a young blue dragon</li>
+<li><strong>Thunder Dragon</strong>: a serpentine wyvern</li>
+<li><strong>Fire Dragon</strong>: an adult red</li>
+<li><strong>Void Dragon</strong>: an ancient bone dragon</li>
+</ul>
+
+<p>They only idle so far. The pack doesn&rsquo;t have attack, hurt or death animations yet, and when it does they&rsquo;ll drop straight in.</p>
+
+<h2>Damage numbers</h2>
+
+<p>A hit puts a number over whoever took it: red for HP lost, green for HP back. It&rsquo;s the HP that actually changed, so an overkill shows what was left, not the size of the swing, and a heal at full shows nothing. They&rsquo;re gone in under half a second, before the next member acts, because a pile of leftover numbers read like a combo system the game doesn&rsquo;t have.</p>
+
+<h2>Two things the new layout broke</h2>
+
+<p><strong>The shop&rsquo;s shelves.</strong> Gear, Supplies and Scrolls open into lists, and each list used to be a little scroll box inside the page&rsquo;s own scroll. On a phone the two fought over every swipe, and half the time the wrong one moved. An open shelf lays everything out in the page now, and there&rsquo;s one scroll. The menu&rsquo;s Items and Equipment tabs got the same fix.</p>
+
+<p><strong>The affinity chart.</strong> When the battle screen was turned round, the chart under each enemy was told to shrink to its own width. It&rsquo;s drawn rather than built from pieces, so it doesn&rsquo;t have a width of its own, and it came out zero pixels wide. It was there the whole time, just invisible. It fills the card again, so weaknesses and &ldquo;?&rdquo; are back under every enemy.</p>
+
+<h2>Still on the list</h2>
+
+<p>Still no sound. Still nothing on the page that says up front it&rsquo;s built for a phone. And the dragons need something to do besides breathe.</p>
