@@ -46,3 +46,19 @@ key and the door, the stairs, the four dragons) with captions, and Godot's
 Movie Maker records it frame by frame. `trailer_encode.sh` turns the frames
 into a 1080x2340 MP4 with GStreamer. Both headers have the commands. Like the
 tutorial shots, it needs a real display and the real art in the working tree.
+
+# Reworking monsters
+
+`data/monsters.csv` is the whole roster, one row per monster, for editing in
+Google Sheets (File > Import > Upload, then File > Download > CSV to bring it
+back). It holds only the fields the game reads; levels, exp and gold come from
+the floor, so they are not columns. Affinity columns take `weak`, `resist`,
+`null`, `reflect`, `drain` or blank.
+
+```
+godot --headless --path . --script tools/monster_export.gd   # tables -> CSV
+godot --headless --path . --script tools/monster_report.gd   # CSV -> docs/monster-balance.md
+```
+
+The report reads the CSV, so an edited sheet can be checked before the game
+reads it. The game itself still builds monsters from `Enemy`'s tables for now.
