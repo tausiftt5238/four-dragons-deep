@@ -38,3 +38,11 @@ The title screen's Tutorial shows pictures from `resources/tutorial/`, and
 `tutorial_shots.gd` takes them by playing a short scripted run. It needs a real
 display (or `xvfb-run`); the header has the command. Run it with the real art
 in the working tree, or the shots show the silhouettes git stores.
+
+# The trailer
+
+`trailer.gd` plays a scripted run (walking, a chest, a fight, the party, the
+key and the door, the stairs, the four dragons) with captions, and Godot's
+Movie Maker records it frame by frame. `trailer_encode.sh` turns the frames
+into a 1080x2340 MP4 with GStreamer. Both headers have the commands. Like the
+tutorial shots, it needs a real display and the real art in the working tree.
