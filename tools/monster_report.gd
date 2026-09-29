@@ -55,6 +55,7 @@ func _initialize() -> void:
 	for n: String in notes:
 		md.append("- " + n)
 	md.append("")
+	md.append_array(_spread_section())
 	for tier: int in range(1, 5):
 		md.append_array(_tier_section(tier))
 	md.append_array(_set_piece_section())
@@ -331,5 +332,100 @@ func _set_piece_section() -> Array[String]:
 				r["name"], r["where"], s["lv"], s["hp"], s["str"], s["mag"], s["agl"],
 				_chart(r), r["attacks"] if r["attacks"] != "" else "—",
 				r["ailment"] if r["ailment"] != "" else "—"])
+	md.append("")
+	return md
+
+
+# ── Spread ────────────────────────────────────────────────────────────────────
+#
+# How the elements are shared out over the roaming roster as a whole: how many
+# monsters answer each element each way, how many attack with it, and how many
+# weaknesses, blocks and attack lines a monster tends to carry.
+
+func _roamers() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for r: Dictionary in rows:
+		if r["group"] == "monster":
+			out.append(r)
+	return out
+
+
+func _attacks_of(r: Dictionary) -> PackedStringArray:
+	return (r["attacks"] as String).split(" ", false)
+
+
+func _spread_section() -> Array[String]:
+	var ms: Array[Dictionary] = _roamers()
+	var md: Array[String] = []
+	md.append("## Element spread (%d roaming monsters)" % ms.size())
+	md.append("")
+	md.append("How many monsters answer each element each way, and how many attack with it.")
+	md.append("")
+	md.append("| Element | Weak | Resist | Null | Reflect | Drain | Normal | Attack with it |")
+	md.append("|---|---|---|---|---|---|---|---|")
+	for el: String in ELEMENTS:
+		var cells: Array[String] = []
+		var normal: int = 0
+		for st: String in STATES:
+			var c: int = 0
+			for r: Dictionary in ms:
+				if r[el] == st:
+					c += 1
+			cells.append(str(c))
+		for r: Dictionary in ms:
+			if r[el] == "":
+				normal += 1
+		var atk: int = 0
+		for r: Dictionary in ms:
+			if el in _attacks_of(r):
+				atk += 1
+		md.append("| %s | %s | %d | %d |" % [el.capitalize(), " | ".join(cells), normal, atk])
+	md.append("")
+
+	# Per tier, who attacks with what: the lines a recruit from that band brings.
+	md.append("Attackers per element, by tier (what a recruit from that band can bring):")
+	md.append("")
+	md.append("| Tier | Phys only | Fire | Ice | Thunder | Light | Dark |")
+	md.append("|---|---|---|---|---|---|---|")
+	for tier: int in range(1, 5):
+		var tr: Array[Dictionary] = _tier_rows(tier)
+		var cells: Array[String] = []
+		var phys_only: int = 0
+		for r: Dictionary in tr:
+			if _attacks_of(r).is_empty():
+				phys_only += 1
+		cells.append(str(phys_only))
+		for el: String in ["fire", "ice", "thunder", "light", "dark"]:
+			var c: int = 0
+			for r: Dictionary in tr:
+				if el in _attacks_of(r):
+					c += 1
+			cells.append(str(c) if c > 0 else "·")
+		md.append("| %s (%d) | %s |" % [TIER_NAMES[tier - 1], tr.size(), " | ".join(cells)])
+	md.append("")
+
+	# How many of each a single monster carries.
+	md.append("How much each monster carries — number of monsters with 0, 1, 2, 3+ of each:")
+	md.append("")
+	md.append("| Per monster | 0 | 1 | 2 | 3+ |")
+	md.append("|---|---|---|---|---|")
+	var measures: Array = [
+		["Weaknesses", func(r: Dictionary) -> int: return ELEMENTS.filter(func(e): return r[e] == "weak").size()],
+		["Resists", func(r: Dictionary) -> int: return ELEMENTS.filter(func(e): return r[e] == "resist").size()],
+		["Blocks (null / reflect / drain)", func(r: Dictionary) -> int:
+			return ELEMENTS.filter(func(e): return r[e] in BLOCKS).size()],
+		["Attack elements", func(r: Dictionary) -> int: return _attacks_of(r).size()],
+	]
+	for m: Array in measures:
+		var buckets: Array[int] = [0, 0, 0, 0]
+		for r: Dictionary in ms:
+			buckets[mini(3, (m[1] as Callable).call(r))] += 1
+		md.append("| %s | %d | %d | %d | %d |" % [m[0], buckets[0], buckets[1], buckets[2], buckets[3]])
+	md.append("")
+
+	var tiers: Array[String] = []
+	for tier: int in range(1, 5):
+		tiers.append("%s: %d" % [TIER_NAMES[tier - 1], _tier_rows(tier).size()])
+	md.append("Monsters per tier — %s." % ", ".join(tiers))
 	md.append("")
 	return md

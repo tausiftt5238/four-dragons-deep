@@ -540,10 +540,13 @@ static func _affinities_from(t: Dictionary) -> Dictionary:
 
 
 static func make_random(floor_num: int) -> Enemy:
-	# Draw from this floor's tier, widening downward if a tier is thin rather
-	# than falling back to the whole table, which would put a tier-one Bat in
-	# front of you on floor nineteen.
-	var want: int = tier_for_floor(floor_num)
+	return _build(_pick_from_tier(tier_for_floor(floor_num)), floor_num)
+
+
+# One template from exactly this tier, widening downward if a tier is empty
+# rather than falling back to the whole table.
+static func _pick_from_tier(tier: int) -> Dictionary:
+	var want: int = tier
 	var pool: Array[Dictionary] = []
 	while pool.is_empty() and want >= 1:
 		for tmpl: Dictionary in TEMPLATES:
@@ -552,17 +555,27 @@ static func make_random(floor_num: int) -> Enemy:
 		want -= 1
 	if pool.is_empty():
 		pool = TEMPLATES
-	return _build(pool[randi() % pool.size()], floor_num)
+	return pool[randi() % pool.size()]
 
 
 # Rolls an encounter. Every size from one up to the cap is equally likely, and
 # the cap is the floor number until floor four — so the first fight of a run is
 # always one on one, and floor four onward is an even quarter each.
+#
+# The first monster is always from this floor's tier, so the band's own roster
+# is in every fight. Past tier one, each other slot is a coin: this tier again,
+# or a random lower one. Every monster is built at this floor's level whichever
+# band it comes from, so an old face met deep is a deep monster — its lower base
+# stats make it the lighter hitter in the pack, not a pushover.
 static func make_group(floor_num: int) -> Array[Enemy]:
 	var count: int = 1 + randi() % clampi(floor_num, 1, 4)
-	var group: Array[Enemy] = []
-	for _i: int in range(count):
-		group.append(make_random(floor_num))
+	var tier: int = tier_for_floor(floor_num)
+	var group: Array[Enemy] = [make_random(floor_num)]
+	for _i: int in range(count - 1):
+		var from: int = tier
+		if tier > 1 and randi() % 2 == 0:
+			from = 1 + randi() % (tier - 1)
+		group.append(_build(_pick_from_tier(from), floor_num))
 	return group
 
 
