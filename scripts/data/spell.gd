@@ -231,12 +231,20 @@ static var DATA: Dictionary = {
 		desc="The dark closes over everything standing and stays closed."},
 
 	# ── Healing ───────────────────────────────────────────────────────────────
+	# The single ones pick who in the party they land on; the All ones take
+	# everyone standing, for a little less each and a good deal more MP.
 	"cure":      {name="Cure", mp=6, type="heal", heal=30,
-		desc="Restores 30 HP."},
+		desc="Restores 30 HP to one of you."},
 	"cura":      {name="Cura", mp=15, type="heal", heal=80,
-		desc="Restores 80 HP."},
+		desc="Restores 80 HP to one of you."},
 	"curaga":    {name="Curaga", mp=30, type="heal", heal=9999,
-		desc="Fully restores HP."},
+		desc="Fully restores one of you."},
+	"cure_all":  {name="Cure All", mp=14, type="heal", heal=25, shape=SHAPE_ALL,
+		desc="Restores 25 HP to the whole party."},
+	"cura_all":  {name="Cura All", mp=34, type="heal", heal=65, shape=SHAPE_ALL,
+		desc="Restores 65 HP to the whole party."},
+	"curaga_all": {name="Curaga All", mp=64, type="heal", heal=9999, shape=SHAPE_ALL,
+		desc="Fully restores the whole party."},
 
 	# ── Buffs: the whole party at once ────────────────────────────────────────
 	"whet":      {name="Whet", mp=8, type="buff", heal=0,

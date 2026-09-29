@@ -147,6 +147,28 @@ static func scroll_curaga() -> Dictionary:
 	return scroll("scroll_curaga", "Scroll of Curaga", "curaga", "Curaga",
 			"Restores all of it.", 13)
 
+static func scroll_cure_all() -> Dictionary:
+	return scroll("scroll_cure_all", "Scroll of Cure All", "cure_all", "Cure All",
+			"Restores some HP to everyone.", 4)
+
+static func scroll_cura_all() -> Dictionary:
+	return scroll("scroll_cura_all", "Scroll of Cura All", "cura_all", "Cura All",
+			"Restores a good deal of HP to everyone.", 10)
+
+static func scroll_curaga_all() -> Dictionary:
+	return scroll("scroll_curaga_all", "Scroll of Curaga All", "curaga_all", "Curaga All",
+			"Restores everyone completely.", 16)
+
+# Brings a fallen party member back mid-fight, hero or monster, at half their
+# HP — the same terms Summon's revive gives a monster, without spending the
+# summon and without the hero being left out.
+static func revival_feather() -> Dictionary:
+	var d: Dictionary = consumable("revival_feather", "Revival Feather",
+			"Brings a fallen ally back with half their HP.", 0, 0, 2)
+	d["revive"] = 50
+	d["price"] = 120
+	return d
+
 static func scroll_venom() -> Dictionary:
 	return scroll("scroll_venom", "Scroll of Venom", "venom", "Venom",
 			"Poisons one monster.", 2)
@@ -226,6 +248,7 @@ static func scrolls_for_floor(floor_num: int) -> Array[Dictionary]:
 # a run could finish without ever being able to learn Cure.
 static var SUPPORT_SCROLLS: Array[Callable] = [
 	scroll_cure, scroll_cura, scroll_curaga,
+	scroll_cure_all, scroll_cura_all, scroll_curaga_all,
 	scroll_whet, scroll_ward, scroll_quicken, scroll_stoke,
 	scroll_blunt, scroll_sunder, scroll_mire, scroll_damp,
 	scroll_venom, scroll_shock, scroll_mute, scroll_bind,
@@ -394,8 +417,8 @@ static func drop_table() -> Array[Dictionary]:
 	var out: Array[Dictionary] = [
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
-		fire_bomb(), ice_shard(), thunder_bead(),
-		scroll_cure(), scroll_cura(),
+		fire_bomb(), ice_shard(), thunder_bead(), revival_feather(),
+		scroll_cure(), scroll_cura(), scroll_cure_all(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
 		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
 		scroll_venom(), scroll_shock(), scroll_mute(), scroll_bind(),

@@ -346,9 +346,12 @@ func _show_item_submenu() -> void:
 	for item: Dictionary in carried:
 		var is_throwable: bool = item.has("inflicts_status") \
 			or (item.has("element") and item.get("dmg", 0) > 0)
+		var usable: bool = is_throwable or player.can_use_item(item)
+		if item.has("revive"):
+			usable = not _fallen_members().is_empty()
 		entries.append({title = item["name"] as String,
 				detail = "x%d" % int(item.get("qty", 1)),
-				disabled = not is_throwable and not player.can_use_item(item),
+				disabled = not usable,
 				press = _on_use_item.bind(item)})
 	_fill_submenu(entries, _show_item_submenu)
 
@@ -432,6 +435,15 @@ func _roll_crit() -> bool:
 # whatever happened, which made a throwable the safe way to probe a chart.
 func _use_item_by_id(item_id: String) -> Dictionary:
 	for item: Dictionary in player.inventory:
+		if item["id"] == item_id and item["type"] == "consumable" and item.has("revive"):
+			var who: CharacterSheet = _ally_target
+			if who == null or who.is_alive():
+				return {msg = "[color=gray]Nobody to revive.[/color]", cost = PressTurn.COST_FULL}
+			player.remove_item(item, 1)
+			who.heal(maxi(1, who.max_hp * int(item["revive"]) / 100))
+			_refresh_hp()
+			return {msg = "[color=lime]Used %s! %s is back on their feet.[/color]" % [
+					item["name"], _member_name(who)], cost = PressTurn.COST_FULL}
 		if item["id"] == item_id and item["type"] == "consumable":
 			var inflicts: String = item.get("inflicts_status", "")
 			if inflicts != "":
@@ -508,6 +520,46 @@ func _end_combat(result: String) -> void:
 
 
 # ── Phase flow ────────────────────────────────────────────────────────────────
+
+# The one of the party a heal or a revive is about to land on, chosen in
+# _pick_ally just before the action commits.
+var _ally_target: CharacterSheet = null
+
+
+# Everyone in the party who is down, the hero included. _fallen_party is the
+# monsters only, for Summon.
+func _fallen_members() -> Array[CharacterSheet]:
+	var out: Array[CharacterSheet] = []
+	for m: CharacterSheet in party:
+		if not m.is_alive():
+			out.append(m)
+	return out
+
+
+# Who in the party a heal (the living) or a revive (the fallen) lands on. With
+# only one choice it does not ask.
+func _pick_ally(fallen: bool, title: String, back: Callable, then: Callable) -> void:
+	var pool: Array[CharacterSheet] = _fallen_members() if fallen else _living_party()
+	if pool.size() == 1:
+		_ally_target = pool[0]
+		then.call()
+		return
+	_hide_actions()
+	_set_back(back)
+	_right_title.text = title
+	_right_title.add_theme_color_override("font_color", Color(0.45, 1.0, 0.55))
+	_submenu_clear()
+	var entries: Array[Dictionary] = []
+	for m: CharacterSheet in pool:
+		var who: CharacterSheet = m
+		entries.append({title = _member_name(who),
+				detail = "%d / %d HP" % [who.hp, who.max_hp],
+				press = func() -> void:
+					_ally_target = who
+					then.call()})
+	_sub_page = 0
+	_fill_submenu(entries, func() -> void: _pick_ally(fallen, title, back, then))
+
 
 func _living_party() -> Array[CharacterSheet]:
 	var out: Array[CharacterSheet] = []
@@ -808,6 +860,10 @@ func _actor_portrait() -> TextureRect:
 
 
 func _on_use_item(item: Dictionary) -> void:
+	if item.has("revive"):
+		_pick_ally(true, "Revive who?", _show_item_submenu,
+				func() -> void: await _commit_item(item))
+		return
 	var offensive: bool = item.has("inflicts_status") \
 			or (item.has("element") and item.get("dmg", 0) > 0)
 	if not offensive:
@@ -2659,6 +2715,12 @@ func _on_skill_chosen(action: String) -> void:
 		var spell_id: String = action.substr(6)
 		var data: Dictionary = Spell.get_data(spell_id)
 		var kind: String = data.get("type", "dmg") as String
+		# A single heal lands on one of the party, so it asks who; the All
+		# heals take everyone standing and ask nothing.
+		if kind == "heal" and not Spell.is_multi(spell_id):
+			_pick_ally(false, "Heal who?", _show_skills_submenu,
+					func() -> void: await _commit_action(action))
+			return
 		if kind == "heal" or kind == "buff" or kind == "dispel" or Spell.is_multi(spell_id):
 			await _commit_action(action)
 			return
@@ -2711,10 +2773,21 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		return _cast_banish(bd)
 
 	if spell_type == "heal":
-		var before: int = player.hp
-		player.heal(player.heal_amount_for(spell_id))
-		return {msg = "[color=lime]You cast %s! Restored %d HP.[/color]" % [
-				data["name"], player.hp - before], cost = PressTurn.COST_FULL}
+		var amount: int = player.heal_amount_for(spell_id)
+		if Spell.is_multi(spell_id):
+			var total: int = 0
+			for m: CharacterSheet in _living_party():
+				var was: int = m.hp
+				m.heal(amount)
+				total += m.hp - was
+			return {msg = "[color=lime]You cast %s! The party recovers %d HP.[/color]" % [
+					data["name"], total], cost = PressTurn.COST_FULL}
+		var who: CharacterSheet = _ally_target if _ally_target != null \
+				and _ally_target.is_alive() else player
+		var before: int = who.hp
+		who.heal(amount)
+		return {msg = "[color=lime]You cast %s! %s recovers %d HP.[/color]" % [
+				data["name"], _member_name(who), who.hp - before], cost = PressTurn.COST_FULL}
 
 	if Spell.is_multi(spell_id):
 		return _cast_spread(data)

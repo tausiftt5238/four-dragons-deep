@@ -383,6 +383,7 @@ func _supplies() -> Array[Dictionary]:
 	if floor_num >= 2:
 		out.append(Item.panacea())
 		out.append(Item.elixir_motion())
+		out.append(Item.revival_feather())
 	return out
 
 
