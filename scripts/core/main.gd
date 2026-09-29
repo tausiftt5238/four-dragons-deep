@@ -955,6 +955,22 @@ func _start_combat() -> void:
 	_launch_combat(Enemy.make_group(floor_num))
 
 
+# A practice fight bought at an orb. Built at this floor's level, and marked so
+# the reward tally pays experience only and a boss floor does not read the win
+# as the dragon falling.
+var _in_gauntlet: bool = false
+
+
+func _start_gauntlet(names: Array[String]) -> void:
+	var group: Array[Enemy] = []
+	for n: String in names:
+		var e: Enemy = Enemy.make_from_name(n, floor_num)
+		e.gold_reward = 0
+		group.append(e)
+	_in_gauntlet = true
+	_launch_combat(group)
+
+
 func _start_boss_combat() -> void:
 	_pending_congratulations = (floor_num >= Level.FLOOR_COUNT)
 	# Bosses come alone; their own icon count is what makes them a fight.
@@ -1002,7 +1018,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		# too. Analyze is the only thing they refuse.
 		if not foe.is_alive():
 			player_char.record_analysis(foe.enemy_name)
-		if not foe.is_alive() and item_drop.is_empty():
+		if not foe.is_alive() and item_drop.is_empty() and not _in_gauntlet:
 			item_drop = foe.roll_drop()
 			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
 					and randi() % 2 == 0:
@@ -1048,8 +1064,10 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	# On a boss floor an encounter with no roamer behind it is the boss. Only a
 	# win counts: a flee used to pass as "not a loss", so slipping away from the
 	# Ice Dragon marked it beaten and the corridor let you walk on past it.
-	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty():
+	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty() \
+			and not _in_gauntlet:
 		_boss_beaten = true
+	_in_gauntlet = false
 
 	if not lost.is_empty() and result != "lose":
 		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
@@ -1394,6 +1412,10 @@ func _open_orb(tab: String = "rest") -> void:
 	ui.save_requested.connect(func() -> void:
 		_close_orb()
 		_open_save_menu()
+	)
+	ui.gauntlet_requested.connect(func(names: Array[String]) -> void:
+		_close_orb()
+		_start_gauntlet(names)
 	)
 	orb_layer.add_child(ui)
 

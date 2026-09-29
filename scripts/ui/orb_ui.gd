@@ -7,6 +7,8 @@ class_name OrbUI extends Control
 
 signal closed
 signal save_requested
+# The lineup the player paid for, as template names. Main runs the fight.
+signal gauntlet_requested(names: Array[String])
 
 var player: PlayerCharacter
 var floor_num: int = 1
@@ -91,7 +93,8 @@ func _build() -> void:
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Recruit"],
 			["sell", "Sell"], ["buy", "Supplies"],
-			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"]]:
+			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"],
+			["gauntlet", "Gauntlet"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -124,6 +127,7 @@ func _switch(tab: String) -> void:
 		"gear": _build_gear()
 		"scrolls": _build_scrolls()
 		"save": _build_save()
+		"gauntlet": _build_gauntlet()
 
 
 func _refresh() -> void:
@@ -132,6 +136,99 @@ func _refresh() -> void:
 
 func _set_status(msg: String) -> void:
 	_status.text = msg
+
+
+# ── Gauntlet ──────────────────────────────────────────────────────────────────
+#
+# A paid practice fight, for grinding: up to four monsters out of the bestiary,
+# met at this floor's level, as many of one kind as the player likes. It pays
+# experience and nothing else — no gold, no drops — or it would be a way to
+# turn gold into more gold. Only the ordinary roster is on offer: wardens,
+# dragons and the mimic are set pieces met once.
+const GAUNTLET_MAX: int = 4
+
+var _lineup: Array[String] = []
+
+
+static func gauntlet_price(enemy_name: String, floor_num: int) -> int:
+	var e: Enemy = Enemy.make_from_name(enemy_name, floor_num)
+	var price: int = 10 + e.lv * 6
+	e.free()
+	return price
+
+
+func _gauntlet_total() -> int:
+	var total: int = 0
+	for n: String in _lineup:
+		total += gauntlet_price(n, floor_num)
+	return total
+
+
+func _build_gauntlet() -> void:
+	var line: Label = Label.new()
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.text = "Lineup  (%d / %d):  %s" % [_lineup.size(), GAUNTLET_MAX,
+			", ".join(_lineup) if not _lineup.is_empty() else "empty"]
+	line.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92))
+	_content.add_child(line)
+
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	_content.add_child(row)
+	var clear: Button = Button.new()
+	clear.text = "Clear"
+	clear.disabled = _lineup.is_empty()
+	clear.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	clear.pressed.connect(func() -> void:
+		_lineup.clear()
+		_refresh())
+	row.add_child(clear)
+	var total: int = _gauntlet_total()
+	var fight: Button = Button.new()
+	fight.text = "Fight  (%d g)" % total
+	fight.disabled = _lineup.is_empty() or player.gold < total
+	fight.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fight.pressed.connect(func() -> void:
+		player.gold -= total
+		var names: Array[String] = _lineup.duplicate()
+		_lineup.clear()
+		gauntlet_requested.emit(names))
+	row.add_child(fight)
+
+	_content.add_child(HSeparator.new())
+
+	var tiers: Array = [[], [], [], []]
+	for n: String in player.encountered_enemies:
+		for t: Dictionary in Enemy.TEMPLATES:
+			if t["name"] == n:
+				(tiers[clampi(int(t.get("tier", 1)), 1, 4) - 1] as Array).append(n)
+				break
+	var groups: Array = []
+	for i: int in 4:
+		groups.append({title = "Tier %s" % ["I", "II", "III", "IV"][i], entries = tiers[i]})
+	var any: bool = false
+	for g: Dictionary in groups:
+		if not (g["entries"] as Array).is_empty():
+			any = true
+	if not any:
+		SlotList.new(_content).add_note("Meet a monster on the floor first. The gauntlet only offers what your bestiary knows.")
+		return
+	SlotList.sections(_content, _page, "gauntlet", groups, _gauntlet_offer)
+
+
+func _gauntlet_offer(list: SlotList, enemy_name: String) -> void:
+	var e: Enemy = Enemy.make_from_name(enemy_name, floor_num)
+	var about: String = "LV %d   HP %d   %d exp" % [e.lv, e.max_hp, e.exp_reward]
+	e.free()
+	var price: int = gauntlet_price(enemy_name, floor_num)
+	var full: bool = _lineup.size() >= GAUNTLET_MAX
+	list.add(enemy_name, Color(0.85, 0.85, 0.92), about,
+			"%d g" % price, Color(1.0, 0.85, 0.35),
+			"Full" if full else "Add", full,
+			func() -> void:
+				_lineup.append(enemy_name)
+				_set_status("%s joins the lineup." % enemy_name)
+				_refresh())
 
 
 # ── Rest ──────────────────────────────────────────────────────────────────────

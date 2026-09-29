@@ -44,6 +44,8 @@ The only place you can save, heal or shop. Stand on one and every tab is there:
 - **Supplies / Gear / Scrolls** — potions, weapons and armour, and every spell
   the depth you have reached has opened up.
 - **Save** — write the run to a slot.
+- **Gauntlet** — pay to fight up to four monsters from your bestiary at this
+  floor's level. Experience only: no gold, no drops.
 
 **Every boss corridor has an orb one step inside it**, facing you. That is the
 last chance to prepare before the dragon, and there are no traps between the
