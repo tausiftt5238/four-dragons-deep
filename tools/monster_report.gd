@@ -179,7 +179,8 @@ func _check_tier(tier: int) -> void:
 		for r: Dictionary in tr:
 			if r[el] in BLOCKS:
 				blocked += 1
-		if blocked * 3 > tr.size():
+		# Past half is a wall. Blocking is meant to be common, so a third is fine.
+		if blocked * 2 > tr.size():
 			warnings.append("%s: %d of %d monsters null, reflect or drain **%s**." % [
 					tn, blocked, tr.size(), el])
 

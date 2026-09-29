@@ -30,6 +30,7 @@ func start() -> void:
 				if item.has("inflicts_status") or item.has("element"):
 					demand = item
 					break
+			# "any" and "consumable" both take whatever consumable comes first.
 			_:
 				demand = item
 				break
