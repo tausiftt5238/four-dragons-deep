@@ -373,13 +373,19 @@ func _show_talk_submenu() -> void:
 	# closed rather than allowed to eat three rounds and fail. Refusing up front
 	# is the honest version of the same rule.
 	var outranks: bool = enemy.lv > player.lv
+	# Six already answer to you: Recruit has nowhere to put it.
+	var full: bool = not player.can_bind(enemy.enemy_name)
 	# No "bound" state here any more: Talk never reaches this menu on a demon
 	# whose name is already in the rolodex — that one pays you off instead.
 	for opt: Array in opts:
 		var recruit: bool = opt[0] == "Recruit"
-		var btn: Button = _big_button(opt[1] as String,
-				"Lv %d > yours" % enemy.lv if recruit and outranks else "",
-				recruit and outranks)
+		var note: String = ""
+		if recruit and full:
+			note = "Roster full"
+		elif recruit and outranks:
+			note = "Lv %d > yours" % enemy.lv
+		var btn: Button = _big_button(opt[1] as String, note,
+				recruit and (outranks or full))
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_submenu_add(btn)
 
@@ -1779,12 +1785,10 @@ func _on_action(action: String) -> void:
 							% enemy.display_name())
 					_prompt_tribute(false)
 					return
-				# Six already answer to you, so there is nothing to bargain for.
-				if not player.can_bind(enemy.enemy_name):
-					_log("[color=#ffd479]%s would come — but six already answer to you. It pays its way out.[/color]"
-							% enemy.display_name())
-					_prompt_tribute(false)
-					return
+				# A full roster used to skip the talk and hand over a payoff here,
+				# which made every negotiable monster a one-action win with no
+				# roll and no level check. It talks normally now; only Recruit
+				# is closed, in the submenu.
 				_show_talk_submenu())
 			return
 		"Summon":
