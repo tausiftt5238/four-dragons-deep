@@ -169,9 +169,9 @@ Monsters per tier — I: 10, II: 8, III: 6, IV: 4.
 | Monster | Where | LV | HP | STR | MAG | AGL | Chart | Attacks | Ailment |
 |---|---|---|---|---|---|---|---|---|---|
 | Black Knight | Floor 4 | 7 | 118 | 14 | 14 | 5 | Phys S · Fire R · Ice N · Thunder W · Light S | thunder light | immobilize |
-| Dark Knight | Floor 9 | 16 | 238 | 30 | 26 | 13 | Phys S · Fire W · Ice N · Light W · Dark D | ice dark | silence |
-| Death Knight | Floor 14 | 25 | 382 | 25 | 69 | 25 | Fire R · Ice W · Thunder N · Light W · Dark D | fire dark ice | silence |
-| Minotaur | Floor 19 | 33 | 546 | 80 | 56 | 40 | Phys S · Fire N · Ice D · Thunder W · Light W · Dark D | ice dark | immobilize |
+| Dark Knight | Floor 9 | 16 | 238 | 30 | 26 | 13 | Phys S · Fire W · Ice N · Light S · Dark D | ice dark | silence |
+| Death Knight | Floor 14 | 25 | 382 | 25 | 69 | 25 | Fire R · Ice W · Thunder N · Light S · Dark D | fire dark ice | silence |
+| Minotaur | Floor 19 | 33 | 546 | 80 | 56 | 40 | Phys S · Fire N · Ice D · Thunder W · Light S · Dark D | ice dark | immobilize |
 | Mimic | Chests, floor 6+ | 9 | 141 | 22 | 17 | 11 | Phys S · Fire W · Thunder R · Light W · Dark D | thunder dark | poison |
 | Ice Dragon | Floor 5 | 10 | 3620 | 36 | 30 | 12 | Fire W · Ice D · Thunder N · Light N · Dark N | ice | immobilize |
 | Thunder Dragon | Floor 10 | 20 | 6820 | 67 | 67 | 52 | Fire N · Ice W · Thunder D · Light N · Dark N | thunder | paralyzed |

@@ -171,19 +171,36 @@ static func resolve_banish(target: CharacterSheet, element: String,
 	return {outcome = "failed", dmg = 0, taken = false}
 
 
-# Does a physical swing connect? Magic never misses — that is the Nocturne rule,
-# and it keeps the affinity chart reliable while leaving agility to decide the
-# things agility should decide. A miss costs two icons, so a slowed party bleeds
-# turns rather than damage.
-static func lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
+# The odds a swing connects, from the two sides' agility. Ratio-based so it
+# behaves the same at level 2 and level 20: even agility lands 95%, and four
+# stages either way swings it roughly 95% <-> 55%.
+static func hit_chance(attacker: CharacterSheet, target: CharacterSheet) -> float:
 	var atk: float = maxf(1.0, float(attacker.battle_agility())
 			* attacker.stage_mult(CharacterSheet.STAT_AGL))
 	var eva: float = maxf(1.0, float(target.battle_agility())
 			* target.stage_mult(CharacterSheet.STAT_AGL))
-	# Ratio-based so it behaves the same at level 2 and level 20: even agility
-	# lands 95%, and four stages either way swings it roughly 95% <-> 55%.
-	var chance: float = clampf(0.95 * (atk / (atk + eva)) * 2.0, 0.30, 0.99)
-	return randf() < chance
+	return clampf(0.95 * (atk / (atk + eva)) * 2.0, 0.30, 0.99)
+
+
+# Does a physical swing connect? A miss costs two icons, so a slowed party
+# bleeds turns rather than damage.
+static func lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
+	return randf() < hit_chance(attacker, target)
+
+
+# What a damaging spell keeps of a swing's chance to miss. It used to be zero —
+# magic never missed — which left agility buffs and debuffs doing nothing for or
+# against a caster. At half, even agility lands 97.5% and a slowed caster
+# against a quickened target still lands about three in four.
+const SPELL_MISS_SHARE: float = 0.5
+
+
+static func spell_hit_chance(attacker: CharacterSheet, target: CharacterSheet) -> float:
+	return 1.0 - (1.0 - hit_chance(attacker, target)) * SPELL_MISS_SHARE
+
+
+static func spell_lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
+	return randf() < spell_hit_chance(attacker, target)
 
 
 # Which press-turn cost an outcome carries. Repel/drain/null are checked before

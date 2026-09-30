@@ -2038,9 +2038,13 @@ func _resolve_skill(chosen: String) -> Dictionary:
 		return _demon_banish_one(actor, enemy, element, power,
 				Spell.rung_boost(rung))
 
+	if element != Affinity.PHYS and not CombatMath.spell_lands(actor, enemy):
+		return {msg = "[color=#9aa0aa]%s calls up %s — %s slips it![/color]" % [
+				actor.display_name(), named, enemy.display_name()],
+				cost = PressTurn.COST_FULL}
 	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(
-			int(power * Spell.rung_power(rung)) - _guarded_def(enemy),
+			int(power * Spell.rung_power(rung)) - _guard_vs(enemy, element),
 			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s calls up %s!" % [
 			actor.display_name(), named])
@@ -2119,8 +2123,12 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 					lines.append("[color=gray]%s holds.[/color]" % foe.display_name())
 			continue
 
+		if not CombatMath.spell_lands(actor, foe):
+			outcomes.append("miss")
+			lines.append("[color=#9aa0aa]%s slips it.[/color]" % foe.display_name())
+			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * split) - _guarded_def(foe), element, foe,
+				int(base * split) - _guard_vs(foe, element), element, foe,
 				CombatMath.roll_crit(actor), foe.defending)
 		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
@@ -2799,7 +2807,11 @@ func _cast_spell(spell_id: String) -> Dictionary:
 	var element: String = data.get("element", "")
 	var power: float = float(player.effective_mag()) \
 			* player.stage_mult(CharacterSheet.STAT_MAG)
-	var base: int = int(power * float(data.get("power", Spell.POWER_I))) - _guarded_def(enemy)
+	if not CombatMath.spell_lands(player, enemy):
+		return {msg = "[color=#9aa0aa]You cast %s — %s slips it![/color]" % [
+				data["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
+	var base: int = int(power * float(data.get("power", Spell.POWER_I))) \
+			- _guard_vs(enemy, element)
 	if "scholar" in player.passive_skills:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit(player)
@@ -2854,7 +2866,11 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 
 	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
-		var base: int = int(power * rung * split) - _guarded_def(foe)
+		if not CombatMath.spell_lands(player, foe):
+			outcomes.append("miss")
+			lines.append("[color=#9aa0aa]%s slips it.[/color]" % foe.display_name())
+			continue
+		var base: int = int(power * rung * split) - _guard_vs(foe, element)
 		if "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
@@ -3003,6 +3019,25 @@ static func _stat_name(stat: String) -> String:
 
 
 # Defence as it counts right now: the stat, the guard stance, and the stage.
+# What stands between a spell and its target: half DEF and half MAG, together
+# the same size as the DEF a swing runs into when the two are level, so a
+# caster turns magic better than a brute and armour still counts for something.
+func _guarded_mdef(target: CharacterSheet) -> int:
+	var mag: int = player.effective_mag() if target == player else target.mag
+	var base: float = float(_defense_of(target)) * target.stage_mult(CharacterSheet.STAT_DEF) \
+			+ float(mag) * target.stage_mult(CharacterSheet.STAT_MAG)
+	if target.defending:
+		base *= 2.0
+	return int(base / 4.0)
+
+
+# A swing meets DEF; anything elemental meets DEF and MAG together.
+func _guard_vs(target: CharacterSheet, element: String) -> int:
+	if element == Affinity.PHYS or element == "":
+		return _guarded_def(target)
+	return _guarded_mdef(target)
+
+
 func _guarded_def(target: CharacterSheet) -> int:
 	var base: float = float(_defense_of(target)) * target.stage_mult(CharacterSheet.STAT_DEF)
 	if target.defending:
@@ -3186,7 +3221,8 @@ func _resolve_attack() -> Dictionary:
 
 # A blade on one of the two banishing lines expels instead of wounding, at the
 # same odds a cast of that element would get — the difference being that a swing
-# has to land first, and a cast never misses.
+# has to land first. A banishing cast has no hit roll of its own: the banish
+# odds already are one.
 func _resolve_banishing_swing(element: String, power: int) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(
 			enemy, element, power, false, player)
@@ -3341,16 +3377,21 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	if Affinity.is_banishing(element):
 		return _enemy_banish(actor, target, element, dry)
 
-	# Only a swing can miss. Whatever it calls up always arrives. A miss does not
+	# A swing misses on agility; a spell misses half as often. A miss does not
 	# spend the target's brace — it never had to absorb anything.
 	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
 		return {msg = dry + "[color=#9aa0aa]%s lunges at %s and misses![/color]" % [
 				actor.display_name(), _member_name(target)], cost = PressTurn.COST_MISS}
+	# A spell misses half as often as a swing, and costs its one icon.
+	if element != Affinity.PHYS and not CombatMath.spell_lands(actor, target):
+		return {msg = dry + "[color=#9aa0aa]%s uses %s — %s slips it![/color]" % [
+				actor.display_name(), Affinity.element_name(element), _member_name(target)],
+				cost = PressTurn.COST_FULL}
 
 	if element == Affinity.PHYS:
 		base *= actor.stage_mult(CharacterSheet.STAT_ATK)
 	var guarding: bool = target.defending
-	var eff_def: int = _guarded_def(target)
+	var eff_def: int = _guard_vs(target, element)
 
 	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(int(base) - eff_def, element, target,
@@ -3428,8 +3469,12 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 					maxi(1, int(base * spread)), who == player, actor, spread)
 			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
 			continue
+		if element != Affinity.PHYS and not CombatMath.spell_lands(actor, who):
+			outcomes.append("miss")
+			lines.append("[color=#9aa0aa]%s slips it.[/color]" % _member_name(who))
+			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * split) - _guarded_def(who), element, who,
+				int(base * split) - _guard_vs(who, element), element, who,
 				CombatMath.roll_crit(actor), who.defending)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])

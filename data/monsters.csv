@@ -28,9 +28,9 @@ monster,Flame Golem,Floors 11-14,3,0,1,4,6,7,1,resist,drain,weak,resist,,weak,fi
 monster,Dark Demoness,Floors 16-19,4,0,1,8,5,7,5,,drain,reflect,weak,,drain,fire dark,one,,silence,22,stoke,yes,proud,any,Demoness_B,
 monster,Warlock,Floors 16-19,4,0,1,3,3,9,4,weak,reflect,reflect,reflect,,resist,fire ice thunder,all,yes,silence,22,purge,yes,proud,consumable,Warlock,
 warden,Black Knight,Floor 4,1,,2,6,7,6,2,resist,reflect,null,weak,resist,,thunder light,few,,immobilize,8,,no,,,Black_Knight_A,
-warden,Dark Knight,Floor 9,2,,2,7,6,6,3,resist,weak,null,,weak,drain,ice dark,all,,silence,10,mire,no,,,Black_Knight_B,
-warden,Death Knight,Floor 14,3,,2,4,7,11,4,,reflect,weak,null,weak,drain,fire dark ice,all,yes,silence,20,purge,no,,,Black_Knight_C,
-warden,Minotaur,Floor 19,4,,2,10,9,7,5,resist,null,drain,weak,weak,drain,ice dark,few,,immobilize,20,ward,no,,,Minotaur,
+warden,Dark Knight,Floor 9,2,,2,7,6,6,3,resist,weak,null,,resist,drain,ice dark,all,,silence,10,mire,no,,,Black_Knight_B,
+warden,Death Knight,Floor 14,3,,2,4,7,11,4,,reflect,weak,null,resist,drain,fire dark ice,all,yes,silence,20,purge,no,,,Black_Knight_C,
+warden,Minotaur,Floor 19,4,,2,10,9,7,5,resist,null,drain,weak,resist,drain,ice dark,few,,immobilize,20,ward,no,,,Minotaur,
 mimic,Mimic,"Chests, floor 6+",,,2,8,6,6,4,resist,weak,,reflect,weak,drain,thunder dark,few,,poison,12,,no,,,res://resources/enemySprites/Mimic.png,"Placed among real caches, so the floor's own furniture becomes a thing to read twice. Weak to fire and to light because the disguise is the whole of its defence."
 dragon,Ice Dragon,Floor 5,1,,4,12,9,10,4,,weak,drain,null,null,null,ice,few,,immobilize,25,ward,no,,,Ice_Dragon,"The first dragon and the only one the player is armed for on arrival: the run opens holding Ember and this thing drinks its own element and burns on the other. One element and a narrow reach, so the fight teaches what a dragon is before the next one starts asking questions about it."
 dragon,Thunder Dragon,Floor 10,2,,4,13,9,13,10,,null,weak,drain,null,null,thunder,all,,paralyzed,25,steady,no,,,Thunder_Dragon,"Fast — the only boss that outruns a party — and it hits the whole room every turn it can pay for. Paralysis on a room-wide cast is the threat: it is trying to take your turns, not your HP. Ice is the answer and the ice corridor is where you got it."

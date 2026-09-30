@@ -63,8 +63,13 @@ pool.
 |---|---|
 | An ordinary action | 1 icon |
 | **You hit a weakness, or land a critical** | **half an icon** — the turn stretches |
-| You miss, or the target **nulls** the element | **2 icons** |
+| A swing misses, or the target **nulls** the element | **2 icons** |
+| A spell misses | 1 icon |
 | The target **repels or drains** it | **the entire phase, instantly** |
+
+Agility decides whether anything lands: swings miss more often, spells half as
+often, so speeding your side up or slowing theirs down pays off for casters too.
+A swing is blocked by **DEF**; a spell by **DEF and MAG** together.
 
 That last row is the whole game. Throwing fire at something that drinks fire
 does not just fail — it ends your round on the spot, whatever you had left.
