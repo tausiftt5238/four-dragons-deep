@@ -89,7 +89,7 @@ func _initialize() -> void:
 		spells.append({
 			id = id, name = s["name"], type = s.get("type", ""), element = element,
 			reach = _reach(s.get("shape", Spell.SHAPE_ONE) as String),
-			rung = _rung(s) if s.has("power") or s.has("boost") else "",
+			rung = _rung(s) if s.get("type", "") in ["dmg", "banish"] else "",
 			mp = _nz(s.get("mp", 0)), hp_pct = _nz(s.get("hp", 0)),
 			power = s.get("power", ""), boost = s.get("boost", ""),
 			heal = _nz(s.get("heal", 0)), stat = s.get("stat", ""),

@@ -65,6 +65,9 @@ var battle_tag: String = ""
 # A support spell this demon leans on, by Spell.DATA id. Empty means it only
 # knows how to hit things.
 var support_skill: String = ""
+# Skills only its own kind has — the bats and the blood things drink, HP or MP,
+# and scale it off STR. Ids in Spell.DATA; a template lists them as `unique`.
+var unique_skills: Array[String] = []
 
 # Set the first turn a demon reaches for its element and cannot pay. It tries
 # every turn now, so without this the log would say so every turn.
@@ -147,6 +150,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "thunder", phys = "weak",
 		status_attack = "", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
+		unique = ["hp_leech", "mp_leech"],
 		sprite_id = "Bat"},
 	{name = "Slime",            lv =  1,
 		str =  2, def =  2, mag =  3, agl =  1,
@@ -168,6 +172,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "thunder", phys = "weak",
 		attack_element = "fire", status_attack = "", ail = 5, support = "mire",
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "any",
+		unique = ["hp_leech", "mp_leech"],
 		sprite_id = "Hellbat"},
 	{name = "Lava Slime",       lv =  2,
 		str =  3, def =  3, mag =  3, agl =  1,
@@ -182,6 +187,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "fire",
 		attack_element = "thunder", status_attack = "poison", ail = 5,
 		negotiable = true, talk_difficulty = 1, personality = "cowardly", wants = "potion",
+		unique = ["hp_leech", "mp_leech"],
 		sprite_id = "Blood_Monster_A"},
 	# ── Tier 1 · Floors 1-3 ──────────────────────────────────────────────────
 	{name = "Orc",              lv =  2,
@@ -254,6 +260,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "thunder", dark = "null",
 		attack_elements = ["dark", "thunder"], reach = "few", status_attack = "poison", ail = 12,
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "any",
+		unique = ["hp_leech", "mp_leech"],
 		sprite_id = "Blood_Monster_B"},
 	{name = "Fell Demon",       lv =  6,
 		str =  5, def =  3, mag =  5, agl =  5,
@@ -616,6 +623,7 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.icons           = int(t.get("icons", BOSS_ICONS))
 	e.unreadable      = true
 	e.support_skill   = t.get("support", "")
+	e.unique_skills.assign(t.get("unique", []) as Array)
 	e.ailment_chance  = int(t.get("ail", 25))
 	# A boss keeps its own colours; it is not one of a set.
 	e.tint            = Color.WHITE
@@ -796,6 +804,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.affinities      = _affinities_from(t)
 	e.icons           = int(t.get("icons", 1))
 	e.support_skill   = t.get("support", "")
+	e.unique_skills.assign(t.get("unique", []) as Array)
 	e.ailment_chance  = int(t.get("ail", 12))
 	e.tint            = tint_for_floor(floor_num)
 	e.compute_max_hp()

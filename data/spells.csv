@@ -1,5 +1,7 @@
 id,name,type,element,reach,rung,mp,hp_pct,power,boost,heal,stat,delta,scope,status,scroll,scroll_floor,scroll_price,desc
 analyze,Analyze,analyze,,one,,,,,,,,,,,,,,Read a monster's chart and its temper. Wardens and bosses refuse.
+hp_leech,HP Leech,leech,,one,,4,,1.5,,,,,,,,,,Bites and drinks. It heals by as much as it takes.
+mp_leech,MP Leech,leech,,one,,,,1.0,,,,,,,,,,Drinks a foe's MP into its own pool.
 lunge,Lunge,dmg,phys,one,I,,6,2.0,,,,,,,Scroll of Lunge,1,45,All your weight behind one blow.
 sweep,Sweep,dmg,phys,few,I,,10,2.0,,,,,,,Scroll of Sweep,2,70,A wide cut through two or three of them.
 rampage,Rampage,dmg,phys,all,I,,14,2.0,,,,,,,Scroll of Rampage,4,120,Through the whole line and back again.

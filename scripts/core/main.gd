@@ -1719,14 +1719,15 @@ func _apply_player_data(pdata: Dictionary) -> void:
 		var list: Array = []
 		for entry: Variant in raw:
 			var e: Dictionary = entry as Dictionary
-			if e.get("kind", "") == "support":
-				list.append({kind = "support", id = e.get("id", "") as String})
+			if e.get("kind", "") in ["support", "unique"]:
+				list.append({kind = e["kind"] as String, id = e.get("id", "") as String})
 			else:
 				list.append({kind = "element",
 						element = e.get("element", "") as String,
 						rung = int(e.get("rung", 1)),
 						shape = e.get("shape", Spell.SHAPE_ONE) as String})
 		player_char.demon_skills[k] = list
+	player_char.top_up_unique_skills()
 
 	player_char.active_demons.clear()
 	if pdata.has("active_demons"):

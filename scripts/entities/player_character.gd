@@ -275,7 +275,7 @@ static func _has_skill(list: Array, want: Dictionary) -> bool:
 	for skill: Dictionary in list:
 		if skill.get("kind", "") != want.get("kind", ""):
 			continue
-		if want.get("kind", "") == "support" and skill.get("id", "") == want.get("id", ""):
+		if want.get("kind", "") != "element" and skill.get("id", "") == want.get("id", ""):
 			return true
 		if want.get("kind", "") == "element" and skill.get("element", "") == want.get("element", ""):
 			return true
@@ -416,8 +416,24 @@ func seed_demon_skills(demon_name: String) -> void:
 				shape = e.attack_reach})
 	if e.support_skill != "":
 		list.append({kind = "support", id = e.support_skill})
+	for id: String in e.unique_skills:
+		if list.size() < DEMON_SKILL_CAP:
+			list.append({kind = "unique", id = id})
 	e.free()
 	demon_skills[demon_name] = list
+
+
+# A demon bound before its kind had a unique skill picks it up here, on load,
+# if it has a slot free for it. Nothing is forgotten to make room.
+func top_up_unique_skills() -> void:
+	for demon_name: String in demon_skills:
+		var list: Array = demon_skills[demon_name] as Array
+		var e: Enemy = Enemy.make_at_level(demon_name, 1)
+		for id: String in e.unique_skills:
+			var entry: Dictionary = {kind = "unique", id = id}
+			if list.size() < DEMON_SKILL_CAP and not _has_skill(list, entry):
+				list.append(entry)
+		e.free()
 
 
 func skills_of(demon_name: String) -> Array:
@@ -426,7 +442,7 @@ func skills_of(demon_name: String) -> Array:
 
 # The name a skill entry goes by on a button and in the log.
 static func skill_name(skill: Dictionary) -> String:
-	if skill.get("kind", "") == "support":
+	if skill.get("kind", "") != "element":
 		return Spell.get_data(skill.get("id", "") as String).get("name", "?") as String
 	var id: String = Spell.elemental_id(skill.get("element", "") as String,
 			int(skill.get("rung", 1)), skill.get("shape", Spell.SHAPE_ONE) as String)

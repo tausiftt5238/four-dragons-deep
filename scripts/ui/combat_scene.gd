@@ -1982,7 +1982,10 @@ func _show_skills_submenu() -> void:
 		var blocked: bool = demon.hp <= hp_price if hp_price > 0 \
 				else silenced_demon or demon.mp < cost
 		var tag: String = ""
-		if skill.get("kind", "") == "support":
+		if skill.get("kind", "") == "unique":
+			var u: Dictionary = Spell.get_data(skill.get("id", "") as String)
+			tag = "Drain %s  one" % (u.get("drain", "hp") as String).to_upper()
+		elif skill.get("kind", "") == "support":
 			var d: Dictionary = Spell.get_data(skill.get("id", "") as String)
 			tag = "%s%s  party" % [(d.get("stat", "") as String).to_upper(),
 					"+" if int(d.get("delta", 1)) > 0 else "-"] \
@@ -2002,7 +2005,7 @@ func _show_skills_submenu() -> void:
 # An elemental cast is paid out of the demon's own pool and gets dearer as its
 # rung climbs; a buff costs what the spell costs, the same as the detective pays.
 func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
-	if skill.get("kind", "") == "support":
+	if skill.get("kind", "") != "element":
 		return int(Spell.get_data(skill.get("id", "") as String).get("mp", 8))
 	var rung: int = int(skill.get("rung", 1))
 	return maxi(1, roundi(float(demon.skill_cost())
@@ -2051,6 +2054,9 @@ func _resolve_skill(chosen: String) -> Dictionary:
 					cost = PressTurn.COST_FULL}
 		actor.mp -= price
 
+	if skill.get("kind", "") == "unique":
+		return _leech(actor, enemy, skill.get("id", "") as String)
+
 	if skill.get("kind", "") == "support":
 		var data: Dictionary = Spell.get_data(skill.get("id", "") as String)
 		var out: Dictionary = _apply_stage_spell(data)
@@ -2092,6 +2098,75 @@ func _resolve_skill(chosen: String) -> Dictionary:
 			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s %s %s!" % [
 			actor.display_name(), "uses" if phys else "calls up", named], phys)
+
+
+# ── Leeches ───────────────────────────────────────────────────────────────────
+#
+# A bat or a blood thing biting, from either side of the field. The cost is
+# already paid. A bite, not a spell: it rolls to hit like a swing and a miss
+# wastes what a missed swing does. No element, so no chart to hit or bounce off.
+func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
+	var data: Dictionary = Spell.get_data(id)
+	var who: String = _member_name(target) if not target is Enemy \
+			else (target as Enemy).display_name()
+	var lead: String = "%s uses %s" % [actor.display_name(), data.get("name", "?")]
+	if not CombatMath.lands(actor, target):
+		return {msg = "[color=#9aa0aa]%s — %s dodges![/color]" % [lead, who],
+				cost = PressTurn.COST_MISS}
+	var bite: float = float(actor.str) * actor.stage_mult(CharacterSheet.STAT_ATK) \
+			* float(data.get("power", 1.0))
+
+	if data.get("drain", "hp") == "mp":
+		var took: int = mini(maxi(1, int(bite)), target.mp)
+		if took <= 0:
+			return {msg = "[color=gray]%s — %s has no MP to drink.[/color]" % [lead, who],
+					cost = PressTurn.COST_FULL}
+		target.mp -= took
+		actor.mp = mini(actor.max_mp, actor.mp + took)
+		return {msg = "[color=#7fb0ff]%s! It drinks %d MP from %s.[/color]" % [lead, took, who],
+				cost = PressTurn.COST_FULL}
+
+	var guarded: bool = target.defending
+	var res: Dictionary = CombatMath.resolve(int(bite) - _guarded_def(target), "",
+			target, CombatMath.roll_crit(actor), guarded)
+	var dmg: int = mini(int(res["dmg"]), target.hp)
+	target.take_damage(dmg)
+	actor.heal(dmg)
+	var pr: TextureRect = _foe_portrait(target as Enemy) if target is Enemy \
+			else _member_portrait(target)
+	if pr != null:
+		_shake_portrait(pr, guarded)
+	var tail: String = ""
+	if not target.is_alive():
+		tail = "  [color=lime]%s goes down![/color]" % who
+	return {msg = "%s!  [color=orange]%s takes %d[/color] [color=lime]and %s drinks it back.[/color]%s%s" % [
+			lead, who, dmg, actor.display_name(),
+			CombatMath.outcome_tag(res["outcome"] as String, bool(res["crit"]),
+					bool(res.get("suppressed", false))), tail],
+			cost = PressTurn.COST_HALF if bool(res["crit"]) and not guarded
+				else PressTurn.COST_FULL}
+
+
+# What a bat or a blood thing on the other side bites with this turn, if it
+# bites at all: HP when it is hurt and can pay, MP when it is short of what it
+# wants to spend and someone across the field has some to take.
+func _enemy_leech(actor: Enemy) -> Dictionary:
+	if actor.unique_skills.is_empty() or randi() % 2 == 0:
+		return {}
+	var hp_cost: int = int(Spell.get_data("hp_leech").get("mp", 4))
+	if "hp_leech" in actor.unique_skills and actor.hp * 10 < actor.max_hp * 7 \
+			and actor.mp >= hp_cost:
+		actor.mp -= hp_cost
+		return _leech(actor, _pick_target(""), "hp_leech")
+	if "mp_leech" in actor.unique_skills \
+			and actor.mp < maxi(actor.skill_cost(), hp_cost):
+		var richest: CharacterSheet = null
+		for m: CharacterSheet in _living_party():
+			if m.mp > 0 and (richest == null or m.mp > richest.mp):
+				richest = m
+		if richest != null:
+			return _leech(actor, richest, "mp_leech")
+	return {}
 
 
 # One demon of yours, one line, one foe. Light and dark expel rather than burn,
@@ -2802,8 +2877,10 @@ func _on_skill_chosen(action: String) -> void:
 		var idx: int = action.substr(6).to_int()
 		if idx >= 0 and idx < known.size():
 			var skill: Dictionary = known[idx] as Dictionary
+			# A leech bites one, whatever reach its kind usually has.
 			if skill.get("kind", "") == "support" \
-					or demon.attack_reach != Spell.SHAPE_ONE:
+					or (skill.get("kind", "") == "element"
+						and demon.attack_reach != Spell.SHAPE_ONE):
 				await _commit_action(action)
 				return
 	_with_target(func() -> void: await _commit_action(action))
@@ -3412,6 +3489,10 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 						sup["name"], _stat_name(stat),
 						"rises" if delta > 0 else "falls", moved],
 						cost = PressTurn.COST_FULL}
+
+	var bit: Dictionary = _enemy_leech(actor)
+	if not bit.is_empty():
+		return bit
 
 	var element: String = Affinity.PHYS
 	var base: float = float(actor.str)

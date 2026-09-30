@@ -76,6 +76,20 @@ static var DATA: Dictionary = {
 		shape=SHAPE_ONE, spread=1.0,
 		desc="Read a monster's chart and its temper. Wardens and bosses refuse."},
 
+	# ── Leeches ──────────────────────────────────────────────────────────────
+	# Only the bats and the blood things have these (Enemy `unique`), whether
+	# they are biting you or biting for you. Both are a bite, not a spell: they
+	# roll to hit like a swing and scale off STR, times `power`. No element, so
+	# nothing resists them. HP Leech wounds and heals the biter by what it
+	# took; MP Leech wounds nothing and moves MP from the target to the biter.
+	# Neither has a scroll: the detective does not bite.
+	"hp_leech":      {name="HP Leech",     mp=4, type="leech", drain="hp", heal=0, element="",
+		shape=SHAPE_ONE, spread=1.0, power=1.5,
+		desc="Bites and drinks. It heals by as much as it takes."},
+	"mp_leech":      {name="MP Leech",     mp=0, type="leech", drain="mp", heal=0, element="",
+		shape=SHAPE_ONE, spread=1.0, power=1.0,
+		desc="Drinks a foe's MP into its own pool."},
+
 	# ── Phys ──────────────────────────────────────────────────────────────────
 	# Skills rather than spells: they swing, so they meet DEF and miss the way a
 	# blade does, and they are paid for in HP. The price is a share of the pool,
