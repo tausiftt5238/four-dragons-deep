@@ -42,6 +42,13 @@ var affinities: Dictionary = {}
 # Set when this combatant chose Defend; cleared the next time it is struck.
 var defending: bool = false
 
+# A mirror held up by an Attack Mirror ("phys") or a Magic Mirror ("magic"):
+# every attack of that kind is repelled until the party's next phase begins.
+# Read through affinity_of, so every path that already handles a repel —
+# swings, casts, spreads, banishing — turns it back with no mirror code of
+# its own. CombatScene clears it.
+var mirror: String = ""
+
 # ── Buff and debuff stages ────────────────────────────────────────────────────
 #
 # Nocturne-style: attack, defence and agility each sit on a stage from -CAP to
@@ -111,7 +118,16 @@ func battle_luck() -> int:
 func affinity_of(element: String) -> String:
 	if element == "":
 		return Affinity.NORMAL
+	if mirrors(element):
+		return Affinity.REPEL
 	return affinities.get(element, Affinity.NORMAL) as String
+
+
+# Whether a held mirror turns this element back. Magic is everything but phys.
+func mirrors(element: String) -> bool:
+	if mirror == "" or element == "":
+		return false
+	return (element == Affinity.PHYS) == (mirror == "phys")
 
 
 func compute_max_hp() -> void:

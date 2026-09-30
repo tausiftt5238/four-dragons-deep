@@ -476,6 +476,7 @@ func _supplies() -> Array[Dictionary]:
 		Item.health_potion(), Item.hi_potion(), Item.ether(),
 		Item.antidote(), Item.stimulant(), Item.echo_gem(),
 		Item.venom_flask(), Item.fire_bomb(), Item.ice_shard(), Item.thunder_bead(),
+		Item.attack_mirror(), Item.magic_mirror(),
 	]
 	if floor_num >= 2:
 		out.append(Item.panacea())

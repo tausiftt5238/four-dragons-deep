@@ -124,6 +124,8 @@ static func _kind(d: Dictionary) -> String:
 		return "stone"
 	if d.has("revive"):
 		return "revive"
+	if d.has("mirror"):
+		return "mirror"
 	if d.has("element"):
 		return "throwable"
 	if d.has("inflicts_status"):

@@ -346,7 +346,7 @@ func _show_item_submenu() -> void:
 	for item: Dictionary in carried:
 		var is_throwable: bool = item.has("inflicts_status") \
 			or (item.has("element") and item.get("dmg", 0) > 0)
-		var usable: bool = is_throwable or player.can_use_item(item)
+		var usable: bool = is_throwable or item.has("mirror") or player.can_use_item(item)
 		if item.has("revive"):
 			usable = not _fallen_members().is_empty()
 		entries.append({title = item["name"] as String,
@@ -487,6 +487,13 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 				return {msg = "[color=aqua]Used %s![/color]%s  [color=violet]%s takes %d damage.[/color]" % [
 						item["name"], weak_tag, enemy.enemy_name, dmg],
 						cost = PressTurn.COST_HALF if weak else PressTurn.COST_FULL}
+			if item.has("mirror"):
+				player.remove_item(item, 1)
+				for m: CharacterSheet in _living_party():
+					m.mirror = item["mirror"] as String
+				return {msg = "[color=aqua]Used %s![/color]  [color=#d070ff]A mirror goes up before the party: %s attacks are turned back until your next turn.[/color]" % [
+						item["name"], "physical" if item["mirror"] == "phys" else "magic"],
+						cost = PressTurn.COST_FULL}
 			var result: String = player.use_item(item)
 			return {msg = "[color=aqua]Used %s. %s[/color]" % [item["name"], result],
 					cost = PressTurn.COST_FULL}
@@ -514,6 +521,9 @@ func _check_counter() -> String:
 # struck off at this moment and not the one it dropped in, so everything up to
 # the last enemy is a window in which Revive can still pull it back.
 func _end_combat(result: String) -> void:
+	# The detective outlives the fight; a mirror must not.
+	for member: CharacterSheet in party:
+		member.mirror = ""
 	# Not cleared: a body swapped off the field was already struck off and
 	# already recorded, and the tally afterwards has to name it too.
 	for i: int in range(1, party.size()):
@@ -607,6 +617,7 @@ func _begin_player_phase() -> void:
 	_step_back_immediate()
 	for member: CharacterSheet in party:
 		member.defending = false
+		member.mirror = ""
 	_phases += 1
 	if _try_begging():
 		return

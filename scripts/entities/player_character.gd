@@ -545,6 +545,8 @@ func _ready() -> void:
 func affinity_of(element: String) -> String:
 	if element == "":
 		return Affinity.NORMAL
+	if mirrors(element):
+		return Affinity.REPEL
 	if equipped_armor.get("resist_element", "") == element:
 		return Affinity.RESIST
 	for acc: Dictionary in equipped_accessories:

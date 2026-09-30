@@ -313,6 +313,32 @@ static func scroll_steady() -> Dictionary:
 			8, DISPEL_PRICE)
 
 
+# ── Mirrors ───────────────────────────────────────────────────────────────────
+#
+# Held up in a fight, a mirror turns back every attack of its kind at the whole
+# party until your next turn: the Attack Mirror swings, bites excepted, and the
+# Magic Mirror every element that is not phys, banishing included. Dear, and on
+# every orb's shelf from the first floor, so saving for one is a choice the
+# player can make from the start.
+const MIRROR_PRICE: int = 1000
+
+static func attack_mirror() -> Dictionary:
+	var d: Dictionary = consumable("attack_mirror", "Attack Mirror",
+			"Reflects every physical attack at the party until your next turn.",
+			0, 0, 1)
+	d["mirror"] = "phys"
+	d["price"] = MIRROR_PRICE
+	return d
+
+static func magic_mirror() -> Dictionary:
+	var d: Dictionary = consumable("magic_mirror", "Magic Mirror",
+			"Reflects every spell cast at the party until your next turn.",
+			0, 0, 1)
+	d["mirror"] = "magic"
+	d["price"] = MIRROR_PRICE
+	return d
+
+
 # ── Predefined offensive throwables ──────────────────────────────────────────
 
 static func venom_flask() -> Dictionary:
