@@ -147,6 +147,28 @@ static func scroll_curaga() -> Dictionary:
 	return scroll("scroll_curaga", "Scroll of Curaga", "curaga", "Curaga",
 			"Restores all of it.", 13)
 
+static func scroll_cure_all() -> Dictionary:
+	return scroll("scroll_cure_all", "Scroll of Cure All", "cure_all", "Cure All",
+			"Restores some HP to everyone.", 4)
+
+static func scroll_cura_all() -> Dictionary:
+	return scroll("scroll_cura_all", "Scroll of Cura All", "cura_all", "Cura All",
+			"Restores a good deal of HP to everyone.", 10)
+
+static func scroll_curaga_all() -> Dictionary:
+	return scroll("scroll_curaga_all", "Scroll of Curaga All", "curaga_all", "Curaga All",
+			"Restores everyone completely.", 16)
+
+# Brings a fallen party member back mid-fight, hero or monster, at half their
+# HP — the same terms Summon's revive gives a monster, without spending the
+# summon and without the hero being left out.
+static func revival_feather() -> Dictionary:
+	var d: Dictionary = consumable("revival_feather", "Revival Feather",
+			"Brings a fallen ally back with half their HP.", 0, 0, 2)
+	d["revive"] = 50
+	d["price"] = 120
+	return d
+
 static func scroll_venom() -> Dictionary:
 	return scroll("scroll_venom", "Scroll of Venom", "venom", "Venom",
 			"Poisons one monster.", 2)
@@ -180,25 +202,25 @@ static func spell_scroll(spell_id: String, floor: int) -> Dictionary:
 # late orb still stocks Ember for the player who wants a cheap opener.
 const ELEMENTAL_SCROLLS: Dictionary = {
 	# Rung one
-	"ember": 1, "rime": 1, "arc": 1,
-	"cinderfall": 2, "hailfall": 2, "forkfall": 2,
-	"pyre": 4, "whiteout": 4, "thunderhead": 4,
+	"ember": 1, "rime": 1, "arc": 1, "lunge": 1,
+	"cinderfall": 2, "hailfall": 2, "forkfall": 2, "sweep": 2,
+	"pyre": 4, "whiteout": 4, "thunderhead": 4, "rampage": 4,
 	"banish": 3, "consign": 3,
 	"winnow": 5, "cull": 5,
 	"daybreak": 6, "nightfall": 6,
 
 	# Rung two
-	"blaze": 6, "frostbite": 6, "bolt": 6,
-	"firestorm": 8, "blizzard": 8, "thunderstorm": 8,
-	"inferno": 10, "deepwinter": 10, "tempest": 10,
+	"blaze": 6, "frostbite": 6, "bolt": 6, "rend": 6,
+	"firestorm": 8, "blizzard": 8, "thunderstorm": 8, "scything_arc": 8,
+	"inferno": 10, "deepwinter": 10, "tempest": 10, "onslaught": 10,
 	"exile": 8, "erase": 8,
 	"scour": 10, "reap": 10,
 	"zenith": 12, "eclipse": 12,
 
 	# Rung three
-	"immolate": 12, "glaciate": 12, "levin": 12,
-	"ashfall": 14, "shardfall": 14, "skyfall": 14,
-	"worldfire": 16, "killingfrost": 16, "stormcrown": 16,
+	"immolate": 12, "glaciate": 12, "levin": 12, "deathblow": 12,
+	"ashfall": 14, "shardfall": 14, "skyfall": 14, "carnage": 14,
+	"worldfire": 16, "killingfrost": 16, "stormcrown": 16, "warpath": 16,
 	"absolve": 14, "unmake": 14,
 	"sunburst": 16, "harvest": 16,
 	"whitehour": 18, "longnight": 18,
@@ -226,6 +248,7 @@ static func scrolls_for_floor(floor_num: int) -> Array[Dictionary]:
 # a run could finish without ever being able to learn Cure.
 static var SUPPORT_SCROLLS: Array[Callable] = [
 	scroll_cure, scroll_cura, scroll_curaga,
+	scroll_cure_all, scroll_cura_all, scroll_curaga_all,
 	scroll_whet, scroll_ward, scroll_quicken, scroll_stoke,
 	scroll_blunt, scroll_sunder, scroll_mire, scroll_damp,
 	scroll_venom, scroll_shock, scroll_mute, scroll_bind,
@@ -288,6 +311,32 @@ static func scroll_steady() -> Dictionary:
 	return scroll("scroll_steady", "Scroll of Steady", "steady", "Steady",
 			"Clears every penalty stacked on your own side.",
 			8, DISPEL_PRICE)
+
+
+# ── Mirrors ───────────────────────────────────────────────────────────────────
+#
+# Held up in a fight, a mirror turns back every attack of its kind at the whole
+# party until your next turn: the Attack Mirror swings, bites excepted, and the
+# Magic Mirror every element that is not phys, banishing included. Dear, and on
+# every orb's shelf from the first floor, so saving for one is a choice the
+# player can make from the start.
+const MIRROR_PRICE: int = 1000
+
+static func attack_mirror() -> Dictionary:
+	var d: Dictionary = consumable("attack_mirror", "Attack Mirror",
+			"Reflects every physical attack at the party until your next turn.",
+			0, 0, 1)
+	d["mirror"] = "phys"
+	d["price"] = MIRROR_PRICE
+	return d
+
+static func magic_mirror() -> Dictionary:
+	var d: Dictionary = consumable("magic_mirror", "Magic Mirror",
+			"Reflects every spell cast at the party until your next turn.",
+			0, 0, 1)
+	d["mirror"] = "magic"
+	d["price"] = MIRROR_PRICE
+	return d
 
 
 # ── Predefined offensive throwables ──────────────────────────────────────────
@@ -394,8 +443,8 @@ static func drop_table() -> Array[Dictionary]:
 	var out: Array[Dictionary] = [
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
-		fire_bomb(), ice_shard(), thunder_bead(),
-		scroll_cure(), scroll_cura(),
+		fire_bomb(), ice_shard(), thunder_bead(), revival_feather(),
+		scroll_cure(), scroll_cura(), scroll_cure_all(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
 		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
 		scroll_venom(), scroll_shock(), scroll_mute(), scroll_bind(),

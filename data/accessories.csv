@@ -1,0 +1,17 @@
+id,name,tier,price,str,def,mag,agl,luk,resist,weak,desc
+cold_iron_ring,Cold Iron Ring,1,45,2,,,,,,,Iron that was never heated. Heavy on the hand.
+dowsing_pendulum,Dowsing Pendulum,1,45,,,,,3,,,It swings before you decide to move it.
+thin_brass_bell,Thin Brass Bell,1,45,,,,2,1,,,Too small to hear. Something answers it anyway.
+ironwood_bracer,Ironwood Bracer,1,45,1,2,,,,,,Cut from a tree that grew through a fence and kept the fence.
+salt_line,Pouch of Salt,2,70,,1,,,,dark,,"A line of it under the door. Old habit, still works."
+bone_rosary,Bone Rosary,2,70,,2,,,,light,,Someone counted their way through something on these.
+copper_coil,Coil of Copper Wire,2,70,,,2,,,thunder,,Wound tight. It takes the current so you do not.
+hummingbird_feather,Hummingbird Feather,2,70,,-1,,3,,,,"Weightless, and it makes everything else you carry feel like a decision."
+ash_phylactery,Ash Phylactery,3,95,,3,,,,fire,,A locket of someone's ashes. It has already burned once.
+widows_lens,Widow's Lens,3,95,,,3,-1,,,,Ground from a mourning brooch. You see more and move slower.
+gravediggers_gloves,Gravedigger's Gloves,3,95,3,,,-1,,,,Stiff with work. Your hands are surer and no faster.
+scrying_mirror,Scrying Mirror,3,95,,,4,,,light,,You are in it twice and you only stepped up once.
+serpents_tooth,Serpent's Tooth,3,95,5,,,,,,dark,Sharper than you are. It wants something in return.
+ferrymans_coin,Ferryman's Coin,4,120,,,,,4,,,"It was under a tongue. It is warm, and it should not be."
+kings_signet,King's Signet,4,120,2,2,2,2,2,,,Whoever wore it last is further down than you have been.
+thiefs_lantern,Thief's Lantern,4,120,,,,2,3,,,Shuttered on three sides. It shows you the floor and nothing else.

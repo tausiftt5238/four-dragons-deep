@@ -30,6 +30,7 @@ func start() -> void:
 				if item.has("inflicts_status") or item.has("element"):
 					demand = item
 					break
+			# "any" and "consumable" both take whatever consumable comes first.
 			_:
 				demand = item
 				break
@@ -58,6 +59,7 @@ func start() -> void:
 
 
 func _resolve(choice: String) -> void:
+	_s._lock_submenu()
 	_s._show_main_actions()
 	_s._set_buttons(false)
 	match choice:

@@ -49,7 +49,7 @@ func build() -> void:
 		if not p.is_equipped(spell_id2) and not Spell.get_data(spell_id2).is_empty():
 			ordered.append(spell_id2)
 
-	_m.add_paged_list(_m._content, "magic", ordered,
+	_m.add_list(_m._content, ordered,
 			func(list: SlotList, spell_id: String) -> void:
 				_add_spell(list, spell_id))
 
@@ -70,12 +70,10 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 	# Element and reach ride in the detail line rather than the title: at font
 	# size 20 the button already claims a third of the row, and a title that
 	# has to hold four things ends up clipped mid-word.
-	var about: String = spell.get("desc", "") as String
-	if element != "":
-		about = "%s %s  —  %s" % [kind, Spell.reach_tag(spell_id), about]
-	var cost: int = int(spell["mp"])
+	var about: String = ItemInfo.spell(spell_id)
+	var cost: int = int(spell.get("mp", 0))
 	var actions: Array[Dictionary] = [{
-		text = "Drop" if equipped else "Equip",
+		text = "Unequip" if equipped else "Equip",
 		disabled = not equipped and not p.has_free_slot(),
 		press = func() -> void:
 			if equipped:
@@ -105,4 +103,4 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 
 	list.add_entry("%s%s" % ["* " if equipped else "", spell["name"]],
 			title_color, about,
-			"%d MP" % cost, Color(0.4, 0.55, 0.95), actions)
+			"", Color(0.4, 0.55, 0.95), actions)

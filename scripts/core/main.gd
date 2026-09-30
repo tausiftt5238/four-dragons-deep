@@ -955,6 +955,22 @@ func _start_combat() -> void:
 	_launch_combat(Enemy.make_group(floor_num))
 
 
+# A practice fight bought at an orb. Built at this floor's level, and marked so
+# the reward tally pays experience only and a boss floor does not read the win
+# as the dragon falling.
+var _in_gauntlet: bool = false
+
+
+func _start_gauntlet(names: Array[String]) -> void:
+	var group: Array[Enemy] = []
+	for n: String in names:
+		var e: Enemy = Enemy.make_from_name(n, floor_num)
+		e.gold_reward = 0
+		group.append(e)
+	_in_gauntlet = true
+	_launch_combat(group)
+
+
 func _start_boss_combat() -> void:
 	_pending_congratulations = (floor_num >= Level.FLOOR_COUNT)
 	# Bosses come alone; their own icon count is what makes them a fight.
@@ -1002,7 +1018,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		# too. Analyze is the only thing they refuse.
 		if not foe.is_alive():
 			player_char.record_analysis(foe.enemy_name)
-		if not foe.is_alive() and item_drop.is_empty():
+		if not foe.is_alive() and item_drop.is_empty() and not _in_gauntlet:
 			item_drop = foe.roll_drop()
 			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
 					and randi() % 2 == 0:
@@ -1048,8 +1064,10 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	# On a boss floor an encounter with no roamer behind it is the boss. Only a
 	# win counts: a flee used to pass as "not a loss", so slipping away from the
 	# Ice Dragon marked it beaten and the corridor let you walk on past it.
-	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty():
+	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty() \
+			and not _in_gauntlet:
 		_boss_beaten = true
+	_in_gauntlet = false
 
 	if not lost.is_empty() and result != "lose":
 		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
@@ -1120,11 +1138,13 @@ func _demon_snapshots() -> Dictionary:
 func _demon_level_ups(grew: Dictionary, before: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var learned: Dictionary = grew.get("learned", {}) as Dictionary
+	var offers: Dictionary = grew.get("offers", {}) as Dictionary
 	for demon_name: String in (grew.get("climbed", []) as Array):
 		out.append({name = demon_name,
 				before = before.get(demon_name, {}),
 				after = _demon_snapshot(demon_name),
-				learned = learned.get(demon_name, [])})
+				learned = learned.get(demon_name, []),
+				offers = offers.get(demon_name, [])})
 	return out
 
 
@@ -1158,6 +1178,8 @@ func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
 	ui.before     = entry["before"] as Dictionary
 	ui.after      = entry["after"] as Dictionary
 	ui.learned    = entry["learned"] as Array
+	ui.offers     = entry.get("offers", []) as Array
+	ui.player     = player_char
 	ui.dismissed.connect(func():
 		ui.queue_free()
 		_show_demon_level_ups(rest)
@@ -1395,6 +1417,10 @@ func _open_orb(tab: String = "rest") -> void:
 		_close_orb()
 		_open_save_menu()
 	)
+	ui.gauntlet_requested.connect(func(names: Array[String]) -> void:
+		_close_orb()
+		_start_gauntlet(names)
+	)
 	orb_layer.add_child(ui)
 
 
@@ -1475,7 +1501,6 @@ func _gather_save_data() -> Dictionary:
 			gold = p.gold,
 			known_spells        = p.known_spells,
 			equipped_spells     = p.equipped_spells,
-			equipped_items      = p.equipped_items,
 			recruited           = p.recruited,
 			ever_bound          = p.ever_bound,
 			bound_level         = p.bound_level,
@@ -1643,9 +1668,8 @@ func _apply_player_data(pdata: Dictionary) -> void:
 		player_char.known_spells.insert(0, "analyze")
 	# Saves written before loadouts existed carry no equipped list; fall back to
 	# the first few known spells so those saves still have something to cast.
-	player_char.equipped_items.clear()
-	if pdata.has("equipped_items"):
-		player_char.equipped_items.assign(pdata["equipped_items"] as Array)
+	# equipped_items, the old belt, is ignored: every consumable reaches a
+	# fight now.
 
 	player_char.equipped_spells.clear()
 	if pdata.has("equipped_spells"):
@@ -1695,14 +1719,15 @@ func _apply_player_data(pdata: Dictionary) -> void:
 		var list: Array = []
 		for entry: Variant in raw:
 			var e: Dictionary = entry as Dictionary
-			if e.get("kind", "") == "support":
-				list.append({kind = "support", id = e.get("id", "") as String})
+			if e.get("kind", "") in ["support", "unique"]:
+				list.append({kind = e["kind"] as String, id = e.get("id", "") as String})
 			else:
 				list.append({kind = "element",
 						element = e.get("element", "") as String,
 						rung = int(e.get("rung", 1)),
 						shape = e.get("shape", Spell.SHAPE_ONE) as String})
 		player_char.demon_skills[k] = list
+	player_char.top_up_unique_skills()
 
 	player_char.active_demons.clear()
 	if pdata.has("active_demons"):

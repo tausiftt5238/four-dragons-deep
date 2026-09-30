@@ -173,54 +173,16 @@ func add_note(text: String) -> void:
 	slot.add_child(lbl)
 
 
-# ── Paging ────────────────────────────────────────────────────────────────────
+# ── Whole lists ───────────────────────────────────────────────────────────────
 #
-# Draws one page of `entries` into a fixed set of slots, with a footer to turn
-# the page when there are more than fit. `state` holds the current page under
-# `key`, because the thing that builds these lists is rebuilt on every refresh
-# and cannot remember where it was.
-static func paged(parent: Control, state: Dictionary, key: String,
-		entries: Array, fill: Callable, on_change: Callable) -> void:
-	var pages: int = maxi(1, ceili(float(entries.size()) / float(SLOT_COUNT)))
-	var at: int = clampi(int(state.get(key, 0)), 0, pages - 1)
-	state[key] = at
-
-	var list: SlotList = SlotList.new(parent)
-	var first: int = at * SLOT_COUNT
-	for i: int in range(first, mini(first + SLOT_COUNT, entries.size())):
-		fill.call(list, entries[i])
-
-	if pages <= 1:
-		return
-
-	var foot: HBoxContainer = HBoxContainer.new()
-	foot.add_theme_constant_override("separation", 8)
-	parent.add_child(foot)
-
-	var prev: Button = Button.new()
-	prev.text = "Back"
-	prev.custom_minimum_size = Vector2(120, 24)
-	prev.disabled = at == 0
-	prev.pressed.connect(func() -> void:
-		state[key] = at - 1
-		on_change.call())
-	foot.add_child(prev)
-
-	var where: Label = Label.new()
-	where.text = "%d / %d" % [at + 1, pages]
-	where.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	where.add_theme_color_override("font_color", Color(0.60, 0.62, 0.68))
-	foot.add_child(where)
-
-	var next: Button = Button.new()
-	next.text = "More"
-	next.custom_minimum_size = Vector2(120, 24)
-	next.disabled = at >= pages - 1
-	next.pressed.connect(func() -> void:
-		state[key] = at + 1
-		on_change.call())
-	foot.add_child(next)
+# Every entry, one after another, and the page's own scroll does the rest. This
+# used to be a page of six behind Back/More; a swipe is what a phone expects,
+# and it keeps the whole list one gesture away. Never fewer than SLOT_COUNT
+# rows, so a short list still fills the panel it did before.
+static func listed(parent: Control, entries: Array, fill: Callable) -> void:
+	var list: SlotList = SlotList.new(parent, maxi(SLOT_COUNT, entries.size()))
+	for entry: Variant in entries:
+		fill.call(list, entry)
 
 
 # ── Sections ──────────────────────────────────────────────────────────────────

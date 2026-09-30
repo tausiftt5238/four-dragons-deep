@@ -33,6 +33,7 @@ func _show_submenu() -> void:
 
 
 func _resolve(approach: String) -> void:
+	_s._lock_submenu()
 	_s._right_back_btn.hide()
 	var matched: bool = Negotiation.matches(
 			Negotiation.REASON_MATCH, _s.enemy.talk_personality, approach)

@@ -68,8 +68,7 @@ var _stepped_node: Control = null
 
 # The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
 # of them; a submenu drops its entries into the same cells, so slot 3 is in the
-# same place whichever is showing. Both menus are capped at MENU_SLOTS, which
-# is why nothing here ever needs to scroll.
+# same place whichever is showing. A submenu longer than MENU_SLOTS scrolls.
 const MENU_SLOTS: int = 6
 # The strip is exactly this tall in every state. Left to its own devices it
 # measured 282 on the main actions, 261 in Skills and 224 in Items, so the
@@ -82,8 +81,10 @@ const MENU_SLOT_H:   int = 88
 const MENU_HEADER_H: int = 39
 var _action_bar: GridContainer
 var _sub_bar:    GridContainer
+# The submenu grid scrolls rather than paging: six cells show, and a longer
+# list (a full roster, a crowded pack) carries on below them.
+var _sub_scroll: ScrollContainer
 var _sub_slots:  Array[MarginContainer] = []
-var _actor_banner: Label
 var _buttons: Dictionary = {}
 
 var _right_title:    Label
@@ -268,12 +269,14 @@ func _step_forward(card: Control, is_enemy: bool) -> void:
 	var portrait: TextureRect = _card_portrait(card)
 	if portrait != null:
 		_play_anim(portrait, "walk")
-	var tween: Tween = create_tween()
+	# Bound to the card, not the scene: a revive or a summon rebuilds the party
+	# row mid-step, and a tween owned by the scene would then call back into a
+	# portrait that no longer exists.
+	var tween: Tween = card.create_tween()
 	tween.tween_property(card, "position:x", dir, STEP_DURATION) \
 			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	tween.tween_callback(func() -> void:
-		if portrait != null and portrait is AnimatedPortrait:
-			(portrait as AnimatedPortrait).play("idle"))
+	if portrait is AnimatedPortrait:
+		tween.tween_callback((portrait as AnimatedPortrait).play.bind("idle"))
 
 
 func _step_back_immediate() -> void:
@@ -339,18 +342,22 @@ func _show_item_submenu() -> void:
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.40))
 	_submenu_clear()
 
-	var belt: Array[Dictionary] = player.belt()
-	if belt.is_empty():
-		_submenu_add(_dim_label("Nothing on your belt."))
+	var carried: Array[Dictionary] = player.battle_items()
+	if carried.is_empty():
+		_submenu_add(_dim_label("Nothing in your pack."))
 		return
-	for item: Dictionary in belt:
+	var entries: Array[Dictionary] = []
+	for item: Dictionary in carried:
 		var is_throwable: bool = item.has("inflicts_status") \
 			or (item.has("element") and item.get("dmg", 0) > 0)
-		var btn: Button = _big_button(item["name"] as String,
-				"x%d" % int(item.get("qty", 1)),
-				not is_throwable and not player.can_use_item(item))
-		btn.pressed.connect(_on_use_item.bind(item))
-		_submenu_add(btn)
+		var usable: bool = is_throwable or item.has("mirror") or player.can_use_item(item)
+		if item.has("revive"):
+			usable = not _fallen_members().is_empty()
+		entries.append({title = item["name"] as String,
+				detail = "x%d" % int(item.get("qty", 1)),
+				disabled = not usable,
+				press = _on_use_item.bind(item)})
+	_fill_submenu(entries)
 
 
 func _show_talk_submenu() -> void:
@@ -370,13 +377,19 @@ func _show_talk_submenu() -> void:
 	# closed rather than allowed to eat three rounds and fail. Refusing up front
 	# is the honest version of the same rule.
 	var outranks: bool = enemy.lv > player.lv
+	# Six already answer to you: Recruit has nowhere to put it.
+	var full: bool = not player.can_bind(enemy.enemy_name)
 	# No "bound" state here any more: Talk never reaches this menu on a demon
 	# whose name is already in the rolodex — that one pays you off instead.
 	for opt: Array in opts:
 		var recruit: bool = opt[0] == "Recruit"
-		var btn: Button = _big_button(opt[1] as String,
-				"Lv %d > yours" % enemy.lv if recruit and outranks else "",
-				recruit and outranks)
+		var note: String = ""
+		if recruit and full:
+			note = "Roster full"
+		elif recruit and outranks:
+			note = "Lv %d > yours" % enemy.lv
+		var btn: Button = _big_button(opt[1] as String, note,
+				recruit and (outranks or full))
 		btn.pressed.connect(_on_talk.bind(opt[0] as String))
 		_submenu_add(btn)
 
@@ -432,6 +445,15 @@ func _roll_crit() -> bool:
 # whatever happened, which made a throwable the safe way to probe a chart.
 func _use_item_by_id(item_id: String) -> Dictionary:
 	for item: Dictionary in player.inventory:
+		if item["id"] == item_id and item["type"] == "consumable" and item.has("revive"):
+			var who: CharacterSheet = _ally_target
+			if who == null or who.is_alive():
+				return {msg = "[color=gray]Nobody to revive.[/color]", cost = PressTurn.COST_FULL}
+			player.remove_item(item, 1)
+			who.heal(maxi(1, who.max_hp * int(item["revive"]) / 100))
+			_refresh_hp()
+			return {msg = "[color=lime]Used %s! %s is back on their feet.[/color]" % [
+					item["name"], _member_name(who)], cost = PressTurn.COST_FULL}
 		if item["id"] == item_id and item["type"] == "consumable":
 			var inflicts: String = item.get("inflicts_status", "")
 			if inflicts != "":
@@ -469,6 +491,13 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 				return {msg = "[color=aqua]Used %s![/color]%s  [color=violet]%s takes %d damage.[/color]" % [
 						item["name"], weak_tag, enemy.enemy_name, dmg],
 						cost = PressTurn.COST_HALF if weak else PressTurn.COST_FULL}
+			if item.has("mirror"):
+				player.remove_item(item, 1)
+				for m: CharacterSheet in _living_party():
+					m.mirror = item["mirror"] as String
+				return {msg = "[color=aqua]Used %s![/color]  [color=#d070ff]A mirror goes up before the party: %s attacks are turned back until your next turn.[/color]" % [
+						item["name"], "physical" if item["mirror"] == "phys" else "magic"],
+						cost = PressTurn.COST_FULL}
 			var result: String = player.use_item(item)
 			return {msg = "[color=aqua]Used %s. %s[/color]" % [item["name"], result],
 					cost = PressTurn.COST_FULL}
@@ -496,6 +525,9 @@ func _check_counter() -> String:
 # struck off at this moment and not the one it dropped in, so everything up to
 # the last enemy is a window in which Revive can still pull it back.
 func _end_combat(result: String) -> void:
+	# The detective outlives the fight; a mirror must not.
+	for member: CharacterSheet in party:
+		member.mirror = ""
 	# Not cleared: a body swapped off the field was already struck off and
 	# already recorded, and the tally afterwards has to name it too.
 	for i: int in range(1, party.size()):
@@ -508,6 +540,45 @@ func _end_combat(result: String) -> void:
 
 
 # ── Phase flow ────────────────────────────────────────────────────────────────
+
+# The one of the party a heal or a revive is about to land on, chosen in
+# _pick_ally just before the action commits.
+var _ally_target: CharacterSheet = null
+
+
+# Everyone in the party who is down, the hero included. _fallen_party is the
+# monsters only, for Summon.
+func _fallen_members() -> Array[CharacterSheet]:
+	var out: Array[CharacterSheet] = []
+	for m: CharacterSheet in party:
+		if not m.is_alive():
+			out.append(m)
+	return out
+
+
+# Who in the party a heal (the living) or a revive (the fallen) lands on. With
+# only one choice it does not ask.
+func _pick_ally(fallen: bool, title: String, back: Callable, then: Callable) -> void:
+	var pool: Array[CharacterSheet] = _fallen_members() if fallen else _living_party()
+	if pool.size() == 1:
+		_ally_target = pool[0]
+		then.call()
+		return
+	_hide_actions()
+	_set_back(back)
+	_right_title.text = title
+	_right_title.add_theme_color_override("font_color", Color(0.45, 1.0, 0.55))
+	_submenu_clear()
+	var entries: Array[Dictionary] = []
+	for m: CharacterSheet in pool:
+		var who: CharacterSheet = m
+		entries.append({title = _member_name(who),
+				detail = "%d / %d HP" % [who.hp, who.max_hp],
+				press = func() -> void:
+					_ally_target = who
+					then.call()})
+	_fill_submenu(entries)
+
 
 func _living_party() -> Array[CharacterSheet]:
 	var out: Array[CharacterSheet] = []
@@ -549,6 +620,7 @@ func _begin_player_phase() -> void:
 	_step_back_immediate()
 	for member: CharacterSheet in party:
 		member.defending = false
+		member.mirror = ""
 	_phases += 1
 	if _try_begging():
 		return
@@ -641,6 +713,9 @@ func _prompt_beg() -> void:
 	var take: Button = _big_button("Recruit it",
 			"%s joins your roster. Costs nothing." % enemy.enemy_name, false)
 	take.pressed.connect(func() -> void:
+		if take.disabled:
+			return
+		_lock_submenu()
 		var who: String = enemy.enemy_name
 		_remember_recruit(who, enemy.lv)
 		_log("[color=lime]%s is recruited. It walks in behind you.[/color]" % who)
@@ -650,6 +725,9 @@ func _prompt_beg() -> void:
 	var refuse: Button = _big_button("Refuse it",
 			"Leave it where it is. The fight goes on.", false)
 	refuse.pressed.connect(func() -> void:
+		if refuse.disabled:
+			return
+		_lock_submenu()
 		_log("[color=gray]You say nothing. It picks itself back up.[/color]")
 		_right_back_btn.visible = true
 		_press.begin(_living_party().size())
@@ -690,6 +768,9 @@ func _prompt_tribute(from_beg: bool = true) -> void:
 	var take: Button = _big_button("Take it",
 			"%s gives up %s and leaves." % [who, what], false)
 	take.pressed.connect(func() -> void:
+		if take.disabled:
+			return
+		_lock_submenu()
 		player.gold += coin
 		if drop.is_empty():
 			_log("[color=#ffd479]It empties its hands — %d gold — and goes.[/color]" % coin)
@@ -808,6 +889,10 @@ func _actor_portrait() -> TextureRect:
 
 
 func _on_use_item(item: Dictionary) -> void:
+	if item.has("revive"):
+		_pick_ally(true, "Revive who?", _show_item_submenu,
+				func() -> void: await _commit_item(item))
+		return
 	var offensive: bool = item.has("inflicts_status") \
 			or (item.has("element") and item.get("dmg", 0) > 0)
 	if not offensive:
@@ -1047,9 +1132,6 @@ const REVIVE_HP_SHARE: float = 0.5
 # save it, not a way to heal it.
 var bench: Array[Enemy] = []
 
-# Which page of a long call list is showing. A run binds far more demons than
-# the six slots a submenu has.
-var _sub_page: int = 0
 
 
 # Demons on the field with no HP left. A body keeps its slot, so reviving it or
@@ -1090,7 +1172,6 @@ func _remember_recruit(demon_name: String, lv: int = 1) -> void:
 
 
 func _open_summon_menu() -> void:
-	_sub_page = 0
 	_show_summon_submenu()
 
 
@@ -1128,35 +1209,18 @@ func _show_summon_submenu() -> void:
 	if entries.is_empty():
 		_submenu_add(_dim_label("Nothing left to call."))
 		return
-	_fill_submenu(entries, _show_summon_submenu)
+	_fill_submenu(entries)
 
 
-# One page of a list into the submenu's six slots. Anything longer keeps the
-# last slot for a pager rather than dropping what does not fit — which is what
-# used to happen once a run had bound seven demons.
-func _fill_submenu(entries: Array[Dictionary], rebuild: Callable) -> void:
-	if entries.size() <= MENU_SLOTS:
-		_sub_page = 0
-		for e: Dictionary in entries:
-			_submenu_add(_entry_button(e))
-		return
-
-	var per: int = MENU_SLOTS - 1
-	var pages: int = ceili(float(entries.size()) / float(per))
-	_sub_page = clampi(_sub_page, 0, pages - 1)
-	var first: int = _sub_page * per
-	for i: int in range(first, mini(first + per, entries.size())):
-		_submenu_add(_entry_button(entries[i]))
-
-	var more: Button = _big_button("More", "%d / %d" % [_sub_page + 1, pages], false)
-	more.pressed.connect(func() -> void:
-		_sub_page = (_sub_page + 1) % pages
-		rebuild.call())
-	_submenu_add(more)
+# A whole list into the submenu. Past six it scrolls — see _sub_scroll.
+func _fill_submenu(entries: Array[Dictionary]) -> void:
+	for e: Dictionary in entries:
+		_submenu_add(_entry_button(e))
 
 
 func _entry_button(e: Dictionary) -> Button:
-	var btn: Button = _big_button(e["title"] as String, e["detail"] as String, false)
+	var btn: Button = _big_button(e["title"] as String, e["detail"] as String,
+			bool(e.get("disabled", false)))
 	btn.pressed.connect(e["press"] as Callable)
 	return btn
 
@@ -1721,12 +1785,10 @@ func _on_action(action: String) -> void:
 							% enemy.display_name())
 					_prompt_tribute(false)
 					return
-				# Six already answer to you, so there is nothing to bargain for.
-				if not player.can_bind(enemy.enemy_name):
-					_log("[color=#ffd479]%s would come — but six already answer to you. It pays its way out.[/color]"
-							% enemy.display_name())
-					_prompt_tribute(false)
-					return
+				# A full roster used to skip the talk and hand over a payoff here,
+				# which made every negotiable monster a one-action win with no
+				# roll and no level check. It talks normally now; only Recruit
+				# is closed, in the submenu.
 				_show_talk_submenu())
 			return
 		"Summon":
@@ -1762,8 +1824,11 @@ func _refresh_button_states() -> void:
 
 	_buttons["Skills"].disabled = false
 	# Bracing on top of a brace does nothing but spend the icon, and at half an
-	# icon it is cheap enough to do by accident.
-	_buttons["Defend"].disabled = _actor().defending
+	# icon it is cheap enough to do by accident — unless it is the only thing
+	# left. A demon that is immobilized (no Attack) and cannot pay for any of
+	# its skills would otherwise have no button at all, and the phase would
+	# wait on it forever. Bracing again is its way of passing.
+	_buttons["Defend"].disabled = _actor().defending and _has_another_move(_actor())
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	# Live whenever there is anything to move: a body to raise, a demon waiting
@@ -1775,6 +1840,26 @@ func _refresh_button_states() -> void:
 
 
 
+
+
+# Whether this party member can do anything but brace. The detective always
+# can — Flee is never taken from him. A demon can if it can swing, or if one of
+# its skills passes the same checks the skills menu greys buttons out by.
+func _has_another_move(member: CharacterSheet) -> bool:
+	if member == player or not member is Enemy:
+		return true
+	var demon: Enemy = member as Enemy
+	if not demon.has_status(Status.IMMOBILIZE):
+		return true
+	var silenced: bool = demon.has_status(Status.SILENCE)
+	for skill: Dictionary in player.skills_of(demon.enemy_name):
+		var hp_price: int = _demon_hp_cost(demon, skill)
+		if hp_price > 0:
+			if demon.hp > hp_price:
+				return true
+		elif not silenced and demon.mp >= _demon_skill_cost(demon, skill):
+			return true
+	return false
 
 
 func _member_portrait(member: CharacterSheet) -> TextureRect:
@@ -1795,16 +1880,6 @@ func _member_portrait(member: CharacterSheet) -> TextureRect:
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
 func _refresh_hp() -> void:
-	if _actor_banner != null:
-		if _press != null and _press.has_turns():
-			_actor_banner.text = "%s's turn" % _actor_name()
-			_actor_banner.add_theme_color_override("font_color",
-					Color(1.0, 0.92, 0.45) if _actor_is_player()
-					else Color(0.62, 1.0, 0.78))
-		else:
-			_actor_banner.text = "Enemy phase"
-			_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
-
 	_refresh_party_slots()
 	_refresh_foe_rows()
 	_refresh_icons()
@@ -1878,7 +1953,10 @@ func _show_skills_submenu() -> void:
 
 	var actor: CharacterSheet = _actor()
 
-	_submenu_add(_make_skill_button("Attack", "Attack",
+	# Paged like Summon: Attack plus a demon's full six is seven entries, and
+	# a flat fill silently dropped the last one.
+	var entries: Array[Dictionary] = []
+	entries.append(_skill_entry("Attack", "Attack",
 			Affinity.element_name(Affinity.PHYS), "\u2014",
 			actor.has_status(Status.IMMOBILIZE)))
 
@@ -1886,6 +1964,7 @@ func _show_skills_submenu() -> void:
 		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
 		# and comes through the loop below with everything else.
 		if player.equipped_spells.is_empty():
+			_fill_submenu(entries)
 			_submenu_add(_dim_label("No spells equipped."))
 			return
 		var silenced: bool = player.has_status(Status.SILENCE)
@@ -1900,16 +1979,21 @@ func _show_skills_submenu() -> void:
 			# before spending 22 MP, so it rides next to the element.
 			if element != "":
 				tag += "  " + Spell.reach_tag(spell_id)
-			var cost: int = int(data.get("mp", 0))
-			_submenu_add(_make_skill_button("Magic:" + spell_id,
-					data["name"] as String, tag, "%d MP" % cost,
-					silenced or player.mp < cost))
+			# A physical skill is paid in blood, not mana: silence does not
+			# stop it, and it will not spend the last of the detective's HP.
+			var blocked: bool
+			var hp_price: int = Spell.hp_cost(spell_id, player.max_hp)
+			if hp_price > 0:
+				blocked = player.hp <= hp_price
+			else:
+				blocked = silenced or player.mp < int(data.get("mp", 0))
+			entries.append(_skill_entry("Magic:" + spell_id,
+					data["name"] as String, tag, Spell.cost_text(spell_id), blocked))
+		_fill_submenu(entries)
 		return
 
 	var demon: Enemy = actor as Enemy
 	var known: Array = player.skills_of(demon.enemy_name)
-	if known.is_empty():
-		return
 	var silenced_demon: bool = demon.has_status(Status.SILENCE)
 	var reach: String = Spell.reach_tag_for(demon.attack_reach)
 	# One button per skill it carries — its own lines at whatever rung they have
@@ -1917,9 +2001,14 @@ func _show_skills_submenu() -> void:
 	for i: int in known.size():
 		var skill: Dictionary = known[i] as Dictionary
 		var cost: int = _demon_skill_cost(demon, skill)
-		var blocked: bool = silenced_demon or demon.mp < cost
+		var hp_price: int = _demon_hp_cost(demon, skill)
+		var blocked: bool = demon.hp <= hp_price if hp_price > 0 \
+				else silenced_demon or demon.mp < cost
 		var tag: String = ""
-		if skill.get("kind", "") == "support":
+		if skill.get("kind", "") == "unique":
+			var u: Dictionary = Spell.get_data(skill.get("id", "") as String)
+			tag = "Drain %s  one" % (u.get("drain", "hp") as String).to_upper()
+		elif skill.get("kind", "") == "support":
 			var d: Dictionary = Spell.get_data(skill.get("id", "") as String)
 			tag = "%s%s  party" % [(d.get("stat", "") as String).to_upper(),
 					"+" if int(d.get("delta", 1)) > 0 else "-"] \
@@ -1930,18 +2019,37 @@ func _show_skills_submenu() -> void:
 			tag = "%s  %s  %s" % [
 					Affinity.element_name(skill.get("element", "") as String),
 					reach, "I".repeat(int(skill.get("rung", 1)))]
-		_submenu_add(_make_skill_button("Skill:%d" % i,
-				PlayerCharacter.skill_name(skill), tag, "%d MP" % cost, blocked))
+		entries.append(_skill_entry("Skill:%d" % i,
+				PlayerCharacter.skill_name(skill), tag,
+				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked))
+	_fill_submenu(entries)
 
 
 # An elemental cast is paid out of the demon's own pool and gets dearer as its
 # rung climbs; a buff costs what the spell costs, the same as the detective pays.
 func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
-	if skill.get("kind", "") == "support":
+	if skill.get("kind", "") != "element":
 		return int(Spell.get_data(skill.get("id", "") as String).get("mp", 8))
 	var rung: int = int(skill.get("rung", 1))
 	return maxi(1, roundi(float(demon.skill_cost())
 			* (Spell.rung_power(rung) / Spell.POWER_I)))
+
+
+# A physical line is paid in HP, the same share of the demon's own pool the
+# detective pays for the same skill. 0 for everything paid in MP.
+func _demon_hp_cost(demon: Enemy, skill: Dictionary) -> int:
+	if skill.get("element", "") != Affinity.PHYS:
+		return 0
+	return maxi(1, Spell.hp_cost(_phys_skill_id(skill), demon.max_hp))
+
+
+func _demon_cost_text(skill: Dictionary) -> String:
+	return Spell.cost_text(_phys_skill_id(skill))
+
+
+func _phys_skill_id(skill: Dictionary) -> String:
+	return Spell.elemental_id(Affinity.PHYS, int(skill.get("rung", 1)),
+			skill.get("shape", Spell.SHAPE_ONE) as String)
 
 
 # One of a bound demon's skills, picked by its index in the demon's own list and
@@ -1956,22 +2064,32 @@ func _resolve_skill(chosen: String) -> Dictionary:
 		return {msg = "[color=gray]%s has nothing to call on.[/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
 	var skill: Dictionary = known[idx] as Dictionary
-	var price: int = _demon_skill_cost(actor, skill)
-	if actor.mp < price:
-		return {msg = "[color=gray]%s: not enough MP![/color]" % actor.display_name(),
-				cost = PressTurn.COST_FULL}
-	actor.mp -= price
+	var hp_price: int = _demon_hp_cost(actor, skill)
+	if hp_price > 0:
+		if actor.hp <= hp_price:
+			return {msg = "[color=gray]%s: not enough HP![/color]" % actor.display_name(),
+					cost = PressTurn.COST_FULL}
+		actor.take_damage(hp_price)
+	else:
+		var price: int = _demon_skill_cost(actor, skill)
+		if actor.mp < price:
+			return {msg = "[color=gray]%s: not enough MP![/color]" % actor.display_name(),
+					cost = PressTurn.COST_FULL}
+		actor.mp -= price
+
+	if skill.get("kind", "") == "unique":
+		return _leech(actor, enemy, skill.get("id", "") as String)
 
 	if skill.get("kind", "") == "support":
 		var data: Dictionary = Spell.get_data(skill.get("id", "") as String)
-		var out: Dictionary = _apply_stage_spell(data)
-		out["msg"] = "%s calls up %s!  %s" % [actor.display_name(),
-				data.get("name", "?"), out.get("msg", "")]
-		return out
+		return _apply_stage_spell(data, "%s calls up %s" % [
+				actor.display_name(), data.get("name", "?")])
 
 	var element: String = skill.get("element", "") as String
 	var rung: int = int(skill.get("rung", 1))
-	var power: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
+	var phys: bool = element == Affinity.PHYS
+	var power: float = float(actor.str) * actor.stage_mult(CharacterSheet.STAT_ATK) if phys \
+			else float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG)
 	var banishing: bool = Affinity.is_banishing(element)
 	var named: String = PlayerCharacter.skill_name(skill)
 
@@ -1980,18 +2098,96 @@ func _resolve_skill(chosen: String) -> Dictionary:
 	# its own, which is why the menu does not ask.
 	if actor.attack_reach != Spell.SHAPE_ONE:
 		return _demon_spread(actor, element, power * Spell.rung_power(rung),
-				banishing, Spell.rung_boost(rung))
+				banishing, Spell.rung_boost(rung), named)
 
 	if banishing:
 		return _demon_banish_one(actor, enemy, element, power,
 				Spell.rung_boost(rung))
 
+	# A physical line is a swing: it misses like one and wastes what one does.
+	if phys and not CombatMath.lands(actor, enemy):
+		return {msg = "[color=#9aa0aa]%s uses %s — %s dodges![/color]" % [
+				actor.display_name(), named, enemy.display_name()],
+				cost = PressTurn.COST_MISS}
+	if not phys and not CombatMath.spell_lands(actor, enemy):
+		return {msg = "[color=#9aa0aa]%s calls up %s — %s slips it![/color]" % [
+				actor.display_name(), named, enemy.display_name()],
+				cost = PressTurn.COST_FULL}
 	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(
-			int(power * Spell.rung_power(rung)) - _guarded_def(enemy),
+			int(power * Spell.rung_power(rung)) - _guard_vs(enemy, element),
 			element, enemy, crit, enemy.defending)
-	return _land_hit(res, element, "%s calls up %s!" % [
-			actor.display_name(), named])
+	return _land_hit(res, element, "%s %s %s!" % [
+			actor.display_name(), "uses" if phys else "calls up", named], phys)
+
+
+# ── Leeches ───────────────────────────────────────────────────────────────────
+#
+# A bat or a blood thing biting, from either side of the field. The cost is
+# already paid. A bite, not a spell: it rolls to hit like a swing and a miss
+# wastes what a missed swing does. No element, so no chart to hit or bounce off.
+func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
+	var data: Dictionary = Spell.get_data(id)
+	var who: String = _member_name(target) if not target is Enemy \
+			else (target as Enemy).display_name()
+	var lead: String = "%s uses %s" % [actor.display_name(), data.get("name", "?")]
+	if not CombatMath.lands(actor, target):
+		return {msg = "[color=#9aa0aa]%s — %s dodges![/color]" % [lead, who],
+				cost = PressTurn.COST_MISS}
+	var bite: float = float(actor.str) * actor.stage_mult(CharacterSheet.STAT_ATK) \
+			* float(data.get("power", 1.0))
+
+	if data.get("drain", "hp") == "mp":
+		var took: int = mini(maxi(1, int(bite)), target.mp)
+		if took <= 0:
+			return {msg = "[color=gray]%s — %s has no MP to drink.[/color]" % [lead, who],
+					cost = PressTurn.COST_FULL}
+		target.mp -= took
+		actor.mp = mini(actor.max_mp, actor.mp + took)
+		return {msg = "[color=#7fb0ff]%s! It drinks %d MP from %s.[/color]" % [lead, took, who],
+				cost = PressTurn.COST_FULL}
+
+	var guarded: bool = target.defending
+	var res: Dictionary = CombatMath.resolve(int(bite) - _guarded_def(target), "",
+			target, CombatMath.roll_crit(actor), guarded)
+	var dmg: int = mini(int(res["dmg"]), target.hp)
+	target.take_damage(dmg)
+	actor.heal(dmg)
+	var pr: TextureRect = _foe_portrait(target as Enemy) if target is Enemy \
+			else _member_portrait(target)
+	if pr != null:
+		_shake_portrait(pr, guarded)
+	var tail: String = ""
+	if not target.is_alive():
+		tail = "  [color=lime]%s goes down![/color]" % who
+	return {msg = "%s!  [color=orange]%s takes %d[/color] [color=lime]and %s drinks it back.[/color]%s%s" % [
+			lead, who, dmg, actor.display_name(),
+			CombatMath.outcome_tag(res["outcome"] as String, bool(res["crit"]),
+					bool(res.get("suppressed", false))), tail],
+			cost = PressTurn.COST_HALF if bool(res["crit"]) and not guarded
+				else PressTurn.COST_FULL}
+
+
+# What a bat or a blood thing on the other side bites with this turn, if it
+# bites at all: HP when it is hurt and can pay, MP when it is short of what it
+# wants to spend and someone across the field has some to take.
+func _enemy_leech(actor: Enemy) -> Dictionary:
+	if actor.unique_skills.is_empty() or randi() % 2 == 0:
+		return {}
+	var hp_cost: int = int(Spell.get_data("hp_leech").get("mp", 4))
+	if "hp_leech" in actor.unique_skills and actor.hp * 10 < actor.max_hp * 7 \
+			and actor.mp >= hp_cost:
+		actor.mp -= hp_cost
+		return _leech(actor, _pick_target(""), "hp_leech")
+	if "mp_leech" in actor.unique_skills \
+			and actor.mp < maxi(actor.skill_cost(), hp_cost):
+		var richest: CharacterSheet = null
+		for m: CharacterSheet in _living_party():
+			if m.mp > 0 and (richest == null or m.mp > richest.mp):
+				richest = m
+		if richest != null:
+			return _leech(actor, richest, "mp_leech")
+	return {}
 
 
 # One demon of yours, one line, one foe. Light and dark expel rather than burn,
@@ -2028,11 +2224,15 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 # A bound demon's wide cast. Same arithmetic as the detective's own spread —
 # what it gains in width it gives up on each target.
 func _demon_spread(actor: Enemy, element: String, base: float,
-		banishing: bool, boost: float = 0.0) -> Dictionary:
+		banishing: bool, boost: float = 0.0, named: String = "") -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
-	var split: float = CombatMath.split_share(targets.size())
-	var lines: Array[String] = ["[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
+	# A physical line cuts each of them at full weight, as the detective's does.
+	var phys: bool = element == Affinity.PHYS
+	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
+	var lines: Array[String] = ["[color=#9ad0ff]%s uses %s on %d of them![/color]" % [
+			actor.display_name(), named, targets.size()] if phys
+			else "[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
 			actor.display_name(), Affinity.element_name(element), targets.size()]]
 	var outcomes: Array[String] = []
 	var reflected: int = 0
@@ -2067,8 +2267,13 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 					lines.append("[color=gray]%s holds.[/color]" % foe.display_name())
 			continue
 
+		if not (CombatMath.lands(actor, foe) if phys else CombatMath.spell_lands(actor, foe)):
+			outcomes.append("miss")
+			lines.append("[color=#9aa0aa]%s %s it.[/color]" % [foe.display_name(),
+					"dodges" if phys else "slips"])
+			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * split) - _guarded_def(foe), element, foe,
+				int(base * split) - _guard_vs(foe, element), element, foe,
 				CombatMath.roll_crit(actor), foe.defending)
 		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
@@ -2099,6 +2304,8 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 	var cost: String = _spread_cost(outcomes)
 	if cost == PressTurn.COST_FULL and took_weak:
 		cost = PressTurn.COST_HALF
+	if phys and outcomes.count("miss") == outcomes.size():
+		cost = PressTurn.COST_MISS
 	return {msg = " ".join(lines), cost = cost}
 
 
@@ -2213,6 +2420,13 @@ static func _px_ring(img: Image, cx: float, cy: float, r: float, c: Color) -> vo
 
 # A thumb-sized submenu entry: title on top, the detail that decides the choice
 # underneath. Built from child Labels because a Button's own text is one line.
+
+# The same button as an entry for _fill_submenu, so a long list scrolls.
+func _skill_entry(action: String, label: String, element: String,
+		cost: String, disabled: bool) -> Dictionary:
+	return {title = label, detail = "%s   %s" % [element, cost], disabled = disabled,
+			press = func() -> void: await _on_skill_chosen(action)}
+
 
 func _make_skill_button(action: String, label: String, element: String,
 		cost: String, disabled: bool) -> Button:
@@ -2504,15 +2718,16 @@ func _build_menu_panel(parent: Control) -> void:
 	_right_back_btn.hide()
 	header.add_child(_right_back_btn)
 
-	_actor_banner = Label.new()
-	_actor_banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_actor_banner.add_theme_font_size_override("font_size", 16)
-	_actor_banner.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
-	header.add_child(_actor_banner)
-
+	# No "X's turn" banner: whoever is acting already steps forward with the
+	# caret over them, and a long name ("Skeleton Archer's turn") next to a long
+	# title pushed the header, and the whole battle with it, off the right edge.
+	# The title takes the rest of the row and trims itself instead of growing.
 	_right_title = Label.new()
 	_right_title.text = "\u2014"
 	_right_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_right_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right_title.clip_text = true
+	_right_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
 	header.add_child(_right_title)
 
@@ -2550,20 +2765,31 @@ func _build_menu_panel(parent: Control) -> void:
 		_action_bar.add_child(btn)
 		_buttons[action] = btn
 
+	_sub_scroll = ScrollContainer.new()
+	_sub_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sub_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	_sub_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_sub_scroll.hide()
+	body.add_child(_sub_scroll)
 	_sub_bar = _make_slot_row()
-	_sub_bar.hide()
-	body.add_child(_sub_bar)
+	_sub_scroll.add_child(_sub_bar)
 
 	for _i: int in range(MENU_SLOTS):
-		var slot: MarginContainer = MarginContainer.new()
-		slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-		slot.size_flags_vertical     = Control.SIZE_EXPAND_FILL
-		slot.size_flags_stretch_ratio = 1.0
-		# An empty slot still holds its ground, so a three-entry submenu is the
-		# same shape as a six-entry one.
-		slot.custom_minimum_size = Vector2(0, MENU_SLOT_H)
-		_sub_bar.add_child(slot)
-		_sub_slots.append(slot)
+		_add_sub_slot()
+
+
+# An empty slot still holds its ground, so a three-entry submenu is the same
+# shape as a six-entry one. Slots past the sixth are made as a list needs them
+# and dropped again on clear.
+func _add_sub_slot() -> MarginContainer:
+	var slot: MarginContainer = MarginContainer.new()
+	slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
+	slot.size_flags_vertical     = Control.SIZE_EXPAND_FILL
+	slot.size_flags_stretch_ratio = 1.0
+	slot.custom_minimum_size = Vector2(0, MENU_SLOT_H)
+	_sub_bar.add_child(slot)
+	_sub_slots.append(slot)
+	return slot
 
 
 # Six thumb targets in one line on a 540-wide screen truncates every label to
@@ -2581,12 +2807,12 @@ func _make_slot_row() -> GridContainer:
 
 func _show_actions() -> void:
 	_action_bar.show()
-	_sub_bar.hide()
+	_sub_scroll.hide()
 
 
 func _hide_actions() -> void:
 	_action_bar.hide()
-	_sub_bar.show()
+	_sub_scroll.show()
 
 
 func _show_main_actions() -> void:
@@ -2600,23 +2826,40 @@ func _show_main_actions() -> void:
 # Detaches immediately rather than waiting on queue_free, so the very next
 # _submenu_add sees the slots as empty.
 func _submenu_clear() -> void:
+	while _sub_slots.size() > MENU_SLOTS:
+		var extra: MarginContainer = _sub_slots.pop_back()
+		_sub_bar.remove_child(extra)
+		extra.queue_free()
 	for slot: MarginContainer in _sub_slots:
 		for child: Node in slot.get_children():
 			slot.remove_child(child)
 			child.queue_free()
+	_sub_scroll.scroll_vertical = 0
 
 
-# Drops one entry into the next free slot. Both menus are capped at MENU_SLOTS,
-# so overflow is a bug rather than something to scroll past.
+# Greys out every button in the submenu. A choice whose result takes a moment
+# to play out (a reaction line, a demon walking off) calls this first, so a
+# second tap in that moment cannot answer a question twice — or answer the
+# next demon's before it has asked.
+func _lock_submenu() -> void:
+	for slot: MarginContainer in _sub_slots:
+		for c: Node in slot.get_children():
+			if c is Button:
+				(c as Button).disabled = true
+
+
+# Drops one entry into the next free slot, making one when all six are taken.
 func _submenu_add(control: Control) -> void:
+	var into: MarginContainer = null
 	for slot: MarginContainer in _sub_slots:
 		if slot.get_child_count() == 0:
-			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			control.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-			slot.add_child(control)
-			return
-	push_warning("combat submenu overflowed %d slots" % MENU_SLOTS)
-	control.queue_free()
+			into = slot
+			break
+	if into == null:
+		into = _add_sub_slot()
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	into.add_child(control)
 
 
 # A slot-sized submenu entry: title on top, the detail that decides the choice
@@ -2666,6 +2909,12 @@ func _on_skill_chosen(action: String) -> void:
 		var spell_id: String = action.substr(6)
 		var data: Dictionary = Spell.get_data(spell_id)
 		var kind: String = data.get("type", "dmg") as String
+		# A single heal lands on one of the party, so it asks who; the All
+		# heals take everyone standing and ask nothing.
+		if kind == "heal" and not Spell.is_multi(spell_id):
+			_pick_ally(false, "Heal who?", _show_skills_submenu,
+					func() -> void: await _commit_action(action))
+			return
 		if kind == "heal" or kind == "buff" or kind == "dispel" or Spell.is_multi(spell_id):
 			await _commit_action(action)
 			return
@@ -2677,8 +2926,10 @@ func _on_skill_chosen(action: String) -> void:
 		var idx: int = action.substr(6).to_int()
 		if idx >= 0 and idx < known.size():
 			var skill: Dictionary = known[idx] as Dictionary
+			# A leech bites one, whatever reach its kind usually has.
 			if skill.get("kind", "") == "support" \
-					or demon.attack_reach != Spell.SHAPE_ONE:
+					or (skill.get("kind", "") == "element"
+						and demon.attack_reach != Spell.SHAPE_ONE):
 				await _commit_action(action)
 				return
 	_with_target(func() -> void: await _commit_action(action))
@@ -2686,10 +2937,17 @@ func _on_skill_chosen(action: String) -> void:
 
 func _cast_spell(spell_id: String) -> Dictionary:
 	var data: Dictionary = Spell.DATA.get(spell_id, {name = "Spell", mp = 8})
-	var mp_cost: int = data.get("mp", 8)
-	if player.mp < mp_cost:
-		return {msg = "[color=gray]Not enough MP![/color]", cost = PressTurn.COST_FULL}
-	player.mp -= mp_cost
+	var hp_price: int = Spell.hp_cost(spell_id, player.max_hp)
+	if hp_price > 0:
+		# Never the killing blow on himself: it needs HP left over after paying.
+		if player.hp <= hp_price:
+			return {msg = "[color=gray]Not enough HP![/color]", cost = PressTurn.COST_FULL}
+		player.take_damage(hp_price)
+	else:
+		var mp_cost: int = data.get("mp", 8)
+		if player.mp < mp_cost:
+			return {msg = "[color=gray]Not enough MP![/color]", cost = PressTurn.COST_FULL}
+		player.mp -= mp_cost
 
 	var spell_type: String = data.get("type", "dmg")
 
@@ -2718,24 +2976,51 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		return _cast_banish(bd)
 
 	if spell_type == "heal":
-		var before: int = player.hp
-		player.heal(player.heal_amount_for(spell_id))
-		return {msg = "[color=lime]You cast %s! Restored %d HP.[/color]" % [
-				data["name"], player.hp - before], cost = PressTurn.COST_FULL}
+		var amount: int = player.heal_amount_for(spell_id)
+		if Spell.is_multi(spell_id):
+			var total: int = 0
+			for m: CharacterSheet in _living_party():
+				var was: int = m.hp
+				m.heal(amount)
+				total += m.hp - was
+			return {msg = "[color=lime]You cast %s! The party recovers %d HP.[/color]" % [
+					data["name"], total], cost = PressTurn.COST_FULL}
+		var who: CharacterSheet = _ally_target if _ally_target != null \
+				and _ally_target.is_alive() else player
+		var before: int = who.hp
+		who.heal(amount)
+		return {msg = "[color=lime]You cast %s! %s recovers %d HP.[/color]" % [
+				data["name"], _member_name(who), who.hp - before], cost = PressTurn.COST_FULL}
 
 	if Spell.is_multi(spell_id):
 		return _cast_spread(data)
 
 	var element: String = data.get("element", "")
-	var power: float = float(player.effective_mag()) \
-			* player.stage_mult(CharacterSheet.STAT_MAG)
-	var base: int = int(power * float(data.get("power", Spell.POWER_I))) - _guarded_def(enemy)
-	if "scholar" in player.passive_skills:
+	var phys: bool = element == Affinity.PHYS
+	var power: float = _skill_power(phys)
+	# A physical skill is a swing: it misses like one and wastes what one does.
+	if phys and not CombatMath.lands(player, enemy):
+		return {msg = "[color=#9aa0aa]You use %s — %s dodges![/color]" % [
+				data["name"], enemy.display_name()], cost = PressTurn.COST_MISS}
+	if not phys and not CombatMath.spell_lands(player, enemy):
+		return {msg = "[color=#9aa0aa]You cast %s — %s slips it![/color]" % [
+				data["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
+	var base: int = int(power * float(data.get("power", Spell.POWER_I))) \
+			- _guard_vs(enemy, element)
+	if not phys and "scholar" in player.passive_skills:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit(player)
 	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending)
-	return _land_hit(res, element, "You cast %s!" % data["name"], false,
-			float(data.get("power", Spell.POWER_I)))
+	return _land_hit(res, element, "%s %s!" % ["You use" if phys else "You cast",
+			data["name"]], phys, float(data.get("power", Spell.POWER_I)))
+
+
+# What a damage spell or skill hits with: MAG for magic, the blade arm for a
+# physical skill.
+func _skill_power(phys: bool) -> float:
+	if phys:
+		return float(player.effective_str()) * player.stage_mult(CharacterSheet.STAT_ATK)
+	return float(player.effective_mag()) * player.stage_mult(CharacterSheet.STAT_MAG)
 
 
 # ── Spells that reach more than one demon ─────────────────────────────────────
@@ -2774,18 +3059,25 @@ static func _spread_cost(outcomes: Array[String]) -> String:
 func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
-	var split: float = CombatMath.split_share(targets.size())
-	var power: float = float(player.effective_mag()) \
-			* player.stage_mult(CharacterSheet.STAT_MAG)
+	var phys: bool = element == Affinity.PHYS
+	# Magic spreads thin across a line; a physical skill is a separate cut to
+	# each of them, so every one lands at full weight.
+	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
+	var power: float = _skill_power(phys)
 
-	var lines: Array[String] = ["You cast %s!" % data["name"]]
+	var lines: Array[String] = ["%s %s!" % ["You use" if phys else "You cast", data["name"]]]
 	var outcomes: Array[String] = []
 	var reflected: int = 0
 
 	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
-		var base: int = int(power * rung * split) - _guarded_def(foe)
-		if "scholar" in player.passive_skills:
+		if not (CombatMath.lands(player, foe) if phys else CombatMath.spell_lands(player, foe)):
+			outcomes.append("miss")
+			lines.append("[color=#9aa0aa]%s %s it.[/color]" % [foe.display_name(),
+					"dodges" if phys else "slips"])
+			continue
+		var base: int = int(power * rung * split) - _guard_vs(foe, element)
+		if not phys and "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
 		var res: Dictionary = CombatMath.resolve(base, element, foe, crit, foe.defending)
@@ -2828,12 +3120,20 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 				_actor_name(), reflected])
 
 	_ensure_target()
-	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
+	var price: String = _spread_cost(outcomes)
+	# A sweep that touched nobody wasted the turn the way a missed swing does.
+	if phys and outcomes.count("miss") == outcomes.size():
+		price = PressTurn.COST_MISS
+	return {msg = " ".join(lines), cost = price}
 
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
 # many actually moved is what tells the player they have hit the cap.
-func _apply_stage_spell(data: Dictionary) -> Dictionary:
+# `lead` names who cast it — "You cast Whet" for the detective, "Hellbat calls
+# up Whet" for a demon of his.
+func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
+	if lead == "":
+		lead = "You cast %s" % data["name"]
 	var stat: String = data.get("stat", CharacterSheet.STAT_ATK) as String
 	var delta: int   = int(data.get("delta", 1))
 	var on_party: bool = (data.get("scope", "party") == "party")
@@ -2853,11 +3153,11 @@ func _apply_stage_spell(data: Dictionary) -> Dictionary:
 
 	var who: String = "the party" if on_party else "every enemy"
 	if moved == 0:
-		return {msg = "[color=gray]You cast %s — %s is already at the limit.[/color]" % [
-				data["name"], who], cost = PressTurn.COST_FULL}
+		return {msg = "[color=gray]%s — %s is already at the limit.[/color]" % [
+				lead, who], cost = PressTurn.COST_FULL}
 	var tint: String = "aqua" if delta > 0 else "orange"
-	return {msg = "[color=%s]You cast %s!  %s %s on %d of %d.[/color]" % [
-			tint, data["name"], _stat_name(stat),
+	return {msg = "[color=%s]%s!  %s %s on %d of %d.[/color]" % [
+			tint, lead, _stat_name(stat),
 			"rises" if delta > 0 else "falls", moved, total],
 			cost = PressTurn.COST_FULL}
 
@@ -2933,6 +3233,25 @@ static func _stat_name(stat: String) -> String:
 
 
 # Defence as it counts right now: the stat, the guard stance, and the stage.
+# What stands between a spell and its target: half DEF and half MAG, together
+# the same size as the DEF a swing runs into when the two are level, so a
+# caster turns magic better than a brute and armour still counts for something.
+func _guarded_mdef(target: CharacterSheet) -> int:
+	var mag: int = player.effective_mag() if target == player else target.mag
+	var base: float = float(_defense_of(target)) * target.stage_mult(CharacterSheet.STAT_DEF) \
+			+ float(mag) * target.stage_mult(CharacterSheet.STAT_MAG)
+	if target.defending:
+		base *= 2.0
+	return int(base / 4.0)
+
+
+# A swing meets DEF; anything elemental meets DEF and MAG together.
+func _guard_vs(target: CharacterSheet, element: String) -> int:
+	if element == Affinity.PHYS or element == "":
+		return _guarded_def(target)
+	return _guarded_mdef(target)
+
+
 func _guarded_def(target: CharacterSheet) -> int:
 	var base: float = float(_defense_of(target)) * target.stage_mult(CharacterSheet.STAT_DEF)
 	if target.defending:
@@ -3116,7 +3435,8 @@ func _resolve_attack() -> Dictionary:
 
 # A blade on one of the two banishing lines expels instead of wounding, at the
 # same odds a cast of that element would get — the difference being that a swing
-# has to land first, and a cast never misses.
+# has to land first. A banishing cast has no hit roll of its own: the banish
+# odds already are one.
 func _resolve_banishing_swing(element: String, power: int) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(
 			enemy, element, power, false, player)
@@ -3223,6 +3543,10 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 						"rises" if delta > 0 else "falls", moved],
 						cost = PressTurn.COST_FULL}
 
+	var bit: Dictionary = _enemy_leech(actor)
+	if not bit.is_empty():
+		return bit
+
 	var element: String = Affinity.PHYS
 	var base: float = float(actor.str)
 	var dry: String = ""
@@ -3271,16 +3595,21 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	if Affinity.is_banishing(element):
 		return _enemy_banish(actor, target, element, dry)
 
-	# Only a swing can miss. Whatever it calls up always arrives. A miss does not
+	# A swing misses on agility; a spell misses half as often. A miss does not
 	# spend the target's brace — it never had to absorb anything.
 	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
 		return {msg = dry + "[color=#9aa0aa]%s lunges at %s and misses![/color]" % [
 				actor.display_name(), _member_name(target)], cost = PressTurn.COST_MISS}
+	# A spell misses half as often as a swing, and costs its one icon.
+	if element != Affinity.PHYS and not CombatMath.spell_lands(actor, target):
+		return {msg = dry + "[color=#9aa0aa]%s uses %s — %s slips it![/color]" % [
+				actor.display_name(), Affinity.element_name(element), _member_name(target)],
+				cost = PressTurn.COST_FULL}
 
 	if element == Affinity.PHYS:
 		base *= actor.stage_mult(CharacterSheet.STAT_ATK)
 	var guarding: bool = target.defending
-	var eff_def: int = _guarded_def(target)
+	var eff_def: int = _guard_vs(target, element)
 
 	var crit: bool = CombatMath.roll_crit(actor)
 	var res: Dictionary = CombatMath.resolve(int(base) - eff_def, element, target,
@@ -3358,8 +3687,12 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 					maxi(1, int(base * spread)), who == player, actor, spread)
 			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
 			continue
+		if element != Affinity.PHYS and not CombatMath.spell_lands(actor, who):
+			outcomes.append("miss")
+			lines.append("[color=#9aa0aa]%s slips it.[/color]" % _member_name(who))
+			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * split) - _guarded_def(who), element, who,
+				int(base * split) - _guard_vs(who, element), element, who,
 				CombatMath.roll_crit(actor), who.defending)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])

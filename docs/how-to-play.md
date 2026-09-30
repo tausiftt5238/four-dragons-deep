@@ -44,6 +44,8 @@ The only place you can save, heal or shop. Stand on one and every tab is there:
 - **Supplies / Gear / Scrolls** — potions, weapons and armour, and every spell
   the depth you have reached has opened up.
 - **Save** — write the run to a slot.
+- **Gauntlet** — pay to fight up to four monsters from your bestiary at this
+  floor's level. Experience only: no gold, no drops.
 
 **Every boss corridor has an orb one step inside it**, facing you. That is the
 last chance to prepare before the dragon, and there are no traps between the
@@ -61,8 +63,13 @@ pool.
 |---|---|
 | An ordinary action | 1 icon |
 | **You hit a weakness, or land a critical** | **half an icon** — the turn stretches |
-| You miss, or the target **nulls** the element | **2 icons** |
+| A swing misses, or the target **nulls** the element | **2 icons** |
+| A spell misses | 1 icon |
 | The target **repels or drains** it | **the entire phase, instantly** |
+
+Agility decides whether anything lands: swings miss more often, spells half as
+often, so speeding your side up or slowing theirs down pays off for casters too.
+A swing is blocked by **DEF**; a spell by **DEF and MAG** together.
 
 That last row is the whole game. Throwing fire at something that drinks fire
 does not just fail — it ends your round on the spot, whatever you had left.
@@ -168,7 +175,7 @@ it can pay for, until its MP runs out.
 | | |
 |---|---|
 | **5 spell slots** | Out of everything you have learned from scrolls. |
-| **6 belt slots** | Only belted items reach a battle. The rest stay in the pack. |
+| **Your pack** | Every potion and throwable you carry can be used in a fight. |
 | **Weapon, armour, trinkets** | Heavy armour protects more and slows you down — and agility is what decides whether you connect. |
 
 **Level-ups give you 3 points** to place across STR, DEF, MAG, AGL and LUK.

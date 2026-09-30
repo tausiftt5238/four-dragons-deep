@@ -34,6 +34,7 @@ func _show_submenu() -> void:
 
 
 func _resolve(approach: String) -> void:
+	_s._lock_submenu()
 	_s._right_back_btn.hide()
 	# Fear runs on the same two-round track trust does, and reads the same way:
 	# bring the stat the threat is made of and you roll well, bring the wrong

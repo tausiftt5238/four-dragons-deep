@@ -7,6 +7,8 @@ class_name OrbUI extends Control
 
 signal closed
 signal save_requested
+# The lineup the player paid for, as template names. Main runs the fight.
+signal gauntlet_requested(names: Array[String])
 
 var player: PlayerCharacter
 var floor_num: int = 1
@@ -22,6 +24,7 @@ var _gold_lbl: Label
 var _tab_btns: Dictionary = {}
 # Which page each of the long lists is showing.
 var _page: Dictionary = {}
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -68,6 +71,7 @@ func _build() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
+	_scroll = scroll
 
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -91,7 +95,8 @@ func _build() -> void:
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Recruit"],
 			["sell", "Sell"], ["buy", "Supplies"],
-			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"]]:
+			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"],
+			["gauntlet", "Gauntlet"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -111,6 +116,7 @@ func _build() -> void:
 
 func _switch(tab: String) -> void:
 	_tab = tab
+	_scroll.scroll_vertical = 0
 	for id: String in _tab_btns:
 		(_tab_btns[id] as Button).button_pressed = (id == tab)
 	for child: Node in _content.get_children():
@@ -124,14 +130,114 @@ func _switch(tab: String) -> void:
 		"gear": _build_gear()
 		"scrolls": _build_scrolls()
 		"save": _build_save()
+		"gauntlet": _build_gauntlet()
 
 
+# Rebuilds the tab after a purchase or a sale, keeping the scroll where it was.
 func _refresh() -> void:
+	var at: int = _scroll.scroll_vertical
 	_switch(_tab)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(_scroll):
+		_scroll.scroll_vertical = at
 
 
 func _set_status(msg: String) -> void:
 	_status.text = msg
+
+
+# ── Gauntlet ──────────────────────────────────────────────────────────────────
+#
+# A paid practice fight, for grinding: up to four monsters out of the bestiary,
+# met at this floor's level, as many of one kind as the player likes. It pays
+# experience and nothing else — no gold, no drops — or it would be a way to
+# turn gold into more gold. Only the ordinary roster is on offer: wardens,
+# dragons and the mimic are set pieces met once.
+const GAUNTLET_MAX: int = 4
+
+var _lineup: Array[String] = []
+
+
+static func gauntlet_price(enemy_name: String, floor_num: int) -> int:
+	var e: Enemy = Enemy.make_from_name(enemy_name, floor_num)
+	var price: int = 10 + e.lv * 6
+	e.free()
+	return price
+
+
+func _gauntlet_total() -> int:
+	var total: int = 0
+	for n: String in _lineup:
+		total += gauntlet_price(n, floor_num)
+	return total
+
+
+func _build_gauntlet() -> void:
+	var line: Label = Label.new()
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.text = "Lineup  (%d / %d):  %s" % [_lineup.size(), GAUNTLET_MAX,
+			", ".join(_lineup) if not _lineup.is_empty() else "empty"]
+	line.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92))
+	_content.add_child(line)
+
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	_content.add_child(row)
+	var clear: Button = Button.new()
+	clear.text = "Clear"
+	clear.disabled = _lineup.is_empty()
+	clear.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	clear.pressed.connect(func() -> void:
+		_lineup.clear()
+		_refresh())
+	row.add_child(clear)
+	var total: int = _gauntlet_total()
+	var fight: Button = Button.new()
+	fight.text = "Fight  (%d g)" % total
+	fight.disabled = _lineup.is_empty() or player.gold < total
+	fight.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fight.pressed.connect(func() -> void:
+		player.gold -= total
+		var names: Array[String] = _lineup.duplicate()
+		_lineup.clear()
+		gauntlet_requested.emit(names))
+	row.add_child(fight)
+
+	_content.add_child(HSeparator.new())
+
+	var tiers: Array = [[], [], [], []]
+	for n: String in player.encountered_enemies:
+		for t: Dictionary in Enemy.TEMPLATES:
+			if t["name"] == n:
+				(tiers[clampi(int(t.get("tier", 1)), 1, 4) - 1] as Array).append(n)
+				break
+	var groups: Array = []
+	for i: int in 4:
+		groups.append({title = "Tier %s" % ["I", "II", "III", "IV"][i], entries = tiers[i]})
+	var any: bool = false
+	for g: Dictionary in groups:
+		if not (g["entries"] as Array).is_empty():
+			any = true
+	if not any:
+		SlotList.new(_content).add_note("Meet a monster on the floor first. The gauntlet only offers what your bestiary knows.")
+		return
+	SlotList.sections(_content, _page, "gauntlet", groups, _gauntlet_offer)
+
+
+func _gauntlet_offer(list: SlotList, enemy_name: String) -> void:
+	var e: Enemy = Enemy.make_from_name(enemy_name, floor_num)
+	var about: String = "LV %d   HP %d   %d exp" % [e.lv, e.max_hp, e.exp_reward]
+	e.free()
+	var price: int = gauntlet_price(enemy_name, floor_num)
+	var full: bool = _lineup.size() >= GAUNTLET_MAX
+	list.add(enemy_name, Color(0.85, 0.85, 0.92), about,
+			"%d g" % price, Color(1.0, 0.85, 0.35),
+			"Full" if full else "Add", full,
+			func() -> void:
+				_lineup.append(enemy_name)
+				_set_status("%s joins the lineup." % enemy_name)
+				_refresh())
 
 
 # ── Rest ──────────────────────────────────────────────────────────────────────
@@ -215,7 +321,7 @@ func _build_bind() -> void:
 		_content.add_child(_note("Nothing has answered to you yet."))
 		SlotList.new(_content)
 		return
-	SlotList.paged(_content, _page, "bind", offered, _bind_offer, _refresh)
+	SlotList.listed(_content, offered, _bind_offer)
 
 
 func _bind_offer(list: SlotList, enemy_name: String) -> void:
@@ -277,18 +383,55 @@ static func resale_price(item: Dictionary) -> int:
 	return maxi(1, item_price(item) / 2)
 
 
+# One tab, the same shelves every other list uses: monsters, then the pack cut
+# the way the Items and Gear tabs cut it, so a thing sits under the same heading
+# here as it does everywhere else.
 func _build_sell() -> void:
-	# Demons first, then the pack, in one paged list: the counter is the same
-	# counter and splitting it into two tabs would only add a tap.
-	var rows: Array = []
+	var monsters: Array = []
 	for demon_name: String in player.recruited:
-		rows.append({kind = "demon", name = demon_name})
+		monsters.append({kind = "demon", name = demon_name})
+	var mend: Array = []
+	var throw: Array = []
+	var scrolls: Array = []
+	var gear: Dictionary = {weapon = [], armor = [], accessory = []}
+	var other: Array = []
+	var mirrors: Array = []
 	for item: Dictionary in player.inventory:
-		rows.append({kind = "item", item = item})
-	if rows.is_empty():
+		var row: Dictionary = {kind = "item", item = item}
+		var kind: String = item.get("type", "") as String
+		if kind == "consumable":
+			if item.has("mirror"):
+				mirrors.append(row)
+			elif item.has("inflicts_status") \
+					or (item.has("element") and int(item.get("dmg", 0)) > 0):
+				throw.append(row)
+			else:
+				mend.append(row)
+		elif kind == "scroll":
+			scrolls.append(row)
+		elif gear.has(kind):
+			(gear[kind] as Array).append(row)
+		else:
+			other.append(row)
+	var groups: Array = [
+		{title = "Monsters", entries = monsters},
+		{title = "Recovery", entries = mend},
+		{title = "Throwables", entries = throw},
+		{title = "Mirrors", entries = mirrors},
+		{title = "Scrolls", entries = scrolls},
+		{title = "Weapons", entries = gear["weapon"]},
+		{title = "Armour", entries = gear["armor"]},
+		{title = "Trinkets", entries = gear["accessory"]},
+		{title = "Other", entries = other},
+	]
+	var any: bool = false
+	for g: Dictionary in groups:
+		if not (g["entries"] as Array).is_empty():
+			any = true
+	if not any:
 		SlotList.new(_content).add_note("Nothing to sell.")
 		return
-	SlotList.paged(_content, _page, "sell", rows, _sell_offer, _refresh)
+	SlotList.sections(_content, _page, "sell", groups, _sell_offer)
 
 
 func _sell_offer(list: SlotList, row: Dictionary) -> void:
@@ -301,18 +444,13 @@ func _sell_offer(list: SlotList, row: Dictionary) -> void:
 func _sell_item(list: SlotList, item: Dictionary) -> void:
 	var price: int = resale_price(item)
 	var qty: int = int(item.get("qty", 1))
-	var about: String = item.get("desc", "") as String
+	var about: String = ItemInfo.item(item)
 	if qty > 1:
 		about = "x%d   %s" % [qty, about]
 	list.add(item["name"] as String, Color(0.85, 0.85, 0.92), about,
 			"%d g" % price, Color(1.0, 0.85, 0.35),
 			"Sell", false,
 			func() -> void:
-				# The belt holds an id, not the item, and belt() only skips a
-				# dead one — the slot itself would stay spent. So the last one
-				# sold comes off the belt with it.
-				if qty <= 1:
-					player.unequip_item(item["id"] as String)
 				player.remove_item(item, 1)
 				player.gold += price
 				_set_status("Sold %s. %d gold." % [item["name"], price])
@@ -351,15 +489,17 @@ func _supplies() -> Array[Dictionary]:
 		Item.health_potion(), Item.hi_potion(), Item.ether(),
 		Item.antidote(), Item.stimulant(), Item.echo_gem(),
 		Item.venom_flask(), Item.fire_bomb(), Item.ice_shard(), Item.thunder_bead(),
+		Item.attack_mirror(), Item.magic_mirror(),
 	]
 	if floor_num >= 2:
 		out.append(Item.panacea())
 		out.append(Item.elixir_motion())
+		out.append(Item.revival_feather())
 	return out
 
 
-# Gear for the depth reached, which is the main thing gold is for once the belt
-# is full. Trinkets included, so the two accessory slots are a purchase rather
+# Gear for the depth reached, which is the main thing gold is for once the pack
+# is stocked. Trinkets included, so the two accessory slots are a purchase rather
 # than a run of luck.
 #
 # Deepest tier first, and within a tier: weapon, worn piece, trinket. A shelf
@@ -386,19 +526,23 @@ static func item_price(item: Dictionary) -> int:
 	return int(item.get("price", 20 + int(item.get("floor", 1)) * 25))
 
 
-# Split the way the belt is used in a fight: what patches you up, and what you
+# Split the way the pack is used in a fight: what patches you up, and what you
 # throw. The test is the one the battle's item menu uses.
 func _build_buy() -> void:
 	var mend: Array = []
 	var throw: Array = []
+	var mirrors: Array = []
 	for item: Dictionary in _supplies():
-		if item.has("inflicts_status") or (item.has("element") and int(item.get("dmg", 0)) > 0):
+		if item.has("mirror"):
+			mirrors.append(item)
+		elif item.has("inflicts_status") or (item.has("element") and int(item.get("dmg", 0)) > 0):
 			throw.append(item)
 		else:
 			mend.append(item)
 	SlotList.sections(_content, _page, "buy", [
 		{title = "Recovery", entries = mend},
 		{title = "Throwables", entries = throw},
+		{title = "Mirrors", entries = mirrors},
 	], _buy_offer)
 
 
@@ -453,7 +597,7 @@ func _build_scrolls() -> void:
 # One shelf per element the scroll teaches, then healing, then everything that
 # moves a stage, lays an ailment or clears one.
 static func scroll_groups(scrolls: Array) -> Array:
-	var order: Array[String] = ["fire", "ice", "thunder", "light", "dark"]
+	var order: Array[String] = ["phys", "fire", "ice", "thunder", "light", "dark"]
 	var by_key: Dictionary = {heal = [], support = []}
 	for element: String in order:
 		by_key[element] = []
@@ -493,14 +637,10 @@ func _buy_offer(list: SlotList, item: Variant) -> void:
 	# Shares the line the stat deltas are on rather than taking one of its own:
 	# a slot is a fixed height and the description is already the second line,
 	# so a third would simply push it out of the row.
-	var lead: Array[String] = []
+	var detail: String = ItemInfo.item(entry, deltas)
 	if held != "":
-		lead.append("[color=#9ee8b8]%s[/color]" % held)
-	if deltas != "":
-		lead.append(deltas)
-	var detail: String = entry.get("desc", "") as String
-	if not lead.is_empty():
-		detail = "%s\n%s" % ["  ·  ".join(lead), detail]
+		detail = "[font_size=%d][color=#9ee8b8]%s[/color][/font_size]\n%s" % [
+				ItemInfo.FONT_SIZE - 3, held, detail]
 
 	list.add(entry["name"] as String, title_color,
 			detail,

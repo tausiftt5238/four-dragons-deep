@@ -1,0 +1,38 @@
+group,name,where,tier,rank,icons,str,def,mag,agl,phys,fire,ice,thunder,light,dark,attacks,reach,caster,ailment,ailment_chance,support,talks,personality,wants,sprite,notes
+monster,Bat,Floors 1-4,1,0,1,2,1,0,5,weak,,resist,weak,,weak,,one,,,5,,yes,cowardly,any,Bat,
+monster,Slime,Floors 1-4,1,0,1,2,4,0,1,resist,weak,weak,resist,,,,one,,poison,5,,yes,cowardly,any,Slime,
+monster,Skeleton,Floors 1-4,1,0,1,3,2,0,3,,weak,resist,,weak,null,,one,,,5,,yes,cowardly,consumable,Skeleton,
+monster,Hellbat,Floors 1-4,1,0,1,3,2,3,6,weak,resist,weak,,,,fire,one,,,5,mire,yes,cowardly,any,Hellbat,
+monster,Lava Slime,Floors 1-4,1,0,1,3,3,3,1,resist,resist,weak,resist,,,fire,one,,poison,5,,yes,cowardly,any,Lava_Slime,
+monster,Blood Spawn,Floors 1-4,1,0,1,4,3,3,4,weak,weak,,resist,,,thunder,one,,poison,5,,yes,cowardly,consumable,Blood_Monster_A,
+monster,Orc,Floors 1-4,1,0,1,4,2,3,4,,weak,,weak,,weak,fire,one,,,5,,yes,greedy,throwable,Orc,
+monster,Skeleton Archer,Floors 1-4,1,0,1,2,3,3,3,,weak,null,,weak,null,ice,one,,immobilize,5,,yes,proud,any,Skeleton_Archer,
+monster,Demon,Floors 1-4,1,1,1,5,3,4,5,,resist,weak,,weak,,fire,few,,,5,whet,yes,greedy,throwable,Demon_A,
+monster,Imp,Floors 1-4,1,1,1,3,3,4,5,,resist,,weak,weak,,fire,few,,immobilize,5,ward,yes,greedy,any,Demon_B,
+monster,Armored Skeleton,Floors 6-9,2,0,1,5,4,4,2,resist,weak,null,resist,weak,null,ice,one,,immobilize,12,ward,yes,proud,throwable,Armored_Skeleton,
+monster,Greatsword Skeleton,Floors 6-9,2,0,1,6,3,4,2,resist,weak,null,null,weak,null,ice dark,few,,immobilize,12,,yes,proud,throwable,Greatsword_Skeleton,
+monster,Armored Orc,Floors 6-9,2,0,1,5,4,4,4,,weak,resist,weak,,weak,ice,one,,,12,mire,yes,greedy,any,Armored_Orc,
+monster,Orc Rider,Floors 16-19,4,0,1,6,3,0,5,reflect,resist,weak,null,,weak,fire,one,,,12,,yes,greedy,consumable,Orc_rider,
+monster,Hellhound,Floors 16-19,4,0,1,5,2,4,6,weak,drain,weak,reflect,,null,fire,one,,poison,12,,yes,proud,any,Hellhound,
+monster,Blood Fiend,Floors 6-9,2,0,1,5,3,5,5,,resist,drain,weak,,null,dark ice,few,,poison,12,,yes,proud,any,Blood_Monster_B,
+monster,Fell Demon,Floors 6-9,2,0,1,5,3,5,5,,resist,resist,weak,weak,,ice,few,,poison,12,quicken,yes,proud,any,Demon_C,
+monster,Horned Demon,Floors 6-9,2,0,1,6,4,5,4,null,null,weak,resist,,,fire,one,,,12,blunt,yes,greedy,any,Demon_D,
+monster,Ghostfire,Floors 6-9,2,0,1,3,2,6,6,weak,drain,weak,resist,,resist,fire dark,all,yes,silence,12,damp,yes,lonely,consumable,Ghostfire,
+monster,Eyeball,Floors 6-9,2,0,1,3,3,6,3,weak,,drain,weak,resist,null,ice,few,,immobilize,12,sunder,yes,lonely,consumable,Eyeball_Monster,
+monster,Elite Orc,Floors 11-14,3,0,1,7,5,5,3,resist,resist,weak,resist,,weak,fire,one,,,18,whet,yes,proud,throwable,Elite_Orc,
+monster,Werewolf,Floors 11-14,3,0,1,7,3,5,7,resist,weak,resist,drain,,weak,thunder,one,,poison,18,quicken,yes,proud,throwable,Werewolf,
+monster,Werebear,Floors 11-14,3,0,1,6,6,5,2,resist,resist,drain,weak,,weak,ice,one,,immobilize,18,ward,yes,lonely,consumable,Werebear,
+monster,Arch Demon,Floors 11-14,3,0,1,7,5,6,4,,null,weak,reflect,weak,resist,fire dark,few,,silence,18,stoke,yes,proud,consumable,Demon_E,
+monster,Demoness,Floors 11-14,3,0,1,8,4,6,5,,drain,weak,null,weak,resist,fire thunder,few,,,18,whet,yes,proud,throwable,Demoness_A,
+monster,Flame Golem,Floors 11-14,3,0,1,4,6,7,1,resist,drain,weak,resist,,weak,fire,all,yes,poison,18,ward,yes,lonely,consumable,Flame_Golem,
+monster,Dark Demoness,Floors 16-19,4,0,1,8,5,7,5,,drain,reflect,weak,,drain,fire dark,one,,silence,22,stoke,yes,proud,any,Demoness_B,
+monster,Warlock,Floors 16-19,4,0,1,3,3,9,4,weak,reflect,reflect,reflect,,resist,fire ice thunder,all,yes,silence,22,purge,yes,proud,consumable,Warlock,
+warden,Black Knight,Floor 4,1,,2,6,7,6,2,resist,reflect,null,weak,resist,,thunder light,few,,immobilize,8,,no,,,Black_Knight_A,
+warden,Dark Knight,Floor 9,2,,2,7,6,6,3,resist,weak,null,,resist,drain,ice dark,all,,silence,10,mire,no,,,Black_Knight_B,
+warden,Death Knight,Floor 14,3,,2,4,7,11,4,,reflect,weak,null,resist,drain,fire dark ice,all,yes,silence,20,purge,no,,,Black_Knight_C,
+warden,Minotaur,Floor 19,4,,2,10,9,7,5,resist,null,drain,weak,resist,drain,ice dark,few,,immobilize,20,ward,no,,,Minotaur,
+mimic,Mimic,"Chests, floor 6+",,,2,8,6,6,4,resist,weak,,reflect,weak,drain,thunder dark,few,,poison,12,,no,,,res://resources/enemySprites/Mimic.png,"Placed among real caches, so the floor's own furniture becomes a thing to read twice. Weak to fire and to light because the disguise is the whole of its defence."
+dragon,Ice Dragon,Floor 5,1,,4,12,9,10,4,,weak,drain,null,null,null,ice,few,,immobilize,25,ward,no,,,Ice_Dragon,"The first dragon and the only one the player is armed for on arrival: the run opens holding Ember and this thing drinks its own element and burns on the other. One element and a narrow reach, so the fight teaches what a dragon is before the next one starts asking questions about it."
+dragon,Thunder Dragon,Floor 10,2,,4,13,9,13,10,,null,weak,drain,null,null,thunder,all,,paralyzed,25,steady,no,,,Thunder_Dragon,"Fast — the only boss that outruns a party — and it hits the whole room every turn it can pay for. Paralysis on a room-wide cast is the threat: it is trying to take your turns, not your HP. Ice is the answer and the ice corridor is where you got it."
+dragon,Fire Dragon,Floor 15,3,,4,16,11,13,6,resist,drain,null,weak,null,null,fire,all,,poison,25,ward,no,,,Fire_Dragon,"The hardest hitter and the one that punishes the opening loadout: Ember has carried the player fifteen floors and here it feeds the thing. Scales turn a blade as well, so the party that has leaned on swinging has to have found a second line by now."
+dragon,Void Dragon,Floor 20,4,,4,15,12,15,7,resist,null,weak,null,null,drain,dark fire thunder,all,,silence,25,purge,no,,,Void_Dragon,"The last fight. It answers to exactly one element out of six and shrugs at a blade, casts three lines room-wide, drinks the dark and purges anything put on it. Silence is the real danger — it can close the one door it is vulnerable through, which is why the corridor has an orb at the mouth and the player should arrive with more than one way to say ice."
