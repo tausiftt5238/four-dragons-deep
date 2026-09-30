@@ -5,6 +5,7 @@
 # Fields per spell:
 #   name    – display name
 #   mp      – MP cost
+#   hp      – physical skills only: HP cost, as a percentage of max HP
 #   type    – "dmg" | "banish" | "heal" | "buff" | "dispel" | "ailment"
 #   element – affinity key it is scored against ("" for the ones that aren't)
 #   shape   – SHAPE_ONE | SHAPE_FEW | SHAPE_ALL, how many demons it reaches
@@ -74,6 +75,40 @@ static var DATA: Dictionary = {
 	"analyze":       {name="Analyze",      mp=0, type="analyze", heal=0, element="",
 		shape=SHAPE_ONE, spread=1.0,
 		desc="Read a monster's chart and its temper. Wardens and bosses refuse."},
+
+	# ── Phys ──────────────────────────────────────────────────────────────────
+	# Skills rather than spells: they swing, so they meet DEF and miss the way a
+	# blade does, and they are paid for in HP. The price is a share of the pool,
+	# the way MP is worth the same at level two and level thirty.
+	"lunge":         {name="Lunge",        mp=0, hp=6, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ONE, spread=1.0, power=POWER_I,
+		desc="All your weight behind one blow."},
+	"sweep":         {name="Sweep",        mp=0, hp=10, type="dmg", heal=0, element="phys",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_I,
+		desc="A wide cut through two or three of them."},
+	"rampage":       {name="Rampage",      mp=0, hp=14, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG, power=POWER_I,
+		desc="Through the whole line and back again."},
+
+	"rend":          {name="Rend",         mp=0, hp=9, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ONE, spread=1.0, power=POWER_II,
+		desc="A blow meant to open something up."},
+	"scything_arc":  {name="Scything Arc", mp=0, hp=14, type="dmg", heal=0, element="phys",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_II,
+		desc="One long stroke, two or three of them in its way."},
+	"onslaught":     {name="Onslaught",    mp=0, hp=19, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG, power=POWER_II,
+		desc="Everything standing, one after another, without a breath."},
+
+	"deathblow":     {name="Deathblow",    mp=0, hp=12, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ONE, spread=1.0, power=POWER_III,
+		desc="One monster, one blow, and no second needed."},
+	"carnage":       {name="Carnage",      mp=0, hp=18, type="dmg", heal=0, element="phys",
+		shape=SHAPE_FEW, spread=SPREAD_FEW_DMG, power=POWER_III,
+		desc="Two or three of them, and nothing tidy about it."},
+	"warpath":       {name="Warpath",      mp=0, hp=24, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG, power=POWER_III,
+		desc="The whole room, cut down to the last."},
 
 	# ── Fire ──────────────────────────────────────────────────────────────────
 	"ember":         {name="Ember",        mp=8, type="dmg", heal=0, element="fire",
@@ -333,6 +368,22 @@ static func rung_power(rung: int) -> float:
 
 static func rung_boost(rung: int) -> float:
 	return [BOOST_I, BOOST_II, BOOST_III][clampi(rung - 1, 0, 2)]
+
+
+# What a skill costs in HP for someone with this much of it. Never below one.
+static func hp_cost(spell_id: String, max_hp: int) -> int:
+	var pct: int = int(get_data(spell_id).get("hp", 0))
+	if pct <= 0:
+		return 0
+	return maxi(1, ceili(float(max_hp) * float(pct) / 100.0))
+
+
+# "8 MP" or "6% HP" — the price as the menus show it.
+static func cost_text(spell_id: String) -> String:
+	var d: Dictionary = get_data(spell_id)
+	if int(d.get("hp", 0)) > 0:
+		return "%d%% HP" % int(d["hp"])
+	return "%d MP" % int(d.get("mp", 0))
 
 
 static func get_data(spell_id: String) -> Dictionary:

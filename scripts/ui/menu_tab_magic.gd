@@ -73,7 +73,7 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 	var about: String = spell.get("desc", "") as String
 	if element != "":
 		about = "%s %s  —  %s" % [kind, Spell.reach_tag(spell_id), about]
-	var cost: int = int(spell["mp"])
+	var cost: int = int(spell.get("mp", 0))
 	var actions: Array[Dictionary] = [{
 		text = "Unequip" if equipped else "Equip",
 		disabled = not equipped and not p.has_free_slot(),
@@ -105,4 +105,4 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 
 	list.add_entry("%s%s" % ["* " if equipped else "", spell["name"]],
 			title_color, about,
-			"%d MP" % cost, Color(0.4, 0.55, 0.95), actions)
+			Spell.cost_text(spell_id), Color(0.4, 0.55, 0.95), actions)

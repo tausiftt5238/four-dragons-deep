@@ -579,7 +579,7 @@ func _build_scrolls() -> void:
 # One shelf per element the scroll teaches, then healing, then everything that
 # moves a stage, lays an ailment or clears one.
 static func scroll_groups(scrolls: Array) -> Array:
-	var order: Array[String] = ["fire", "ice", "thunder", "light", "dark"]
+	var order: Array[String] = ["phys", "fire", "ice", "thunder", "light", "dark"]
 	var by_key: Dictionary = {heal = [], support = []}
 	for element: String in order:
 		by_key[element] = []

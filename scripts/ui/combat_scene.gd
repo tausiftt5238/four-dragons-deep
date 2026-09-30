@@ -1952,10 +1952,16 @@ func _show_skills_submenu() -> void:
 			# before spending 22 MP, so it rides next to the element.
 			if element != "":
 				tag += "  " + Spell.reach_tag(spell_id)
-			var cost: int = int(data.get("mp", 0))
+			# A physical skill is paid in blood, not mana: silence does not
+			# stop it, and it will not spend the last of the detective's HP.
+			var blocked: bool
+			var hp_price: int = Spell.hp_cost(spell_id, player.max_hp)
+			if hp_price > 0:
+				blocked = player.hp <= hp_price
+			else:
+				blocked = silenced or player.mp < int(data.get("mp", 0))
 			_submenu_add(_make_skill_button("Magic:" + spell_id,
-					data["name"] as String, tag, "%d MP" % cost,
-					silenced or player.mp < cost))
+					data["name"] as String, tag, Spell.cost_text(spell_id), blocked))
 		return
 
 	var demon: Enemy = actor as Enemy
@@ -2753,10 +2759,17 @@ func _on_skill_chosen(action: String) -> void:
 
 func _cast_spell(spell_id: String) -> Dictionary:
 	var data: Dictionary = Spell.DATA.get(spell_id, {name = "Spell", mp = 8})
-	var mp_cost: int = data.get("mp", 8)
-	if player.mp < mp_cost:
-		return {msg = "[color=gray]Not enough MP![/color]", cost = PressTurn.COST_FULL}
-	player.mp -= mp_cost
+	var hp_price: int = Spell.hp_cost(spell_id, player.max_hp)
+	if hp_price > 0:
+		# Never the killing blow on himself: it needs HP left over after paying.
+		if player.hp <= hp_price:
+			return {msg = "[color=gray]Not enough HP![/color]", cost = PressTurn.COST_FULL}
+		player.take_damage(hp_price)
+	else:
+		var mp_cost: int = data.get("mp", 8)
+		if player.mp < mp_cost:
+			return {msg = "[color=gray]Not enough MP![/color]", cost = PressTurn.COST_FULL}
+		player.mp -= mp_cost
 
 	var spell_type: String = data.get("type", "dmg")
 
@@ -2805,19 +2818,31 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		return _cast_spread(data)
 
 	var element: String = data.get("element", "")
-	var power: float = float(player.effective_mag()) \
-			* player.stage_mult(CharacterSheet.STAT_MAG)
-	if not CombatMath.spell_lands(player, enemy):
+	var phys: bool = element == Affinity.PHYS
+	var power: float = _skill_power(phys)
+	# A physical skill is a swing: it misses like one and wastes what one does.
+	if phys and not CombatMath.lands(player, enemy):
+		return {msg = "[color=#9aa0aa]You use %s — %s dodges![/color]" % [
+				data["name"], enemy.display_name()], cost = PressTurn.COST_MISS}
+	if not phys and not CombatMath.spell_lands(player, enemy):
 		return {msg = "[color=#9aa0aa]You cast %s — %s slips it![/color]" % [
 				data["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
 	var base: int = int(power * float(data.get("power", Spell.POWER_I))) \
 			- _guard_vs(enemy, element)
-	if "scholar" in player.passive_skills:
+	if not phys and "scholar" in player.passive_skills:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit(player)
 	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending)
-	return _land_hit(res, element, "You cast %s!" % data["name"], false,
-			float(data.get("power", Spell.POWER_I)))
+	return _land_hit(res, element, "%s %s!" % ["You use" if phys else "You cast",
+			data["name"]], phys, float(data.get("power", Spell.POWER_I)))
+
+
+# What a damage spell or skill hits with: MAG for magic, the blade arm for a
+# physical skill.
+func _skill_power(phys: bool) -> float:
+	if phys:
+		return float(player.effective_str()) * player.stage_mult(CharacterSheet.STAT_ATK)
+	return float(player.effective_mag()) * player.stage_mult(CharacterSheet.STAT_MAG)
 
 
 # ── Spells that reach more than one demon ─────────────────────────────────────
@@ -2857,21 +2882,22 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
 	var split: float = CombatMath.split_share(targets.size())
-	var power: float = float(player.effective_mag()) \
-			* player.stage_mult(CharacterSheet.STAT_MAG)
+	var phys: bool = element == Affinity.PHYS
+	var power: float = _skill_power(phys)
 
-	var lines: Array[String] = ["You cast %s!" % data["name"]]
+	var lines: Array[String] = ["%s %s!" % ["You use" if phys else "You cast", data["name"]]]
 	var outcomes: Array[String] = []
 	var reflected: int = 0
 
 	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
-		if not CombatMath.spell_lands(player, foe):
+		if not (CombatMath.lands(player, foe) if phys else CombatMath.spell_lands(player, foe)):
 			outcomes.append("miss")
-			lines.append("[color=#9aa0aa]%s slips it.[/color]" % foe.display_name())
+			lines.append("[color=#9aa0aa]%s %s it.[/color]" % [foe.display_name(),
+					"dodges" if phys else "slips"])
 			continue
 		var base: int = int(power * rung * split) - _guard_vs(foe, element)
-		if "scholar" in player.passive_skills:
+		if not phys and "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
 		var res: Dictionary = CombatMath.resolve(base, element, foe, crit, foe.defending)
@@ -2914,7 +2940,11 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 				_actor_name(), reflected])
 
 	_ensure_target()
-	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
+	var price: String = _spread_cost(outcomes)
+	# A sweep that touched nobody wasted the turn the way a missed swing does.
+	if phys and outcomes.count("miss") == outcomes.size():
+		price = PressTurn.COST_MISS
+	return {msg = " ".join(lines), cost = price}
 
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
