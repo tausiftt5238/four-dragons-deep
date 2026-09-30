@@ -534,6 +534,7 @@ func _action_forward() -> void:
 	var nxt: Vector2i = player_pos + DIR_OFFSET[player_facing]
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
+		_slide(DIR_OFFSET[player_facing])
 		_post_move()
 	elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
 		_check_portal()
@@ -548,6 +549,7 @@ func _action_back() -> void:
 	var nxt: Vector2i = player_pos - DIR_OFFSET[player_facing]
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
+		_slide(-DIR_OFFSET[player_facing])
 		_post_move()
 	else:
 		_shake_camera()
@@ -1262,22 +1264,135 @@ func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> voi
 	_hud_popup_tween.tween_property(_hud_popup, "modulate:a", 0.0, 0.6)
 
 
-func _check_trap() -> void:
-	if not current_level.trap_cells.has(player_pos):
-		return
-	var trap_type: String = current_level.trap_cells[player_pos] as String
-	# Remembered from here on. A trap you have not stepped on is not a thing
-	# you know about, so the map stays quiet about it until it has bitten.
-	current_level.found_traps[player_pos] = trap_type
+# ── Floor hazards ─────────────────────────────────────────────────────────────
+#
+# One kind per band, after its dragon — see Level.trap_cells. Lava and a live
+# spark tile cost the same slice of max HP the old spike trap did, halved by
+# armour that resists the element and ignored by any that nulls it. Ice slides
+# you on; a teleporter moves you to its partner.
+
+const HAZARD_DAMAGE: float = 0.15
+# How long each of the two spark groups stays live before the other takes over.
+# Counted only while exploring, so a fight or a menu never costs a pulse.
+const SPARK_PULSE: float = 1.1
+
+const _HAZARD_NOTES: Dictionary = {
+	"ice":   "Ice! You slide until you reach solid floor.",
+	"spark": "Charged floor. Cross while your next tile is dark.",
+	"lava":  "Lava! Fire-resistant armour halves the burn.",
+	"tele":  "A teleporter. It carries you to its twin, and back.",
+}
+
+var _spark_clock: float = 0.0
+var _spark_live: int = 0
+
+
+func _hazard_here() -> String:
+	return current_level.trap_cells.get(player_pos, "") as String
+
+
+func _note_hazard(kind: String) -> bool:
+	if kind in player_char.hazards_seen:
+		return false
+	player_char.hazards_seen.append(kind)
+	_show_hud_popup(_HAZARD_NOTES.get(kind, "") as String, Color(0.85, 0.90, 1.0))
+	return true
+
+
+func _remember_hazard(at: Vector2i) -> void:
+	current_level.found_traps[at] = current_level.trap_cells[at]
 	minimap_ctrl.queue_redraw()
-	# Every trap costs HP and nothing else: an ailment laid out here would be
-	# gone by the end of the next fight, so it never reached the player as one.
-	var dmg: int = max(1, int(player_char.max_hp * 0.15))
-	player_char.take_damage(dmg)
-	_show_hud_popup("Spike Trap!  -%d HP" % dmg, Color(0.90, 0.30, 0.30))
-	_shake_camera()
+
+
+# Carries the player on across ice in the direction they moved, until solid
+# floor, a wall, or a demon in the way. The whole slide is one move: the
+# roamers take one step for it and nothing else can happen partway.
+func _slide(dir: Vector2i) -> void:
+	if _hazard_here() != Level.HAZARD_ICE:
+		return
+	_note_hazard(Level.HAZARD_ICE)
+	var guard: int = 0
+	while _hazard_here() == Level.HAZARD_ICE and guard < 32:
+		guard += 1
+		_remember_hazard(player_pos)
+		var nxt: Vector2i = player_pos + dir
+		if not _is_open(nxt.x, nxt.y) or _roamer_at(nxt):
+			break
+		player_pos = nxt
+
+
+func _roamer_at(cell: Vector2i) -> bool:
+	for r: Roamer in roamers:
+		if is_instance_valid(r) and r.cell == cell:
+			return true
+	return false
+
+
+func _check_trap() -> void:
+	var here: String = _hazard_here()
+	if here == "":
+		return
+	var kind: String = Level.hazard_kind(here)
+	if kind == Level.HAZARD_ICE:
+		return    # handled as the move was made
+	_remember_hazard(player_pos)
+	var first: bool = _note_hazard(kind)
+	match kind:
+		Level.HAZARD_TELE:
+			_teleport(here)
+		Level.HAZARD_SPARK:
+			if Level.spark_group(here) == _spark_live:
+				_hazard_hurt("thunder", "Shocked!", Color(0.55, 0.85, 1.0), first)
+		_:
+			_hazard_hurt("fire", "Lava!", Color(1.0, 0.45, 0.20), first)
+
+
+func _hazard_hurt(element: String, what: String, color: Color, quiet: bool) -> void:
+	var dmg: int = maxi(1, int(player_char.max_hp * HAZARD_DAMAGE))
+	match player_char.affinity_of(element):
+		Affinity.RESIST:
+			dmg = maxi(1, dmg / 2)
+		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
+			dmg = 0
+	if dmg > 0:
+		player_char.take_damage(dmg)
+		_shake_camera()
+	# The first time, the note explaining the tile is on screen instead.
+	if not quiet:
+		_show_hud_popup("%s  -%d HP" % [what, dmg] if dmg > 0 else "%s  No effect." % what,
+				color)
 	if not player_char.is_alive():
 		_show_game_over()
+
+
+# Arrives on the partner without setting it off: a teleporter only fires when
+# you walk onto it, so stepping off and back on is how to go back.
+func _teleport(here: String) -> void:
+	var to: Vector2i = Level.tele_target(here)
+	if not _is_open(to.x, to.y):
+		return
+	player_pos = to
+	_remember_hazard(to)
+	_sync_player()
+
+
+# The spark clock. Runs only while the player is free to move; when the live
+# group changes, anyone standing on a tile of the new one is caught by it.
+func _process(delta: float) -> void:
+	if in_combat or menu_open or save_open or orb_open or chest_open \
+			or not is_instance_valid(current_level) or current_level.trap_cells.is_empty():
+		return
+	_spark_clock += delta
+	var live: int = int(_spark_clock / SPARK_PULSE) % 2
+	if live == _spark_live:
+		return
+	_spark_live = live
+	if is_instance_valid(dungeon):
+		dungeon.set_spark_live(live)
+	var here: String = _hazard_here()
+	if Level.hazard_kind(here) == Level.HAZARD_SPARK and here != "" \
+			and Level.spark_group(here) == live and player_char.is_alive():
+		_hazard_hurt("thunder", "Shocked!", Color(0.55, 0.85, 1.0), false)
 
 
 
@@ -1511,6 +1626,7 @@ func _gather_save_data() -> Dictionary:
 			active_demons       = p.active_demons,
 			encountered_enemies = p.encountered_enemies,
 			analyzed            = p.analyzed,
+			hazards_seen        = p.hazards_seen,
 			learned_affinities  = p.learned_affinities,
 			passive_skills      = p.passive_skills,
 			active_statuses     = p.active_statuses,
@@ -1743,6 +1859,7 @@ func _apply_player_data(pdata: Dictionary) -> void:
 
 	player_char.analyzed.clear()
 	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
+	player_char.hazards_seen.assign(pdata.get("hazards_seen", []) as Array)
 	player_char.learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
 
 	# Passive skills are off while they are reworked, so a save that picked some

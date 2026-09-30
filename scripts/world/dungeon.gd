@@ -992,32 +992,60 @@ func _axis_box(out: Vector3, across: Vector3, depth: float, height: float,
 			absf(out.z) * depth + absf(across.z) * width)
 
 
-# Colored floor overlay for each trap cell so the player can see them. Traps
-# all bite the same way now, so they all read red.
+# One tile of hazard shader per hazard cell, lying just on the floor — see
+# resources/shaders/hazard.gdshader. Lava and ice fill the cell, a spark plate
+# a little less, a teleporter is a disc. No light of their own: they glow in the
+# shader, which is what lets a floor carry several without the torches going
+# out (the web renderer lights a mesh from eight lights at most).
+const _HAZARD_SHADER := preload("res://resources/shaders/hazard.gdshader")
+const _PAIR_COLORS: Array[Color] = [Color(0.66, 0.38, 1.0), Color(0.30, 0.85, 0.80)]
+
+var _spark_mats: Array[ShaderMaterial] = []
+# Kept across rebuilds (a looted chest rebuilds the floor mid-pulse).
+var _spark_live: int = 0
+
+
 func _add_trap_markers(level: Level) -> void:
+	_spark_mats.clear()
 	for pos: Variant in level.trap_cells.keys():
-		var gp: Vector2i      = pos as Vector2i
-		var wx: float = gp.x * CELL_SIZE
-		var wz: float = gp.y * CELL_SIZE
+		var gp: Vector2i = pos as Vector2i
+		var value: String = level.trap_cells[pos] as String
+		var kind: String = Level.hazard_kind(value)
+		var mat: ShaderMaterial = ShaderMaterial.new()
+		mat.shader = _HAZARD_SHADER
+		var size: float = CELL_SIZE
+		match kind:
+			Level.HAZARD_ICE:
+				mat.set_shader_parameter("mode", 1)
+				mat.render_priority = 1
+			Level.HAZARD_SPARK:
+				mat.set_shader_parameter("mode", 2)
+				mat.set_shader_parameter("group", Level.spark_group(value))
+				mat.set_shader_parameter("live", _spark_live)
+				_spark_mats.append(mat)
+				size = CELL_SIZE * 0.9
+			Level.HAZARD_TELE:
+				mat.set_shader_parameter("mode", 3)
+				mat.set_shader_parameter("pair_color",
+						_PAIR_COLORS[Level.tele_pair(value) % _PAIR_COLORS.size()])
+				size = CELL_SIZE * 0.8
+			_:
+				mat.set_shader_parameter("mode", 0)
+		var mi: MeshInstance3D = MeshInstance3D.new()
+		var quad: PlaneMesh = PlaneMesh.new()
+		quad.size = Vector2(size, size)
+		mi.mesh = quad
+		mi.material_override = mat
+		mi.position = Vector3(gp.x * CELL_SIZE, 0.012, gp.y * CELL_SIZE)
+		add_child(mi)
 
-		var col:       Color = Color(0.72, 0.08, 0.08)
-		var light_col: Color = Color(1.0,  0.25, 0.25)
 
-		var mat: StandardMaterial3D = StandardMaterial3D.new()
-		mat.albedo_color            = col
-		mat.emission_enabled        = true
-		mat.emission                = col
-		mat.emission_energy_multiplier = 1.6
-		# Thin slab sitting just on top of the floor surface
-		_add_box(Vector3(wx, 0.01, wz), Vector3(CELL_SIZE * 0.85, 0.02, CELL_SIZE * 0.85), mat)
-
-		var light: OmniLight3D = OmniLight3D.new()
-		light.light_color  = light_col
-		light.light_energy = 0.8
-		light.omni_range   = 2.5
-		light.position     = Vector3(wx, 0.4, wz)
-		add_child(light)
-
+# Which spark group is live, for every plate on the floor. Called by Main on the
+# pulse, so the tiles and the damage never disagree.
+func set_spark_live(group: int) -> void:
+	_spark_live = group
+	for mat: ShaderMaterial in _spark_mats:
+		mat.set_shader_parameter("live", group)
 
 
 func _add_box_child(parent: Node3D, pos: Vector3, size: Vector3,

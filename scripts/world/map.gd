@@ -42,7 +42,7 @@ func _setup_normal_floor(floor_num: int = 0) -> void:
 	orb_cells.clear()
 	if floor_num <= 1:
 		_place_orb_in_front_of_start()
-	_place_traps()
+	_place_hazards(floor_num)
 	# A warden holds the key in the middle of its band; every other maze floor
 	# leaves it lying somewhere to be found.
 	if Level.is_warden_floor(floor_num):
@@ -403,13 +403,113 @@ func _place_chests() -> void:
 		mimic_cells[keys[i]] = true
 
 
-func _place_traps() -> void:
-	const COUNT: int = 3
+# Each band lays the hazard of the dragon waiting at its bottom. None on a
+# warden's floor: the fight for the key is the floor's hurdle, and a timing
+# puzzle in front of it would only be noise. Boss corridors never get here.
+func _place_hazards(floor_num: int) -> void:
+	if Level.is_warden_floor(floor_num):
+		return
 	var occupied: Dictionary = {
 		player_start: true, exit_pos: true, exit_wall_pos: true,
 	}
 	for orb: Vector2i in orb_cells:
 		occupied[orb] = true
+	# Nothing right beside the start either: the first step of a floor should
+	# never be onto something.
+	for off: Vector2i in _DIRS4:
+		occupied[player_start + off] = true
+	match Level.tier_of(floor_num):
+		1: _place_ice(occupied)
+		2: _place_sparks(occupied)
+		3: _place_lava(occupied)
+		_: _place_teleporters(occupied)
+
+
+const _DIRS4: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+
+
+func _open(p: Vector2i) -> bool:
+	return p.y >= 0 and p.y < maze.size() and p.x >= 0 \
+			and p.x < (maze[p.y] as Array).size() and (maze[p.y] as Array)[p.x] == 0
+
+
+# A corridor cell: open, with rock on both sides across `dir`.
+func _corridor_cell(p: Vector2i, dir: Vector2i) -> bool:
+	var side: Vector2i = Vector2i(dir.y, -dir.x)
+	return _open(p) and not _open(p + side) and not _open(p - side)
+
+
+# Straight runs of `length` corridor cells, with open floor at both ends to
+# land on and nothing already claimed in or around them. Ice laid on one can
+# only ever carry you from one end to the other, so it can never strand you.
+func _corridor_runs(length: int, occupied: Dictionary) -> Array:
+	var runs: Array = []
+	for y: int in maze.size():
+		for x: int in (maze[y] as Array).size():
+			for dir: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var start: Vector2i = Vector2i(x, y)
+				var cells: Array[Vector2i] = []
+				var ok: bool = true
+				for k: int in length:
+					var c: Vector2i = start + dir * k
+					if not _corridor_cell(c, dir) or occupied.has(c):
+						ok = false
+						break
+					cells.append(c)
+				if not ok:
+					continue
+				var before: Vector2i = start - dir
+				var after: Vector2i = start + dir * length
+				if not _open(before) or not _open(after) \
+						or occupied.has(before) or occupied.has(after):
+					continue
+				runs.append(cells)
+	runs.shuffle()
+	return runs
+
+
+func _claim_run(cells: Array, occupied: Dictionary) -> void:
+	for c: Vector2i in cells:
+		occupied[c] = true
+		for off: Vector2i in _DIRS4:
+			occupied[c + off] = true
+
+
+# Up to two sheets of ice, each a stretch of corridor two to four long.
+func _place_ice(occupied: Dictionary) -> void:
+	var placed: int = 0
+	for length: int in [4, 3, 3, 2, 2]:
+		if placed >= 2:
+			return
+		var runs: Array = _corridor_runs(length, occupied)
+		if runs.is_empty():
+			continue
+		var cells: Array = runs[0]
+		for c: Vector2i in cells:
+			trap_cells[c] = Level.HAZARD_ICE
+		_claim_run(cells, occupied)
+		placed += 1
+
+
+# Two stretches of corridor wired in a checkerboard, so whichever group is
+# live, the one beside it is dark.
+func _place_sparks(occupied: Dictionary) -> void:
+	var placed: int = 0
+	for length: int in [5, 4, 4, 3, 3]:
+		if placed >= 2:
+			return
+		var runs: Array = _corridor_runs(length, occupied)
+		if runs.is_empty():
+			continue
+		var cells: Array = runs[0]
+		for c: Vector2i in cells:
+			trap_cells[c] = "%s%d" % [Level.HAZARD_SPARK, (c.x + c.y) % 2]
+		_claim_run(cells, occupied)
+		placed += 1
+
+
+func _place_lava(occupied: Dictionary) -> void:
+	const COUNT: int = 3
 	var placed: int = 0
 	var attempts: int = 0
 	while placed < COUNT and attempts < 60:
@@ -418,7 +518,42 @@ func _place_traps() -> void:
 		if occupied.has(pos):
 			continue
 		occupied[pos] = true
-		trap_cells[pos] = "spike"
+		trap_cells[pos] = Level.HAZARD_LAVA
 		placed += 1
+
+
+# One or two linked pairs, both ends in dead ends. A teleporter is a tile you
+# cannot walk across, so one standing in a corridor would wall off whatever lay
+# past it; in a dead end it only ever adds a way through, never takes one away.
+# The two ends of a pair are kept well apart, or it is not worth stepping on.
+func _place_teleporters(occupied: Dictionary) -> void:
+	var ends: Array[Vector2i] = []
+	for y: int in maze.size():
+		for x: int in (maze[y] as Array).size():
+			var p: Vector2i = Vector2i(x, y)
+			if not _open(p) or occupied.has(p):
+				continue
+			var ways: int = 0
+			for off: Vector2i in _DIRS4:
+				if _open(p + off):
+					ways += 1
+			if ways == 1:
+				ends.append(p)
+	ends.shuffle()
+	var pair: int = 0
+	while pair < 2 and ends.size() >= 2:
+		var a: Vector2i = ends.pop_back()
+		var best: int = -1
+		for i: int in ends.size():
+			var d: int = absi(ends[i].x - a.x) + absi(ends[i].y - a.y)
+			if d >= 8 and (best < 0 or d > absi(ends[best].x - a.x) + absi(ends[best].y - a.y)):
+				best = i
+		if best < 0:
+			continue
+		var b: Vector2i = ends[best]
+		ends.remove_at(best)
+		trap_cells[a] = "%s:%d,%d:%d" % [Level.HAZARD_TELE, b.x, b.y, pair]
+		trap_cells[b] = "%s:%d,%d:%d" % [Level.HAZARD_TELE, a.x, a.y, pair]
+		pair += 1
 
 

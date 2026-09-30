@@ -163,7 +163,44 @@ var looted: Dictionary = {}
 # the recess itself gives it away, which is the whole point of the thing.
 var mimic_cells: Dictionary = {}
 
-# Traps: grid position → trap type. Only "spike" is laid now — a trap costs HP
-# and nothing else — but the value is kept so an older save still reads.
-# A sprung trap is recorded in found_traps, not erased: it bites every crossing.
+# Floor hazards: grid position → kind. Each band of five floors lays its own,
+# after its dragon:
+#   "ice"          floors 1-5    slide on to the next plain floor
+#   "spark0/1"     floors 6-10   live every other pulse, in two groups
+#   "lava"         floors 11-15  burns on every crossing
+#   "tele:x,y:i"   floors 16-20  moves you to its partner at x,y; i is the pair
+# "spike" is the old damage tile and still reads from older saves, as lava.
+# A hazard that has gone off is recorded in found_traps, not erased.
 var trap_cells: Dictionary = {}
+
+const HAZARD_ICE: String   = "ice"
+const HAZARD_LAVA: String  = "lava"
+const HAZARD_SPARK: String = "spark"
+const HAZARD_TELE: String  = "tele"
+
+
+static func hazard_kind(value: String) -> String:
+	if value.begins_with(HAZARD_TELE):
+		return HAZARD_TELE
+	if value.begins_with(HAZARD_SPARK):
+		return HAZARD_SPARK
+	if value == HAZARD_ICE:
+		return HAZARD_ICE
+	return HAZARD_LAVA
+
+
+# Which of the two thunder groups a spark tile belongs to.
+static func spark_group(value: String) -> int:
+	return 1 if value.ends_with("1") else 0
+
+
+# A teleporter's partner cell and its pair index.
+static func tele_target(value: String) -> Vector2i:
+	var parts: PackedStringArray = value.split(":")
+	var xy: PackedStringArray = parts[1].split(",")
+	return Vector2i(int(xy[0]), int(xy[1]))
+
+
+static func tele_pair(value: String) -> int:
+	var parts: PackedStringArray = value.split(":")
+	return int(parts[2]) if parts.size() > 2 else 0

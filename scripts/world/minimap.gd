@@ -69,6 +69,10 @@ const C_ORB: Color    = Color(0.80, 0.96, 1.00, 1.00)  # Cold white orb — matc
 const C_KEY: Color    = Color(0.78, 0.58, 1.00, 1.00)  # Violet key — the warden's colour, loose on the floor
 const C_CHEST: Color  = Color(1.00, 0.78, 0.32, 1.00)  # Amber cache
 const C_TRAP: Color   = Color(0.95, 0.35, 0.32, 1.00)  # Red for the ones that have already bitten
+const C_SPARK: Color  = Color(1.00, 0.88, 0.35, 1.00)  # Charged floor
+const C_ICE: Color    = Color(0.70, 0.88, 1.00, 0.75)  # Ice
+# Teleporter pairs, in the same colours their discs glow in the dungeon.
+const C_TELE: Array[Color] = [Color(0.66, 0.38, 1.0), Color(0.30, 0.85, 0.80)]
 
 # 2D unit vectors for each facing direction, used to draw the direction arrow.
 # Order must match the facing constants in main.gd:
@@ -185,19 +189,43 @@ func _draw() -> void:
 		else:
 			draw_rect(box, C_CHEST)
 
-	# Traps that have gone off. Drawn as a cross, which reads as a warning at
-	# four pixels where a coloured square just reads as another kind of room.
+	# Hazards that have gone off, each in its own colour. Damage is a cross,
+	# which reads as a warning at four pixels; ice is a pale square, since it
+	# never hurts; a teleporter is a ring, joined to its twin once both are known.
+	var mid_of: Callable = func(t: Vector2i) -> Vector2:
+		return Vector2(ox + (float(t.x - origin.x) + 0.5) * cell,
+				oy + (float(t.y - origin.y) + 0.5) * cell)
+	for cellpos: Variant in found_traps.keys():
+		var t: Vector2i = cellpos as Vector2i
+		var value: String = found_traps[cellpos] as String
+		if Level.hazard_kind(value) != Level.HAZARD_TELE:
+			continue
+		var to: Vector2i = Level.tele_target(value)
+		if found_traps.has(to) and (t.x < to.x or (t.x == to.x and t.y < to.y)):
+			var col: Color = C_TELE[Level.tele_pair(value) % C_TELE.size()]
+			draw_line(mid_of.call(t), mid_of.call(to), Color(col, 0.45), maxf(1.0, cell * 0.08))
 	for cellpos: Variant in found_traps.keys():
 		var t: Vector2i = cellpos as Vector2i
 		var tc: int = t.x - origin.x
 		var tr: int = t.y - origin.y
 		if tc < 0 or tc >= view_c or tr < 0 or tr >= view_r:
 			continue
-		var mid: Vector2 = Vector2(ox + (tc + 0.5) * cell, oy + (tr + 0.5) * cell)
+		var mid: Vector2 = mid_of.call(t)
 		var a: float = cell * 0.28
 		var w: float = maxf(1.0, cell * 0.14)
-		draw_line(mid + Vector2(-a, -a), mid + Vector2(a, a), C_TRAP, w)
-		draw_line(mid + Vector2(-a, a), mid + Vector2(a, -a), C_TRAP, w)
+		var value: String = found_traps[cellpos] as String
+		match Level.hazard_kind(value):
+			Level.HAZARD_ICE:
+				draw_rect(Rect2(mid - Vector2(a, a), Vector2(a, a) * 2.0), C_ICE)
+			Level.HAZARD_TELE:
+				draw_arc(mid, a, 0.0, TAU, 12,
+						C_TELE[Level.tele_pair(value) % C_TELE.size()], w)
+			Level.HAZARD_SPARK:
+				draw_line(mid + Vector2(-a, -a), mid + Vector2(a, a), C_SPARK, w)
+				draw_line(mid + Vector2(-a, a), mid + Vector2(a, -a), C_SPARK, w)
+			_:
+				draw_line(mid + Vector2(-a, -a), mid + Vector2(a, a), C_TRAP, w)
+				draw_line(mid + Vector2(-a, a), mid + Vector2(a, -a), C_TRAP, w)
 
 	# The player: centred in a window, in its own cell on a whole floor.
 	var pcx: float = ox + (float(player_pos.x - origin.x) + 0.5) * cell

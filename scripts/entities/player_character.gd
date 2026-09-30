@@ -477,6 +477,10 @@ var encountered_enemies: Array[String] = []
 # records that it exists; only Analyze records what it is made of.
 var analyzed: Array[String] = []
 
+# Floor hazards met at least once. The first of each kind stops to say what it
+# does; after that it just happens.
+var hazards_seen: Array[String] = []
+
 
 func has_analyzed(enemy_name: String) -> bool:
 	return enemy_name in analyzed
@@ -541,6 +545,7 @@ func _ready() -> void:
 	# without this the gift carried no skills at all until a save was loaded.
 	demon_skills    = {}
 	seed_demon_skills(STARTING_DEMON)
+	hazards_seen    = []
 
 	# He is human. No resistances of his own, and the cold gets through —
 	# which is what makes putting him in front of anything a real decision.

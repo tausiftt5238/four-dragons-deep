@@ -21,10 +21,11 @@ const PAGES: Array[Dictionary] = [
 		text = "Every floor is locked. Find the key (the violet shard) and walk onto it.\n\n"
 			+ "On floors 4, 9, 14 and 19 a warden holds the key instead. Beat it.\n\n"
 			+ "Walk into the door to unlock it, then walk in again to go down."},
-	{title = "Traps and chests", shot = "trap.png",
-		text = "Red floor is a spike trap. It takes 15% of your max HP every time you cross it, "
-			+ "and stays marked on your map once sprung.\n\n"
-			+ "Chests hang on the walls. Walk into one to open it. From floor 6, some are mimics."},
+	{title = "Floors and chests", shot = "trap.png",
+		text = "Each stretch of the Deep has its own floor to watch for. Ice slides you to "
+			+ "solid ground. Charged plates hurt while lit, so cross on the dark ones. Lava "
+			+ "burns every crossing. Teleporters carry you to their twin.\n\n"
+			+ "Chests sit in alcoves in the walls. Walk into one to open it. From floor 6, some are mimics."},
 	{title = "Save orbs", shot = "orb.png",
 		text = "Orbs are the only place to save. Stand on one and tap Orb to rest, shop, sell, "
 			+ "buy back monsters and save.\n\n"
