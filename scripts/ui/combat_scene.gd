@@ -2881,8 +2881,10 @@ static func _spread_cost(outcomes: Array[String]) -> String:
 func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
-	var split: float = CombatMath.split_share(targets.size())
 	var phys: bool = element == Affinity.PHYS
+	# Magic spreads thin across a line; a physical skill is a separate cut to
+	# each of them, so every one lands at full weight.
+	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
 	var power: float = _skill_power(phys)
 
 	var lines: Array[String] = ["%s %s!" % ["You use" if phys else "You cast", data["name"]]]
