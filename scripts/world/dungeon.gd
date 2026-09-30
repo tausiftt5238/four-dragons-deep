@@ -78,17 +78,16 @@ func _build_geometry(level: Level) -> void:
 		for col: int in range(row_data.size()):
 			if row_data[col] == 1:
 				var here: Vector2i = Vector2i(col, row)
-				# Only faces that touch open floor are ever seen. A chest used
-				# to delete the face it opened through as well, because it was a
-				# recess cut into the block and the fill behind a wall writes
-				# depth, which buried it. It hangs on the wall now, so the wall
-				# stays whole and the banner sits just in front of it.
+				# Only faces that touch open floor are ever seen. The face a
+				# chest opens through goes too: the alcove brings its own
+				# stonework, and the fill behind a whole wall face would write
+				# depth over it and bury it.
 				var cache_face: Vector2i = Vector2i(-999, -999)
-				# The stairwell is still hollowed rather than decorated, so the
-				# face the stairs climb through has to go or they are buried
-				# behind it.
+				# Likewise the face the stairwell is cut through.
 				if here == level.exit_wall_pos:
 					cache_face = level.exit_pos
+				elif level.chest_cells.has(here):
+					cache_face = level.chest_cells[here] as Vector2i
 				for n: Vector2i in _NEIGHBOURS:
 					if not _is_open(level, col + n.x, row + n.y):
 						continue
@@ -788,48 +787,29 @@ func _add_orb_footing(base: Node3D) -> void:
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 #
-# A cache hangs on a wall like a banner. It used to be cut INTO the block, which
-# meant it had to bring its own recess — no wall in this maze has anything solid
-# behind it, so an unlined niche looked straight through the level — and that
-# lining was three quads and a floor standing in for masonry that was never
-# there. A banner needs none of it: the wall face stays whole and the sprite
-# sits just in front of it.
-# How far the banner stands off the wall it hangs on. Enough to clear the wall
-# face without reading as a box pulled out of it — the point of the change is
-# that a chest is a picture on the stonework, not a thing with sides.
-const _CHEST_STANDOFF: float = 0.03
-
-# Two frames side by side in one 96x48 image: closed on the left, lid tipped
-# back on the right. Which half is showing is the whole of the looted state —
-# an emptied cache is the same chest standing open, not a dimmer box.
-const _CHEST_TEX: Texture2D = preload("res://resources/mapAsset/TreasureChest.png")
-const _CHEST_SHADER := preload("res://resources/shaders/chest_banner.gdshader")
-const _CHEST_FRAMES: float = 2.0
-
-# The drawn chest is only the middle 28 of its frame's 48 pixels and sits 8 up
-# from the bottom edge, so the quad has to be a good deal bigger than the chest
-# looks. These two are set together: the size makes the drawn chest read at the
-# scale the block it replaced did, and the lift puts its feet near the floor
-# rather than halfway up the wall. Changing either alone floats it or sinks it.
-const _CHEST_SIZE: float = 1.32
-const _CHEST_LIFT: float = 0.52
-
-# How hard the chest is worked into the wall it hangs on — see the shader's own
-# notes. These are the four to move if it starts looking pasted on again, and
-# zeroing all four gives back the plain lit sprite.
-const _CHEST_BEVEL: float   = 1.2
-const _CHEST_TINT: float    = 0.45
-# Small on purpose. Specular on a flat quad is one flat highlight; this is only
-# here to keep the bands from being as matte as the wall around them.
-const _CHEST_SHEEN: float   = 0.20
-const _CHEST_CONTACT: float = 0.7
-const _CHEST_GLOW: float    = 1.15
-# How far in front of the chest its light hangs. Not optional now the sprite is
-# lit rather than unshaded: a light sitting exactly on the quad reaches every
-# point of it from a direction lying in the quad's own plane, so N·L is about
-# zero and the chest takes almost no diffuse from the one lamp that is there for
-# it. Standing the lamp off towards the corridor is what lights the face.
-const _CHEST_LIGHT_STANDOFF: float = 0.22
+# A cache is a real chest sitting in an alcove cut into the wall it opens
+# through. It was a banner for a while — a sprite hung flat on the stone — and
+# from anywhere but dead ahead it read as a picture pasted on the wall. The
+# alcove is lined with the same stone as every wall (nothing in this maze has
+# anything solid behind a face, so an unlined niche would look straight through
+# the level), and the chest is built from the planks and iron the locked door
+# uses, so it takes the torches and the lamp like the rest of the room.
+#
+# The alcove: narrower and lower than the cell, and deep enough that the chest
+# sits inside the wall line rather than in the corridor.
+const _NICHE_W: float = 1.30
+const _NICHE_H: float = 1.20
+const _NICHE_D: float = 0.85
+# The chest itself: body, and the lid that sits on it.
+const _CHEST_W: float = 0.90
+const _CHEST_D: float = 0.50
+const _CHEST_H: float = 0.40
+const _LID_H: float   = 0.14
+# How far an emptied chest's lid is thrown back, past upright, so it leans on
+# the back of the alcove. An open lid is the whole of the looted state.
+const _LID_OPEN_DEG: float = 100.0
+const _IRON: Color = Color(0.16, 0.15, 0.17)
+const _BRASS: Color = Color(0.86, 0.66, 0.24)
 
 
 func _add_chests(level: Level) -> void:
@@ -840,67 +820,121 @@ func _add_chests(level: Level) -> void:
 				level.looted.has(wall_pos), level.wire_color)
 
 
+# A mimic is built with exactly this call — nothing here may ever branch on
+# whether the cache is real, or the disguise is over before it starts.
 func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) -> void:
 	var root: Node3D = Node3D.new()
 	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)
 	add_child(root)
 
-	# Outward is the direction the chest faces; the wall behind it is whole.
+	# Outward is toward the corridor the chest is opened from.
 	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
+	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
+	var half: float = CELL_SIZE * 0.5
+	_add_niche(root, out, across, half)
 
-	# The cache itself, hung on the face of the wall like a banner rather than
-	# set into a hole cut through it. A mimic is drawn with exactly this call —
-	# nothing here may ever branch on whether the cache is real, or the disguise
-	# is over before it starts.
-	var centre: Vector3 = out * (CELL_SIZE * 0.5 + _CHEST_STANDOFF) \
-			+ Vector3(0.0, _CHEST_LIFT, 0.0)
-	_add_chest_sprite(root, centre, out, looted, wire)
+	# The chest stands near the mouth of the alcove, leaving room behind it for
+	# the lid to swing back without sinking into the stone.
+	var centre: Vector3 = out * (half - 0.32)
+	_add_chest_body(root, centre, out, across, looted)
 
-	# Both states carry a light now, because the chest is lit geometry rather
-	# than an unshaded decal: ambient down here is 0.12, so an emptied cache with
-	# nothing on it would be a black smear in a lined hole instead of somewhere
-	# you can see you have already been. The spent one is dim and colourless —
-	# what it must not do is still look worth crossing a floor for.
+	# A full chest has a warm light of its own; an emptied one only enough
+	# that you can see it is open, dim and colourless, so it no longer looks
+	# worth crossing a floor for.
 	var light: OmniLight3D = OmniLight3D.new()
 	light.light_color  = wire.lerp(Color(0.75, 0.78, 0.85), 0.5) if looted \
 			else Color(1.0, 0.82, 0.40)
-	light.light_energy = 0.5 if looted else 1.6
-	light.omni_range   = 2.0 if looted else 3.4
-	light.position     = centre + out * _CHEST_LIGHT_STANDOFF
+	light.light_energy = 0.5 if looted else 1.4
+	light.omni_range   = 2.0 if looted else 3.0
+	light.position     = out * (half + 0.35) + Vector3(0.0, _NICHE_H * 0.8, 0.0)
 	root.add_child(light)
 
 
-# The chest, as a flat quad hung on the wall and turned to face the one cell it
-# can be opened from. A quad rather than a billboard: a cache hangs on a wall
-# and opens one way, so a sprite that swivelled to follow the player would peel
-# off the stonework at any angle but head-on.
-func _add_chest_sprite(parent: Node3D, pos: Vector3, out: Vector3, looted: bool,
-		wire: Color) -> void:
-	var mat: ShaderMaterial = ShaderMaterial.new()
-	mat.shader = _CHEST_SHADER
-	mat.set_shader_parameter("tex", _CHEST_TEX)
-	mat.set_shader_parameter("frames", _CHEST_FRAMES)
-	mat.set_shader_parameter("frame", 1.0 if looted else 0.0)
-	# What stops it sitting in front of the room rather than in it. The tint is
-	# the band's own wire colour, so the chest is recoloured by depth along with
-	# every wall around it; the rest gives a flat quad a surface.
-	mat.set_shader_parameter("bevel", _CHEST_BEVEL)
-	mat.set_shader_parameter("tint", wire)
-	mat.set_shader_parameter("tint_amount", _CHEST_TINT)
-	mat.set_shader_parameter("sheen", _CHEST_SHEEN)
-	mat.set_shader_parameter("contact", _CHEST_CONTACT)
-	# Only a full one is lit from the inside.
-	mat.set_shader_parameter("glow", 0.0 if looted else _CHEST_GLOW)
+# The wall face the alcove is cut through, and the alcove's lining: two piers
+# and a lintel flush with the neighbouring walls, then sides, back, roof and
+# floor in the same stone. The stone shader works from world position, so the
+# courses run straight on from the walls either side.
+func _add_niche(root: Node3D, out: Vector3, across: Vector3, half: float) -> void:
+	var wall: ShaderMaterial = _stone(0)
+	var face: Vector3 = out * (half - 0.03)
+	var pier_w: float = (CELL_SIZE - _NICHE_W) * 0.5
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				face + across * (side * (_NICHE_W + pier_w) * 0.5)
+				+ Vector3(0.0, WALL_HEIGHT * 0.5, 0.0),
+				_axis_box(out, across, 0.06, WALL_HEIGHT, pier_w), wall)
+	_add_box_child(root, face + Vector3(0.0, (_NICHE_H + WALL_HEIGHT) * 0.5, 0.0),
+			_axis_box(out, across, 0.06, WALL_HEIGHT - _NICHE_H, _NICHE_W), wall)
 
-	var mi: MeshInstance3D = MeshInstance3D.new()
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2(_CHEST_SIZE, _CHEST_SIZE)
-	mi.mesh = quad
-	mi.material_override = mat
-	mi.position = pos
-	# A QuadMesh faces +Z; turn it to face the way the niche opens.
-	mi.rotation = Vector3(0.0, atan2(out.x, out.z), 0.0)
-	parent.add_child(mi)
+	var inside: Vector3 = out * (half - _NICHE_D * 0.5)
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				inside + across * (side * _NICHE_W * 0.5)
+				+ Vector3(0.0, _NICHE_H * 0.5, 0.0),
+				_axis_box(out, across, _NICHE_D, _NICHE_H, 0.06), wall)
+	_add_box_child(root, out * (half - _NICHE_D) + Vector3(0.0, _NICHE_H * 0.5, 0.0),
+			_axis_box(out, across, 0.06, _NICHE_H, _NICHE_W), wall)
+	_add_box_child(root, inside + Vector3(0.0, _NICHE_H, 0.0),
+			_axis_box(out, across, _NICHE_D, 0.06, _NICHE_W), _stone(2))
+	_add_box_child(root, inside + Vector3(0.0, -0.03, 0.0),
+			_axis_box(out, across, _NICHE_D, 0.06, _NICHE_W), _stone(1))
+
+
+# Planks and iron, the locked door's materials: the body a box of upright
+# planks with the door's own strap across it, iron at the corners, and a lid
+# hinged along the back with a brass hasp on its front. Emptied, the lid is
+# thrown back against the alcove and the dark inside shows.
+func _add_chest_body(root: Node3D, centre: Vector3, out: Vector3, across: Vector3,
+		looted: bool) -> void:
+	var wood: ShaderMaterial = _stone(3)
+	var left: Vector3 = root.position + centre + across * (-_CHEST_W * 0.5)
+	var right: Vector3 = root.position + centre + across * (_CHEST_W * 0.5)
+	wood.set_shader_parameter("plank_origin",
+			minf(left.x, right.x) if absf(across.x) > 0.5 else minf(left.z, right.z))
+	_add_box_child(root, centre + Vector3(0.0, _CHEST_H * 0.5, 0.0),
+			_axis_box(out, across, _CHEST_D, _CHEST_H, _CHEST_W), wood)
+
+	var iron: StandardMaterial3D = StandardMaterial3D.new()
+	iron.albedo_color = _IRON
+	iron.roughness = 0.6
+	iron.metallic = 0.4
+	for side: float in [1.0, -1.0]:
+		_add_box_child(root,
+				centre + across * (side * (_CHEST_W * 0.5 - 0.04))
+				+ Vector3(0.0, _CHEST_H * 0.5, 0.0),
+				_axis_box(out, across, _CHEST_D + 0.02, _CHEST_H + 0.01, 0.06), iron)
+
+	# The inside, only ever seen with the lid up.
+	if looted:
+		var hollow: StandardMaterial3D = StandardMaterial3D.new()
+		hollow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		hollow.albedo_color = Color(0.03, 0.02, 0.02)
+		_add_box_child(root, centre + Vector3(0.0, _CHEST_H + 0.002, 0.0),
+				_axis_box(out, across, _CHEST_D - 0.08, 0.004, _CHEST_W - 0.12), hollow)
+
+	# The lid turns about the hinge along the chest's back top edge.
+	var hinge: Node3D = Node3D.new()
+	hinge.position = centre + out * (-_CHEST_D * 0.5) + Vector3(0.0, _CHEST_H, 0.0)
+	if looted:
+		# Negative about `across` lifts the front edge up and over toward the back.
+		hinge.basis = Basis(across.normalized(), -deg_to_rad(_LID_OPEN_DEG))
+	root.add_child(hinge)
+	var lid_centre: Vector3 = out * (_CHEST_D * 0.5) + Vector3(0.0, _LID_H * 0.5, 0.0)
+	_add_box_child(hinge, lid_centre,
+			_axis_box(out, across, _CHEST_D + 0.04, _LID_H, _CHEST_W + 0.04), wood)
+	for side: float in [1.0, -1.0]:
+		_add_box_child(hinge,
+				lid_centre + across * (side * (_CHEST_W * 0.5 - 0.04)),
+				_axis_box(out, across, _CHEST_D + 0.06, _LID_H + 0.02, 0.06), iron)
+
+	var brass: StandardMaterial3D = StandardMaterial3D.new()
+	brass.albedo_color = _BRASS
+	brass.metallic = 0.6
+	brass.roughness = 0.35
+	brass.emission_enabled = true
+	brass.emission = _BRASS * 0.25
+	_add_box_child(hinge, out * (_CHEST_D + 0.035) + Vector3(0.0, -0.02, 0.0),
+			_axis_box(out, across, 0.03, 0.16, 0.12), brass)
 
 
 # The twelve edges of an axis-aligned box, appended as line pairs. The maze's
