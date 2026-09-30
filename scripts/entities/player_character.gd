@@ -85,7 +85,7 @@ func battle_items() -> Array[Dictionary]:
 			out.append(item)
 	return out
 
-# Every demon he has bound. The rolodex.
+# Every demon he has bound. The roster.
 var recruited: Array[String] = []
 
 # Every demon that has EVER answered to him, kept after one is sold or falls.
@@ -124,7 +124,7 @@ const DEMON_POINTS_PER_LEVEL: int = 2
 const DEMON_EXP_FACTOR: int = 6
 
 # Five, because the skills menu is a fixed six cells and Attack takes one — see
-# CombatScene.MENU_SLOTS. The same five the detective gets in SPELL_SLOTS. A
+# CombatScene.MENU_SLOTS. The same five the hero gets in SPELL_SLOTS. A
 # full demon can still be offered something new; taking it means forgetting
 # something it has.
 const DEMON_SKILL_CAP: int = 5
@@ -163,8 +163,8 @@ const BENCH_EXP_PERCENT: int = 50
 
 # Exp from a won fight: in full to every demon that was standing in it, and a
 # share to the rest of the roster on the bench. A demon never passes the
-# detective: he is the one holding the case open, and a party that outgrows him
-# would make his own levels pointless.
+# hero: he is the one leading the descent, and a party that outgrows him would
+# make his own levels pointless.
 #
 # Returns {climbed = [names], learned = {name: [rungs it climbed]},
 # offers = {name: [skill entries]}}. A rung climb is simply taken; a new skill
@@ -201,7 +201,7 @@ func award_demon_exp(amount: int) -> Dictionary:
 					pending.append(got["offer"])
 					offers[demon_name] = pending
 		bound_level[demon_name] = at
-		# At the detective's level it stops banking, so the overflow is not
+		# At the hero's level it stops banking, so the overflow is not
 		# sitting there waiting to fire off three levels the moment he gains one.
 		demon_exp[demon_name] = 0 if at >= lv else banked
 		if gained:
@@ -335,7 +335,7 @@ func demon_gain_string(demon_name: String) -> String:
 
 # The ones he actually walks in with, in slot order. Chosen in the menu before
 # a fight rather than assembled mid-battle — CombatScene.MAX_PARTY - 1 of them,
-# since the detective takes the first slot himself.
+# since the hero takes the first slot himself.
 const ACTIVE_SLOTS: int = 3
 var active_demons: Array[String] = []
 
@@ -360,7 +360,7 @@ func deactivate_demon(demon_name: String) -> void:
 	active_demons.erase(demon_name)
 
 
-# Struck off the rolodex for good — sold at an orb. The level goes with it:
+# Struck off the roster for good — sold at an orb. The level goes with it:
 # remember_recruit keeps the best copy ever bound, so leaving the old level
 # behind would hand a later, weaker recruit the sold demon's strength for free.
 func release_demon(demon_name: String) -> void:
@@ -396,7 +396,7 @@ func remember_recruit(demon_name: String, lv: int = 1) -> void:
 	if demon_name not in ever_bound:
 		ever_bound.append(demon_name)
 	# Keep the best one ever bound: re-catching a weaker copy should never
-	# downgrade what is already in the rolodex.
+	# downgrade what is already in the roster.
 	bound_level[demon_name] = maxi(int(bound_level.get(demon_name, 0)), maxi(1, lv))
 	seed_demon_skills(demon_name)
 	activate_demon(demon_name)
@@ -462,10 +462,10 @@ static func skill_name(skill: Dictionary) -> String:
 	# "few" damage rung, for one. Fall back on naming the line itself.
 	return "%s Strike" % Affinity.element_name(skill.get("element", "") as String)
 
-# Nobody walks into their first case empty-handed. A first-floor demon, not a
+# Nobody goes down into the Deep empty-handed. A first-floor demon, not a
 # strong one — it will grow on its own from here, and a powerful gift would
 # flatten the whole run. One demon is already bound,
-# which is also what makes the opening floors survivable — a lone detective
+# which is also what makes the opening floors survivable — a lone hero
 # against a pack of three loses on action economy no matter how well he reads
 # the affinity chart.
 const STARTING_DEMON: String = "Hellbat"

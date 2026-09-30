@@ -82,7 +82,7 @@ static var DATA: Dictionary = {
 	# roll to hit like a swing and scale off STR, times `power`. No element, so
 	# nothing resists them. HP Leech wounds and heals the biter by what it
 	# took; MP Leech wounds nothing and moves MP from the target to the biter.
-	# Neither has a scroll: the detective does not bite.
+	# Neither has a scroll: the hero does not bite.
 	"hp_leech":      {name="HP Leech",     mp=4, type="leech", drain="hp", heal=0, element="",
 		shape=SHAPE_ONE, spread=1.0, power=1.5,
 		desc="Bites and drinks. It heals by as much as it takes."},

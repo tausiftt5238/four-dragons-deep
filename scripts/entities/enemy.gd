@@ -355,8 +355,8 @@ const TEMPLATES: Array[Dictionary] = [
 
 # ── Written for this game, still waiting on art ───────────────────────────────
 #
-# Everything below is original to the detective case: the fantasy roster above
-# is placeholder and these are not. Each carries `needs_art=true` and an
+# Everything below is original to this game: the fantasy roster above is
+# placeholder and these are not. Each carries `needs_art=true` and an
 # `art_note` describing exactly what it looks like, because the sprite is the
 # only thing standing between these and the live game. Nothing here is or ever
 # was an object of worship.
@@ -874,7 +874,7 @@ func affordable_elements(with_banishing: bool) -> Array[String]:
 
 
 # What a dry caster reaches for. Never a banishing line — expelling one of the
-# detective's demons should never be the thing something does for free.
+# hero's demons should never be the thing something does for free.
 func dregs_element() -> String:
 	for e: String in attack_elements:
 		if not Affinity.is_banishing(e):

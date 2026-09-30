@@ -7,7 +7,7 @@
 #
 # A side opens its phase with one icon per living combatant and keeps acting
 # until the icons run out, so weakness hits and criticals buy extra actions for
-# whoever landed them — see PressTurn for the exact economy. The detective and
+# whoever landed them — see PressTurn for the exact economy. The hero and
 # his bound demons share the player side; summoning binds one into the party,
 # which is what raises the icon count on the following phase.
 class_name CombatScene extends Control
@@ -33,8 +33,8 @@ var _departed: Array[Enemy] = []
 # freed, so the loss can be reported where the player will actually see it.
 var lost_demons: Array[String] = []
 
-# The detective plus every demon he has bound this battle. Index 0 is always
-# the detective; _actor is the member currently holding the turn.
+# The hero plus every demon he has bound this battle. Index 0 is always
+# the hero; _actor is the member currently holding the turn.
 const MAX_PARTY: int = 4
 var party: Array[CharacterSheet] = []
 var _actor_idx: int = 0
@@ -45,13 +45,13 @@ var _foe_press: PressTurn
 var _negotiation: CombatNegotiation
 
 # When set, enemy actions ignore target selection and swing at this member.
-# Used by the negotiation handlers, where the detective is the one talking.
+# Used by the negotiation handlers, where the hero is the one talking.
 var _force_target: CharacterSheet = null
 
 var _log_label:      RichTextLabel
 var _log_first_line: bool = true
 
-# The detective's portrait, kept as its own reference because the CombatNeg*
+# The hero's portrait, kept as its own reference because the CombatNeg*
 # handlers shake it directly.
 var _player_portrait: TextureRect
 
@@ -373,14 +373,14 @@ func _show_talk_submenu() -> void:
 		["Threaten", "Threaten"],
 		["Recruit",  "Recruit"],
 	]
-	# Nothing above the detective's own level will answer to him, so Recruit is
+	# Nothing above the hero's own level will answer to him, so Recruit is
 	# closed rather than allowed to eat three rounds and fail. Refusing up front
 	# is the honest version of the same rule.
 	var outranks: bool = enemy.lv > player.lv
 	# Six already answer to you: Recruit has nowhere to put it.
 	var full: bool = not player.can_bind(enemy.enemy_name)
 	# No "bound" state here any more: Talk never reaches this menu on a demon
-	# whose name is already in the rolodex — that one pays you off instead.
+	# whose name is already in the roster — that one pays you off instead.
 	for opt: Array in opts:
 		var recruit: bool = opt[0] == "Recruit"
 		var note: String = ""
@@ -520,12 +520,12 @@ func _check_counter() -> String:
 
 
 
-# A bound demon that goes down is struck off here — off the rolodex, not just
+# A bound demon that goes down is struck off here — off the roster, not just
 # out of this fight — which is the whole reason the compendium is there. It is
 # struck off at this moment and not the one it dropped in, so everything up to
 # the last enemy is a window in which Revive can still pull it back.
 func _end_combat(result: String) -> void:
-	# The detective outlives the fight; a mirror must not.
+	# The hero outlives the fight; a mirror must not.
 	for member: CharacterSheet in party:
 		member.mirror = ""
 	# Not cleared: a body swapped off the field was already struck off and
@@ -645,7 +645,7 @@ func _begin_player_phase() -> void:
 # That also means the old single check on phase two had to go: almost nothing is
 # hurt that early, so the event would have stopped firing altogether. It is
 # rolled at the top of every phase from the second on, still only once a battle,
-# and at five per cent, plus half a point per point of the detective's luck,
+# and at five per cent, plus half a point per point of the hero's luck,
 # capped at fifteen.
 const BEG_CHANCE: float = 0.05
 const BEG_PER_LUK: float = 0.005
@@ -1090,7 +1090,7 @@ func _enemy_cast_ailment(actor: Enemy) -> Dictionary:
 			lead, _member_name(target), sname], cost = PressTurn.COST_FULL}
 
 
-# Kept for the CombatNeg* handlers: one provoked swing at the detective, taken
+# Kept for the CombatNeg* handlers: one provoked swing at the hero, taken
 # outside the icon economy because a failed negotiation is its own risk.
 func _apply_enemy_turn() -> String:
 	_force_target = player
@@ -1807,14 +1807,14 @@ func _on_action(action: String) -> void:
 
 
 # Everything the acting member can swing lives in one list: the plain attack
-# first, then whatever they carry. For the detective that is his equipped
+# first, then whatever they carry. For the hero that is his equipped
 # spells; for a bound demon it is its own element.
 
 
 
 # ── Button state ──────────────────────────────────────────────────────────────
 
-# Talk, Item, Summon and Flee are the detective's alone. On a demon's turn they
+# Talk, Item, Summon and Flee are the hero's alone. On a demon's turn they
 # are hidden rather than greyed — there is not much room on a phone, and a row
 # of dead buttons reads as a bug.
 func _refresh_button_states() -> void:
@@ -1842,7 +1842,7 @@ func _refresh_button_states() -> void:
 
 
 
-# Whether this party member can do anything but brace. The detective always
+# Whether this party member can do anything but brace. The hero always
 # can — Flee is never taken from him. A demon can if it can swing, or if one of
 # its skills passes the same checks the skills menu greys buttons out by.
 func _has_another_move(member: CharacterSheet) -> bool:
@@ -1980,7 +1980,7 @@ func _show_skills_submenu() -> void:
 			if element != "":
 				tag += "  " + Spell.reach_tag(spell_id)
 			# A physical skill is paid in blood, not mana: silence does not
-			# stop it, and it will not spend the last of the detective's HP.
+			# stop it, and it will not spend the last of the hero's HP.
 			var blocked: bool
 			var hp_price: int = Spell.hp_cost(spell_id, player.max_hp)
 			if hp_price > 0:
@@ -2026,7 +2026,7 @@ func _show_skills_submenu() -> void:
 
 
 # An elemental cast is paid out of the demon's own pool and gets dearer as its
-# rung climbs; a buff costs what the spell costs, the same as the detective pays.
+# rung climbs; a buff costs what the spell costs, the same as the hero pays.
 func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
 	if skill.get("kind", "") != "element":
 		return int(Spell.get_data(skill.get("id", "") as String).get("mp", 8))
@@ -2036,7 +2036,7 @@ func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
 
 
 # A physical line is paid in HP, the same share of the demon's own pool the
-# detective pays for the same skill. 0 for everything paid in MP.
+# hero pays for the same skill. 0 for everything paid in MP.
 func _demon_hp_cost(demon: Enemy, skill: Dictionary) -> int:
 	if skill.get("element", "") != Affinity.PHYS:
 		return 0
@@ -2191,7 +2191,7 @@ func _enemy_leech(actor: Enemy) -> Dictionary:
 
 
 # One demon of yours, one line, one foe. Light and dark expel rather than burn,
-# the same as they do out of the detective's own hands.
+# the same as they do out of the hero's own hands.
 func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 		power: float, boost: float = 0.0) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
@@ -2221,13 +2221,13 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 			cost = PressTurn.COST_FULL}
 
 
-# A bound demon's wide cast. Same arithmetic as the detective's own spread —
+# A bound demon's wide cast. Same arithmetic as the hero's own spread —
 # what it gains in width it gives up on each target.
 func _demon_spread(actor: Enemy, element: String, base: float,
 		banishing: bool, boost: float = 0.0, named: String = "") -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
-	# A physical line cuts each of them at full weight, as the detective's does.
+	# A physical line cuts each of them at full weight, as the hero's does.
 	var phys: bool = element == Affinity.PHYS
 	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
 	var lines: Array[String] = ["[color=#9ad0ff]%s uses %s on %d of them![/color]" % [
@@ -3129,7 +3129,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
 # many actually moved is what tells the player they have hit the cap.
-# `lead` names who cast it — "You cast Whet" for the detective, "Hellbat calls
+# `lead` names who cast it — "You cast Whet" for the hero, "Hellbat calls
 # up Whet" for a demon of his.
 func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
 	if lead == "":
@@ -3166,7 +3166,7 @@ func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
 #
 # Dekaja and dekunda by another name. Both read from where the caster stands:
 # "foes" is the other side and "party" is the caster's own, so one function
-# serves the detective and the demon that casts it back at him. All or nothing
+# serves the hero and the demon that casts it back at him. All or nothing
 # across a whole side — there is no picking which stage to take.
 # Is there anything on that side for this cast to take? The player is allowed
 # to waste the turn; a demon deciding its own move is not.
@@ -3421,7 +3421,7 @@ func _resolve_attack() -> Dictionary:
 	if _actor_is_player() and "last_stand" in player.passive_skills \
 			and player.hp * 4 < player.max_hp:
 		atk *= 2.0
-	# A bound demon swings with its claws. Only the detective carries a blade,
+	# A bound demon swings with its claws. Only the hero carries a blade,
 	# so only his swing can be something other than phys.
 	var element: String = player.attack_element() if _actor_is_player() \
 			else Affinity.PHYS
@@ -3559,7 +3559,7 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# resistance that answers it — which is the point of giving a wizard three.
 	#
 	# A banishing line is the exception, and only joins the pool one turn in
-	# five. A demon it takes from the detective does not come back, so those
+	# five. A demon it takes from the hero does not come back, so those
 	# stay something that happens rather than the opening move of every fight.
 	var paid: bool = false
 	var pool: Array[String] = actor.affordable_elements(randi() % 10 < 2)
@@ -3655,9 +3655,9 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 
 # ── Wide casts from the other side ────────────────────────────────────────────
 #
-# The mirror of the detective's own 2-3 and all-reach spells, and priced the
+# The mirror of the hero's own 2-3 and all-reach spells, and priced the
 # same way: what it gains in width it gives up on each target. Which of the
-# detective's line a FEW cast catches is drawn fresh each time, so covering the
+# hero's line a FEW cast catches is drawn fresh each time, so covering the
 # demon on three HP is a hope rather than a plan.
 func _enemy_spread_targets(actor: Enemy) -> Array[CharacterSheet]:
 	var standing: Array[CharacterSheet] = _living_party()
@@ -3721,7 +3721,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 		lines.append("[color=#d070ff]%s takes %d from what came back.[/color]" % [
 				actor.display_name(), reflected])
 
-	# The demons' side pays the same press-turn arithmetic the detective does.
+	# The demons' side pays the same press-turn arithmetic the hero does.
 	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
 
 
@@ -3759,7 +3759,7 @@ func _apply_enemy_banish_one(actor: Enemy, who: CharacterSheet, element: String,
 	return "hit"
 
 
-# A demon reaching for light or dark is reaching for one of yours. The detective
+# A demon reaching for light or dark is reaching for one of yours. The hero
 # cannot be expelled, so it tears at him instead; a bound demon it takes is gone
 # for good, which is what makes these the frightening ones to meet.
 func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
@@ -3797,7 +3797,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			return {msg = dry + "[color=lime]%s calls the %s — %s drinks it.[/color]" % [
 					ename, word, tname], cost = PressTurn.COST_LOST}
 
-	# The detective takes it as a wound rather than an expulsion.
+	# The hero takes it as a wound rather than an expulsion.
 	var hurt: int = int(res["dmg"])
 	target.take_damage(hurt)
 	var hit_pr: TextureRect = _member_portrait(target)

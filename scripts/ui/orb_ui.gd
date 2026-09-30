@@ -1,6 +1,6 @@
 # OrbUI
 # What a save orb offers. Three things, and they are the only places each one
-# happens: a run can be written down, a demon can be bought into the rolodex,
+# happens: a run can be written down, a demon can be bought into the roster,
 # and gold can be spent on supplies. Everywhere else, gold does nothing and the
 # run is unsaved — which is what makes finding an orb matter.
 class_name OrbUI extends Control
@@ -336,7 +336,7 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 	var about: String = "LV %d   HP %d   MP %d   %s" % [
 			demon.lv, demon.max_hp, demon.max_mp, element]
 	var offered_lv: int = demon.lv
-	# The same rule the recruit menu keeps: nothing above the detective's level
+	# The same rule the recruit menu keeps: nothing above the hero's level
 	# answers to him, bought or talked down. Without it an orb is a way around it.
 	var outranks: bool = demon.lv > player.lv
 	demon.free()
@@ -362,7 +362,7 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 # ── Selling ───────────────────────────────────────────────────────────────────
 #
 # A demon goes back for exactly what binding one at its level costs, which makes
-# the rolodex a ladder rather than a collection — sell what you have outgrown
+# the roster a ladder rather than a collection — sell what you have outgrown
 # and put the gold into something from the floor you are standing on. A demon
 # you raised yourself fetches the level it reached, not the one it was caught at.
 static func sell_price(demon_name: String, lv: int) -> int:

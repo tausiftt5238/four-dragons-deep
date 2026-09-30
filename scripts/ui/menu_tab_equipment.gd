@@ -1,6 +1,6 @@
 # MenuTabEquipment
 # Two slots and a drawer of trinkets. There is no weapon and no armour: what
-# the detective carries is small objects with a history, and the only real
+# the hero carries is small objects with a history, and the only real
 # decision is which two of them come with him.
 class_name MenuTabEquipment extends RefCounted
 
@@ -55,7 +55,7 @@ func build() -> void:
 	_add_cmp_row(grid, "LUK", p.luk, p.effective_luk())
 
 	_m._content.add_child(HSeparator.new())
-	_m._content.add_child(_make_section_label("In the coat"))
+	_m._content.add_child(_make_section_label("In the pack"))
 
 	var spare: Array[Dictionary] = []
 	for item: Dictionary in p.inventory:

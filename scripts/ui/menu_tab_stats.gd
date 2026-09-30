@@ -106,7 +106,7 @@ func _add_demon(p: PlayerCharacter, demon_name: String) -> void:
 
 	bars.add_child(_make_bar_row("HP", demon.max_hp, demon.max_hp, Color(0.20, 0.78, 0.25)))
 	bars.add_child(_make_bar_row("MP", demon.max_mp, demon.max_mp, Color(0.28, 0.50, 1.00)))
-	# A demon stops banking exp at the detective's level, so there is no bar to
+	# A demon stops banking exp at the hero's level, so there is no bar to
 	# fill until he climbs.
 	if demon.lv >= p.lv:
 		var capped: Label = Label.new()

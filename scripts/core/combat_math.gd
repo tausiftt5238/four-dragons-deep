@@ -96,7 +96,7 @@ const BANISH_RESIST: float = 0.08   # it barely has purchase
 
 
 # Luck moves the coin flip, never the chart. A demon that nulls the light is
-# immune to a lucky detective and an unlucky one alike — what luck buys is an
+# immune to a lucky hero and an unlucky one alike — what luck buys is an
 # edge on the rows that were already uncertain, and each row keeps its own
 # floor and ceiling so no amount of it turns a resistance into a kill.
 const BANISH_PER_LUK: float = 0.012
@@ -138,11 +138,11 @@ static func banish_chance(target: CharacterSheet, element: String,
 	return clampf(clampf(base + edge, bounds.x, bounds.y) + boost, 0.0, BANISH_MAX)
 
 
-# Resolves one banishing cast. The detective is never expelled — he is the mind
-# holding the case open, and a coin-flip game over at an unsaved moment is not a
-# fight, it is a dice roll. It costs him HP instead.
+# Resolves one banishing cast. The hero is never expelled — a coin-flip game
+# over at an unsaved moment is not a fight, it is a dice roll. It costs him HP
+# instead.
 static func resolve_banish(target: CharacterSheet, element: String,
-		power: int, is_detective: bool, caster: CharacterSheet = null,
+		power: int, is_hero: bool, caster: CharacterSheet = null,
 		spread: float = 1.0, boost: float = 0.0) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	match state:
@@ -153,7 +153,7 @@ static func resolve_banish(target: CharacterSheet, element: String,
 		Affinity.NULL:
 			return {outcome = "null", dmg = 0, taken = false}
 
-	if is_detective:
+	if is_hero:
 		# Not expelled, but the attempt still tears at him — and a weakness
 		# still tears harder.
 		var hurt: int = variance(power)

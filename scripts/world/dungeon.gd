@@ -434,14 +434,18 @@ func _commit_wire() -> void:
 	add_child(mi)
 
 
-# The way on is a flight of stone steps cut into the wall. The wall cell is
-# hollowed out entirely (its face is dropped in _build_geometry) and lined with
-# stone, because nothing in this maze has solid ground behind it — without
-# cheeks, a back and a ceiling you would be looking straight through the level.
+# The way down: a stairwell cut into the floor of the wall cell, the flight
+# dropping away from the corridor into a dark passage. The first try climbed
+# instead, which read as a way up out of a dungeon whose whole point is going
+# deeper.
+#
+# A flight that goes down is hard to show from eye height: the treads sit below
+# the lip of the corridor floor, and a line of sight passes over them. So the
+# ceiling steps down with the flight, one riser per tread, and it is that
+# upside-down staircase above eye level, dropping away into a low dark mouth,
+# that says "down" from anywhere along the corridor.
 const _STAIR_COUNT: int = 6
-# How far up the flight climbs before the opening above it goes dark. Short of
-# WALL_HEIGHT on purpose: steps that ran all the way to the ceiling would read
-# as a ramp into a blocked shaft rather than a way out. 0.75 makes each riser a
+# How far the flight drops, as a share of WALL_HEIGHT. 0.75 makes each riser a
 # quarter unit, five texels: one course of stone per step.
 const _STAIR_RISE: float = 0.75
 const _STAIR_GREEN: Color = Color(0.25, 1.0, 0.62)
@@ -457,47 +461,62 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)
 	add_child(root)
 
-	# Outward is the way the stairwell opens; the flight climbs the other way.
+	# Outward is back toward the corridor; the flight descends the other way.
 	var out: Vector3 = Vector3(float(dir.x), 0.0, float(dir.y))
 	var across: Vector3 = Vector3(float(dir.y), 0.0, float(-dir.x))
 	var half: float = CELL_SIZE * 0.5
+	var rise: float = WALL_HEIGHT * _STAIR_RISE
+	# The shaft goes a little below the bottom step, so no seam shows under it.
+	var pit: float = rise + 0.1
 
-	# Cheeks down both sides and a ceiling over the whole shaft, in the same
-	# stone as the walls, so the stairwell is cut into the rock, not built in it.
+	# Cheeks down both sides, from the ceiling to below the bottom step, in the
+	# same stone as the walls, so the stairwell is cut into the rock, not built
+	# in it.
 	var wall: ShaderMaterial = _stone(0)
+	var cheek_h: float = WALL_HEIGHT + pit
 	for side: float in [1.0, -1.0]:
 		_add_box_child(root,
-				across * (half * side) + Vector3(0.0, WALL_HEIGHT * 0.5, 0.0),
-				_axis_box(out, across, CELL_SIZE, WALL_HEIGHT, 0.06), wall)
-	_add_box_child(root, Vector3(0.0, WALL_HEIGHT, 0.0),
-			_axis_box(out, across, CELL_SIZE, 0.06, CELL_SIZE), _stone(2))
+				across * (half * side) + Vector3(0.0, WALL_HEIGHT - cheek_h * 0.5, 0.0),
+				_axis_box(out, across, CELL_SIZE, cheek_h, 0.06), wall)
 
-	# The back of the shaft, above the top step: near-black, so the flight reads
-	# as climbing on into the dark instead of stopping at a wall.
+	# The far end: near-black from below the bottom step up to where the last
+	# ceiling block comes down, so the flight runs on into the dark under the
+	# rock instead of stopping at a wall.
+	var lintel_y: float = WALL_HEIGHT - rise
 	var dark: StandardMaterial3D = StandardMaterial3D.new()
 	dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	dark.albedo_color = Color(0.01, 0.02, 0.02)
-	var rise: float = WALL_HEIGHT * _STAIR_RISE
-	_add_box_child(root, out * -half + Vector3(0.0, rise + (WALL_HEIGHT - rise) * 0.5, 0.0),
-			_axis_box(out, across, 0.06, WALL_HEIGHT - rise, CELL_SIZE), dark)
+	_add_box_child(root, out * -half + Vector3(0.0, (lintel_y - pit) * 0.5, 0.0),
+			_axis_box(out, across, 0.06, lintel_y + pit, CELL_SIZE), dark)
 
-	# The flight: each step a solid block of stone from the floor up to its
-	# tread. The camera stands at eye height, so the treads are all but
-	# edge-on; what says "steps" is each riser being one course of stone whose
-	# top row catches the light, and the green from above growing up the flight.
+	# The flight: each step a solid block of stone from the bottom of the shaft
+	# up to its tread, each tread one riser lower and one tread further away.
+	# From eye height the treads face the camera, so the flight reads as a run
+	# of pale ledges stepping down into the dark.
 	var step: ShaderMaterial = _stone(4)
 	step.set_shader_parameter("course_h", 5.0)
+	var roof: ShaderMaterial = _stone(4)
+	roof.set_shader_parameter("course_h", 5.0)
 	var tread: float = CELL_SIZE / float(_STAIR_COUNT)
 	var riser: float = rise / float(_STAIR_COUNT)
 	for i: int in range(_STAIR_COUNT):
-		var top_y: float = float(i + 1) * riser
+		var top_y: float = -float(i + 1) * riser
 		var at: Vector3 = out * (half - (float(i) + 0.5) * tread) \
-				+ Vector3(0.0, top_y * 0.5, 0.0)
-		_add_box_child(root, at, _axis_box(out, across, tread, top_y, CELL_SIZE), step)
+				+ Vector3(0.0, (top_y - pit) * 0.5, 0.0)
+		_add_box_child(root, at, _axis_box(out, across, tread, top_y + pit, CELL_SIZE), step)
+		# The rock over this tread comes down by the same riser, keeping a full
+		# WALL_HEIGHT of headroom above every step. Its face toward the corridor
+		# is the lit edge of the inverted flight.
+		var roof_y: float = WALL_HEIGHT - float(i + 1) * riser
+		var over: Vector3 = out * (half - (float(i) + 0.5) * tread) \
+				+ Vector3(0.0, (roof_y + WALL_HEIGHT + 0.06) * 0.5, 0.0)
+		_add_box_child(root, over,
+				_axis_box(out, across, tread, WALL_HEIGHT + 0.06 - roof_y, CELL_SIZE), roof)
 
-	# The light at the head of the flight, poured down the steps and out onto
-	# the corridor, so what draws the eye is the glow coming off the stairs.
-	_stair_glow = root.position + out * (-half + tread) + Vector3(0.0, rise + 0.30, 0.0)
+	# The light comes up from the foot of the flight and spills over its lip
+	# onto the corridor, so what draws the eye is the glow rising out of the
+	# floor.
+	_stair_glow = root.position + out * (-half + tread) + Vector3(0.0, -rise + 0.5, 0.0)
 	_set_glow(_stair_glow, _STAIR_GREEN * _STAIR_GLOW, 3.6)
 
 

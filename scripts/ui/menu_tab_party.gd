@@ -1,5 +1,5 @@
 # MenuTabParty
-# The rolodex. Every demon bound so far is listed; the ones summoned here are
+# The roster. Every demon bound so far is listed; the ones summoned here are
 # the ones already standing on the field when the next battle opens, each
 # carrying its own press-turn icon. Summon in battle only fills a slot that
 # opens up mid-fight — this is where the loadout is actually decided.

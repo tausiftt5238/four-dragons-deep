@@ -1072,7 +1072,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	if not lost.is_empty() and result != "lose":
 		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
 
-	# A fight the demons finish after the detective fell is still a win, but he
+	# A fight the demons finish after the hero fell is still a win, but he
 	# walks out of it on his feet: at 0 HP the corridor stops treating him as
 	# alive, and nothing on the floor would move or open for him again.
 	if result != "lose":
