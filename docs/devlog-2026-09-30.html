@@ -1,0 +1,94 @@
+<p>This one&rsquo;s big enough that I tagged it 2.0. There are new skills, new items, and every list in the game got rewritten. At the end I had a bot play the whole thing, twice, to see how far it could get.</p>
+
+<h2>Swords that cost blood</h2>
+
+<p>Magic always had a full grid: every element at one target, two or three, or the whole line, over three rungs. Physical had one button, Attack.</p>
+
+<p>It has the grid now. Nine skills from Lunge to Warpath, and they cost HP instead of MP, a slice of your max HP each time. They won&rsquo;t spend your last point. They hit off STR, they miss like a swing does (two icons gone), and silence doesn&rsquo;t stop them. The wide ones don&rsquo;t split their damage the way spells do: a Rampage cuts every one of them at full weight. Physical was the weak side for a long time, and I wanted it to hit.</p>
+
+<p>Their scrolls sit on a Phys shelf at the orb, in front of Fire.</p>
+
+<h2>Your monsters get a say</h2>
+
+<p>Every second level a monster picks something up. It used to be handed to it: a rung on one of its elements, or a buff it didn&rsquo;t have. The rungs still just happen. New skills now ask first. A page comes up after the level-up screen, <strong>Learn</strong> or <strong>Skip</strong>, and when all five slots are full it asks which one to forget.</p>
+
+<p>Five, not six. The battle menu is six cells and Attack takes one, so a monster with six skills was quietly losing its last one off the edge of the menu.</p>
+
+<p>A monster that hits harder than it casts can be offered a physical skill too, at the same reach it already fights at. My Orc picked up Lunge, and two climbs later it was swinging Deathblow.</p>
+
+<h2>Bats bite</h2>
+
+<p>Two skills only their kind gets:</p>
+
+<ul>
+<li><strong>Bats</strong> (Bat, Hellbat): <strong>HP Leech</strong>. It bites, and heals by what it took.</li>
+<li><strong>Blood monsters</strong> (Blood Spawn, Blood Fiend): <strong>MP Leech</strong>. It drinks your MP into its own pool.</li>
+</ul>
+
+<p>Both scale off STR, not MAG, and both have no element, so nothing resists them. Enemies use them too. A Blood Spawn that has run dry drinks from whoever has the most MP, then spends it on Thunder. Yours know them from the moment they join.</p>
+
+<h2>Two mirrors for a thousand gold</h2>
+
+<p><strong>Attack Mirror</strong> and <strong>Magic Mirror</strong>, on every orb&rsquo;s shelf from floor 1, and they&rsquo;re the only thing in the game that costs that much. Hold one up and every attack of its kind aimed at the party goes back at whoever threw it, until your next turn. A dragon&rsquo;s opening breath off a Magic Mirror is very satisfying.</p>
+
+<h2>Spells can miss now</h2>
+
+<p>Two changes to magic:</p>
+
+<ul>
+<li><strong>Defence.</strong> A spell used to meet the same DEF a sword did. It meets (DEF + MAG) / 4 now, so a caster is also hard to cast at.</li>
+<li><strong>Missing.</strong> Spells can miss, off the same agility roll a swing uses, at half the rate. Without that, raising or dropping agility did nothing against a caster.</li>
+</ul>
+
+<p>Every warden resists light now too.</p>
+
+<h2>Descriptions are gone</h2>
+
+<p>I&rsquo;d written a line of flavour for every item. "A worn blade, better than bare hands." It was nice to write and useless to read. You couldn&rsquo;t tell from it what the thing actually did.</p>
+
+<p>Every item and spell shows one line now, and the line is the thing itself:</p>
+
+<ul>
+<li><strong>Spells and scrolls:</strong> 🔥 x1 - 8 MP. With an ailment: x1 - 4 MP - [Poison], in poison&rsquo;s green.</li>
+<li><strong>Buffs and debuffs:</strong> DEF+ party, in the same colour the stat&rsquo;s arrows use in a fight.</li>
+<li><strong>Armour:</strong> DEF+12 AGL-3, then the element icon with W or S after it, exactly like the chart under an enemy.</li>
+<li><strong>Potions and the rest:</strong> +30 HP, Cures [Paralyzed], Reflects ⚔ - party - 1 turn.</li>
+</ul>
+
+<p>Fire, ice and thunder already had little pixel icons. Phys, light and dark only existed as shapes drawn into the chart, so they got 16px icons of their own: a sword, a sun, a ring.</p>
+
+<h2>Nothing pages any more</h2>
+
+<p>Lists used to show six at a time with Back and More under them. That&rsquo;s how a PC menu works, not how a phone works. Every list scrolls now: the magic tab, the party, the bestiary, the orb, and the battle menu, which grows past its six cells when your pack or roster does. Equip something halfway down a list and you stay where you were.</p>
+
+<h2>Also in this one</h2>
+
+<ul>
+<li>The item belt is gone. Anything in your pack can be used in a fight.</li>
+<li>Cure picks who it lands on, the All versions heal everyone, and a Revival Feather brings someone back mid-fight.</li>
+<li>Every orb has a Gauntlet. Pay, pick up to four monsters out of your bestiary, and fight them for EXP.</li>
+<li>Packs mix in monsters from the tiers below, a few levels up, so floor 12 isn&rsquo;t only the floor 12 roster.</li>
+</ul>
+
+<h2>I had a bot play it</h2>
+
+<p>I wanted to know how far the game actually goes, so I had a bot play it the way a player would: walking the real corridors, fighting through the real menus, shopping at orbs, recruiting. No cheats, and encounters stayed on.</p>
+
+<p><strong>Round one:</strong> five runs, and none got past floor 5. The Ice Dragon beat every one of them, including a party grinded six levels above it. Its HP was 20 times the normal formula, and the best try took off 62%. The bot also found real bugs:</p>
+
+<ul>
+<li>A monster that was immobilized and out of MP had no button it could press, and the fight just stopped. It happened 24 times in boss fights.</li>
+<li>The Hellbat you start with had no skills at all.</li>
+<li>Double-tapping "Recruit it" also recruited the next monster, which had never asked.</li>
+<li>A monster&rsquo;s buff was announced as "Hellbat calls up Whet! You cast Whet!"</li>
+</ul>
+
+<p>All four are fixed. A stuck monster can brace again to pass, the Hellbat starts with Ember, Mire and HP Leech, and choices lock on the first tap. Dragons are down to 8 times normal HP.</p>
+
+<p><strong>Round two:</strong> the Ice Dragon falls at around level 14 or 15, on the third try. A fire monster in the party helps a lot. Two runs got through floors 6 to 9 easily and died on floor 10 to the Thunder Dragon. No errors in any run.</p>
+
+<h2>Still on the list</h2>
+
+<p>The bot noticed something I hadn&rsquo;t. Both dragons spend all their MP in the first two rounds, and after that they just hit you. Their element only matters at the start of the fight, and bats become a liability. The dragons need MP to last, or spells that cost less.</p>
+
+<p>Floors 1 and 2 can still kill a fresh hero who loses the Hellbat early. And still no sound.</p>
