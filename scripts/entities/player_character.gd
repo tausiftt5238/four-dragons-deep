@@ -424,11 +424,15 @@ func seed_demon_skills(demon_name: String) -> void:
 
 
 # A demon bound before its kind had a unique skill picks it up here, on load,
-# if it has a slot free for it. Nothing is forgotten to make room.
+# if it has a slot free for it. Nothing is forgotten to make room. One its kind
+# no longer has is dropped, so a change to a template reaches old saves.
 func top_up_unique_skills() -> void:
 	for demon_name: String in demon_skills:
 		var list: Array = demon_skills[demon_name] as Array
 		var e: Enemy = Enemy.make_at_level(demon_name, 1)
+		list = list.filter(func(sk: Dictionary) -> bool:
+				return sk.get("kind", "") != "unique" or sk.get("id", "") in e.unique_skills)
+		demon_skills[demon_name] = list
 		for id: String in e.unique_skills:
 			var entry: Dictionary = {kind = "unique", id = id}
 			if list.size() < DEMON_SKILL_CAP and not _has_skill(list, entry):
