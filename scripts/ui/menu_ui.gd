@@ -13,6 +13,7 @@ var player: PlayerCharacter
 var _active_tab:  String = "stats"
 var page: Dictionary = {}
 var _tab_btns:    Dictionary = {}
+var _scroll: ScrollContainer
 var _content:     VBoxContainer
 var _status_line: Label
 var _tabs:        MenuTabs
@@ -54,6 +55,7 @@ func _build_shell() -> void:
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	shell.add_child(scroll)
+	_scroll = scroll
 
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -149,9 +151,8 @@ func _system_button(text: String) -> Button:
 
 # ── Tab routing ───────────────────────────────────────────────────────────────
 
-func add_paged_list(parent: Control, key: String, entries: Array[String],
-		fill: Callable) -> void:
-	SlotList.paged(parent, page, key, entries, fill, _refresh)
+func add_list(parent: Control, entries: Array[String], fill: Callable) -> void:
+	SlotList.listed(parent, entries, fill)
 
 
 # Collapsible shelves that open into the page — see SlotList.sections.
@@ -161,6 +162,7 @@ func add_sections(parent: Control, key: String, groups: Array, fill: Callable) -
 
 func _switch_tab(tab_id: String) -> void:
 	_active_tab      = tab_id
+	_scroll.scroll_vertical = 0
 	_status_line.text = ""
 	for id: String in _tab_btns:
 		_tab_btns[id].button_pressed = (id == tab_id)
@@ -176,8 +178,15 @@ func _switch_tab(tab_id: String) -> void:
 		"system":    _build_system()
 
 
+# Rebuilds the tab after an action — Equip, Use, Sell — without throwing the
+# player back to the top of a list they had scrolled down.
 func _refresh() -> void:
+	var at: int = _scroll.scroll_vertical
 	_switch_tab(_active_tab)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(_scroll):
+		_scroll.scroll_vertical = at
 
 
 func _set_status(msg: String) -> void:

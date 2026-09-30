@@ -68,8 +68,7 @@ var _stepped_node: Control = null
 
 # The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
 # of them; a submenu drops its entries into the same cells, so slot 3 is in the
-# same place whichever is showing. Both menus are capped at MENU_SLOTS, which
-# is why nothing here ever needs to scroll.
+# same place whichever is showing. A submenu longer than MENU_SLOTS scrolls.
 const MENU_SLOTS: int = 6
 # The strip is exactly this tall in every state. Left to its own devices it
 # measured 282 on the main actions, 261 in Skills and 224 in Items, so the
@@ -82,6 +81,9 @@ const MENU_SLOT_H:   int = 88
 const MENU_HEADER_H: int = 39
 var _action_bar: GridContainer
 var _sub_bar:    GridContainer
+# The submenu grid scrolls rather than paging: six cells show, and a longer
+# list (a full roster, a crowded pack) carries on below them.
+var _sub_scroll: ScrollContainer
 var _sub_slots:  Array[MarginContainer] = []
 var _buttons: Dictionary = {}
 
@@ -267,12 +269,14 @@ func _step_forward(card: Control, is_enemy: bool) -> void:
 	var portrait: TextureRect = _card_portrait(card)
 	if portrait != null:
 		_play_anim(portrait, "walk")
-	var tween: Tween = create_tween()
+	# Bound to the card, not the scene: a revive or a summon rebuilds the party
+	# row mid-step, and a tween owned by the scene would then call back into a
+	# portrait that no longer exists.
+	var tween: Tween = card.create_tween()
 	tween.tween_property(card, "position:x", dir, STEP_DURATION) \
 			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	tween.tween_callback(func() -> void:
-		if portrait != null and portrait is AnimatedPortrait:
-			(portrait as AnimatedPortrait).play("idle"))
+	if portrait is AnimatedPortrait:
+		tween.tween_callback((portrait as AnimatedPortrait).play.bind("idle"))
 
 
 func _step_back_immediate() -> void:
@@ -353,7 +357,7 @@ func _show_item_submenu() -> void:
 				detail = "x%d" % int(item.get("qty", 1)),
 				disabled = not usable,
 				press = _on_use_item.bind(item)})
-	_fill_submenu(entries, _show_item_submenu)
+	_fill_submenu(entries)
 
 
 func _show_talk_submenu() -> void:
@@ -573,8 +577,7 @@ func _pick_ally(fallen: bool, title: String, back: Callable, then: Callable) -> 
 				press = func() -> void:
 					_ally_target = who
 					then.call()})
-	_sub_page = 0
-	_fill_submenu(entries, func() -> void: _pick_ally(fallen, title, back, then))
+	_fill_submenu(entries)
 
 
 func _living_party() -> Array[CharacterSheet]:
@@ -710,6 +713,9 @@ func _prompt_beg() -> void:
 	var take: Button = _big_button("Recruit it",
 			"%s joins your roster. Costs nothing." % enemy.enemy_name, false)
 	take.pressed.connect(func() -> void:
+		if take.disabled:
+			return
+		_lock_submenu()
 		var who: String = enemy.enemy_name
 		_remember_recruit(who, enemy.lv)
 		_log("[color=lime]%s is recruited. It walks in behind you.[/color]" % who)
@@ -719,6 +725,9 @@ func _prompt_beg() -> void:
 	var refuse: Button = _big_button("Refuse it",
 			"Leave it where it is. The fight goes on.", false)
 	refuse.pressed.connect(func() -> void:
+		if refuse.disabled:
+			return
+		_lock_submenu()
 		_log("[color=gray]You say nothing. It picks itself back up.[/color]")
 		_right_back_btn.visible = true
 		_press.begin(_living_party().size())
@@ -759,6 +768,9 @@ func _prompt_tribute(from_beg: bool = true) -> void:
 	var take: Button = _big_button("Take it",
 			"%s gives up %s and leaves." % [who, what], false)
 	take.pressed.connect(func() -> void:
+		if take.disabled:
+			return
+		_lock_submenu()
 		player.gold += coin
 		if drop.is_empty():
 			_log("[color=#ffd479]It empties its hands — %d gold — and goes.[/color]" % coin)
@@ -1120,9 +1132,6 @@ const REVIVE_HP_SHARE: float = 0.5
 # save it, not a way to heal it.
 var bench: Array[Enemy] = []
 
-# Which page of a long call list is showing. A run binds far more demons than
-# the six slots a submenu has.
-var _sub_page: int = 0
 
 
 # Demons on the field with no HP left. A body keeps its slot, so reviving it or
@@ -1163,7 +1172,6 @@ func _remember_recruit(demon_name: String, lv: int = 1) -> void:
 
 
 func _open_summon_menu() -> void:
-	_sub_page = 0
 	_show_summon_submenu()
 
 
@@ -1201,31 +1209,13 @@ func _show_summon_submenu() -> void:
 	if entries.is_empty():
 		_submenu_add(_dim_label("Nothing left to call."))
 		return
-	_fill_submenu(entries, _show_summon_submenu)
+	_fill_submenu(entries)
 
 
-# One page of a list into the submenu's six slots. Anything longer keeps the
-# last slot for a pager rather than dropping what does not fit — which is what
-# used to happen once a run had bound seven demons.
-func _fill_submenu(entries: Array[Dictionary], rebuild: Callable) -> void:
-	if entries.size() <= MENU_SLOTS:
-		_sub_page = 0
-		for e: Dictionary in entries:
-			_submenu_add(_entry_button(e))
-		return
-
-	var per: int = MENU_SLOTS - 1
-	var pages: int = ceili(float(entries.size()) / float(per))
-	_sub_page = clampi(_sub_page, 0, pages - 1)
-	var first: int = _sub_page * per
-	for i: int in range(first, mini(first + per, entries.size())):
-		_submenu_add(_entry_button(entries[i]))
-
-	var more: Button = _big_button("More", "%d / %d" % [_sub_page + 1, pages], false)
-	more.pressed.connect(func() -> void:
-		_sub_page = (_sub_page + 1) % pages
-		rebuild.call())
-	_submenu_add(more)
+# A whole list into the submenu. Past six it scrolls — see _sub_scroll.
+func _fill_submenu(entries: Array[Dictionary]) -> void:
+	for e: Dictionary in entries:
+		_submenu_add(_entry_button(e))
 
 
 func _entry_button(e: Dictionary) -> Button:
@@ -1779,7 +1769,6 @@ func _on_action(action: String) -> void:
 			_show_skills_submenu()
 			return
 		"Item":
-			_sub_page = 0
 			_show_item_submenu()
 			return
 		"Talk":
@@ -1835,8 +1824,11 @@ func _refresh_button_states() -> void:
 
 	_buttons["Skills"].disabled = false
 	# Bracing on top of a brace does nothing but spend the icon, and at half an
-	# icon it is cheap enough to do by accident.
-	_buttons["Defend"].disabled = _actor().defending
+	# icon it is cheap enough to do by accident — unless it is the only thing
+	# left. A demon that is immobilized (no Attack) and cannot pay for any of
+	# its skills would otherwise have no button at all, and the phase would
+	# wait on it forever. Bracing again is its way of passing.
+	_buttons["Defend"].disabled = _actor().defending and _has_another_move(_actor())
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	# Live whenever there is anything to move: a body to raise, a demon waiting
@@ -1848,6 +1840,26 @@ func _refresh_button_states() -> void:
 
 
 
+
+
+# Whether this party member can do anything but brace. The detective always
+# can — Flee is never taken from him. A demon can if it can swing, or if one of
+# its skills passes the same checks the skills menu greys buttons out by.
+func _has_another_move(member: CharacterSheet) -> bool:
+	if member == player or not member is Enemy:
+		return true
+	var demon: Enemy = member as Enemy
+	if not demon.has_status(Status.IMMOBILIZE):
+		return true
+	var silenced: bool = demon.has_status(Status.SILENCE)
+	for skill: Dictionary in player.skills_of(demon.enemy_name):
+		var hp_price: int = _demon_hp_cost(demon, skill)
+		if hp_price > 0:
+			if demon.hp > hp_price:
+				return true
+		elif not silenced and demon.mp >= _demon_skill_cost(demon, skill):
+			return true
+	return false
 
 
 func _member_portrait(member: CharacterSheet) -> TextureRect:
@@ -1952,7 +1964,7 @@ func _show_skills_submenu() -> void:
 		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
 		# and comes through the loop below with everything else.
 		if player.equipped_spells.is_empty():
-			_fill_submenu(entries, _show_skills_submenu)
+			_fill_submenu(entries)
 			_submenu_add(_dim_label("No spells equipped."))
 			return
 		var silenced: bool = player.has_status(Status.SILENCE)
@@ -1977,7 +1989,7 @@ func _show_skills_submenu() -> void:
 				blocked = silenced or player.mp < int(data.get("mp", 0))
 			entries.append(_skill_entry("Magic:" + spell_id,
 					data["name"] as String, tag, Spell.cost_text(spell_id), blocked))
-		_fill_submenu(entries, _show_skills_submenu)
+		_fill_submenu(entries)
 		return
 
 	var demon: Enemy = actor as Enemy
@@ -2010,7 +2022,7 @@ func _show_skills_submenu() -> void:
 		entries.append(_skill_entry("Skill:%d" % i,
 				PlayerCharacter.skill_name(skill), tag,
 				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked))
-	_fill_submenu(entries, _show_skills_submenu)
+	_fill_submenu(entries)
 
 
 # An elemental cast is paid out of the demon's own pool and gets dearer as its
@@ -2070,10 +2082,8 @@ func _resolve_skill(chosen: String) -> Dictionary:
 
 	if skill.get("kind", "") == "support":
 		var data: Dictionary = Spell.get_data(skill.get("id", "") as String)
-		var out: Dictionary = _apply_stage_spell(data)
-		out["msg"] = "%s calls up %s!  %s" % [actor.display_name(),
-				data.get("name", "?"), out.get("msg", "")]
-		return out
+		return _apply_stage_spell(data, "%s calls up %s" % [
+				actor.display_name(), data.get("name", "?")])
 
 	var element: String = skill.get("element", "") as String
 	var rung: int = int(skill.get("rung", 1))
@@ -2411,7 +2421,7 @@ static func _px_ring(img: Image, cx: float, cy: float, r: float, c: Color) -> vo
 # A thumb-sized submenu entry: title on top, the detail that decides the choice
 # underneath. Built from child Labels because a Button's own text is one line.
 
-# The same button as an entry for _fill_submenu, so a long list pages.
+# The same button as an entry for _fill_submenu, so a long list scrolls.
 func _skill_entry(action: String, label: String, element: String,
 		cost: String, disabled: bool) -> Dictionary:
 	return {title = label, detail = "%s   %s" % [element, cost], disabled = disabled,
@@ -2755,20 +2765,31 @@ func _build_menu_panel(parent: Control) -> void:
 		_action_bar.add_child(btn)
 		_buttons[action] = btn
 
+	_sub_scroll = ScrollContainer.new()
+	_sub_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sub_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	_sub_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_sub_scroll.hide()
+	body.add_child(_sub_scroll)
 	_sub_bar = _make_slot_row()
-	_sub_bar.hide()
-	body.add_child(_sub_bar)
+	_sub_scroll.add_child(_sub_bar)
 
 	for _i: int in range(MENU_SLOTS):
-		var slot: MarginContainer = MarginContainer.new()
-		slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-		slot.size_flags_vertical     = Control.SIZE_EXPAND_FILL
-		slot.size_flags_stretch_ratio = 1.0
-		# An empty slot still holds its ground, so a three-entry submenu is the
-		# same shape as a six-entry one.
-		slot.custom_minimum_size = Vector2(0, MENU_SLOT_H)
-		_sub_bar.add_child(slot)
-		_sub_slots.append(slot)
+		_add_sub_slot()
+
+
+# An empty slot still holds its ground, so a three-entry submenu is the same
+# shape as a six-entry one. Slots past the sixth are made as a list needs them
+# and dropped again on clear.
+func _add_sub_slot() -> MarginContainer:
+	var slot: MarginContainer = MarginContainer.new()
+	slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
+	slot.size_flags_vertical     = Control.SIZE_EXPAND_FILL
+	slot.size_flags_stretch_ratio = 1.0
+	slot.custom_minimum_size = Vector2(0, MENU_SLOT_H)
+	_sub_bar.add_child(slot)
+	_sub_slots.append(slot)
+	return slot
 
 
 # Six thumb targets in one line on a 540-wide screen truncates every label to
@@ -2786,12 +2807,12 @@ func _make_slot_row() -> GridContainer:
 
 func _show_actions() -> void:
 	_action_bar.show()
-	_sub_bar.hide()
+	_sub_scroll.hide()
 
 
 func _hide_actions() -> void:
 	_action_bar.hide()
-	_sub_bar.show()
+	_sub_scroll.show()
 
 
 func _show_main_actions() -> void:
@@ -2805,23 +2826,40 @@ func _show_main_actions() -> void:
 # Detaches immediately rather than waiting on queue_free, so the very next
 # _submenu_add sees the slots as empty.
 func _submenu_clear() -> void:
+	while _sub_slots.size() > MENU_SLOTS:
+		var extra: MarginContainer = _sub_slots.pop_back()
+		_sub_bar.remove_child(extra)
+		extra.queue_free()
 	for slot: MarginContainer in _sub_slots:
 		for child: Node in slot.get_children():
 			slot.remove_child(child)
 			child.queue_free()
+	_sub_scroll.scroll_vertical = 0
 
 
-# Drops one entry into the next free slot. Both menus are capped at MENU_SLOTS,
-# so overflow is a bug rather than something to scroll past.
+# Greys out every button in the submenu. A choice whose result takes a moment
+# to play out (a reaction line, a demon walking off) calls this first, so a
+# second tap in that moment cannot answer a question twice — or answer the
+# next demon's before it has asked.
+func _lock_submenu() -> void:
+	for slot: MarginContainer in _sub_slots:
+		for c: Node in slot.get_children():
+			if c is Button:
+				(c as Button).disabled = true
+
+
+# Drops one entry into the next free slot, making one when all six are taken.
 func _submenu_add(control: Control) -> void:
+	var into: MarginContainer = null
 	for slot: MarginContainer in _sub_slots:
 		if slot.get_child_count() == 0:
-			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			control.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-			slot.add_child(control)
-			return
-	push_warning("combat submenu overflowed %d slots" % MENU_SLOTS)
-	control.queue_free()
+			into = slot
+			break
+	if into == null:
+		into = _add_sub_slot()
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	into.add_child(control)
 
 
 # A slot-sized submenu entry: title on top, the detail that decides the choice
@@ -3091,7 +3129,11 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
 # many actually moved is what tells the player they have hit the cap.
-func _apply_stage_spell(data: Dictionary) -> Dictionary:
+# `lead` names who cast it — "You cast Whet" for the detective, "Hellbat calls
+# up Whet" for a demon of his.
+func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
+	if lead == "":
+		lead = "You cast %s" % data["name"]
 	var stat: String = data.get("stat", CharacterSheet.STAT_ATK) as String
 	var delta: int   = int(data.get("delta", 1))
 	var on_party: bool = (data.get("scope", "party") == "party")
@@ -3111,11 +3153,11 @@ func _apply_stage_spell(data: Dictionary) -> Dictionary:
 
 	var who: String = "the party" if on_party else "every enemy"
 	if moved == 0:
-		return {msg = "[color=gray]You cast %s — %s is already at the limit.[/color]" % [
-				data["name"], who], cost = PressTurn.COST_FULL}
+		return {msg = "[color=gray]%s — %s is already at the limit.[/color]" % [
+				lead, who], cost = PressTurn.COST_FULL}
 	var tint: String = "aqua" if delta > 0 else "orange"
-	return {msg = "[color=%s]You cast %s!  %s %s on %d of %d.[/color]" % [
-			tint, data["name"], _stat_name(stat),
+	return {msg = "[color=%s]%s!  %s %s on %d of %d.[/color]" % [
+			tint, lead, _stat_name(stat),
 			"rises" if delta > 0 else "falls", moved, total],
 			cost = PressTurn.COST_FULL}
 

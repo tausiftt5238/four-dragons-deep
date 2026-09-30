@@ -1,6 +1,6 @@
 # MenuTabItems
 # The pack. Everything consumable in it reaches a battle; the battle's item
-# menu pages when the pack runs past six.
+# menu scrolls when the pack runs past six.
 class_name MenuTabItems extends RefCounted
 
 var _m

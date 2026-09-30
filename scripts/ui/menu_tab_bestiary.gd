@@ -22,7 +22,7 @@ func build() -> void:
 				known.append(enemy_name)
 				break
 
-	_m.add_paged_list(_m._content, "bestiary", known,
+	_m.add_list(_m._content, known,
 			func(list: SlotList, enemy_name: String) -> void: _add_demon(list, enemy_name))
 
 

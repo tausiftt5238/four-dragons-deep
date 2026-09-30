@@ -54,7 +54,7 @@ func build() -> void:
 		if not p.is_active(other):
 			ordered.append(other)
 
-	_m.add_paged_list(_m._content, "party", ordered,
+	_m.add_list(_m._content, ordered,
 			func(list: SlotList, name: String) -> void: _add_demon(list, name))
 
 

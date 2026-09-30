@@ -59,6 +59,7 @@ func start() -> void:
 
 
 func _resolve(choice: String) -> void:
+	_s._lock_submenu()
 	_s._show_main_actions()
 	_s._set_buttons(false)
 	match choice:

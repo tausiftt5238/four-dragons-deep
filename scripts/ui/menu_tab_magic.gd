@@ -49,7 +49,7 @@ func build() -> void:
 		if not p.is_equipped(spell_id2) and not Spell.get_data(spell_id2).is_empty():
 			ordered.append(spell_id2)
 
-	_m.add_paged_list(_m._content, "magic", ordered,
+	_m.add_list(_m._content, ordered,
 			func(list: SlotList, spell_id: String) -> void:
 				_add_spell(list, spell_id))
 

@@ -24,6 +24,7 @@ var _gold_lbl: Label
 var _tab_btns: Dictionary = {}
 # Which page each of the long lists is showing.
 var _page: Dictionary = {}
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -70,6 +71,7 @@ func _build() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
+	_scroll = scroll
 
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -114,6 +116,7 @@ func _build() -> void:
 
 func _switch(tab: String) -> void:
 	_tab = tab
+	_scroll.scroll_vertical = 0
 	for id: String in _tab_btns:
 		(_tab_btns[id] as Button).button_pressed = (id == tab)
 	for child: Node in _content.get_children():
@@ -130,8 +133,14 @@ func _switch(tab: String) -> void:
 		"gauntlet": _build_gauntlet()
 
 
+# Rebuilds the tab after a purchase or a sale, keeping the scroll where it was.
 func _refresh() -> void:
+	var at: int = _scroll.scroll_vertical
 	_switch(_tab)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(_scroll):
+		_scroll.scroll_vertical = at
 
 
 func _set_status(msg: String) -> void:
@@ -312,7 +321,7 @@ func _build_bind() -> void:
 		_content.add_child(_note("Nothing has answered to you yet."))
 		SlotList.new(_content)
 		return
-	SlotList.paged(_content, _page, "bind", offered, _bind_offer, _refresh)
+	SlotList.listed(_content, offered, _bind_offer)
 
 
 func _bind_offer(list: SlotList, enemy_name: String) -> void:

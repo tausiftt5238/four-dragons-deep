@@ -46,7 +46,7 @@ const WARDEN_ICONS: int = 2
 
 # A boss's HP as a multiple of what the ordinary formula (lv*10 + def*3) gives
 # it, so a dragon is a long fight rather than a few good rounds.
-const BOSS_HP_MULT: int = 20
+const BOSS_HP_MULT: int = 8
 
 # Press-turn icons this enemy opens its phase with. Bosses get more, which is
 # how they threaten a full party without inflating their damage numbers.

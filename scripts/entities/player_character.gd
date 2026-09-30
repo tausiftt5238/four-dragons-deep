@@ -76,7 +76,7 @@ func unequip_spell(spell_id: String) -> void:
 
 # Everything in the pack a fight can use: every consumable, potions and
 # throwables alike, in pack order. There used to be a six-slot belt between the
-# pack and the battle; the battle's item menu pages instead, so nothing carried
+# pack and the battle; the battle's item menu scrolls instead, so nothing carried
 # is out of reach mid-fight.
 func battle_items() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -427,6 +427,12 @@ func seed_demon_skills(demon_name: String) -> void:
 # if it has a slot free for it. Nothing is forgotten to make room. One its kind
 # no longer has is dropped, so a change to a template reaches old saves.
 func top_up_unique_skills() -> void:
+	# The starting demon used to be bound with no skills at all. A save made
+	# then carries an empty list; seed it as if it had just been recruited.
+	for demon_name: String in recruited:
+		if (demon_skills.get(demon_name, []) as Array).is_empty():
+			demon_skills.erase(demon_name)
+			seed_demon_skills(demon_name)
 	for demon_name: String in demon_skills:
 		var list: Array = demon_skills[demon_name] as Array
 		var e: Enemy = Enemy.make_at_level(demon_name, 1)
@@ -531,6 +537,10 @@ func _ready() -> void:
 	ever_bound      = [STARTING_DEMON]
 	bound_level     = {STARTING_DEMON: 2}
 	active_demons   = [STARTING_DEMON]
+	# Bound the same way a recruit is, so it walks in knowing its own lines —
+	# without this the gift carried no skills at all until a save was loaded.
+	demon_skills    = {}
+	seed_demon_skills(STARTING_DEMON)
 
 	# He is human. No resistances of his own, and the cold gets through —
 	# which is what makes putting him in front of anything a real decision.
