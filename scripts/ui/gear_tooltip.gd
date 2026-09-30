@@ -7,11 +7,6 @@ class_name GearTooltip
 static func build(item: Dictionary, player: PlayerCharacter) -> String:
 	var lines: Array[String] = []
 
-	var desc: String = item.get("desc", "")
-	if not desc.is_empty():
-		lines.append(desc)
-		lines.append("")
-
 	var kind: String = item.get("type", "") as String
 	if kind not in ["accessory", "weapon", "armor"]:
 		return "
@@ -105,15 +100,7 @@ static func delta_markup(item: Dictionary, player: PlayerCharacter) -> String:
 		parts.append("[color=#%s]%s%+d[/color]" % [
 				stat_color(delta).to_html(false), pair[0], delta])
 
-	var el: String = item.get("attack_element", "") as String
-	if el != "":
-		parts.append("[color=#c9a6ff]%s[/color]" % Affinity.element_name(el).to_upper())
-	var r: String = item.get("resist_element", "") as String
-	if r != "":
-		parts.append("[color=#86b4ea]res %s[/color]" % Affinity.element_name(r))
-	var w: String = item.get("weak_element", item.get("weakness", "")) as String
-	if w != "":
-		parts.append("[color=#ffcf52]weak %s[/color]" % Affinity.element_name(w))
+	# Elements are ItemInfo's: it draws them as icons after these.
 	return "  ".join(parts)
 
 

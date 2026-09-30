@@ -103,8 +103,7 @@ func _add_spare(list: SlotList, item_id: String) -> void:
 		blocked = not p.has_free_accessory_slot()
 
 	list.add(item["name"] as String, Color(0.82, 0.82, 0.88),
-			item.get("desc", "") as String,
-			GearTooltip.bonus_string(item).strip_edges(), Color(0.62, 0.92, 0.74),
+			ItemInfo.item(item), "", Color(0.62, 0.92, 0.74),
 			label, blocked, act)
 
 
@@ -144,22 +143,14 @@ func _gear_slot(label: String, worn: Dictionary, on_remove: Callable) -> Control
 		head.add_child(off)
 
 	if not worn.is_empty():
-		var detail: Label = Label.new()
-		var bits: Array[String] = []
-		var stat_line: String = GearTooltip.bonus_string(worn).strip_edges()
-		if stat_line != "":
-			bits.append(stat_line + "  ·")
-		bits.append(worn.get("desc", "") as String)
-		var r: String = worn.get("resist_element", "") as String
-		if r != "":
-			bits.append("Resists %s." % Affinity.element_name(r))
-		var w: String = worn.get("weakness", "") as String
-		if w != "":
-			bits.append("Opens %s." % Affinity.element_name(w))
-		detail.text = "      " + " ".join(bits)
+		var detail: RichTextLabel = RichTextLabel.new()
+		detail.bbcode_enabled = true
+		detail.fit_content = true
+		detail.scroll_active = false
+		detail.text = ItemInfo.item(worn)
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		detail.add_theme_font_size_override("font_size", 11)
-		detail.add_theme_color_override("font_color", Color(0.60, 0.62, 0.70))
+		detail.add_theme_font_size_override("normal_font_size", 11)
+		detail.add_theme_color_override("default_color", Color(0.60, 0.62, 0.70))
 		col.add_child(detail)
 	return col
 

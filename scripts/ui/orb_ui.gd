@@ -386,11 +386,14 @@ func _build_sell() -> void:
 	var scrolls: Array = []
 	var gear: Dictionary = {weapon = [], armor = [], accessory = []}
 	var other: Array = []
+	var mirrors: Array = []
 	for item: Dictionary in player.inventory:
 		var row: Dictionary = {kind = "item", item = item}
 		var kind: String = item.get("type", "") as String
 		if kind == "consumable":
-			if item.has("inflicts_status") \
+			if item.has("mirror"):
+				mirrors.append(row)
+			elif item.has("inflicts_status") \
 					or (item.has("element") and int(item.get("dmg", 0)) > 0):
 				throw.append(row)
 			else:
@@ -405,6 +408,7 @@ func _build_sell() -> void:
 		{title = "Monsters", entries = monsters},
 		{title = "Recovery", entries = mend},
 		{title = "Throwables", entries = throw},
+		{title = "Mirrors", entries = mirrors},
 		{title = "Scrolls", entries = scrolls},
 		{title = "Weapons", entries = gear["weapon"]},
 		{title = "Armour", entries = gear["armor"]},
@@ -431,7 +435,7 @@ func _sell_offer(list: SlotList, row: Dictionary) -> void:
 func _sell_item(list: SlotList, item: Dictionary) -> void:
 	var price: int = resale_price(item)
 	var qty: int = int(item.get("qty", 1))
-	var about: String = item.get("desc", "") as String
+	var about: String = ItemInfo.item(item)
 	if qty > 1:
 		about = "x%d   %s" % [qty, about]
 	list.add(item["name"] as String, Color(0.85, 0.85, 0.92), about,
@@ -518,14 +522,18 @@ static func item_price(item: Dictionary) -> int:
 func _build_buy() -> void:
 	var mend: Array = []
 	var throw: Array = []
+	var mirrors: Array = []
 	for item: Dictionary in _supplies():
-		if item.has("inflicts_status") or (item.has("element") and int(item.get("dmg", 0)) > 0):
+		if item.has("mirror"):
+			mirrors.append(item)
+		elif item.has("inflicts_status") or (item.has("element") and int(item.get("dmg", 0)) > 0):
 			throw.append(item)
 		else:
 			mend.append(item)
 	SlotList.sections(_content, _page, "buy", [
 		{title = "Recovery", entries = mend},
 		{title = "Throwables", entries = throw},
+		{title = "Mirrors", entries = mirrors},
 	], _buy_offer)
 
 
@@ -620,14 +628,10 @@ func _buy_offer(list: SlotList, item: Variant) -> void:
 	# Shares the line the stat deltas are on rather than taking one of its own:
 	# a slot is a fixed height and the description is already the second line,
 	# so a third would simply push it out of the row.
-	var lead: Array[String] = []
+	var detail: String = ItemInfo.item(entry, deltas)
 	if held != "":
-		lead.append("[color=#9ee8b8]%s[/color]" % held)
-	if deltas != "":
-		lead.append(deltas)
-	var detail: String = entry.get("desc", "") as String
-	if not lead.is_empty():
-		detail = "%s\n%s" % ["  ·  ".join(lead), detail]
+		detail = "[font_size=%d][color=#9ee8b8]%s[/color][/font_size]\n%s" % [
+				ItemInfo.FONT_SIZE - 3, held, detail]
 
 	list.add(entry["name"] as String, title_color,
 			detail,

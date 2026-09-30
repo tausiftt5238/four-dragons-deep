@@ -70,9 +70,7 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 	# Element and reach ride in the detail line rather than the title: at font
 	# size 20 the button already claims a third of the row, and a title that
 	# has to hold four things ends up clipped mid-word.
-	var about: String = spell.get("desc", "") as String
-	if element != "":
-		about = "%s %s  —  %s" % [kind, Spell.reach_tag(spell_id), about]
+	var about: String = ItemInfo.spell(spell_id)
 	var cost: int = int(spell.get("mp", 0))
 	var actions: Array[Dictionary] = [{
 		text = "Unequip" if equipped else "Equip",
@@ -105,4 +103,4 @@ func _add_spell(list: SlotList, spell_id: String) -> void:
 
 	list.add_entry("%s%s" % ["* " if equipped else "", spell["name"]],
 			title_color, about,
-			Spell.cost_text(spell_id), Color(0.4, 0.55, 0.95), actions)
+			"", Color(0.4, 0.55, 0.95), actions)

@@ -122,9 +122,7 @@ func _add_item(list: SlotList, item_id: String) -> void:
 					_m._set_status("Both slots are taken.")
 				_m._refresh()})
 
-	var about: String = item.get("desc", "") as String
-	if kind in ["accessory", "weapon", "armor"]:
-		about = "%s%s" % [about, GearTooltip.bonus_string(item)]
+	var about: String = ItemInfo.item(item)
 
 	list.add_entry(item["name"] as String, Color(0.85, 0.85, 0.92),
 			about,
