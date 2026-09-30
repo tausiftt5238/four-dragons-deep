@@ -1576,6 +1576,7 @@ func _refresh_foe_rows() -> void:
 			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
 					Color(0.45, 0.45, 0.52))
 			(r["stages"] as StageArrows).visible = false
+			(r["chart"] as AffinityChart).visible = false
 			continue
 		var alive: bool = foe.is_alive()
 		var targeted: bool = (foe == enemy) and alive
