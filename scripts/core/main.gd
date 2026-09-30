@@ -1138,11 +1138,13 @@ func _demon_snapshots() -> Dictionary:
 func _demon_level_ups(grew: Dictionary, before: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var learned: Dictionary = grew.get("learned", {}) as Dictionary
+	var offers: Dictionary = grew.get("offers", {}) as Dictionary
 	for demon_name: String in (grew.get("climbed", []) as Array):
 		out.append({name = demon_name,
 				before = before.get(demon_name, {}),
 				after = _demon_snapshot(demon_name),
-				learned = learned.get(demon_name, [])})
+				learned = learned.get(demon_name, []),
+				offers = offers.get(demon_name, [])})
 	return out
 
 
@@ -1176,6 +1178,8 @@ func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
 	ui.before     = entry["before"] as Dictionary
 	ui.after      = entry["after"] as Dictionary
 	ui.learned    = entry["learned"] as Array
+	ui.offers     = entry.get("offers", []) as Array
+	ui.player     = player_char
 	ui.dismissed.connect(func():
 		ui.queue_free()
 		_show_demon_level_ups(rest)

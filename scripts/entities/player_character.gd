@@ -123,10 +123,11 @@ var demon_levels_gained: Dictionary = {}
 const DEMON_POINTS_PER_LEVEL: int = 2
 const DEMON_EXP_FACTOR: int = 6
 
-# Six, because the skills menu is a fixed six cells — see CombatScene.MENU_SLOTS.
-# A full demon stops learning; its rungs can still climb, since those rewrite a
-# skill rather than adding one.
-const DEMON_SKILL_CAP: int = 6
+# Five, because the skills menu is a fixed six cells and Attack takes one — see
+# CombatScene.MENU_SLOTS. The same five the detective gets in SPELL_SLOTS. A
+# full demon can still be offered something new; taking it means forgetting
+# something it has.
+const DEMON_SKILL_CAP: int = 5
 const DEMON_GROWTH_EVERY: int = 2
 const DEMON_MAX_RUNG: int = 3
 
@@ -165,13 +166,15 @@ const BENCH_EXP_PERCENT: int = 50
 # detective: he is the one holding the case open, and a party that outgrows him
 # would make his own levels pointless.
 #
-# Returns {climbed = [names], learned = {name: [what it picked up]}} so the
-# result screen can say both what grew and what it can now call on.
+# Returns {climbed = [names], learned = {name: [rungs it climbed]},
+# offers = {name: [skill entries]}}. A rung climb is simply taken; a new skill
+# is only offered, and the level-up screen asks whether to learn it.
 func award_demon_exp(amount: int) -> Dictionary:
 	var climbed: Array[String] = []
 	var learned: Dictionary = {}
+	var offers: Dictionary = {}
 	if amount <= 0:
-		return {climbed = climbed, learned = learned}
+		return {climbed = climbed, learned = learned, offers = offers}
 	for demon_name: String in recruited:
 		var at: int = int(bound_level.get(demon_name, 1))
 		if at >= lv:
@@ -188,26 +191,35 @@ func award_demon_exp(amount: int) -> Dictionary:
 			var levels: int = int(demon_levels_gained.get(demon_name, 0)) + 1
 			demon_levels_gained[demon_name] = levels
 			if levels % DEMON_GROWTH_EVERY == 0:
-				var got: String = _roll_demon_skill(demon_name)
-				if got != "":
+				var pending: Array = offers.get(demon_name, []) as Array
+				var got: Dictionary = _roll_demon_skill(demon_name, pending)
+				if got.has("raised"):
 					if not learned.has(demon_name):
 						learned[demon_name] = []
-					(learned[demon_name] as Array).append(got)
+					(learned[demon_name] as Array).append(got["raised"])
+				elif got.has("offer"):
+					pending.append(got["offer"])
+					offers[demon_name] = pending
 		bound_level[demon_name] = at
 		# At the detective's level it stops banking, so the overflow is not
 		# sitting there waiting to fire off three levels the moment he gains one.
 		demon_exp[demon_name] = 0 if at >= lv else banked
 		if gained:
 			climbed.append(demon_name)
-	return {climbed = climbed, learned = learned}
+	return {climbed = climbed, learned = learned, offers = offers}
 
 
 # Every second level a demon picks something up, and a coin decides which kind:
-# one of its lines climbs a rung, or it learns a buff or debuff it did not have.
-# A coin that lands on an impossible side takes the other — a demon with every
-# rung maxed keeps learning, and a full one keeps climbing rungs, since a rung
-# rewrites a skill instead of adding one.
-func _roll_demon_skill(demon_name: String) -> String:
+# one of its lines climbs a rung, or it is offered a skill it does not have — a
+# buff or debuff, or a physical line if it hits harder than it casts. A coin
+# that lands on an impossible side takes the other.
+#
+# A climb is applied here and comes back as {raised = name}. A new skill is
+# not: it comes back as {offer = entry}, and the player decides on the level-up
+# screen whether to learn it, and what to forget for it if the list is full.
+# `pending` is what this fight has already offered, so two level-ups in one
+# fight do not offer the same thing twice.
+func _roll_demon_skill(demon_name: String, pending: Array = []) -> Dictionary:
 	# An empty list is not a dead end: a demon that throws no element at all —
 	# a Bat has none and no support either — grows into a support caster, which
 	# is the only way it can grow at all.
@@ -221,21 +233,25 @@ func _roll_demon_skill(demon_name: String) -> String:
 			upgradable.append(i)
 
 	var unlearned: Array[String] = []
-	if list.size() < DEMON_SKILL_CAP:
-		for id: String in DEMON_SUPPORTS:
-			var known: bool = false
-			for skill: Dictionary in list:
-				if skill.get("kind", "") == "support" and skill.get("id", "") == id:
-					known = true
-			if not known:
-				unlearned.append(id)
+	for id: String in DEMON_SUPPORTS:
+		var entry: Dictionary = {kind = "support", id = id}
+		if not _has_skill(list, entry) and not _has_skill(pending, entry):
+			unlearned.append(id)
 
-	if upgradable.is_empty() and unlearned.is_empty():
-		return ""
+	# A demon that hits harder than it casts can pick up a physical line of
+	# its own, at the reach it already fights at. It is one new line like any
+	# other: it takes a slot, starts on the first rung and climbs from there.
+	var phys_reach: String = _phys_line_reach(demon_name, list)
+	if phys_reach != "" and _has_skill(pending, {kind = "element", element = Affinity.PHYS}):
+		phys_reach = ""
+	var can_learn: bool = not unlearned.is_empty() or phys_reach != ""
+
+	if upgradable.is_empty() and not can_learn:
+		return {}
 	var climb: bool = (randi() % 2 == 0)
 	if climb and upgradable.is_empty():
 		climb = false
-	elif not climb and unlearned.is_empty():
+	elif not climb and not can_learn:
 		climb = true
 
 	if climb:
@@ -244,12 +260,57 @@ func _roll_demon_skill(demon_name: String) -> String:
 		skill["rung"] = int(skill.get("rung", 1)) + 1
 		list[idx] = skill
 		demon_skills[demon_name] = list
-		return skill_name(skill)
+		return {raised = skill_name(skill)}
 
-	var pick: String = unlearned[randi() % unlearned.size()]
-	list.append({kind = "support", id = pick})
+	# Even odds between the physical line and a buff, while both are open —
+	# otherwise it would be one name lost among eight supports.
+	if phys_reach != "" and (unlearned.is_empty() or randi() % 2 == 0):
+		return {offer = {kind = "element", element = Affinity.PHYS,
+				rung = 1, shape = phys_reach}}
+	return {offer = {kind = "support", id = unlearned[randi() % unlearned.size()]}}
+
+
+# Same support, or a line in the same element — a rung does not make it new.
+static func _has_skill(list: Array, want: Dictionary) -> bool:
+	for skill: Dictionary in list:
+		if skill.get("kind", "") != want.get("kind", ""):
+			continue
+		if want.get("kind", "") == "support" and skill.get("id", "") == want.get("id", ""):
+			return true
+		if want.get("kind", "") == "element" and skill.get("element", "") == want.get("element", ""):
+			return true
+	return false
+
+
+# Takes an offered skill. `forget` is the index of the one it replaces, which
+# a full list has to give up; -1 adds it while there is room. False when there
+# is no room and nothing was named to make some.
+func learn_demon_skill(demon_name: String, skill: Dictionary, forget: int = -1) -> bool:
+	var list: Array = skills_of(demon_name)
+	if _has_skill(list, skill):
+		return false
+	if forget >= 0 and forget < list.size():
+		list[forget] = skill
+	elif list.size() < DEMON_SKILL_CAP:
+		list.append(skill)
+	else:
+		return false
 	demon_skills[demon_name] = list
-	return Spell.get_data(pick).get("name", pick) as String
+	return true
+
+
+# The reach a physical line would come in at, or "" when this demon cannot
+# learn one: it already has one, or it is a caster at heart.
+# Judged on what it is now — its level and the points it has rolled — so a
+# demon that has grown into its arms can pick one up later.
+func _phys_line_reach(demon_name: String, list: Array) -> String:
+	for skill: Dictionary in list:
+		if skill.get("kind", "") == "element" and skill.get("element", "") == Affinity.PHYS:
+			return ""
+	var e: Enemy = bound_demon(demon_name)
+	var reach: String = e.attack_reach if e.str > e.mag else ""
+	e.free()
+	return reach
 
 
 func _roll_demon_gain(demon_name: String) -> void:
