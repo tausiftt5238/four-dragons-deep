@@ -1,0 +1,17 @@
+id,name,tier,price,def,agl,resist,weak,desc
+leather_vest,Leather Vest,1,45,3,,,fire,"Light, quiet, and no help at all against a flame."
+padded_coat,Padded Coat,1,45,4,-1,ice,,Quilted against the cold. Bulky through a doorway.
+leather_garb,Leather Garb,1,45,2,1,,,Worn soft by the road. It hides nothing and it slows nothing.
+chain_mail,Chain Mail,2,70,8,-1,phys,thunder,"Turns a blade, and draws lightning like a hooked rug."
+salt_tanned_hide,Salt-Tanned Hide,2,70,7,,dark,,Cured hard in brine. Whatever crawls does not like it.
+silver_armor,Silver Armour,2,70,9,-1,light,,Polished to throw back whatever is thrown at it.
+scale_hauberk,Scale Hauberk,2,70,10,-2,,thunder,Overlapping plates on a leather backing. Heavy in all the usual places.
+plate_armor,Plate Armour,3,95,15,-3,,ice,"Everything a smith knows, all at once, all of it heavy."
+warded_surcoat,Warded Surcoat,3,95,11,-1,light,,Stitched through with something that objects to being looked at.
+gold_armor,Gold Armour,3,95,13,-2,dark,thunder,"Soft, heavy, and it makes you look worth robbing."
+mythril_chain,Mythril Chain,3,95,13,,,,The only mail down here that costs you nothing to wear.
+gargoyle_scale,Gargoyle Scale,4,120,22,-3,phys,thunder,Prised off something that was part of a wall. Still wants to be one.
+drakescale_cuirass,Drakescale Cuirass,4,120,19,-2,fire,,It has already survived worse than anything down here.
+platinum_armor,Platinum Armour,4,120,24,-3,,,No trick to it and no hole in it. Only the number.
+diamond_armor,Diamond Armour,4,120,27,-4,,ice,Set with stone across the chest. It cracks at a temperature you will meet.
+saints_raiment,Saint's Raiment,4,120,17,-1,dark,,"Cloth, and it has outlasted every plate in this tier."

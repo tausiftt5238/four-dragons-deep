@@ -1,0 +1,76 @@
+id,name,type,element,reach,rung,mp,hp_pct,power,boost,heal,stat,delta,scope,status,scroll,scroll_floor,scroll_price,desc
+analyze,Analyze,analyze,,one,,,,,,,,,,,,,,Read a monster's chart and its temper. Wardens and bosses refuse.
+lunge,Lunge,dmg,phys,one,I,,6,2.0,,,,,,,Scroll of Lunge,1,45,All your weight behind one blow.
+sweep,Sweep,dmg,phys,few,I,,10,2.0,,,,,,,Scroll of Sweep,2,70,A wide cut through two or three of them.
+rampage,Rampage,dmg,phys,all,I,,14,2.0,,,,,,,Scroll of Rampage,4,120,Through the whole line and back again.
+rend,Rend,dmg,phys,one,II,,9,3.2,,,,,,,Scroll of Rend,6,170,A blow meant to open something up.
+scything_arc,Scything Arc,dmg,phys,few,II,,14,3.2,,,,,,,Scroll of Scything Arc,8,220,"One long stroke, two or three of them in its way."
+onslaught,Onslaught,dmg,phys,all,II,,19,3.2,,,,,,,Scroll of Onslaught,10,270,"Everything standing, one after another, without a breath."
+deathblow,Deathblow,dmg,phys,one,III,,12,4.6,,,,,,,Scroll of Deathblow,12,320,"One monster, one blow, and no second needed."
+carnage,Carnage,dmg,phys,few,III,,18,4.6,,,,,,,Scroll of Carnage,14,370,"Two or three of them, and nothing tidy about it."
+warpath,Warpath,dmg,phys,all,III,,24,4.6,,,,,,,Scroll of Warpath,16,420,"The whole room, cut down to the last."
+ember,Ember,dmg,fire,one,I,8,,2.0,,,,,,,Scroll of Ember,1,45,A flame set on one monster.
+cinderfall,Cinderfall,dmg,fire,few,I,14,,2.0,,,,,,,Scroll of Cinderfall,2,70,Embers fall across two or three of them.
+pyre,Pyre,dmg,fire,all,I,22,,2.0,,,,,,,Scroll of Pyre,4,120,The whole room catches.
+blaze,Blaze,dmg,fire,one,II,18,,3.2,,,,,,,Scroll of Blaze,6,170,A flame that does not go out until it has finished.
+firestorm,Firestorm,dmg,fire,few,II,30,,3.2,,,,,,,Scroll of Firestorm,8,220,"Wind and fire together, over two or three."
+inferno,Inferno,dmg,fire,all,II,46,,3.2,,,,,,,Scroll of Inferno,10,270,"The air itself burns, wall to wall."
+immolate,Immolate,dmg,fire,one,III,32,,4.6,,,,,,,Scroll of Immolate,12,320,"One monster, and nothing left of it to bury."
+ashfall,Ashfall,dmg,fire,few,III,54,,4.6,,,,,,,Scroll of Ashfall,14,370,Two or three of them go up and come down as ash.
+worldfire,Worldfire,dmg,fire,all,III,82,,4.6,,,,,,,Scroll of Worldfire,16,420,"Everything standing, all at once, down to the stone."
+rime,Rime,dmg,ice,one,I,8,,2.0,,,,,,,Scroll of Rime,1,45,Frost closes over one monster.
+hailfall,Hailfall,dmg,ice,few,I,14,,2.0,,,,,,,Scroll of Hailfall,2,70,Hail comes down on two or three of them.
+whiteout,Whiteout,dmg,ice,all,I,22,,2.0,,,,,,,Scroll of Whiteout,4,120,Everything in the room goes cold at once.
+frostbite,Frostbite,dmg,ice,one,II,18,,3.2,,,,,,,Scroll of Frostbite,6,170,The cold gets into one monster and stays.
+blizzard,Blizzard,dmg,ice,few,II,30,,3.2,,,,,,,Scroll of Blizzard,8,220,"A wind full of ice, across two or three."
+deepwinter,Deep Winter,dmg,ice,all,II,46,,3.2,,,,,,,Scroll of Deep Winter,10,270,Winter arrives in the room and does not leave.
+glaciate,Glaciate,dmg,ice,one,III,32,,4.6,,,,,,,Scroll of Glaciate,12,320,"One monster, taken down to still."
+shardfall,Shardfall,dmg,ice,few,III,54,,4.6,,,,,,,Scroll of Shardfall,14,370,Ice falls in pieces on two or three of them.
+killingfrost,Killing Frost,dmg,ice,all,III,82,,4.6,,,,,,,Scroll of Killing Frost,16,420,The whole room stops moving together.
+arc,Arc,dmg,thunder,one,I,8,,2.0,,,,,,,Scroll of Arc,1,45,Current jumps to one monster.
+forkfall,Forkfall,dmg,thunder,few,I,14,,2.0,,,,,,,Scroll of Forkfall,2,70,The current forks into two or three of them.
+thunderhead,Thunderhead,dmg,thunder,all,I,22,,2.0,,,,,,,Scroll of Thunderhead,4,120,It breaks over all of them together.
+bolt,Bolt,dmg,thunder,one,II,18,,3.2,,,,,,,Scroll of Bolt,6,170,"One line of it, straight through one monster."
+thunderstorm,Thunderstorm,dmg,thunder,few,II,30,,3.2,,,,,,,Scroll of Thunderstorm,8,220,It keeps finding two or three of them.
+tempest,Tempest,dmg,thunder,all,II,46,,3.2,,,,,,,Scroll of Tempest,10,270,The room becomes weather.
+levin,Levin,dmg,thunder,one,III,32,,4.6,,,,,,,Scroll of Levin,12,320,"White fire, and one monster in the way of it."
+skyfall,Skyfall,dmg,thunder,few,III,54,,4.6,,,,,,,Scroll of Skyfall,14,370,It comes down on two or three at once.
+stormcrown,Stormcrown,dmg,thunder,all,III,82,,4.6,,,,,,,Scroll of Stormcrown,16,420,Everything standing is standing under it.
+banish,Banish,banish,light,one,I,14,,,0.0,,,,,,Scroll of Banish,3,95,Tries to expel one monster outright. Some things cannot abide the light.
+winnow,Winnow,banish,light,few,I,24,,,0.0,,,,,,Scroll of Winnow,5,145,"Reaches for two or three at once, and holds each of them less firmly."
+daybreak,Daybreak,banish,light,all,I,36,,,0.0,,,,,,Scroll of Daybreak,6,170,"Opens the light on every monster standing. Thin, across that many."
+exile,Exile,banish,light,one,II,26,,,0.1,,,,,,Scroll of Exile,8,220,A firmer hand on one monster than Banish can manage.
+scour,Scour,banish,light,few,II,44,,,0.1,,,,,,Scroll of Scour,10,270,"Two or three of them, and it does not let go as easily."
+zenith,Zenith,banish,light,all,II,64,,,0.1,,,,,,Scroll of Zenith,12,320,"Light from directly overhead, on all of them."
+absolve,Absolve,banish,light,one,III,42,,,0.2,,,,,,Scroll of Absolve,14,370,"One monster, and very little argument about it."
+sunburst,Sunburst,banish,light,few,III,70,,,0.2,,,,,,Scroll of Sunburst,16,420,Two or three caught in the open at once.
+whitehour,White Hour,banish,light,all,III,104,,,0.2,,,,,,Scroll of White Hour,18,470,Nowhere in the room is dark enough to stand in.
+consign,Consign,banish,dark,one,I,14,,,0.0,,,,,,Scroll of Consign,3,95,Tries to unmake one monster outright. Some things cannot abide the dark.
+cull,Cull,banish,dark,few,I,24,,,0.0,,,,,,Scroll of Cull,5,145,"Takes two or three together, and takes each of them less surely."
+nightfall,Nightfall,banish,dark,all,I,36,,,0.0,,,,,,Scroll of Nightfall,6,170,"Closes the dark over the whole room. Thin, across that many."
+erase,Erase,banish,dark,one,II,26,,,0.1,,,,,,Scroll of Erase,8,220,"One monster, and a better chance there is nothing left."
+reap,Reap,banish,dark,few,II,44,,,0.1,,,,,,Scroll of Reap,10,270,"Two or three of them, cut down in one pass."
+eclipse,Eclipse,banish,dark,all,II,64,,,0.1,,,,,,Scroll of Eclipse,12,320,The light goes out on all of them at once.
+unmake,Unmake,banish,dark,one,III,42,,,0.2,,,,,,Scroll of Unmake,14,370,"One monster, and very little of it survives the asking."
+harvest,Harvest,banish,dark,few,III,70,,,0.2,,,,,,Scroll of Harvest,16,420,Two or three taken together and not given back.
+longnight,Long Night,banish,dark,all,III,104,,,0.2,,,,,,Scroll of Long Night,18,470,The dark closes over everything standing and stays closed.
+cure,Cure,heal,,one,,6,,,,30,,,,,Scroll of Cure,1,45,Restores 30 HP to one of you.
+cura,Cura,heal,,one,,15,,,,80,,,,,Scroll of Cura,7,195,Restores 80 HP to one of you.
+curaga,Curaga,heal,,one,,30,,,,9999,,,,,Scroll of Curaga,13,345,Fully restores one of you.
+cure_all,Cure All,heal,,all,,14,,,,25,,,,,Scroll of Cure All,4,120,Restores 25 HP to the whole party.
+cura_all,Cura All,heal,,all,,34,,,,65,,,,,Scroll of Cura All,10,270,Restores 65 HP to the whole party.
+curaga_all,Curaga All,heal,,all,,64,,,,9999,,,,,Scroll of Curaga All,16,420,Fully restores the whole party.
+whet,Whet,buff,,one,,8,,,,,atk,1,party,,Scroll of Whet,2,70,Sharpens the party's attacks.
+ward,Ward,buff,,one,,8,,,,,def,1,party,,Scroll of Ward,2,70,Hardens the party's guard.
+quicken,Quicken,buff,,one,,8,,,,,agl,1,party,,Scroll of Quicken,3,95,Quickens the party — lands and dodges more.
+stoke,Stoke,buff,,one,,8,,,,,mag,1,party,,Scroll of Stoke,3,95,Feeds the party's magic — stronger spells and heals.
+blunt,Blunt,buff,,one,,10,,,,,atk,-1,foes,,Scroll of Blunt,3,95,Dulls every enemy's attacks.
+sunder,Sunder,buff,,one,,10,,,,,def,-1,foes,,Scroll of Sunder,4,120,Breaks every enemy's guard.
+mire,Mire,buff,,one,,10,,,,,agl,-1,foes,,Scroll of Mire,4,120,Slows every enemy — they miss more.
+damp,Damp,buff,,one,,10,,,,,mag,-1,foes,,Scroll of Damp,4,120,Smothers every enemy's magic.
+purge,Purge,dispel,,one,,20,,,,,,,foes,,Scroll of Purge,8,1000,Strips the other side of everything it has raised.
+steady,Steady,dispel,,one,,20,,,,,,,party,,Scroll of Steady,8,1000,Clears every penalty stacked on your own side.
+venom,Venom,ailment,,one,,4,,,,,,,,poison,Scroll of Venom,2,70,Poisons the enemy.
+shock,Shock,ailment,,one,,6,,,,,,,,paralyzed,Scroll of Shock,2,70,Paralyzes the enemy.
+mute,Mute,ailment,,one,,5,,,,,,,,silence,Scroll of Mute,3,95,Silences the enemy.
+bind,Bind,ailment,,one,,4,,,,,,,,immobilize,Scroll of Bind,3,95,Immobilizes the enemy.

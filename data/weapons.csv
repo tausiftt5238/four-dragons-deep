@@ -1,0 +1,27 @@
+id,name,tier,price,str,mag,def,agl,attack_element,found_only,desc
+rusty_dagger,Rusty Dagger,1,45,2,,,,,,"A worn blade, better than bare hands."
+iron_sword,Iron Sword,1,45,5,,,-1,,,"A sturdy iron blade, honest and slow."
+hazel_wand,Hazel Wand,1,45,,4,,,,,Cut green and never dried. It carries a spell further than it carries a blow.
+bronze_shortsword,Bronze Shortsword,1,45,3,,,1,,,"Soft metal. It bends before it breaks, and it is quick about both."
+woodsmans_hatchet,Woodsman's Hatchet,1,45,4,,,-1,,,Not made for this. It does not know the difference.
+chapel_censer,Chapel Censer,1,45,,3,1,,,,"It still smells of the service. Swung, it argues."
+battle_axe,Battle Axe,2,70,9,,,-2,,,"Powerful, and it arrives late."
+silver_rapier,Silver Rapier,2,70,7,,,1,,,Light enough to lead with. Quick hands matter more than strong ones.
+magic_rod,Magic Rod,2,70,,9,,,,,"Channels what you have learned, and asks nothing of your arm."
+steel_longsword,Steel Longsword,2,70,8,,,,,,What the iron sword was trying to be.
+fire_sword,Fire Sword,2,70,6,,,,fire,,The edge holds a coal that never goes out. Every swing carries it.
+ice_sword,Ice Sword,2,70,6,,,,ice,,Cold enough that the wound closes wrong.
+thunder_sword,Thunder Sword,2,70,6,,,,thunder,,It stands your hair up before it lands.
+runed_glaive,Runed Glaive,3,95,13,3,,-1,,,A long reach with something written down the flat of it.
+headsman_maul,Headsman's Maul,3,95,17,,,-3,,,It only has to land once.
+witchs_focus,Witch's Focus,3,95,,15,,,,,A knot of blackthorn around a stone. It does the thinking.
+mythril_sword,Mythril Sword,3,95,15,,,1,,,Lighter than it has any right to be. Nothing about it argues with your wrist.
+silver_sword,Silver Sword,3,95,12,,,,light,,Silver was always the metal they buried things with. It expels rather than cuts.
+obsidian_edge,Obsidian Edge,3,95,14,,,,dark,,"A glass edge one atom wide, and the dark comes along for free."
+flamberge,Flamberge,3,95,14,,,-1,fire,,The waved blade was for show. What runs down it now is not.
+drakebone_sabre,Drakebone Sabre,4,120,22,,,-1,,,Cut from something that was still arguing at the time.
+titans_cleaver,Titan's Cleaver,4,120,28,,,-4,,,Made for a larger hand. You manage.
+sorcerers_crook,Sorcerer's Crook,4,120,,24,,,,,"Bone, and still warm. Whatever it was taken from knew a great deal."
+diamond_sword,Diamond Sword,4,120,26,,,,,,Nothing down here has managed to blunt it yet.
+rimefang_greatsword,Rimefang Greatsword,4,120,20,,,-2,ice,,"Two hands, and the air in front of it goes white."
+excalibur,Excalibur,4,120,24,10,,,light,yes,"It was in a stone, and then it was in a lake, and now it is down here with you."
