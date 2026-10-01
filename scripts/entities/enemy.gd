@@ -548,8 +548,6 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 	return group
 
 
-# One boss per run of FLOOR_COUNT floors. The old index went negative on a
-# short run and quietly handed back the LAST boss — the hardest one.
 # Whether this is one of the four dragons.
 func is_dragon() -> bool:
 	for t: Dictionary in BOSS_TEMPLATES:
@@ -558,14 +556,22 @@ func is_dragon() -> bool:
 	return false
 
 
-# A dragon shrugs off Silence and Immobilize. Those two take away what it is —
-# its element, or its body — and a single Silence Dust landing for the whole
-# fight would turn a dragon into a punching bag. Poison and Paralysis still
-# take hold, as they always have.
+# How often Silence or Immobilize takes hold on a dragon.
+const DRAGON_BIND_CHANCE: float = 0.33
+
+# A dragon often shrugs off Silence and Immobilize. Those two take away what
+# it is (its element, or its body), and a single Silence Dust landing every
+# time would turn a dragon into a punching bag. So they land one time in
+# three: worth trying, not a sure thing. Poison and Paralysis always take hold.
+# Rolls each time it is asked, so ask once per attempt.
 func resists_status(status_id: String) -> bool:
-	return is_dragon() and status_id in [Status.SILENCE, Status.IMMOBILIZE]
+	if not is_dragon() or status_id not in [Status.SILENCE, Status.IMMOBILIZE]:
+		return false
+	return randf() >= DRAGON_BIND_CHANCE
 
 
+# One boss per run of FLOOR_COUNT floors. The old index went negative on a
+# short run and quietly handed back the LAST boss — the hardest one.
 static func make_boss(floor_num: int) -> Enemy:
 	var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
 			0, BOSS_TEMPLATES.size() - 1)
