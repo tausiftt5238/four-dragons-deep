@@ -8,8 +8,12 @@ d = json.load(open(SRC))
 old = open(OLD).read()
 style = old[old.index("<style>"): old.index("</style>") + len("</style>")]
 
-# Two new classes: the element badge in Attacks, and the skill chip.
-style = style.replace("  .gaps {", """  .elem {
+# Classes the base sheet lacks: the element badge in Attacks, the skill chip
+# and the legend. The sheet is lifted from the last page written, which already
+# carries them, so cut every earlier copy (from the first .elem rule up to
+# .gaps) before putting one back. Inserting without the cut stacked another
+# copy on each run.
+EXTRA_CSS = """  .elem {
     display: inline-block; font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
     padding: 2px 6px; border-radius: 2px; margin-right: 5px;
@@ -52,7 +56,11 @@ style = style.replace("  .gaps {", """  .elem {
     font-size: 10.5px; color: var(--wire);
   }
 
-  .gaps {""", 1)
+"""
+_cut = style.find("  .elem {")
+if 0 <= _cut < style.index("  .gaps {"):
+    style = style[:_cut] + style[style.index("  .gaps {"):]
+style = style.replace("  .gaps {", EXTRA_CSS + "  .gaps {", 1)
 
 ELEMENTS = ["phys", "fire", "ice", "thunder", "light", "dark"]
 EL_HEAD  = {"phys": "Phys", "fire": "Fire", "ice": "Ice",
