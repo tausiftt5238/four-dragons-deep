@@ -1505,7 +1505,10 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
 	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	icon.set_zoom(3.0)
-	icon.modulate = foe.tint
+	# self_modulate, not modulate: the tint is the monster's colour, and the
+	# ailment marks drawn over it should keep their own.
+	icon.self_modulate = foe.tint
+	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
@@ -2491,6 +2494,7 @@ const FLOAT_FADE:  float = 0.25
 const FLOAT_RISE:  float = 36.0
 const FLOAT_HURT:  Color = Color(1.0, 0.30, 0.28)
 const FLOAT_HEAL:  Color = Color(0.40, 1.0, 0.50)
+const FLOAT_MISS:  Color = Color(0.85, 0.87, 0.92)
 
 # The number showing over each target right now, if any.
 var _float_of: Dictionary = {}
@@ -2505,6 +2509,9 @@ func _watch_hp(who: CharacterSheet) -> void:
 		who.hp_lost.connect(lost)
 	if not who.hp_gained.is_connected(gained):
 		who.hp_gained.connect(gained)
+	var missed: Callable = _show_float.bind(who, "MISS", FLOAT_MISS)
+	if not who.evaded.is_connected(missed):
+		who.evaded.connect(missed)
 
 
 func _clear_floats() -> void:
@@ -2515,6 +2522,10 @@ func _clear_floats() -> void:
 
 
 func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: String) -> void:
+	_show_float(who, "%s%d" % [prefix, amount], color)
+
+
+func _show_float(who: CharacterSheet, text: String, color: Color) -> void:
 	if not is_inside_tree():
 		return
 	# A bound demon is an Enemy too, but only foes have a row in _foe_rows.
@@ -2531,7 +2542,7 @@ func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: Stri
 	var rect: Rect2 = portrait.get_global_rect()
 
 	var lbl: Label = Label.new()
-	lbl.text = "%s%d" % [prefix, amount]
+	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 30)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
@@ -2628,6 +2639,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 		else:
 			icon.load_static(load("res://icon.svg") as Texture2D)
 			icon.modulate = Color(0.55, 0.85, 0.65)
+	icon.add_child(StatusOverlay.new(member))
 	card.add_child(icon)
 
 	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))

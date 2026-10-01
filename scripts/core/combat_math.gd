@@ -183,7 +183,7 @@ static func hit_chance(attacker: CharacterSheet, target: CharacterSheet) -> floa
 # Does a physical swing connect? A miss costs two icons, so a slowed party
 # bleeds turns rather than damage.
 static func lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
-	return randf() < hit_chance(attacker, target)
+	return _rolled(randf() < hit_chance(attacker, target), target)
 
 
 # What a damaging spell keeps of a swing's chance to miss. It used to be zero —
@@ -198,7 +198,15 @@ static func spell_hit_chance(attacker: CharacterSheet, target: CharacterSheet) -
 
 
 static func spell_lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
-	return randf() < spell_hit_chance(attacker, target)
+	return _rolled(randf() < spell_hit_chance(attacker, target), target)
+
+
+# Every miss in a fight comes through the two rolls above, so this is the one
+# place that tells the target it was missed.
+static func _rolled(hit: bool, target: CharacterSheet) -> bool:
+	if not hit:
+		target.evaded.emit()
+	return hit
 
 
 # Which press-turn cost an outcome carries. Repel/drain/null are checked before

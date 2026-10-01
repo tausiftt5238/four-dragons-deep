@@ -145,6 +145,8 @@ func compute_max_mp() -> void:
 # max HP reports what was left, and a heal at full reports nothing.
 signal hp_lost(amount: int)
 signal hp_gained(amount: int)
+# A swing or a cast aimed at this member missed. The battle screen floats MISS.
+signal evaded
 
 
 func take_damage(amount: int) -> int:
