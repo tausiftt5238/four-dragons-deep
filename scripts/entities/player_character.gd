@@ -780,28 +780,9 @@ func use_item(item: Dictionary) -> String:
 				msg += "Restored to full."
 				remove_item(item, 1)
 				return msg.strip_edges()
-			var hp_val: int  = item.get("hp_restore", 0)
-			var mp_val: int  = item.get("mp_restore", 0)
-			var cure: String = item.get("cures_status", "")
-			if hp_val > 0:
-				var before: int = hp
-				heal(hp_val)
-				msg += "Restored %d HP. " % (hp - before)
-			if mp_val > 0:
-				var before: int = mp
-				restore_mp(mp_val)
-				msg += "Restored %d MP. " % (mp - before)
-			if cure == "all":
-				active_statuses.clear()
-				msg += "Cured all ailments."
-			elif cure != "":
-				if has_status(cure):
-					remove_status(cure)
-					msg += "Cured %s." % Status.get_data(cure).get("name", cure)
-				else:
-					msg += "Not afflicted."
+			msg = apply_restorative(item)
 			remove_item(item, 1)
-			return msg.strip_edges()
+			return msg
 		"scroll":
 			var spell_id: String = item.get("teaches", "")
 			if spell_id in known_spells:

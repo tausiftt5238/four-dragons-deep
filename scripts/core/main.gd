@@ -187,6 +187,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	world.add_child(dungeon)
 	dungeon.build(current_level)
 	_show_sparks()
+	_sync_boss_banner()
 
 	# Place the player at the appropriate spawn point
 	if first_load:
@@ -284,9 +285,10 @@ func _setup_minimap() -> void:
 	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layer.add_child(floor_label)
 
-	# Top of the screen, just under the floor number, on a dark band. It used to
-	# sit at the bottom over the dungeon floor, where a spike trap's red text
-	# landed on the trap's own red slab and could not be read.
+	# The top of the 3D view, just under the map, on a dark band. Up there it
+	# lies over the ceiling: at the bottom it sat on the floor, where a hazard's
+	# glow made the text unreadable, and at the very top it covered the first
+	# rows of the map — and the player's own marker with them.
 	_hud_popup = Label.new()
 	_hud_popup.anchor_left   = 0.0
 	_hud_popup.anchor_right  = 1.0
@@ -294,8 +296,8 @@ func _setup_minimap() -> void:
 	_hud_popup.anchor_bottom = 0.0
 	_hud_popup.offset_left   = 12.0
 	_hud_popup.offset_right  = -12.0
-	_hud_popup.offset_top    = 44.0
-	_hud_popup.offset_bottom = 84.0
+	_hud_popup.offset_top    = MAP_PANE_H + 12.0
+	_hud_popup.offset_bottom = MAP_PANE_H + 52.0
 	_hud_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud_popup.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	_hud_popup.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
@@ -962,17 +964,17 @@ func _start_combat() -> void:
 
 
 # A practice fight bought at an orb. Built at this floor's level, and marked so
-# the reward tally pays experience only and a boss floor does not read the win
-# as the dragon falling.
+# a boss floor does not read the win as the dragon falling. It pays what the
+# same monsters would met in a corridor — experience and their gold, no item
+# drop — so it plays as a random encounter on demand. The gold is about half
+# what the fight cost (OrbUI.gauntlet_price), so it never turns a profit.
 var _in_gauntlet: bool = false
 
 
 func _start_gauntlet(names: Array[String]) -> void:
 	var group: Array[Enemy] = []
 	for n: String in names:
-		var e: Enemy = Enemy.make_from_name(n, floor_num)
-		e.gold_reward = 0
-		group.append(e)
+		group.append(Enemy.make_from_name(n, floor_num))
 	_in_gauntlet = true
 	_launch_combat(group)
 
@@ -1073,6 +1075,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty() \
 			and not _in_gauntlet:
 		_boss_beaten = true
+		_sync_boss_banner()
 	_in_gauntlet = false
 
 	if not lost.is_empty() and result != "lose":
@@ -1305,6 +1308,34 @@ func _shown_spark_group() -> int:
 	return _spark_live_at(_spark_steps + 1)
 
 
+# The dragon of a boss corridor, waiting in the stairwell at its far end until
+# it is beaten. Hung on the dungeon so every rebuild clears it with the rest.
+func _sync_boss_banner() -> void:
+	if not is_instance_valid(dungeon) or not Level.is_boss_floor(floor_num):
+		return
+	var old: Node = dungeon.get_node_or_null("DragonBanner")
+	if old != null:
+		old.queue_free()
+	if _boss_beaten:
+		return
+	var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
+			0, Enemy.BOSS_TEMPLATES.size() - 1)
+	var banner: DragonBanner = DragonBanner.new()
+	if not banner.setup(Enemy.BOSS_TEMPLATES[idx].get("sprite_id", "") as String):
+		banner.free()
+		return
+	banner.name = "DragonBanner"
+	# Just inside the stairwell the fight starts from, turned to face back
+	# down the corridor toward the player.
+	var wall: Vector2i = current_level.exit_wall_pos
+	var from: Vector2i = current_level.exit_pos
+	var toward: Vector3 = Vector3(float(from.x - wall.x), 0.0, float(from.y - wall.y))
+	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, DragonBanner.HEIGHT * 0.5,
+			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * 0.35)
+	banner.rotation = Vector3(0.0, atan2(toward.x, toward.z), 0.0)
+	dungeon.add_child(banner)
+
+
 func _show_sparks() -> void:
 	if is_instance_valid(dungeon):
 		dungeon.set_spark_live(_shown_spark_group())
@@ -1497,6 +1528,7 @@ func _rebuild_dungeon() -> void:
 	world.add_child(dungeon)
 	dungeon.build(current_level)
 	_show_sparks()
+	_sync_boss_banner()
 	dungeon.set_viewer(cam_base_pos)
 	_sync_door()
 
@@ -1724,6 +1756,7 @@ func _restore_save(data: Dictionary) -> void:
 	world.add_child(dungeon)
 	dungeon.build(current_level)
 	_show_sparks()
+	_sync_boss_banner()
 
 	# Restore fog-of-war.
 	var raw_visited: Dictionary = data["visited"] as Dictionary

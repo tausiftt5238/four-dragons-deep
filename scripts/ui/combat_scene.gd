@@ -353,6 +353,8 @@ func _show_item_submenu() -> void:
 		var usable: bool = is_throwable or item.has("mirror") or player.can_use_item(item)
 		if item.has("revive"):
 			usable = not _fallen_members().is_empty()
+		elif _restorative(item):
+			usable = _living_party().any(func(m: CharacterSheet) -> bool: return m.could_use(item))
 		entries.append({title = item["name"] as String,
 				detail = "x%d" % int(item.get("qty", 1)),
 				disabled = not usable,
@@ -498,6 +500,14 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 				return {msg = "[color=aqua]Used %s![/color]  [color=#d070ff]A mirror goes up before the party: %s attacks are turned back until your next turn.[/color]" % [
 						item["name"], "physical" if item["mirror"] == "phys" else "magic"],
 						cost = PressTurn.COST_FULL}
+			if _restorative(item):
+				var who: CharacterSheet = _ally_target \
+						if _ally_target != null and _ally_target.is_alive() else player
+				var done: String = who.apply_restorative(item)
+				player.remove_item(item, 1)
+				_refresh_hp()
+				return {msg = "[color=aqua]Used %s on %s. %s[/color]" % [
+						item["name"], _member_name(who), done], cost = PressTurn.COST_FULL}
 			var result: String = player.use_item(item)
 			return {msg = "[color=aqua]Used %s. %s[/color]" % [item["name"], result],
 					cost = PressTurn.COST_FULL}
@@ -573,7 +583,7 @@ func _pick_ally(fallen: bool, title: String, back: Callable, then: Callable) -> 
 	for m: CharacterSheet in pool:
 		var who: CharacterSheet = m
 		entries.append({title = _member_name(who),
-				detail = "%d / %d HP" % [who.hp, who.max_hp],
+				detail = "%d/%d HP  %d/%d MP" % [who.hp, who.max_hp, who.mp, who.max_mp],
 				press = func() -> void:
 					_ally_target = who
 					then.call()})
@@ -888,9 +898,20 @@ func _actor_portrait() -> TextureRect:
 
 
 
+# A potion, an ether or a cure: anything that mends rather than hurts or
+# raises a ceiling. Any of the party can take one, so it asks who.
+static func _restorative(item: Dictionary) -> bool:
+	return int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0 \
+			or item.get("cures_status", "") != ""
+
+
 func _on_use_item(item: Dictionary) -> void:
 	if item.has("revive"):
 		_pick_ally(true, "Revive who?", _show_item_submenu,
+				func() -> void: await _commit_item(item))
+		return
+	if _restorative(item):
+		_pick_ally(false, "Use %s on?" % item["name"], _show_item_submenu,
 				func() -> void: await _commit_item(item))
 		return
 	var offensive: bool = item.has("inflicts_status") \

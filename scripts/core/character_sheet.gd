@@ -223,6 +223,46 @@ func remove_status(status_id: String) -> void:
 func has_status(status_id: String) -> bool:
 	return status_id in active_statuses
 
+# A potion, an ether or a cure taken by this member: HP, MP and ailments only.
+# Anyone in the party can drink one — the hero and every monster alike — so it
+# lives here rather than on the hero. Returns what it did, for the log.
+func apply_restorative(item: Dictionary) -> String:
+	var msg: String = ""
+	var hp_val: int  = int(item.get("hp_restore", 0))
+	var mp_val: int  = int(item.get("mp_restore", 0))
+	var cure: String = item.get("cures_status", "") as String
+	if hp_val > 0:
+		var before: int = hp
+		heal(hp_val)
+		msg += "Restored %d HP. " % (hp - before)
+	if mp_val > 0:
+		var before_mp: int = mp
+		restore_mp(mp_val)
+		msg += "Restored %d MP. " % (mp - before_mp)
+	if cure == "all":
+		active_statuses.clear()
+		msg += "Cured all ailments."
+	elif cure != "":
+		if has_status(cure):
+			remove_status(cure)
+			msg += "Cured %s." % Status.get_data(cure).get("name", cure)
+		else:
+			msg += "Not afflicted."
+	return msg.strip_edges()
+
+
+# Whether a restorative would do anything for this member right now.
+func could_use(item: Dictionary) -> bool:
+	if int(item.get("hp_restore", 0)) > 0 and hp < max_hp:
+		return true
+	if int(item.get("mp_restore", 0)) > 0 and mp < max_mp:
+		return true
+	var cure: String = item.get("cures_status", "") as String
+	if cure == "all":
+		return not active_statuses.is_empty()
+	return cure != "" and has_status(cure)
+
+
 func poison_tick() -> int:
 	if not has_status(Status.POISON):
 		return 0
