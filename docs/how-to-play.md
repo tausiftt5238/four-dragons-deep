@@ -203,6 +203,11 @@ Two items never wear off: a **Heartstone** raises maximum HP for good, a
 **Wellstone** raises maximum MP. Both refill you completely when used. They
 come from chests and from kills, and they are worth carrying to a boss door.
 
+**Seeds** do the same for a stat: a Seed of Strength, Defence, Wisdom (magic),
+Agility or Luck adds one point to the hero's stat for good, half a level's
+worth, put exactly where you want it. Use one from the menu. They are rarer
+than stones: about one chest in twelve, one kill in fifty.
+
 ---
 
 ## The four dragons

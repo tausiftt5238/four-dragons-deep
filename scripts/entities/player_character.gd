@@ -749,7 +749,8 @@ func can_use_item(item: Dictionary) -> bool:
 		"consumable":
 			# A stone always has something to do: the ceiling it raises is never
 			# already full.
-			if item.get("max_hp_gain", 0) > 0 or item.get("max_mp_gain", 0) > 0:
+			if item.get("max_hp_gain", 0) > 0 or item.get("max_mp_gain", 0) > 0 \
+					or item.has("stat_up"):
 				return true
 			if item.get("hp_restore", 0) > 0 and hp < max_hp:
 				return true
@@ -771,6 +772,19 @@ func use_item(item: Dictionary) -> String:
 	match item["type"]:
 		"consumable":
 			var msg: String = ""
+			if item.has("stat_up"):
+				var stat: String = item["stat_up"] as String
+				set(stat, int(get(stat)) + int(item.get("stat_up_amount", 1)))
+				# Defence and Magic feed the HP and MP ceilings. Recomputing
+				# refills them, which a seed should not do: keep what was there.
+				var keep_hp: int = hp
+				var keep_mp: int = mp
+				compute_max_hp()
+				compute_max_mp()
+				hp = mini(keep_hp, max_hp)
+				mp = mini(keep_mp, max_mp)
+				remove_item(item, 1)
+				return "%s rises to %d." % [Item.SEEDS[stat][2], int(get(stat))]
 			var max_hp_up: int = item.get("max_hp_gain", 0)
 			var max_mp_up: int = item.get("max_mp_gain", 0)
 			if max_hp_up > 0 or max_mp_up > 0:

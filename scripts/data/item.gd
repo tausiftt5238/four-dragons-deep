@@ -133,6 +133,46 @@ static func roll_stone(chance_pct: int) -> Dictionary:
 	return heartstone() if randi() % 2 == 0 else wellstone()
 
 
+# ── Seeds ─────────────────────────────────────────────────────────────────────
+#
+# One point of one stat, for good. A level-up hands out two points, so a seed
+# is half a level in the stat it names, and the only way to put points
+# exactly where you want them without levelling. Hero only, used from the
+# menu like a stone. Rolled on their own odds, after the stone and before the
+# ordinary table, so neither family thins out the other.
+const SEEDS: Dictionary = {
+	"str": ["seed_strength", "Seed of Strength", "Strength"],
+	"def": ["seed_defence",  "Seed of Defence",  "Defence"],
+	"mag": ["seed_wisdom",   "Seed of Wisdom",   "Magic"],
+	"agl": ["seed_agility",  "Seed of Agility",  "Agility"],
+	"luk": ["seed_luck",     "Seed of Luck",     "Luck"],
+}
+const SEED_GAIN: int = 1
+const SEED_FROM_CHEST: int = 8   # percent
+const SEED_FROM_KILL:  int = 2   # percent
+
+
+static func seed_of(stat: String) -> Dictionary:
+	var row: Array = SEEDS[stat]
+	return {id = row[0], name = row[1], type = "consumable",
+			desc = "Raises %s by %d, for good." % [row[2], SEED_GAIN],
+			hp_restore = 0, mp_restore = 0, floor = 1, qty = 1,
+			stat_up = stat, stat_up_amount = SEED_GAIN}
+
+
+static func roll_seed(chance_pct: int) -> Dictionary:
+	if randi() % 100 >= chance_pct:
+		return {}
+	var stats: Array = SEEDS.keys()
+	return seed_of(stats[randi() % stats.size()] as String)
+
+
+# The stone roll, then the seed roll: whichever comes up, or {}.
+static func roll_keepsake(stone_pct: int, seed_pct: int) -> Dictionary:
+	var stone: Dictionary = roll_stone(stone_pct)
+	return stone if not stone.is_empty() else roll_seed(seed_pct)
+
+
 # ── Predefined scrolls ────────────────────────────────────────────────────────
 
 static func scroll_cure() -> Dictionary:

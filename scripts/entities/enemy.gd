@@ -1016,7 +1016,7 @@ func dregs_element() -> String:
 # Returns a random item drop, or an empty dict if nothing drops (65% no-drop).
 func roll_drop() -> Dictionary:
 	# Rolled ahead of the table and on its own odds — see Item.roll_stone.
-	var stone: Dictionary = Item.roll_stone(Item.STONE_FROM_KILL)
+	var stone: Dictionary = Item.roll_keepsake(Item.STONE_FROM_KILL, Item.SEED_FROM_KILL)
 	if not stone.is_empty():
 		return stone
 	if randi() % 100 < 65:

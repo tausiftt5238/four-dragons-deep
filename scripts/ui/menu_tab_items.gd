@@ -84,7 +84,8 @@ func _add_item(list: SlotList, item_id: String) -> void:
 		# A stone raises a ceiling and refills it, so it is always worth using.
 		if int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0 \
 				or int(item.get("max_hp_gain", 0)) > 0 \
-				or int(item.get("max_mp_gain", 0)) > 0:
+				or int(item.get("max_mp_gain", 0)) > 0 \
+				or item.has("stat_up"):
 			actions.append({
 				text = "Use", disabled = not p.can_use_item(item),
 				press = func() -> void:
