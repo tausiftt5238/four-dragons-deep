@@ -170,6 +170,15 @@ var _reel_boxes: Array[PanelContainer] = []
 var _spin_btn: Button
 var _gacha_result: Label
 var _spinning: bool = false
+# Set by Main when an exp win is about to close the orb for a level-up. No new
+# spin may start then: the orb would be freed under it and the stake lost.
+var _gacha_locked: bool = false
+
+
+func lock_gacha() -> void:
+	_gacha_locked = true
+	if is_instance_valid(_spin_btn):
+		_spin_btn.disabled = true
 
 
 func _build_gacha() -> void:
@@ -264,7 +273,7 @@ func _show_face(i: int, face: String) -> void:
 
 func _spin() -> void:
 	var cost: int = Gacha.price(floor_num)
-	if _spinning or player.gold < cost:
+	if _spinning or _gacha_locked or player.gold < cost:
 		return
 	_spinning = true
 	player.gold -= cost
@@ -304,7 +313,7 @@ func _spin() -> void:
 			if reels[i] == won["face"]:
 				_reel_boxes[i].add_theme_stylebox_override("panel", _reel_style(glow))
 	_gold_lbl.text = "Gold:  %d" % player.gold
-	_spin_btn.disabled = player.gold < cost
+	_spin_btn.disabled = _gacha_locked or player.gold < cost
 
 
 # Hands over what the reels say and returns the line that says so.
@@ -326,10 +335,9 @@ func _pay_out(reels: Array[String]) -> String:
 		Gacha.MONSTER:
 			var mon: Dictionary = Gacha.monster_prize(player, floor_num, jackpot)
 			if mon.is_empty() or not player.can_bind(mon["name"] as String):
-				# No room, or nobody left to meet: it pays what binding one would
-				# have cost instead, so the win is never empty.
-				var g: int = (40 + Enemy.level_for_floor(floor_num, 0) * 35) \
-						* (3 if jackpot else 1)
+				# No room, or nobody left to meet: it pays as the gold face would,
+				# so the win is never empty but a full roster is no gold mine.
+				var g: int = Gacha.gold_prize(floor_num, jackpot)
 				player.gold += g
 				return "%sRoster full. Won %d gold instead." % [head, g]
 			player.remember_recruit(mon["name"] as String, int(mon["lv"]))

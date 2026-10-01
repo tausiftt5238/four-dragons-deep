@@ -1570,7 +1570,7 @@ func _open_orb(tab: String = "rest") -> void:
 		_close_orb()
 		_start_gauntlet(names)
 	)
-	ui.gacha_exp_won.connect(_gacha_exp)
+	ui.gacha_exp_won.connect(_gacha_exp.bind(ui))
 	orb_layer.add_child(ui)
 
 
@@ -1579,7 +1579,7 @@ func _open_orb(tab: String = "rest") -> void:
 # shows, and the orb comes back on the slot machine after the last of them.
 var _reopen_orb_tab: String = ""
 
-func _gacha_exp(amount: int) -> void:
+func _gacha_exp(amount: int, orb: OrbUI) -> void:
 	var before: Dictionary = _player_snapshot()
 	player_char.gain_exp(amount)
 	var after: Dictionary = _player_snapshot()
@@ -1589,6 +1589,8 @@ func _gacha_exp(amount: int) -> void:
 	var leveled: bool = after["lv"] > before["lv"]
 	if not leveled and ups.is_empty():
 		return
+	# The orb is about to close: no spin may start in the meantime.
+	orb.lock_gacha()
 	# After the reels have settled and the result is up, not in the middle.
 	await get_tree().create_timer(0.8).timeout
 	_close_orb()

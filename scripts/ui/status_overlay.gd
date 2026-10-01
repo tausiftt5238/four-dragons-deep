@@ -132,11 +132,11 @@ func _draw_speech(o: Vector2, s: float) -> void:
 
 
 # A jagged bolt down each side, re-drawn with a new shape a few times a second
-# and dropping out every third beat, so it crackles rather than sits there.
+# and dimming every third beat, so it crackles rather than sits there. Dims
+# rather than vanishes: a frame caught on the off beat still shows it.
 func _draw_sparks(o: Vector2, s: float) -> void:
 	var beat: int = int(_time * 9.0)
-	if beat % 3 == 0:
-		return
+	var a: float = 0.35 if beat % 3 == 0 else 1.0
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = beat
 	for side: int in 2:
@@ -148,5 +148,5 @@ func _draw_sparks(o: Vector2, s: float) -> void:
 			var swing: float = s * rng.randf_range(0.03, 0.07)
 			var dir: float = 1.0 if k % 2 == 0 else -1.0
 			pts.append(Vector2(x0 + dir * swing, y))
-		draw_polyline(pts, SPARK_GLOW, maxf(3.0, s * 0.03))
-		draw_polyline(pts, SPARK_CORE, maxf(1.0, s * 0.01))
+		draw_polyline(pts, Color(SPARK_GLOW, a), maxf(3.0, s * 0.03))
+		draw_polyline(pts, Color(SPARK_CORE, a), maxf(1.0, s * 0.01))
