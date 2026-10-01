@@ -52,7 +52,7 @@ func _build_shell() -> void:
 	shell.add_theme_constant_override("separation", 6)
 	margin.add_child(shell)
 
-	var scroll: ScrollContainer = ScrollContainer.new()
+	var scroll: ScrollContainer = TouchScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	shell.add_child(scroll)
 	_scroll = scroll

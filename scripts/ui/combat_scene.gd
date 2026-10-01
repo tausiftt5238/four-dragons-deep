@@ -2810,7 +2810,7 @@ func _build_menu_panel(parent: Control) -> void:
 		_action_bar.add_child(btn)
 		_buttons[action] = btn
 
-	_sub_scroll = ScrollContainer.new()
+	_sub_scroll = TouchScroll.new()
 	_sub_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sub_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	_sub_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

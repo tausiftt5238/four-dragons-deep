@@ -70,7 +70,7 @@ func _build() -> void:
 
 	col.add_child(HSeparator.new())
 
-	var scroll: ScrollContainer = ScrollContainer.new()
+	var scroll: ScrollContainer = TouchScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
