@@ -26,7 +26,6 @@ opens it.
 |---|---|
 | **Save orbs** | Rest, shop, save, and manage your monsters. Press **Orb** while standing on one. |
 | **Chests** | Set into the walls. Gold, and usually an item. |
-| **Mimics** | From floor 6, some of those chests are not chests. Nothing tells you which. |
 | **Ice** (floors 1–5) | Slides you along the corridor to solid floor. Never hurts. |
 | **Charged plates** (floors 6–10) | Two sets that take turns lighting up, about a second each. A lit plate takes 15% of your maximum HP, and standing on one as it lights up counts too. Cross on the dark ones. Thunder-resistant gear halves it. |
 | **Lava** (floors 11–15) | 15% of your maximum HP every time you cross it. Fire-resistant gear halves it. |

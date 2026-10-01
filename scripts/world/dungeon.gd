@@ -820,8 +820,6 @@ func _add_chests(level: Level) -> void:
 				level.looted.has(wall_pos), level.wire_color)
 
 
-# A mimic is built with exactly this call — nothing here may ever branch on
-# whether the cache is real, or the disguise is over before it starts.
 func _add_chest(wall_pos: Vector2i, dir: Vector2i, looted: bool, wire: Color) -> void:
 	var root: Node3D = Node3D.new()
 	root.position = Vector3(wall_pos.x * CELL_SIZE, 0.0, wall_pos.y * CELL_SIZE)

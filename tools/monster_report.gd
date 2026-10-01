@@ -320,7 +320,7 @@ func _tier_section(tier: int) -> Array[String]:
 
 func _set_piece_section() -> Array[String]:
 	var md: Array[String] = []
-	md.append("## Wardens, the Mimic and the dragons")
+	md.append("## Wardens and the dragons")
 	md.append("")
 	md.append("| Monster | Where | LV | HP | STR | MAG | AGL | Chart | Attacks | Ailment |")
 	md.append("|---|---|---|---|---|---|---|---|---|---|")

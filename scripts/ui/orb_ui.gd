@@ -152,8 +152,8 @@ func _set_status(msg: String) -> void:
 # A paid practice fight, for grinding: up to four monsters out of the bestiary,
 # met at this floor's level, as many of one kind as the player likes. It pays
 # experience and nothing else — no gold, no drops — or it would be a way to
-# turn gold into more gold. Only the ordinary roster is on offer: wardens,
-# dragons and the mimic are set pieces met once.
+# turn gold into more gold. Only the ordinary roster is on offer: wardens and
+# dragons are set pieces met once.
 const GAUNTLET_MAX: int = 4
 
 var _lineup: Array[String] = []

@@ -25,7 +25,7 @@ const PAGES: Array[Dictionary] = [
 		text = "Each stretch of the Deep has its own floor to watch for. Ice slides you to "
 			+ "solid ground. Charged plates hurt while lit, so cross on the dark ones. Lava "
 			+ "burns every crossing. Teleporters carry you to their twin.\n\n"
-			+ "Chests sit in alcoves in the walls. Walk into one to open it. From floor 6, some are mimics."},
+			+ "Chests sit in alcoves in the walls. Walk into one to open it."},
 	{title = "Save orbs", shot = "orb.png",
 		text = "Orbs are the only place to save. Stand on one and tap Orb to rest, shop, sell, "
 			+ "buy back monsters and save.\n\n"

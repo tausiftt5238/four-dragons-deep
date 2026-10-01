@@ -218,15 +218,12 @@ for t in d["tiers"]:
                    table(rows)))
 
 wardens = d["wardens"]
-w_vars = ['<span class="rank">%s</span>' % (
-              "in a chest" if w.get("is_mimic")
-              else ", ".join(str(f) for f in w["floors"]))
+w_vars = ['<span class="rank">%s</span>' % ", ".join(str(f) for f in w["floors"])
           for w in wardens]
 parts.append("""
   <section class="tier">
-    <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Wardens &amp; the mimic</h2><span class="floors">two icons each &middot; never negotiable</span></div>
+    <div class="tier-head"><span class="tier-num">&#9733;</span><h2>Wardens</h2><span class="floors">two icons each &middot; never negotiable</span></div>
     <p class="blurb">A warden is the floor's locked door. It does not roam, it holds the key, and it opens on two press-turn icons. Four rotate across the sixteen maze floors &mdash; the Var column lists the floors each one actually lands on, and the ranges span the first of those to the last.</p>
-    <p class="blurb">The mimic is none of those things. It is not in the rotation and not in the wandering pack: it is a chest, and the only way to meet one is to open it. From floor six down a floor carries roughly twice the caches it used to and about two of them are lying, so opening is a read rather than a reward. It is priced like a warden because being wrong should be worth something when you win.</p>
     %s
   </section>""" % table(wardens, w_vars))
 
@@ -309,7 +306,7 @@ page = """<title>Gauntlet Bestiary</title>
   <section class="gaps">
     <h2>What the table says is missing</h2>
     <p><b>The tiers are lopsided.</b> Ten templates cover tier I and ten cover tier II, but only <strong>six</strong> cover tier III and <strong>four</strong> cover tier IV. The deepest five floors &mdash; the ones a player only reaches by earning them &mdash; have the least to show. Filling those two bands is worth more than anything else you could add.</p>
-    <p><b>Every warden still needs a sprite.</b> All five are written with an art note and none is drawn. They are the most drawable things on the list &mdash; a gargoyle, a wight, a hound, a basilisk and a mimic all have unmistakable silhouettes &mdash; so they are the sensible place to start.</p>
+    <p><b>Every warden still needs a sprite.</b> All five are written with an art note and none is drawn. They are the most drawable things on the list &mdash; a gargoyle, a wight, a hound and a basilisk all have unmistakable silhouettes &mdash; so they are the sensible place to start.</p>
     <p><b>Only four ailments exist, and two of them do the same job.</b> Bind and Paralysis both cost a demon its turn, so across thirty-nine entries the real variety is poison, silence and &ldquo;you do not act&rdquo;. Now that throwing one costs a demon its turn, that thinness shows more than it used to.</p>
   </section>
 

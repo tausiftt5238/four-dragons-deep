@@ -39,7 +39,6 @@ SPRITES = {
     "GiantRat": (64, 48), "GiantRatB": (64, 48),
     "Goblin": (48, 48), "GoblinB": (48, 48),
     "IceDragon": (64, 64),
-    "Mimic": (48, 48),
     "Ogre": (64, 64), "OgreB": (64, 64),
     "Orc": (52, 64), "OrcB": (52, 64),
     "ShadowKnight": (52, 64),

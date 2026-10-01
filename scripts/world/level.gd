@@ -158,11 +158,6 @@ var orb_cells: Array[Vector2i] = []
 var chest_cells: Dictionary = {}
 var looted: Dictionary = {}
 
-# The subset of chest_cells that are not chests. Keyed the same way, so a cache
-# is looked up once and its nature answered by a second lookup — nothing about
-# the recess itself gives it away, which is the whole point of the thing.
-var mimic_cells: Dictionary = {}
-
 # Floor hazards: grid position → kind. Each band of five floors lays its own,
 # after its dragon:
 #   "ice"          floors 1-5    slide on to the next plain floor

@@ -1451,27 +1451,9 @@ func _open_chest(wall: Vector2i) -> void:
 	var ui: ChestUI = ChestUI.new()
 	ui.closed.connect(func() -> void: _close_chest())
 	ui.opened.connect(func() -> void:
-		# Nothing about the recess says which it is, so the prompt is the same
-		# either way and the answer arrives on the swing of the lid.
-		if current_level.mimic_cells.has(wall):
-			_spring_mimic(wall)
-		else:
-			_loot_chest(wall)
-			_close_chest())
+		_loot_chest(wall)
+		_close_chest())
 	chest_layer.add_child(ui)
-
-
-# It was never a cache. The cell is marked emptied so the recess reads as open
-# afterwards whichever way the fight goes, and the mimic is fought where it
-# stood — it does not roam and it does not get a second ambush.
-func _spring_mimic(wall: Vector2i) -> void:
-	current_level.looted[wall] = true
-	current_level.mimic_cells.erase(wall)
-	_close_chest()
-	_rebuild_dungeon()
-	# No HUD popup here: _launch_combat hides that layer on the same frame, so
-	# the line would never be seen. The encounter line carries the reveal.
-	_launch_combat([Enemy.make_mimic(floor_num)] as Array[Enemy])
 
 
 # What was in it. Gold always, and better odds of something on top of that
@@ -1644,7 +1626,6 @@ func _gather_save_data() -> Dictionary:
 			roamers     = _pack_roamers(),
 			orbs        = _pack_orbs(),
 			chests      = _pack_chests(),
-			mimics      = _pack_cell_set(current_level.mimic_cells),
 			looted      = _pack_cell_set(current_level.looted),
 			warden      = SaveSystem.vec2i_key(current_level.warden_pos),
 			key_pos     = SaveSystem.vec2i_key(current_level.key_pos),
@@ -1706,18 +1687,14 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.orb_cells.clear()
 	for key: Variant in (map_data.get("orbs", []) as Array):
 		current_level.orb_cells.append(SaveSystem.key_vec2i(key as String))
-	# Caches were never saved, so a load re-rolled where they were and whether
-	# they were empty. Harmless while a chest was only ever a chest; not once
-	# one of them can be a mimic, because then a reload is a re-roll of the
-	# ambush you just walked into.
+	# Caches are saved, so a load does not re-roll where they were and whether
+	# they were empty. An older save's "mimics" list is simply ignored.
 	var saved_chests: Dictionary = map_data.get("chests", {}) as Dictionary
 	if not saved_chests.is_empty():
 		current_level.chest_cells.clear()
 		for key: Variant in saved_chests.keys():
 			current_level.chest_cells[SaveSystem.key_vec2i(key as String)] = \
 					SaveSystem.key_vec2i(saved_chests[key] as String)
-		current_level.mimic_cells = _unpack_cell_set(
-				map_data.get("mimics", []) as Array)
 		current_level.looted = _unpack_cell_set(
 				map_data.get("looted", []) as Array)
 	current_level.warden_pos      = SaveSystem.key_vec2i(
@@ -1861,6 +1838,13 @@ func _apply_player_data(pdata: Dictionary) -> void:
 	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
 	player_char.hazards_seen.assign(pdata.get("hazards_seen", []) as Array)
 	player_char.learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
+	# A monster that has since been taken out of the game (the Mimic) drops out
+	# of the bestiary rather than showing up as a random stand-in.
+	player_char.encountered_enemies.assign(player_char.encountered_enemies.filter(Enemy.is_known))
+	player_char.analyzed.assign(player_char.analyzed.filter(Enemy.is_known))
+	for gone: Variant in player_char.learned_affinities.keys():
+		if not Enemy.is_known(gone as String):
+			player_char.learned_affinities.erase(gone)
 
 	# Passive skills are off while they are reworked, so a save that picked some
 	# comes back without them rather than keeping powers a new run cannot get.

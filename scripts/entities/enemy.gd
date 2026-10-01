@@ -402,44 +402,6 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 
 # Boss templates — one per 5-floor milestone, cycling every 4 bosses.
-# ── The mimic ─────────────────────────────────────────────────────────────────
-#
-# Not in the rotation above and not in the wandering pack either: a mimic is a
-# chest. It is only ever met by opening one, which is why the floors it lives on
-# carry extra chests — most of them are chests.
-const MIMIC_TEMPLATES: Array[Dictionary] = [
-	{name = "Mimic",           icons = WARDEN_ICONS,
-		str =  8, def =  6, mag =  6, agl =  4,
-		weakness = "fire", dark = "drain", reflect_element = "thunder", phys = "resist", light = "weak",
-		attack_elements = ["thunder", "dark"], reach = "few", status_attack = "poison", ail = 12,
-		negotiable = false, talk_difficulty = 0,
-		sprite = "res://resources/enemySprites/Mimic.png",
-		art_note = "A cache set into the wall, lit from inside exactly like the real ones, sitting a "
-				+ "little further forward than a recess should allow. When it opens, the opening keeps "
-				+ "going: the lid is the upper jaw and the shelf it was resting on is the lower one.",
-		design_note = "Placed among real caches, so the floor's own furniture becomes a thing to read "
-				+ "twice. Weak to fire and to light because the disguise is the whole of its defence."},
-]
-
-# The shallowest floor a chest might be lying about what it is.
-const MIMIC_FROM_FLOOR: int = 6
-
-
-static func make_mimic(floor_num: int) -> Enemy:
-	var e: Enemy = _build(MIMIC_TEMPLATES[0], floor_num)
-	# Its own colours: the whole trick is that it looks like the chest it is
-	# imitating, and a depth tint would be the one thing giving it away.
-	e.tint = Color.WHITE
-	# Priced like a warden: it is an ambush with two icons, and being wrong
-	# about a chest should be worth something when you win.
-	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
-	e.exp_reward = exp_for_level(e.lv) * 2
-	e.gold_reward = e.lv * 6
-	e.compute_max_hp()
-	e.compute_max_mp()
-	return e
-
-
 # Four dragons, one at the bottom of each band. A boss is no longer a different
 # kind of thing every five floors — it is the same kind of thing four times, and
 # what changes is which element it is made of. That is what makes the wall colour
@@ -693,8 +655,8 @@ static func needing_art() -> Array[Dictionary]:
 
 # Where a template is actually met, worked out from the same rules that place
 # it rather than from its min_floor/max_floor, which nothing spawns from any
-# more: the pack draws by tier, wardens and bosses stand on fixed floors, and a
-# mimic waits in a chest. Reading the old fields put the floor-four warden down
+# more: the pack draws by tier, and wardens and bosses stand on fixed floors.
+# Reading the old fields put the floor-four warden down
 # as "Floors 1+".
 static func where_found(tmpl: Dictionary) -> String:
 	var tname: String = tmpl.get("name", "") as String
@@ -704,9 +666,6 @@ static func where_found(tmpl: Dictionary) -> String:
 	for i: int in BOSS_TEMPLATES.size():
 		if BOSS_TEMPLATES[i]["name"] == tname:
 			return "Floor %d" % ((i + 1) * Level.BOSS_EVERY)
-	for t: Dictionary in MIMIC_TEMPLATES:
-		if t["name"] == tname:
-			return "Chests, floor %d+" % MIMIC_FROM_FLOOR
 	# A tier's band is five floors, the last of which is the boss corridor and
 	# carries no pack.
 	var tier: int = int(tmpl.get("tier", 1))
@@ -718,10 +677,19 @@ static func all_templates() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	result.append_array(TEMPLATES)
 	result.append_array(WARDEN_TEMPLATES)
-	result.append_array(MIMIC_TEMPLATES)
 	result.append_array(BOSS_TEMPLATES)
 	return result
 
+
+
+# Whether a name is a monster the game still has. A save can remember one that
+# has since been taken out (the Mimic), and the bestiary must not show a random
+# stand-in for it.
+static func is_known(enemy_name: String) -> bool:
+	for tmpl: Dictionary in all_templates():
+		if tmpl["name"] == enemy_name:
+			return true
+	return false
 
 
 static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
