@@ -633,6 +633,14 @@ func unequip_accessory(item_id: String) -> void:
 			return
 
 
+# The worn trinket that keeps this ailment off, or {} if none does.
+func ward_against(status_id: String) -> Dictionary:
+	for acc: Dictionary in equipped_accessories:
+		if Accessory.wards_off(acc, status_id):
+			return acc
+	return {}
+
+
 func _accessory_sum(key: String) -> int:
 	var total: int = 0
 	for acc: Dictionary in equipped_accessories:

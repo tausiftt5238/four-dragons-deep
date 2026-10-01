@@ -177,4 +177,7 @@ static func gear(it: Dictionary, deltas: String = "") -> String:
 		chart.append(icon(w) + _paint("W", Affinity.color(Affinity.WEAK)))
 	if not chart.is_empty():
 		parts.append(" ".join(chart))
+	var wards: String = GearTooltip.wards_text(it)
+	if wards != "":
+		parts.append(_paint("Wards " + wards, Color(0.55, 0.95, 0.60)))
 	return SEP.join(parts)

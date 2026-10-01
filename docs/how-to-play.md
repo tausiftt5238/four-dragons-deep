@@ -47,6 +47,11 @@ The only place you can save, heal or shop. Stand on one and every tab is there:
 - **Sell** — monsters *and* anything in your pack. Sells for half the asking price.
 - **Supplies / Gear / Scrolls** — potions, weapons and armour, and every spell
   the depth you have reached has opened up.
+  From floor 6 the Gear shelf carries ward trinkets, each keeping one ailment
+  off the hero for good: Star Pendant (poison), Silver Specs (blindness), Echo
+  Bangle (silence), Grounding Cord (paralysis). The **Ribbon** wards every
+  ailment, and is never sold: it turns up in chests, drops and Gacha jackpots
+  in the deepest band.
 - **Save** — write the run to a slot.
 - **Gauntlet** — pay to fight up to four monsters from your bestiary at this
   floor's level. A win pays experience and twice what you paid, but no item

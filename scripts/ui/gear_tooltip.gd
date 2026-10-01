@@ -45,6 +45,9 @@ static func build(item: Dictionary, player: PlayerCharacter) -> String:
 	var w: String = item.get("weak_element", item.get("weakness", ""))
 	if w != "":
 		lines.append("Opens: %s" % Affinity.element_name(w))
+	var wards: String = wards_text(item)
+	if wards != "":
+		lines.append("Wards: %s" % wards)
 
 	return "
 ".join(lines)
@@ -115,3 +118,16 @@ static func bonus_string(item: Dictionary) -> String:
 	var el: String = item.get("attack_element", "") as String
 	if el != "": parts.append(Affinity.element_name(el).to_upper())
 	return "  " + " ".join(parts) if not parts.is_empty() else ""
+
+
+# The ailments a ward trinket keeps off, named; "" for anything else.
+static func wards_text(item: Dictionary) -> String:
+	var w: Array = item.get("wards", []) as Array
+	if w.is_empty():
+		return ""
+	if "all" in w:
+		return "every ailment"
+	var names: Array[String] = []
+	for id: Variant in w:
+		names.append((Status.get_data(id as String).get("noun", id) as String).capitalize())
+	return ", ".join(names)

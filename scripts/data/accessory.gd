@@ -5,7 +5,14 @@
 # Fields: str_bonus / def_bonus / mag_bonus / agl_bonus / luk_bonus, plus an
 # optional single-element `resist_element` or `weak_element`. Nothing here
 # grants DRAIN or REPEL — those belong to demons, not to objects a person owns.
+#
+# A ward trinket carries `wards`: the ailments it keeps off the hero, or "all".
+# No stats on those: the slot is the price. A `found_only` piece is on no shelf.
 class_name Accessory
+
+# What a ward trinket costs at an orb. Its depth tier says nothing about what
+# it is worth to someone the Thunder Dragon keeps paralysing.
+const WARD_PRICE: int = 400
 
 
 static func make(id: String, name: String, desc: String, floor: int,
@@ -16,6 +23,53 @@ static func make(id: String, name: String, desc: String, floor: int,
 			str_bonus=str_bonus, def_bonus=def_bonus, mag_bonus=mag_bonus,
 			agl_bonus=agl_bonus, luk_bonus=luk_bonus,
 			resist_element=resist_element, weak_element=weak_element}
+
+
+# One ward against one ailment, or every one. Final Fantasy's protection
+# accessories, in this dungeon's voice; the Ribbon keeps its name.
+static func ward(id: String, name: String, desc: String, floor: int,
+		wards: Array, found_only: bool = false) -> Dictionary:
+	var d: Dictionary = make(id, name, desc, floor)
+	d["wards"] = wards
+	if found_only:
+		d["found_only"] = true
+	else:
+		d["price"] = WARD_PRICE
+	return d
+
+
+# ── The wards ─────────────────────────────────────────────────────────────────
+
+static func star_pendant() -> Dictionary:
+	return ward("star_pendant", "Star Pendant",
+			"A tin star on a cord. Venom finds nothing in you to hold.", 2,
+			[Status.POISON])
+
+static func silver_specs() -> Dictionary:
+	return ward("silver_specs", "Silver Specs",
+			"Round lenses rimmed in silver. Whatever is thrown in your eyes slides off.", 2,
+			[Status.BLIND])
+
+static func echo_bangle() -> Dictionary:
+	return ward("echo_bangle", "Echo Bangle",
+			"A ring of tiny bells. However it is smothered, your voice carries.", 2,
+			[Status.SILENCE])
+
+static func grounding_cord() -> Dictionary:
+	return ward("grounding_cord", "Grounding Cord",
+			"Braided copper trailing to the floor. The current runs past you.", 2,
+			[Status.PARALYZED])
+
+static func ribbon() -> Dictionary:
+	return ward("ribbon", "Ribbon",
+			"A plain ribbon. Nobody can say why it works, and it always has.", 4,
+			["all"], true)
+
+
+# Whether a worn trinket keeps this ailment off.
+static func wards_off(acc: Dictionary, status_id: String) -> bool:
+	var w: Array = acc.get("wards", []) as Array
+	return "all" in w or status_id in w
 
 
 # ── The trinkets ──────────────────────────────────────────────────────────────
@@ -104,7 +158,9 @@ static func all() -> Array[Dictionary]:
 			salt_line(), bone_rosary(), copper_coil(), hummingbird_feather(),
 			ash_phylactery(), widows_lens(), gravediggers_gloves(),
 			scrying_mirror(), serpents_tooth(),
-			ferrymans_coin(), kings_signet(), thiefs_lantern()]
+			ferrymans_coin(), kings_signet(), thiefs_lantern(),
+			star_pendant(), silver_specs(), echo_bangle(), grounding_cord(),
+			ribbon()]
 
 
 # What a floor could plausibly turn up: this tier and everything above it.
@@ -112,6 +168,6 @@ static func for_floor(floor_num: int) -> Array[Dictionary]:
 	var tier: int = clampi((floor_num - 1) / 5 + 1, 1, 4)
 	var out: Array[Dictionary] = []
 	for a: Dictionary in all():
-		if int(a["floor"]) <= tier:
+		if int(a["floor"]) <= tier and not bool(a.get("found_only", false)):
 			out.append(a)
 	return out
