@@ -46,6 +46,22 @@ func load_sprite_id(sprite_id: String) -> void:
 		_play_default()
 
 
+# A magic effect drawn on its own sheet (the Necromancer's summoning circle):
+# laid over a portrait at the same zoom so it lands where the figure stands,
+# played through once, then gone.
+static func one_shot(sheet_path: String, zoom: float) -> AnimatedPortrait:
+	var fx: AnimatedPortrait = AnimatedPortrait.new()
+	var sheet: Texture2D = load(sheet_path) as Texture2D
+	fx._anims["fx"] = {sheet = sheet, frames = sheet.get_width() / sheet.get_height()}
+	fx._loaded = true
+	fx._zoom = maxf(zoom, 1.0)
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fx.anim_done.connect(func(_n: String) -> void: fx.queue_free())
+	fx.play_once("fx")
+	return fx
+
+
 func load_static(tex: Texture2D) -> void:
 	if tex == null:
 		return

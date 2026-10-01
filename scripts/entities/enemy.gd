@@ -607,6 +607,8 @@ const NECRO_MINIONS_MAX: int = 3
 # The art goes here when it exists; until then a stand-in sheet, tinted.
 const NECRO_SPRITE: String = "Necromancer"
 const NECRO_STAND_IN: String = "Wizard"
+# The green circle a minion rises out of, on its own sheet.
+const NECRO_SUMMON_FX: String = "res://resources/characterSprites/Necromancer/Necromancer_SummonFX.png"
 const NECRO_STAND_IN_TINT: Color = Color(0.62, 0.50, 0.95)
 
 

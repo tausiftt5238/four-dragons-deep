@@ -3744,6 +3744,9 @@ func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
 # element at one target.
 const NECRO_DISPEL_ODDS: float = 0.5
 
+# The foe portraits' own zoom, so the circle lands under the minion's feet.
+const MINION_FX_ZOOM: float = 3.0
+
 # What it has done this phase: one summon and at most one dispel per phase.
 var _necro_turn: Dictionary = {summoned = false, dispelled = false}
 
@@ -3759,20 +3762,26 @@ func _necro_begin_phase(necro: Enemy) -> void:
 
 func _necro_act(actor: Enemy) -> Dictionary:
 	var epr: TextureRect = _foe_portrait(actor)
-	if epr != null:
-		_play_anim(epr, "attack")
 	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
-	# Silenced, it can neither raise the dead nor cast: it swings.
+	# Silenced, it can neither raise the dead nor cast: it swings the scythe.
 	if actor.has_status(Status.SILENCE):
+		if epr != null:
+			_play_anim(epr, "attack01")
 		return _enemy_strike(actor, _pick_target(Affinity.PHYS), Affinity.PHYS,
 				float(actor.str), "[color=gray]%s is silenced.[/color]\n" % actor.display_name())
 
 	if not _necro_turn["summoned"]:
 		_necro_turn["summoned"] = true
 		if _necro_minions().size() < Enemy.NECRO_MINIONS_MAX:
+			if epr != null:
+				_play_anim(epr, "summon")
 			return _summon_minion(actor)
+
+	# Everything past here is a spell: the staff, not the scythe.
+	if epr != null:
+		_play_anim(epr, "attack02")
 
 	if not _necro_turn["dispelled"]:
 		var steady: Dictionary = Spell.get_data("steady")
@@ -3818,6 +3827,12 @@ func _summon_minion(master: Enemy) -> Dictionary:
 	foes.append(m)
 	_assign_battle_tags()
 	_enemy_side.add_child(_build_foe_card(m))
+	# It climbs out of a circle drawn at its feet.
+	var mpr: TextureRect = _foe_portrait(m)
+	if mpr != null:
+		_play_anim(mpr, "summon")
+		if ResourceLoader.exists(Enemy.NECRO_SUMMON_FX):
+			mpr.add_child(AnimatedPortrait.one_shot(Enemy.NECRO_SUMMON_FX, MINION_FX_ZOOM))
 	for r: Dictionary in _foe_rows:
 		(r["name_lbl"] as Label).text = (r["foe"] as Enemy).display_name()
 	_fit_columns.call_deferred()
