@@ -557,12 +557,12 @@ func is_dragon() -> bool:
 
 
 # How often Silence or Immobilize takes hold on a dragon.
-const DRAGON_BIND_CHANCE: float = 0.33
+const DRAGON_BIND_CHANCE: float = 0.2
 
 # A dragon often shrugs off Silence and Immobilize. Those two take away what
 # it is (its element, or its body), and a single Silence Dust landing every
 # time would turn a dragon into a punching bag. So they land one time in
-# three: worth trying, not a sure thing. Poison and Paralysis always take hold.
+# five: a long shot, never a plan. Poison and Paralysis always take hold.
 # Rolls each time it is asked, so ask once per attempt.
 func resists_status(status_id: String) -> bool:
 	if not is_dragon() or status_id not in [Status.SILENCE, Status.IMMOBILIZE]:
