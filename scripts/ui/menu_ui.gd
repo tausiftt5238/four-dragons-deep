@@ -161,6 +161,9 @@ func add_sections(parent: Control, key: String, groups: Array, fill: Callable) -
 
 
 func _switch_tab(tab_id: String) -> void:
+	# A seed or stone half handed out is dropped by going to another tab.
+	if tab_id != _active_tab:
+		set_meta(MenuTabItems.GIVING, "")
 	_active_tab      = tab_id
 	_scroll.scroll_vertical = 0
 	_status_line.text = ""
@@ -182,7 +185,11 @@ func _switch_tab(tab_id: String) -> void:
 # player back to the top of a list they had scrolled down.
 func _refresh() -> void:
 	var at: int = _scroll.scroll_vertical
+	# The action that asked for the refresh has just said what it did; the
+	# rebuild clears the line, so put it back.
+	var said: String = _status_line.text
 	_switch_tab(_active_tab)
+	_status_line.text = said
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if is_instance_valid(_scroll):

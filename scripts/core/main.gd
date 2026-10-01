@@ -1698,6 +1698,7 @@ func _gather_save_data() -> Dictionary:
 			bound_level         = p.bound_level,
 			demon_exp           = p.demon_exp,
 			demon_gains         = p.demon_gains,
+			demon_bonus         = p.demon_bonus,
 			demon_skills        = p.demon_skills,
 			demon_levels_gained = p.demon_levels_gained,
 			active_demons       = p.active_demons,
@@ -1899,6 +1900,10 @@ func _apply_player_data(pdata: Dictionary) -> void:
 		for stat: String in ["str", "def", "mag", "agl"]:
 			one[stat] = int(raw.get(stat, 0))
 		player_char.demon_gains[k] = one
+	player_char.demon_bonus.clear()
+	for k: Variant in (pdata.get("demon_bonus", {}) as Dictionary):
+		var rawb: Dictionary = (pdata["demon_bonus"] as Dictionary)[k] as Dictionary
+		player_char.demon_bonus[k] = {hp = int(rawb.get("hp", 0)), mp = int(rawb.get("mp", 0))}
 
 	player_char.demon_levels_gained.clear()
 	for k: Variant in (pdata.get("demon_levels_gained", {}) as Dictionary):

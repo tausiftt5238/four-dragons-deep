@@ -109,6 +109,10 @@ var demon_exp: Dictionary = {}
 # two Bats raised from the same floor are not the same Bat.
 var demon_gains: Dictionary = {}
 
+# Max HP and MP a demon has been given by stones, per demon: {"hp": n, "mp": n}.
+# Seeds given to a demon go into demon_gains with its own level-up points.
+var demon_bonus: Dictionary = {}
+
 # What each bound demon can call on. One entry per skill:
 #   {kind = "element", element = "fire", rung = 1, shape = "one"}
 #   {kind = "support", id = "ward"}
@@ -145,14 +149,57 @@ static func demon_exp_to_next(lv: int) -> int:
 func bound_demon(demon_name: String) -> Enemy:
 	var e: Enemy = Enemy.make_at_level(demon_name, int(bound_level.get(demon_name, 1)))
 	var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
-	if not gains.is_empty():
+	var bonus: Dictionary = demon_bonus.get(demon_name, {}) as Dictionary
+	if not gains.is_empty() or not bonus.is_empty():
 		e.str = maxi(1, e.str + int(gains.get("str", 0)))
 		e.def = maxi(1, e.def + int(gains.get("def", 0)))
 		e.mag = maxi(0, e.mag + int(gains.get("mag", 0)))
 		e.agl = maxi(1, e.agl + int(gains.get("agl", 0)))
+		e._hp_bonus = int(bonus.get("hp", 0))
+		e._mp_bonus = int(bonus.get("mp", 0))
 		e.compute_max_hp()
 		e.compute_max_mp()
 	return e
+
+
+# A seed or a stone: the items that can be given to a demon as well as used.
+static func is_keepsake(item: Dictionary) -> bool:
+	return item.has("stat_up") or int(item.get("max_hp_gain", 0)) > 0 \
+			or int(item.get("max_mp_gain", 0)) > 0
+
+
+# Demons have no Luck, so a Seed of Luck is the hero's alone.
+static func demon_can_take(item: Dictionary) -> bool:
+	return is_keepsake(item) and item.get("stat_up", "") != "luk"
+
+
+# Feeds a seed or a stone to a bound demon, for good. Kept with its other
+# gains, so it is there every time the demon is called, and it goes if the
+# demon is sold. Returns the line for the status bar.
+func give_keepsake(item: Dictionary, demon_name: String) -> String:
+	if not demon_can_take(item) or demon_name not in recruited:
+		return "%s cannot take that." % demon_name
+	var out: String = ""
+	if item.has("stat_up"):
+		var stat: String = item["stat_up"] as String
+		var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
+		gains[stat] = int(gains.get(stat, 0)) + int(item.get("stat_up_amount", 1))
+		demon_gains[demon_name] = gains
+		var e: Enemy = bound_demon(demon_name)
+		out = "%s's %s rises to %d." % [demon_name, Item.SEEDS[stat][2], int(e.get(stat))]
+		e.free()
+	else:
+		var bonus: Dictionary = demon_bonus.get(demon_name, {}) as Dictionary
+		bonus["hp"] = int(bonus.get("hp", 0)) + int(item.get("max_hp_gain", 0))
+		bonus["mp"] = int(bonus.get("mp", 0)) + int(item.get("max_mp_gain", 0))
+		demon_bonus[demon_name] = bonus
+		var e2: Enemy = bound_demon(demon_name)
+		out = "%s's maximum %s is now %d." % [demon_name,
+				"HP" if int(item.get("max_hp_gain", 0)) > 0 else "MP",
+				e2.max_hp if int(item.get("max_hp_gain", 0)) > 0 else e2.max_mp]
+		e2.free()
+	remove_item(item, 1)
+	return out
 
 
 # What a benched demon banks of a fight it sat out. Without a share the bench
@@ -369,6 +416,7 @@ func release_demon(demon_name: String) -> void:
 	bound_level.erase(demon_name)
 	demon_exp.erase(demon_name)
 	demon_gains.erase(demon_name)
+	demon_bonus.erase(demon_name)
 	demon_skills.erase(demon_name)
 	demon_levels_gained.erase(demon_name)
 

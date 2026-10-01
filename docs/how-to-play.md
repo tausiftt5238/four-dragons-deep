@@ -204,9 +204,14 @@ Two items never wear off: a **Heartstone** raises maximum HP for good, a
 come from chests and from kills, and they are worth carrying to a boss door.
 
 **Seeds** do the same for a stat: a Seed of Strength, Defence, Wisdom (magic),
-Agility or Luck adds one point to the hero's stat for good, half a level's
-worth, put exactly where you want it. Use one from the menu. They are rarer
-than stones: about one chest in twelve, one kill in fifty.
+Agility or Luck adds one point to a stat for good, half a level's worth, put
+exactly where you want it. They are rarer than stones: about one chest in
+twelve, one kill in fifty.
+
+Use a stone or a seed from the menu and it asks who gets it: the hero or any
+monster on your roster, benched ones included. Monsters have no Luck, so the
+Seed of Luck is the hero's. What a monster is given stays with it, and goes
+with it if you sell it.
 
 ---
 
