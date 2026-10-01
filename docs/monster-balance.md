@@ -100,9 +100,9 @@ Monsters per tier — I: 10, II: 8, III: 6, IV: 4.
 | Lava Slime | 2 | 19 | 4 | 4 | 1 | Phys S · Fire S · Ice W · Thunder S | fire (one) | poison | cowardly |
 | Blood Spawn | 2 | 19 | 5 | 4 | 5 | Phys W · Fire W · Thunder S | thunder (one) | poison | cowardly |
 | Orc | 2 | 16 | 5 | 4 | 5 | Fire W · Thunder W · Dark W | fire (one) | — | greedy |
-| Skeleton Archer | 2 | 19 | 2 | 4 | 4 | Fire W · Ice N · Light W · Dark N | ice (one) | immobilize | proud |
+| Skeleton Archer | 2 | 19 | 2 | 4 | 4 | Fire W · Ice N · Light W · Dark N | ice (one) | blind | proud |
 | Demon | 3 | 25 | 7 | 6 | 7 | Fire S · Ice W · Light W | fire (few) | — | greedy |
-| Imp | 3 | 25 | 4 | 6 | 7 | Fire S · Thunder W · Light W | fire (few) | immobilize | greedy |
+| Imp | 3 | 25 | 4 | 6 | 7 | Fire S · Thunder W · Light W | fire (few) | blind | greedy |
 
 ## Tier II — floors 6-9 (shown at floor 6)
 
@@ -117,14 +117,14 @@ Monsters per tier — I: 10, II: 8, III: 6, IV: 4.
 
 | Monster | LV | HP | STR | MAG | AGL | Chart | Attacks | Ailment | Temper |
 |---|---|---|---|---|---|---|---|---|---|
-| Armored Skeleton | 9 | 123 | 14 | 11 | 6 | Phys S · Fire W · Ice N · Thunder S · Light W · Dark N | ice (one) | immobilize | proud |
-| Greatsword Skeleton | 9 | 114 | 17 | 11 | 6 | Phys S · Fire W · Ice N · Thunder N · Light W · Dark N | ice dark (few) | immobilize | proud |
+| Armored Skeleton | 9 | 123 | 14 | 11 | 6 | Phys S · Fire W · Ice N · Thunder S · Light W · Dark N | ice (one) | blind | proud |
+| Greatsword Skeleton | 9 | 114 | 17 | 11 | 6 | Phys S · Fire W · Ice N · Thunder N · Light W · Dark N | ice dark (few) | blind | proud |
 | Armored Orc | 9 | 123 | 14 | 11 | 11 | Fire W · Ice S · Thunder W · Dark W | ice (one) | — | greedy |
 | Blood Fiend | 9 | 114 | 14 | 14 | 14 | Fire S · Ice D · Thunder W · Dark N | dark ice (few) | poison | proud |
 | Fell Demon | 9 | 114 | 14 | 14 | 14 | Fire S · Ice S · Thunder W · Light W | ice (few) | poison | proud |
 | Horned Demon | 9 | 123 | 17 | 14 | 11 | Phys N · Fire N · Ice W · Thunder S | fire (one) | — | greedy |
 | Ghostfire | 9 | 108 | 8 | 17 | 17 | Phys W · Fire D · Ice W · Thunder S · Dark S | fire dark (all) | silence | lonely |
-| Eyeball | 9 | 114 | 8 | 17 | 8 | Phys W · Ice D · Thunder W · Light S · Dark N | ice (few) | immobilize | lonely |
+| Eyeball | 9 | 114 | 8 | 17 | 8 | Phys W · Ice D · Thunder W · Light S · Dark N | ice (few) | blind | lonely |
 
 ## Tier III — floors 11-14 (shown at floor 11)
 
@@ -141,7 +141,7 @@ Monsters per tier — I: 10, II: 8, III: 6, IV: 4.
 |---|---|---|---|---|---|---|---|---|---|
 | Elite Orc | 17 | 239 | 32 | 23 | 14 | Phys S · Fire S · Ice W · Thunder S · Dark W | fire (one) | — | proud |
 | Werewolf | 17 | 212 | 32 | 23 | 32 | Phys S · Fire W · Ice S · Thunder D · Dark W | thunder (one) | poison | proud |
-| Werebear | 17 | 251 | 27 | 23 | 9 | Phys S · Fire S · Ice D · Thunder W · Dark W | ice (one) | immobilize | lonely |
+| Werebear | 17 | 251 | 27 | 23 | 9 | Phys S · Fire S · Ice D · Thunder W · Dark W | ice (one) | blind | lonely |
 | Arch Demon | 17 | 239 | 32 | 27 | 18 | Fire N · Ice W · Thunder R · Light W · Dark S | fire dark (few) | silence | proud |
 | Demoness | 17 | 224 | 36 | 27 | 23 | Fire D · Ice W · Thunder N · Light W · Dark S | fire thunder (few) | — | proud |
 | Flame Golem | 17 | 251 | 18 | 32 | 5 | Phys S · Fire D · Ice W · Thunder S · Dark W | fire (all) | poison | lonely |
@@ -168,11 +168,11 @@ Monsters per tier — I: 10, II: 8, III: 6, IV: 4.
 
 | Monster | Where | LV | HP | STR | MAG | AGL | Chart | Attacks | Ailment |
 |---|---|---|---|---|---|---|---|---|---|
-| Black Knight | Floor 4 | 7 | 118 | 14 | 14 | 5 | Phys S · Fire R · Ice N · Thunder W · Light S | thunder light | immobilize |
+| Black Knight | Floor 4 | 7 | 118 | 14 | 14 | 5 | Phys S · Fire R · Ice N · Thunder W · Light S | thunder light | blind |
 | Dark Knight | Floor 9 | 16 | 238 | 30 | 26 | 13 | Phys S · Fire W · Ice N · Light S · Dark D | ice dark | silence |
 | Death Knight | Floor 14 | 25 | 382 | 25 | 69 | 25 | Fire R · Ice W · Thunder N · Light S · Dark D | fire dark ice | silence |
-| Minotaur | Floor 19 | 33 | 546 | 80 | 56 | 40 | Phys S · Fire N · Ice D · Thunder W · Light S · Dark D | ice dark | immobilize |
-| Ice Dragon | Floor 5 | 10 | 1448 | 36 | 30 | 12 | Fire W · Ice D · Thunder N · Light N · Dark N | ice | immobilize |
+| Minotaur | Floor 19 | 33 | 546 | 80 | 56 | 40 | Phys S · Fire N · Ice D · Thunder W · Light S · Dark D | ice dark | blind |
+| Ice Dragon | Floor 5 | 10 | 1448 | 36 | 30 | 12 | Fire W · Ice D · Thunder N · Light N · Dark N | ice | blind |
 | Thunder Dragon | Floor 10 | 20 | 2728 | 67 | 67 | 52 | Fire N · Ice W · Thunder D · Light N · Dark N | thunder | paralyzed |
 | Fire Dragon | Floor 15 | 30 | 4344 | 118 | 96 | 44 | Phys S · Fire D · Ice N · Thunder W · Light N · Dark N | fire | poison |
 | Void Dragon | Floor 20 | 40 | 5960 | 144 | 144 | 67 | Phys S · Fire N · Ice W · Thunder N · Light N · Dark D | dark fire thunder | silence |

@@ -88,10 +88,10 @@ static func echo_gem() -> Dictionary:
 			"Cures Silence.",
 			0, 0, 1, "silence")
 
-static func elixir_motion() -> Dictionary:
-	return consumable("elixir_motion", "Elixir of Motion",
-			"Cures Immobilize.",
-			0, 0, 1, "immobilize")
+static func eye_drops() -> Dictionary:
+	return consumable("eye_drops", "Eye Drops",
+			"Cures Blind.",
+			0, 0, 1, "blind")
 
 static func panacea() -> Dictionary:
 	return consumable("panacea", "Panacea",
@@ -181,9 +181,9 @@ static func scroll_mute() -> Dictionary:
 	return scroll("scroll_mute", "Scroll of Mute", "mute", "Mute",
 			"Silences one monster, so it cannot cast.", 3)
 
-static func scroll_bind() -> Dictionary:
-	return scroll("scroll_bind", "Scroll of Bind", "bind", "Bind",
-			"Holds one monster still.", 3)
+static func scroll_blind() -> Dictionary:
+	return scroll("scroll_blind", "Scroll of Blind", "blind", "Blind",
+			"Blinds one monster, halving its agility.", 3)
 
 # One scroll per elemental spell, built straight off Spell.DATA so a scroll can
 # never name a spell that no longer exists. `floor` is only the price tier — the
@@ -251,7 +251,7 @@ static var SUPPORT_SCROLLS: Array[Callable] = [
 	scroll_cure_all, scroll_cura_all, scroll_curaga_all,
 	scroll_whet, scroll_ward, scroll_quicken, scroll_stoke,
 	scroll_blunt, scroll_sunder, scroll_mire, scroll_damp,
-	scroll_venom, scroll_shock, scroll_mute, scroll_bind,
+	scroll_venom, scroll_shock, scroll_mute, scroll_blind,
 	scroll_purge, scroll_steady,
 ]
 
@@ -348,8 +348,8 @@ static func venom_flask() -> Dictionary:
 
 static func flash_powder() -> Dictionary:
 	return consumable("flash_powder", "Flash Powder",
-			"Blinds and paralyzes an enemy.",
-			0, 0, 2, "", "paralyzed")
+			"Blinds an enemy, halving its agility.",
+			0, 0, 2, "", "blind")
 
 static func silence_dust() -> Dictionary:
 	return consumable("silence_dust", "Silence Dust",
@@ -358,8 +358,8 @@ static func silence_dust() -> Dictionary:
 
 static func binding_web() -> Dictionary:
 	return consumable("binding_web", "Binding Web",
-			"Ensnares an enemy, immobilizing it.",
-			0, 0, 3, "", "immobilize")
+			"Ensnares an enemy, paralyzing it.",
+			0, 0, 3, "", "paralyzed")
 
 
 # ── Elemental throwables ──────────────────────────────────────────────────────
@@ -447,7 +447,7 @@ static func drop_table() -> Array[Dictionary]:
 		scroll_cure(), scroll_cura(), scroll_cure_all(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
 		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
-		scroll_venom(), scroll_shock(), scroll_mute(), scroll_bind(),
+		scroll_venom(), scroll_shock(), scroll_mute(), scroll_blind(),
 	]
 	out.append_array(elemental_scrolls())
 	out.append_array(Accessory.all())

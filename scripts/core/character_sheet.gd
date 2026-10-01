@@ -223,6 +223,18 @@ func remove_status(status_id: String) -> void:
 func has_status(status_id: String) -> bool:
 	return status_id in active_statuses
 
+
+# What Blind leaves of agility. Half is a steep cut: an even swing that lands
+# 95% lands about 63% blind, and a blind target gets hit nearly every time.
+const BLIND_AGL_MULT: float = 0.5
+
+# Everything that scales agility in a fight: buff stages and Blind.
+func agility_mult() -> float:
+	var m: float = stage_mult(STAT_AGL)
+	if has_status(Status.BLIND):
+		m *= BLIND_AGL_MULT
+	return m
+
 # A potion, an ether or a cure taken by this member: HP, MP and ailments only.
 # Anyone in the party can drink one — the hero and every monster alike — so it
 # lives here rather than on the hero. Returns what it did, for the log.

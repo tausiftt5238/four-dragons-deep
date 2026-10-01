@@ -936,7 +936,7 @@ func _commit_item(item: Dictionary) -> void:
 # Returns { msg, cost } — the log line and what the action cost in icons.
 func _resolve_action(action: String) -> Dictionary:
 	var actor: CharacterSheet = _actor()
-	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
+	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % _actor_name(),
 				cost = PressTurn.COST_FULL}
 	if action.begins_with("Magic:"):
@@ -1052,11 +1052,15 @@ func _defense_of(member: CharacterSheet) -> int:
 # What a dry caster's cast is worth, against the 2.0 an paid one gets.
 const CASTER_DREGS: float = 1.0
 
+# The odds a paralysed member, on either side, loses the action it was about
+# to take. It still costs the icon.
+const PARALYSIS_SKIP: float = 0.5
+
 const AIL_SPELLS: Dictionary = {
 	Status.POISON:     "venom",
 	Status.PARALYZED:  "shock",
 	Status.SILENCE:    "mute",
-	Status.IMMOBILIZE: "bind",
+	Status.BLIND:      "blind",
 }
 const AIL_CAST_ODDS: int = 3    # in ten, while someone standing is still clean
 const AIL_LAND_MULT: int = 3
@@ -1751,10 +1755,12 @@ func _do_poison_ticks() -> String:
 # ── Fleeing ───────────────────────────────────────────────────────────────────
 
 func _do_flee() -> void:
-	var fastest: int = 0
+	# Agility as it stands this fight, so a blind hero struggles to get away
+	# and a blind foe struggles to stop him.
+	var fastest: float = 0.0
 	for f: Enemy in _living_foes():
-		fastest = maxi(fastest, f.agl)
-	if player.effective_agl() >= fastest or randi() % 2 == 0:
+		fastest = maxf(fastest, f.agl * f.agility_mult())
+	if player.effective_agl() * player.agility_mult() >= fastest or randi() % 2 == 0:
 		_log("You slip away into the dark.")
 		await get_tree().create_timer(0.9).timeout
 		if is_instance_valid(self):
@@ -1849,11 +1855,9 @@ func _refresh_button_states() -> void:
 
 	_buttons["Skills"].disabled = false
 	# Bracing on top of a brace does nothing but spend the icon, and at half an
-	# icon it is cheap enough to do by accident — unless it is the only thing
-	# left. A demon that is immobilized (no Attack) and cannot pay for any of
-	# its skills would otherwise have no button at all, and the phase would
-	# wait on it forever. Bracing again is its way of passing.
-	_buttons["Defend"].disabled = _actor().defending and _has_another_move(_actor())
+	# icon it is cheap enough to do by accident. Attack is never taken away, so
+	# there is always something better to press.
+	_buttons["Defend"].disabled = _actor().defending
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	# Live whenever there is anything to move: a body to raise, a demon waiting
@@ -1865,26 +1869,6 @@ func _refresh_button_states() -> void:
 
 
 
-
-
-# Whether this party member can do anything but brace. The hero always
-# can — Flee is never taken from him. A demon can if it can swing, or if one of
-# its skills passes the same checks the skills menu greys buttons out by.
-func _has_another_move(member: CharacterSheet) -> bool:
-	if member == player or not member is Enemy:
-		return true
-	var demon: Enemy = member as Enemy
-	if not demon.has_status(Status.IMMOBILIZE):
-		return true
-	var silenced: bool = demon.has_status(Status.SILENCE)
-	for skill: Dictionary in player.skills_of(demon.enemy_name):
-		var hp_price: int = _demon_hp_cost(demon, skill)
-		if hp_price > 0:
-			if demon.hp > hp_price:
-				return true
-		elif not silenced and demon.mp >= _demon_skill_cost(demon, skill):
-			return true
-	return false
 
 
 func _member_portrait(member: CharacterSheet) -> TextureRect:
@@ -1982,8 +1966,7 @@ func _show_skills_submenu() -> void:
 	# a flat fill silently dropped the last one.
 	var entries: Array[Dictionary] = []
 	entries.append(_skill_entry("Attack", "Attack",
-			Affinity.element_name(Affinity.PHYS), "\u2014",
-			actor.has_status(Status.IMMOBILIZE)))
+			Affinity.element_name(Affinity.PHYS), "\u2014", false))
 
 	if _actor_is_player():
 		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
@@ -3520,19 +3503,13 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var epr: TextureRect = _foe_portrait(actor)
 	if epr != null:
 		_play_anim(epr, "attack")
-	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
+	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
 
-	# The same two rules the party's own menus keep. Silence takes every cast
-	# away — elements, buffs, ailments and bites — and leaves the swing;
-	# Immobilize takes the swing away and leaves the casts. Both together leave
-	# nothing at all.
+	# The same rule the party's own menus keep: Silence takes every cast away
+	# (elements, buffs, ailments and bites) and leaves the swing.
 	var silenced: bool = actor.has_status(Status.SILENCE)
-	var bound: bool = actor.has_status(Status.IMMOBILIZE)
-	if silenced and bound:
-		return {msg = "[color=gray]%s is silenced and bound, and can do nothing.[/color]" % \
-				actor.display_name(), cost = PressTurn.COST_FULL}
 
 	# The ailment goes out early or not at all: it is worth most on a full party
 	# and worthless once everyone standing already has it, which is also what
@@ -3632,11 +3609,6 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# single-target consolation, and a swing is a swing.
 	if paid and actor.attack_reach != Spell.SHAPE_ONE:
 		return _enemy_spread(actor, element, base, dry)
-
-	# Bound, it cannot swing; if all it had left was a swing, the turn is gone.
-	if bound and element == Affinity.PHYS:
-		return {msg = dry + "[color=gray]%s strains against its bonds.[/color]" % \
-				actor.display_name(), cost = PressTurn.COST_FULL}
 
 	var target: CharacterSheet = _pick_target(element)
 

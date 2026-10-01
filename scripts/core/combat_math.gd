@@ -175,10 +175,8 @@ static func resolve_banish(target: CharacterSheet, element: String,
 # behaves the same at level 2 and level 20: even agility lands 95%, and four
 # stages either way swings it roughly 95% <-> 55%.
 static func hit_chance(attacker: CharacterSheet, target: CharacterSheet) -> float:
-	var atk: float = maxf(1.0, float(attacker.battle_agility())
-			* attacker.stage_mult(CharacterSheet.STAT_AGL))
-	var eva: float = maxf(1.0, float(target.battle_agility())
-			* target.stage_mult(CharacterSheet.STAT_AGL))
+	var atk: float = maxf(1.0, float(attacker.battle_agility()) * attacker.agility_mult())
+	var eva: float = maxf(1.0, float(target.battle_agility()) * target.agility_mult())
 	return clampf(0.95 * (atk / (atk + eva)) * 2.0, 0.30, 0.99)
 
 

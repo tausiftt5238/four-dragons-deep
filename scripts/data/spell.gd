@@ -347,9 +347,9 @@ static var DATA: Dictionary = {
 	"mute":      {name="Mute", mp=5, type="ailment", heal=0,
 		status="silence",
 		desc="Silences the enemy."},
-	"bind":      {name="Bind", mp=4, type="ailment", heal=0,
-		status="immobilize",
-		desc="Immobilizes the enemy."},
+	"blind":     {name="Blind", mp=4, type="ailment", heal=0,
+		status="blind",
+		desc="Blinds the enemy, halving its agility."},
 }
 
 

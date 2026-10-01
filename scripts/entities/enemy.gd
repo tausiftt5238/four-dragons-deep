@@ -201,7 +201,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  2, def =  3, mag =  3, agl =  3,
 		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire", light = "weak", dark = "null",
-		attack_element = "ice", status_attack = "immobilize", ail = 5,
+		attack_element = "ice", status_attack = "blind", ail = 5,
 		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "any",
 		sprite_id = "Skeleton_Archer"},
 	{name = "Demon",            lv =  3,
@@ -215,7 +215,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  3, def =  3, mag =  4, agl =  5,
 		exp =  28, gold =   9, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
 		weakness = "thunder",
-		attack_element = "thunder", reach = "few", status_attack = "immobilize", ail = 5, support = "ward",
+		attack_element = "thunder", reach = "few", status_attack = "blind", ail = 5, support = "ward",
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite_id = "Demon_B"},
 	# ── Tier 2 · Floors 2-4 ──────────────────────────────────────────────────
@@ -223,14 +223,14 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  5, def =  4, mag =  4, agl =  2,
 		exp =  30, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "null",
-		attack_element = "ice", status_attack = "immobilize", ail = 12, support = "ward",
+		attack_element = "ice", status_attack = "blind", ail = 12, support = "ward",
 		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "throwable",
 		sprite_id = "Armored_Skeleton"},
 	{name = "Greatsword Skeleton", lv =  5,
 		str =  6, def =  3, mag =  4, agl =  2,
 		exp =  32, gold =  11, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "null",
-		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 12,
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "blind", ail = 12,
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "throwable",
 		sprite_id = "Greatsword_Skeleton"},
 	{name = "Armored Orc",      lv =  5,
@@ -288,7 +288,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  3, def =  3, mag =  6, agl =  3,
 		exp =  35, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "thunder", nulls = ["dark"], light = "resist",
-		attack_element = "ice", reach = "few", status_attack = "immobilize", ail = 12, support = "sunder",
+		attack_element = "ice", reach = "few", status_attack = "blind", ail = 12, support = "sunder",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite_id = "Eyeball_Monster"},
 	# ── Tier 3 · Floors 3+ ───────────────────────────────────────────────────
@@ -310,7 +310,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  6, def =  6, mag =  5, agl =  2,
 		exp =  45, gold =  14, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "thunder", phys = "resist",
-		attack_element = "ice", status_attack = "immobilize", ail = 18, support = "ward",
+		attack_element = "ice", status_attack = "blind", ail = 18, support = "ward",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite_id = "Werebear"},
 	{name = "Arch Demon",       lv =  9, icons = 2,
@@ -370,7 +370,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 	{name = "Black Knight",    icons = WARDEN_ICONS,
 		str =  6, def =  7, mag =  6, agl =  2,
 		weakness = "thunder", nulls = ["ice"], reflect_element = "fire", phys = "resist", light = "resist",
-		attack_elements = ["thunder", "light"], reach = "few", status_attack = "immobilize", ail = 8,
+		attack_elements = ["thunder", "light"], reach = "few", status_attack = "blind", ail = 8,
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Black_Knight_A"},
 
@@ -393,7 +393,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		str = 10, def =  9, mag =  7, agl =  5,
 		weakness = "thunder", nulls = ["fire"], absorb_element = "ice", phys = "resist",
 		light = "weak", dark = "drain",
-		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 20,
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "blind", ail = 20,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Minotaur"},
@@ -421,7 +421,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		str = 12, def =  9, mag = 10, agl =  4,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
 		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "null", dark = "null",
-		attack_elements = ["ice"], reach = "few", status_attack = "immobilize", ail = 25,
+		attack_elements = ["ice"], reach = "few", status_attack = "blind", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Ice_Dragon",
@@ -556,18 +556,18 @@ func is_dragon() -> bool:
 	return false
 
 
-# How often Silence or Immobilize takes hold on a dragon.
-const DRAGON_BIND_CHANCE: float = 0.2
+# How often Silence or Blind takes hold on a dragon.
+const DRAGON_AILMENT_CHANCE: float = 0.2
 
-# A dragon often shrugs off Silence and Immobilize. Those two take away what
-# it is (its element, or its body), and a single Silence Dust landing every
-# time would turn a dragon into a punching bag. So they land one time in
-# five: a long shot, never a plan. Poison and Paralysis always take hold.
+# A dragon often shrugs off Silence and Blind. One takes away its element, the
+# other its speed, and a single Silence Dust landing every time would turn a
+# dragon into a punching bag. So they land one time in five: a long shot,
+# never a plan. Poison and Paralysis always take hold.
 # Rolls each time it is asked, so ask once per attempt.
 func resists_status(status_id: String) -> bool:
-	if not is_dragon() or status_id not in [Status.SILENCE, Status.IMMOBILIZE]:
+	if not is_dragon() or status_id not in [Status.SILENCE, Status.BLIND]:
 		return false
-	return randf() >= DRAGON_BIND_CHANCE
+	return randf() >= DRAGON_AILMENT_CHANCE
 
 
 # One boss per run of FLOOR_COUNT floors. The old index went negative on a

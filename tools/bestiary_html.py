@@ -63,7 +63,7 @@ STATE = {"weak": ("a-weak", "Weak"), "resist": ("a-resist", "Res"),
          "null": ("a-null", "Null"), "repel": ("a-repel", "Rep"),
          "drain": ("a-drain", "Drain"), "": ("a-none", "&middot;")}
 AIL = {"poison": "Poison", "paralyzed": "Paralysis", "silence": "Silence",
-       "immobilize": "Bind"}
+       "blind": "Blind"}
 TALK = {"cowardly": "Survival", "greedy": "Gain", "proud": "Logic",
         "lonely": "Flatter"}
 STAT = {"atk": "ATK", "def": "DEF", "mag": "MAG", "agl": "AGL"}
@@ -98,7 +98,7 @@ def ailment_cell(r):
     if not r["status_attack"] or not r["ail_spell"]:
         return '<td><span class="dash">&mdash;</span></td>'
     what = AIL.get(r["status_attack"], r["status_attack"].title())
-    # Bind's spell and its status share a name; saying it twice reads as a bug.
+    # Blind's spell and its status share a name; saying it twice reads as a bug.
     fx = "%d&#37; to land" % r["ail_land"] if what == r["ail_spell"] \
         else "%s &middot; %d&#37; to land" % (what, r["ail_land"])
     return ('<td><span class="skill"><b>%s</b> <span class="mp">%d mp</span>'
@@ -307,7 +307,6 @@ page = """<title>Gauntlet Bestiary</title>
     <h2>What the table says is missing</h2>
     <p><b>The tiers are lopsided.</b> Ten templates cover tier I and ten cover tier II, but only <strong>six</strong> cover tier III and <strong>four</strong> cover tier IV. The deepest five floors &mdash; the ones a player only reaches by earning them &mdash; have the least to show. Filling those two bands is worth more than anything else you could add.</p>
     <p><b>Every warden still needs a sprite.</b> All five are written with an art note and none is drawn. They are the most drawable things on the list &mdash; a gargoyle, a wight, a hound and a basilisk all have unmistakable silhouettes &mdash; so they are the sensible place to start.</p>
-    <p><b>Only four ailments exist, and two of them do the same job.</b> Bind and Paralysis both cost a demon its turn, so across thirty-nine entries the real variety is poison, silence and &ldquo;you do not act&rdquo;. Now that throwing one costs a demon its turn, that thinness shows more than it used to.</p>
   </section>
 
   <footer>Generated from the live tables &middot; ordinary lv = floor &times; 1.5 &middot; boss lv = floor &times; 2 &middot; skill odds 3 in 10</footer>
