@@ -496,12 +496,13 @@ func _check_portal() -> void:
 
 	if current_level.next_scene == "":
 		return
-	# The bottom of the Abyss. Its stairs are where the run ends, for now: the
-	# final boss will stand here.
+	# The bottom of the Abyss. The Necromancer stands in its stairwell, and
+	# getting past it is the end of the run.
 	if floor_num >= Level.FLOOR_COUNT:
-		_door_open = false
-		_sync_door()
-		_show_congratulations()
+		if not _boss_beaten:
+			_start_boss_combat()
+		else:
+			_show_congratulations()
 		return
 	_descend()
 
@@ -989,8 +990,10 @@ func _start_gauntlet(names: Array[String]) -> void:
 
 func _start_boss_combat() -> void:
 	_pending_congratulations = (floor_num >= Level.FLOOR_COUNT)
-	# Bosses come alone; their own icon count is what makes them a fight.
-	var solo: Array[Enemy] = [Enemy.make_boss(floor_num)]
+	# Bosses come alone; their own icon count is what makes them a fight. The
+	# Necromancer comes alone too, and does not stay that way.
+	var solo: Array[Enemy] = [Enemy.make_necromancer(floor_num)
+			if floor_num >= Level.FLOOR_COUNT else Enemy.make_boss(floor_num)]
 	_launch_combat(solo)
 
 
@@ -999,7 +1002,10 @@ func _launch_combat(group: Array[Enemy]) -> void:
 	hud_layer.visible = false
 	for foe: Enemy in group:
 		add_child(foe)
-		if foe.enemy_name not in player_char.encountered_enemies:
+		# The bestiary reads its entries off the monster tables, which the
+		# Necromancer is not in: it is the end of the run, not a page.
+		if foe.enemy_name not in player_char.encountered_enemies \
+				and Enemy.is_known(foe.enemy_name):
 			player_char.encountered_enemies.append(foe.enemy_name)
 	var combat_layer: CanvasLayer = CanvasLayer.new()
 	combat_layer.layer = 20
@@ -1080,7 +1086,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	# On a boss floor an encounter with no roamer behind it is the boss. Only a
 	# win counts: a flee used to pass as "not a loss", so slipping away from the
 	# Ice Dragon marked it beaten and the corridor let you walk on past it.
-	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty() \
+	if result not in ["lose", "flee"] and _is_boss_ground() and met.is_empty() \
 			and not _in_gauntlet:
 		_boss_beaten = true
 		_sync_boss_banner()
@@ -1324,20 +1330,34 @@ func _shown_spark_group() -> int:
 
 # The dragon of a boss corridor, waiting in the stairwell at its far end until
 # it is beaten. Hung on the dungeon so every rebuild clears it with the rest.
+const NECRO_BANNER_DROP: float = 0.45
+
+# A dragon's corridor, or the last floor, where the Necromancer waits.
+func _is_boss_ground() -> bool:
+	return Level.is_boss_floor(floor_num) or floor_num >= Level.FLOOR_COUNT
+
+
 func _sync_boss_banner() -> void:
-	if not is_instance_valid(dungeon) or not Level.is_boss_floor(floor_num):
+	if not is_instance_valid(dungeon) or not _is_boss_ground():
 		return
 	var old: Node = dungeon.get_node_or_null("DragonBanner")
 	if old != null:
 		old.queue_free()
 	if _boss_beaten:
 		return
-	var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
-			0, Enemy.BOSS_TEMPLATES.size() - 1)
+	var sprite_id: String = ""
+	if floor_num >= Level.FLOOR_COUNT:
+		sprite_id = Enemy.necro_sprite()
+	else:
+		var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
+				0, Enemy.BOSS_TEMPLATES.size() - 1)
+		sprite_id = Enemy.BOSS_TEMPLATES[idx].get("sprite_id", "") as String
 	var banner: DragonBanner = DragonBanner.new()
-	if not banner.setup(Enemy.BOSS_TEMPLATES[idx].get("sprite_id", "") as String):
+	if not banner.setup(sprite_id):
 		banner.free()
 		return
+	if sprite_id == Enemy.NECRO_STAND_IN:
+		banner.modulate = Enemy.NECRO_STAND_IN_TINT
 	banner.name = "DragonBanner"
 	# Just inside the stairwell the fight starts from, turned to face back
 	# down the corridor toward the player.
@@ -1347,6 +1367,10 @@ func _sync_boss_banner() -> void:
 	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, DragonBanner.HEIGHT * 0.5,
 			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * 0.35)
 	banner.rotation = Vector3(0.0, atan2(toward.x, toward.z), 0.0)
+	# A maze's way down is a stair cut into the wall rather than a corridor's
+	# flat end, so the Necromancer stands a few steps down it, in the opening.
+	if floor_num >= Level.FLOOR_COUNT:
+		banner.position.y -= NECRO_BANNER_DROP
 	dungeon.add_child(banner)
 
 

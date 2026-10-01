@@ -222,7 +222,21 @@ around you changes, you know what is waiting at the end of it.
 Beating the Void Dragon on floor 20 opens its corridor onto **the Abyss**: five
 more floors with no colour left in their walls. Every hazard is on every floor,
 and every band's demons roam it together, all at Abyss depth. There is no
-warden; each floor's key lies somewhere to be found. The stairs at the bottom
-of floor 25 end the run.
+warden; each floor's key lies somewhere to be found.
+
+## The Necromancer
+
+It waits in the stairwell on floor 25, and beating it ends the run.
+
+- **It changes form every turn.** Each of its turns it takes one of the four
+  dragons' forms, and with it that dragon's weaknesses, until its next turn. It
+  only casts its form's element, one target at a time, so the spell it opens
+  with tells you what to hit it with.
+- **It raises the dead.** Every turn it raises a skeleton at half its level, up
+  to three. Each one fights as its kind does and brings its own turn: the
+  Necromancer's two turns grow to five. They crumble when it falls.
+- **It keeps its slate clean.** Now and then it strips your buffs (Purge) or its
+  own side's debuffs (Steady), when there is something to clear.
+- Silence and Blind take hold on it only one time in five, as on a dragon.
 
 Good luck. Four dragons deep is further than it sounds.

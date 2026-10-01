@@ -52,6 +52,14 @@ const BOSS_HP_MULT: int = 8
 # how they threaten a full party without inflating their damage numbers.
 var icons: int = 1
 
+# The final boss's current form: the element it casts this phase, and the
+# matching dragon's affinity chart it wears until its next phase. "" for
+# everything else.
+var form: String = ""
+# Raised by the Necromancer mid-fight. Worth nothing when it falls, and it
+# crumbles when its master does.
+var summoned: bool = false
+
 # Wardens and bosses keep their chart to themselves — Analyze refuses them and
 # killing one teaches nothing. They are met once each in a whole run, so a
 # chart handed over in advance would turn the one fight that is supposed to be
@@ -572,9 +580,128 @@ const DRAGON_AILMENT_CHANCE: float = 0.2
 # never a plan. Poison and Paralysis always take hold.
 # Rolls each time it is asked, so ask once per attempt.
 func resists_status(status_id: String) -> bool:
-	if not is_dragon() or status_id not in [Status.SILENCE, Status.BLIND]:
+	if not (is_dragon() or is_necromancer()) or status_id not in [Status.SILENCE, Status.BLIND]:
 		return false
 	return randf() >= DRAGON_AILMENT_CHANCE
+
+
+# ── The Necromancer ───────────────────────────────────────────────────────────
+#
+# The final boss, at the stairs on the last floor of the Abyss. Everything it
+# does is its own, run by CombatScene._necro_act rather than the shared demon
+# turn:
+#   * Each of its phases it takes one of the four dragons' forms (ice, thunder,
+#     fire or dark, never the one it just had) and wears that dragon's affinity
+#     chart until its next phase. It casts only that element, one target at a
+#     time, so the spell it opens with says what it is weak to.
+#   * Each phase it raises one skeleton (up to three standing) at half its own
+#     level. A minion fights with its own kind's attacks and carries its own
+#     press-turn icon, so the Necromancer's two icons grow to five with three
+#     minions up.
+#   * It clears debuffs off its side (Steady) or buffs off yours (Purge) when
+#     there is something to clear, and not every phase.
+const NECROMANCER: String = "Necromancer"
+const NECRO_FORMS: Array[String] = ["ice", "thunder", "fire", "dark"]
+const NECRO_ICONS: int = 2
+const NECRO_MINIONS_MAX: int = 3
+# The art goes here when it exists; until then a stand-in sheet, tinted.
+const NECRO_SPRITE: String = "Necromancer"
+const NECRO_STAND_IN: String = "Wizard"
+const NECRO_STAND_IN_TINT: Color = Color(0.62, 0.50, 0.95)
+
+
+# Its own sheet once it is drawn (characterSprites/Necromancer/Necromancer_Idle.png),
+# the stand-in until then.
+static func necro_sprite() -> String:
+	var own: String = "res://resources/characterSprites/%s/%s_Idle.png" % [
+			NECRO_SPRITE, NECRO_SPRITE]
+	return NECRO_SPRITE if ResourceLoader.exists(own) else NECRO_STAND_IN
+const NECRO_TEMPLATE: Dictionary = {
+	name = NECROMANCER, str = 12, def = 12, mag = 17, agl = 9, tier = 4,
+}
+
+
+func is_necromancer() -> bool:
+	return enemy_name == NECROMANCER
+
+
+# What the bestiary and the affinity chart file what you learn under. The
+# Necromancer keeps a separate chart per form, so a weakness found in its ice
+# form is still known the next time it turns to ice, and never shown for fire.
+func lore_name() -> String:
+	if is_necromancer() and form != "":
+		return "%s:%s" % [enemy_name, form]
+	return enemy_name
+
+
+static func make_necromancer(floor_num: int) -> Enemy:
+	var t: Dictionary = NECRO_TEMPLATE
+	var e: Enemy = Enemy.new()
+	e.spawn_floor     = maxi(1, floor_num)
+	e.enemy_name      = NECROMANCER
+	e.lv              = maxi(2, floor_num * 2)
+	var scale: float = 1.0 + float(e.lv - 1) * 0.22
+	e.str             = maxi(1, roundi(float(t["str"]) * scale))
+	e.def             = maxi(1, roundi(float(t["def"]) * scale))
+	e.mag             = roundi(float(t["mag"]) * scale)
+	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
+	e.exp_to_next     = 0
+	e.exp_reward      = exp_for_level(e.lv) * 5
+	e.gold_reward     = e.lv * 20
+	e.negotiable      = false
+	e.talk_difficulty = 0
+	e.talk_personality = "proud"
+	e.caster          = true
+	e.attack_reach    = Spell.SHAPE_ONE
+	e.tier            = int(t["tier"])
+	e.icons           = NECRO_ICONS
+	e.unreadable      = true
+	e.ailment_chance  = 0
+	e.sprite_id = necro_sprite()
+	e.tint = Color.WHITE if e.sprite_id == NECRO_SPRITE else NECRO_STAND_IN_TINT
+	e.compute_max_hp()
+	e.max_hp *= BOSS_HP_MULT
+	e.hp = e.max_hp
+	e.compute_max_mp()
+	e.take_form(NECRO_FORMS[randi() % NECRO_FORMS.size()])
+	return e
+
+
+# Turns to a new form, never the one it has. Its chart becomes that element's
+# dragon's, and that element is all it casts until the next turn.
+func take_form(element: String) -> void:
+	form = element
+	for t: Dictionary in BOSS_TEMPLATES:
+		var els: Array = _elements_from(t)
+		if not els.is_empty() and els[0] == element:
+			affinities = _affinities_from(t)
+			break
+	attack_elements.assign([element])
+	attack_element = element
+
+
+func next_form() -> String:
+	var others: Array[String] = []
+	for f: String in NECRO_FORMS:
+		if f != form:
+			others.append(f)
+	return others[randi() % others.size()]
+
+
+# A skeleton raised at half its master's level. Fights as its own kind does.
+static func make_minion(master: Enemy) -> Enemy:
+	var kinds: Array[String] = []
+	for t: Dictionary in TEMPLATES:
+		if "Skeleton" in (t["name"] as String):
+			kinds.append(t["name"] as String)
+	var e: Enemy = make_at_level(kinds[randi() % kinds.size()], maxi(1, master.lv / 2))
+	e.summoned    = true
+	e.negotiable  = false
+	e.exp_reward  = 0
+	e.gold_reward = 0
+	e.icons       = 1
+	e.tint        = Color(0.80, 0.78, 0.95)
+	return e
 
 
 # One boss per run of FLOOR_COUNT floors. The old index went negative on a

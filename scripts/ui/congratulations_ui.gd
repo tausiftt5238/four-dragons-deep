@@ -39,8 +39,8 @@ func _build() -> void:
 	vbox.add_child(HSeparator.new())
 
 	var boss: Label = Label.new()
-	# Reached by the stairs at the bottom of the Abyss, past all four dragons.
-	boss.text = "You have reached the bottom of the Abyss."
+	# Reached by beating the Necromancer at the bottom of the Abyss.
+	boss.text = "The %s has fallen." % Enemy.NECROMANCER
 	boss.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	boss.add_theme_color_override("font_color", Color(0.90, 0.70, 0.40))
 	boss.add_theme_font_size_override("font_size", 16)

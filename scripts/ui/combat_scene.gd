@@ -1542,7 +1542,7 @@ func _build_foe_card(foe: Enemy) -> Control:
 	var chart: AffinityChart = AffinityChart.new()
 	chart.foe = foe
 	chart.knows = func(element: String) -> bool:
-		return player.knows_affinity(foe.enemy_name, element)
+		return player.knows_affinity(foe.lore_name(), element)
 	# Fill, not shrink: the chart is drawn, so it has no width of its own to
 	# shrink to, and centred it came out zero pixels wide.
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1568,9 +1568,9 @@ func _foe_portrait(foe: Enemy) -> TextureRect:
 func _reveal(foe: Enemy, element: String) -> void:
 	if foe == null or element == "":
 		return
-	player.learn_affinity(foe.enemy_name, element)
+	player.learn_affinity(foe.lore_name(), element)
 	for r: Dictionary in _foe_rows:
-		if r["foe"] == foe or (r["foe"] as Enemy).enemy_name == foe.enemy_name:
+		if r["foe"] == foe or (r["foe"] as Enemy).lore_name() == foe.lore_name():
 			(r["chart"] as AffinityChart).queue_redraw()
 
 
@@ -1697,6 +1697,10 @@ func _enemy_phase() -> void:
 	_step_back_immediate()
 	_set_buttons(false)
 	_show_main_actions()
+	# The Necromancer changes form at the top of each of its phases.
+	for f: Enemy in _living_foes():
+		if f.is_necromancer():
+			_necro_begin_phase(f)
 	# One icon per demon still standing — the same rule the player side runs on,
 	# which is what makes a pack of four genuinely dangerous.
 	var living: Array[Enemy] = _living_foes()
@@ -1710,12 +1714,20 @@ func _enemy_phase() -> void:
 
 	while is_instance_valid(self) and _foe_press.has_turns() \
 			and not _living_foes().is_empty() and not _living_party().is_empty():
-		var actors: Array[Enemy] = _living_foes()
+		# Only what stood when the phase began takes turns in it: a minion
+		# raised mid-phase starts acting next phase, rather than taking the
+		# icons its master was still spending.
+		var actors: Array[Enemy] = []
+		for f: Enemy in _living_foes():
+			if f in living:
+				actors.append(f)
+		if actors.is_empty():
+			break
 		var actor: Enemy = actors[_foe_turn_idx % actors.size()]
 		_foe_turn_idx += 1
 		_clear_floats()
 		_step_forward_foe(actor)
-		var res: Dictionary = _enemy_act(actor)
+		var res: Dictionary = _necro_act(actor) if actor.is_necromancer() else _enemy_act(actor)
 		_log(res["msg"] as String)
 		# Their phase ends on a repel or a drain exactly as yours does, and it
 		# is worth saying out loud — the reason the pack stopped is a read the
@@ -1923,6 +1935,9 @@ func _member_portrait(member: CharacterSheet) -> TextureRect:
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
 func _refresh_hp() -> void:
+	# Run here because every action on either side ends in a refresh, so the
+	# blow that drops the Necromancer takes its minions with it at once.
+	_crumble_orphans()
 	_refresh_party_slots()
 	_refresh_foe_rows()
 	_refresh_icons()
@@ -3657,7 +3672,13 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 
 	if Affinity.is_banishing(element):
 		return _enemy_banish(actor, target, element, dry)
+	return _enemy_strike(actor, target, element, base, dry)
 
+
+# One blow or one single-target cast from the other side, from the hit roll to
+# the log line. `base` is the attack's raw power before the target's guard.
+func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
+		base: float, dry: String) -> Dictionary:
 	# A swing misses on agility; a spell misses half as often. A miss does not
 	# spend the target's brace — it never had to absorb anything.
 	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
@@ -3714,6 +3735,109 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	if target == player:
 		msg += _check_counter()
 	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}
+
+
+# ── The Necromancer ───────────────────────────────────────────────────────────
+#
+# Its rules, in Enemy's notes on it: a new form each phase, one skeleton a
+# phase, a dispel when there is something to clear, and otherwise the form's
+# element at one target.
+const NECRO_DISPEL_ODDS: float = 0.5
+
+# What it has done this phase: one summon and at most one dispel per phase.
+var _necro_turn: Dictionary = {summoned = false, dispelled = false}
+
+
+func _necro_begin_phase(necro: Enemy) -> void:
+	necro.take_form(necro.next_form())
+	necro.mp = necro.max_mp
+	_necro_turn = {summoned = false, dispelled = false}
+	for r: Dictionary in _foe_rows:
+		if r["foe"] == necro:
+			(r["chart"] as AffinityChart).queue_redraw()
+
+
+func _necro_act(actor: Enemy) -> Dictionary:
+	var epr: TextureRect = _foe_portrait(actor)
+	if epr != null:
+		_play_anim(epr, "attack")
+	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
+		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
+				cost = PressTurn.COST_FULL}
+	# Silenced, it can neither raise the dead nor cast: it swings.
+	if actor.has_status(Status.SILENCE):
+		return _enemy_strike(actor, _pick_target(Affinity.PHYS), Affinity.PHYS,
+				float(actor.str), "[color=gray]%s is silenced.[/color]\n" % actor.display_name())
+
+	if not _necro_turn["summoned"]:
+		_necro_turn["summoned"] = true
+		if _necro_minions().size() < Enemy.NECRO_MINIONS_MAX:
+			return _summon_minion(actor)
+
+	if not _necro_turn["dispelled"]:
+		var steady: Dictionary = Spell.get_data("steady")
+		var purge: Dictionary = Spell.get_data("purge")
+		var pick: Dictionary = {}
+		if _dispel_would_bite(steady, false) and randf() < NECRO_DISPEL_ODDS:
+			pick = steady
+		elif _dispel_would_bite(purge, false) and randf() < NECRO_DISPEL_ODDS:
+			pick = purge
+		if not pick.is_empty():
+			_necro_turn["dispelled"] = true
+			var out: Dictionary = _cast_dispel(pick, false)
+			out["msg"] = "[color=#c9a6ff]%s casts[/color] %s" % [actor.display_name(), out["msg"]]
+			return out
+
+	var element: String = actor.form
+	var base: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
+	return _enemy_strike(actor, _pick_target(element), element, base, "")
+
+
+func _necro_minions() -> Array[Enemy]:
+	var out: Array[Enemy] = []
+	for f: Enemy in _living_foes():
+		if f.summoned:
+			out.append(f)
+	return out
+
+
+# Raises a skeleton onto the field. The fallen ones' cards are cleared first,
+# so the column only ever holds the master and what is standing beside it.
+func _summon_minion(master: Enemy) -> Dictionary:
+	for r: Dictionary in _foe_rows.duplicate():
+		var f: Enemy = r["foe"] as Enemy
+		if f.summoned and not f.is_alive():
+			(r["card"] as Control).queue_free()
+			_foe_rows.erase(r)
+			foes.erase(f)
+	var m: Enemy = Enemy.make_minion(master)
+	# Owned by the scene, so it is freed with the fight; the foes Main brought
+	# in are Main's to free.
+	add_child(m)
+	m.reset_stages()
+	foes.append(m)
+	_assign_battle_tags()
+	_enemy_side.add_child(_build_foe_card(m))
+	for r: Dictionary in _foe_rows:
+		(r["name_lbl"] as Label).text = (r["foe"] as Enemy).display_name()
+	_fit_columns.call_deferred()
+	return {msg = "[color=#c9a6ff]%s raises a %s (LV %d) from the bones![/color]" % [
+			master.display_name(), m.display_name(), m.lv], cost = PressTurn.COST_FULL}
+
+
+# With the Necromancer down, whatever it raised falls with it.
+func _crumble_orphans() -> void:
+	var master_up: bool = false
+	var had_master: bool = false
+	for f: Enemy in foes:
+		if f.is_necromancer():
+			had_master = true
+			master_up = master_up or f.is_alive()
+	if not had_master or master_up:
+		return
+	for m: Enemy in _necro_minions():
+		m.hp = 0
+		_log("[color=gray]%s crumbles to dust.[/color]" % m.display_name())
 
 
 # ── Wide casts from the other side ────────────────────────────────────────────
