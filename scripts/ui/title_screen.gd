@@ -37,7 +37,7 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(title)
 
-	var subtitle: Label = _make_lbl("twenty floors. four dragons. one run.", 15,
+	var subtitle: Label = _make_lbl("twenty-five floors. four dragons. one run.", 15,
 			Color(0.50, 0.45, 0.55))
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(subtitle)

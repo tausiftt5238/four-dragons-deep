@@ -388,6 +388,10 @@ func _place_chests() -> void:
 # Each band lays the hazard of the dragon waiting at its bottom. None on a
 # warden's floor: the fight for the key is the floor's hurdle, and a timing
 # puzzle in front of it would only be noise. Boss corridors never get here.
+# The Abyss lays all four: one claimed-cells map is shared, so each kind fits
+# around the ones laid before it. Teleporters go first, as they need dead
+# ends; lava goes last, as it checks the floor stays connected around
+# everything else.
 func _place_hazards(floor_num: int) -> void:
 	if Level.is_warden_floor(floor_num):
 		return
@@ -400,6 +404,12 @@ func _place_hazards(floor_num: int) -> void:
 	# never be onto something.
 	for off: Vector2i in _DIRS4:
 		occupied[player_start + off] = true
+	if Level.is_abyss(floor_num):
+		_place_teleporters(occupied)
+		_place_ice(occupied)
+		_place_sparks(occupied)
+		_place_lava(occupied)
+		return
 	match Level.tier_of(floor_num):
 		1: _place_ice(occupied)
 		2: _place_sparks(occupied)

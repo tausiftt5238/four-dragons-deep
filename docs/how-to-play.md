@@ -1,7 +1,7 @@
 # How to Play
 
-**Four Dragons Deep** is a first-person dungeon crawler. Twenty floors, four
-dragons, one run. Death ends it — a saved game is the only way back.
+**Four Dragons Deep** is a first-person dungeon crawler. Twenty-five floors,
+four dragons, one run. Death ends it — a saved game is the only way back.
 
 ---
 
@@ -31,6 +31,8 @@ opens it.
 | **Lava** (floors 11–15) | Pools of two to four tiles. Each lava tile you step on takes 15% of your maximum HP; fire-resistant gear halves it. There is always a way around. |
 | **Teleporters** (floors 16–20) | Carry you to their twin (same colour). Step off and back on to return. Once used, the map joins the pair. |
 | **Roamers** | Monsters walking the floor. They come for you when you get close; touching one starts a fight. Their colour tells you which band you are in. |
+
+The Abyss (floors 21–25) lays all four at once.
 
 Hazards you've set off stay marked on your map. Warden and dragon floors have none.
 
@@ -214,5 +216,13 @@ next. You begin holding Ember, which is why Ice comes first.
 
 The walls of a band burn in that band's dragon's colour. When the corridor
 around you changes, you know what is waiting at the end of it.
+
+## The Abyss
+
+Beating the Void Dragon on floor 20 opens its corridor onto **the Abyss**: five
+more floors with no colour left in their walls. Every hazard is on every floor,
+and every band's demons roam it together, all at Abyss depth. There is no
+warden; each floor's key lies somewhere to be found. The stairs at the bottom
+of floor 25 end the run.
 
 Good luck. Four dragons deep is further than it sounds.

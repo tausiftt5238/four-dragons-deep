@@ -4,17 +4,25 @@
 # Each map script extends this and sets the fields in _ready().
 class_name Level extends Node3D
 
-# The whole run: two mazes, then a corridor with the boss at the end of it.
-# Twenty floors, a boss closing every fifth. A boss floor is a straight
-# corridor rather than a maze, so the last thing before the stairs is a fight
-# you cannot walk around.
-const FLOOR_COUNT: int = 20
-const BOSS_EVERY:  int = 5
+# The whole run: four bands of five floors, each closed by a dragon in a
+# straight corridor (a fight you cannot walk around), then the Abyss: five more
+# maze floors under the last dragon, with every trick tile and every tier of
+# demon in them at once, and no warden. The run ends at the bottom of it.
+const DRAGON_FLOORS: int = 20
+const ABYSS_FLOORS:  int = 5
+const FLOOR_COUNT:   int = DRAGON_FLOORS + ABYSS_FLOORS
+const BOSS_EVERY:    int = 5
 
 
-# Boss floors are the multiples of five; the run ends after the last one.
+# Boss floors are the multiples of five down to the last dragon. The Abyss has
+# none of its own.
 static func is_boss_floor(floor_num: int) -> bool:
-	return floor_num % BOSS_EVERY == 0
+	return floor_num % BOSS_EVERY == 0 and floor_num <= DRAGON_FLOORS
+
+
+# The five floors under the Void Dragon.
+static func is_abyss(floor_num: int) -> bool:
+	return floor_num > DRAGON_FLOORS
 
 
 # A warden stands on the last maze floor of its band and nowhere else — floors
@@ -29,13 +37,20 @@ const WARDEN_OFFSET: int = 4
 
 
 static func is_warden_floor(floor_num: int) -> bool:
-	return not is_boss_floor(floor_num) and floor_num % BOSS_EVERY == WARDEN_OFFSET
+	return not is_boss_floor(floor_num) and not is_abyss(floor_num) \
+			and floor_num % BOSS_EVERY == WARDEN_OFFSET
 
 
 # Which band of five this floor belongs to, 1 through 4 — the same tiers the
-# gear tables and the demon pools are cut on.
+# gear tables and the demon pools are cut on. The Abyss counts as tier IV here:
+# its gear and its prices are the deepest the run has.
 static func tier_of(floor_num: int) -> int:
 	return clampi((floor_num - 1) / BOSS_EVERY + 1, 1, 4)
+
+
+# Which band it looks like, 1 through 5: the four dragons' bands, then the Abyss.
+static func band_of(floor_num: int) -> int:
+	return 5 if is_abyss(floor_num) else tier_of(floor_num)
 
 
 # The line colour each tier draws its walls in. The dungeon is nothing but
@@ -52,11 +67,12 @@ const TIER_WIRE: Array[Color] = [
 	Color(1.00, 0.88, 0.31),   # II  · Thunder Dragon  · too bright to look at
 	Color(1.00, 0.45, 0.24),   # III · Fire Dragon     · banked, not yet lit
 	Color(0.66, 0.58, 0.82),   # IV  · Void Dragon     · the colour draining out
+	Color(0.86, 0.85, 0.80),   # V   · the Abyss       · bone white: no colour left
 ]
 
 
 static func tier_wire(floor_num: int) -> Color:
-	return TIER_WIRE[tier_of(floor_num) - 1]
+	return TIER_WIRE[band_of(floor_num) - 1]
 
 
 # The boss corridor burns its band's own colour rather than a flat red: the
@@ -164,6 +180,7 @@ var looted: Dictionary = {}
 #   "spark0/1"     floors 6-10   two groups, swapping every two steps
 #   "lava"         floors 11-15  burns on every crossing
 #   "tele:x,y:i"   floors 16-20  moves you to its partner at x,y; i is the pair
+# The Abyss, floors 21-25, lays all four at once.
 # "spike" is the old damage tile and still reads from older saves, as lava.
 # A hazard that has gone off is recorded in found_traps, not erased.
 var trap_cells: Dictionary = {}

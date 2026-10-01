@@ -538,6 +538,13 @@ static func _pick_from_tier(tier: int) -> Dictionary:
 # stats make it the lighter hitter in the pack, not a pushover.
 static func make_group(floor_num: int) -> Array[Enemy]:
 	var count: int = 1 + randi() % clampi(floor_num, 1, 4)
+	# The Abyss keeps no roster of its own: every demon of every band comes
+	# up out of it, each slot from any tier, all built at this depth.
+	if Level.is_abyss(floor_num):
+		var mixed: Array[Enemy] = []
+		for _i: int in count:
+			mixed.append(_build(_pick_from_tier(1 + randi() % 4), floor_num))
+		return mixed
 	var tier: int = tier_for_floor(floor_num)
 	var group: Array[Enemy] = [make_random(floor_num)]
 	for _i: int in range(count - 1):
@@ -756,9 +763,16 @@ static func opening_hp_scale(floor_num: int) -> float:
 
 
 # Which band of demons a floor draws from. Five floors to a tier, four tiers,
-# and a boss closing each one.
+# and a boss closing each one. The Abyss draws from all four (see make_group)
+# and counts as tier IV for anything that needs one number.
 static func tier_for_floor(floor_num: int) -> int:
 	return clampi((floor_num - 1) / Level.BOSS_EVERY + 1, 1, 4)
+
+
+# The band colour a roamer burns in. In the Abyss each one shows a random
+# band's, so the floor reads as every band's demons at once.
+static func roamer_tier(floor_num: int) -> int:
+	return 1 + randi() % 4 if Level.is_abyss(floor_num) else tier_for_floor(floor_num)
 
 
 static func _build(t: Dictionary, floor_num: int) -> Enemy:

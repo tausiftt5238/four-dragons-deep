@@ -475,13 +475,11 @@ func _is_open(col: int, row: int) -> bool:
 # transitions to the next level. Called after every successful move.
 func _check_portal() -> void:
 	# On a boss floor the far end of the corridor is the boss, not a door. Beat
-	# it and the corridor opens onward — except on the last floor of all, where
-	# beating it is the end of the run.
+	# it and the corridor opens onward, the last dragon's included: under it
+	# is the Abyss.
 	if Level.is_boss_floor(floor_num):
 		if not _boss_beaten:
 			_start_boss_combat()
-			return
-		if floor_num >= Level.FLOOR_COUNT:
 			return
 
 	if not _has_key:
@@ -497,6 +495,13 @@ func _check_portal() -> void:
 		return
 
 	if current_level.next_scene == "":
+		return
+	# The bottom of the Abyss. Its stairs are where the run ends, for now: the
+	# final boss will stand here.
+	if floor_num >= Level.FLOOR_COUNT:
+		_door_open = false
+		_sync_door()
+		_show_congratulations()
 		return
 	_descend()
 
@@ -864,7 +869,7 @@ func _spawn_roamer_in(zone: Rect2i) -> void:
 	var r: Roamer = Roamer.new()
 	r.cell = options[randi() % options.size()]
 	r.zone = zone
-	r.tier = Enemy.tier_for_floor(floor_num)
+	r.tier = Enemy.roamer_tier(floor_num)
 	world.add_child(r)
 	roamers.append(r)
 
@@ -2023,7 +2028,7 @@ func _restore_roamers() -> void:
 	for key: Variant in _pending_roamers:
 		var rm: Roamer = Roamer.new()
 		rm.cell = SaveSystem.key_vec2i(key as String)
-		rm.tier = Enemy.tier_for_floor(floor_num)
+		rm.tier = Enemy.roamer_tier(floor_num)
 		world.add_child(rm)
 		roamers.append(rm)
 	_pending_roamers = []
