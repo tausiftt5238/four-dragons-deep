@@ -964,17 +964,20 @@ func _start_combat() -> void:
 
 
 # A practice fight bought at an orb. Built at this floor's level, and marked so
-# a boss floor does not read the win as the dragon falling. It pays what the
-# same monsters would met in a corridor — experience and their gold, no item
-# drop — so it plays as a random encounter on demand. The gold is about half
-# what the fight cost (OrbUI.gauntlet_price), so it never turns a profit.
+# a boss floor does not read the win as the dragon falling. It is the place to
+# make money: each monster beaten pays GAUNTLET_PAYOUT times what it cost to
+# put in the lineup (OrbUI.gauntlet_price), plus its experience, but no item
+# drop. Losing it is losing a fight, with everything that means.
 var _in_gauntlet: bool = false
+const GAUNTLET_PAYOUT: int = 2
 
 
 func _start_gauntlet(names: Array[String]) -> void:
 	var group: Array[Enemy] = []
 	for n: String in names:
-		group.append(Enemy.make_from_name(n, floor_num))
+		var e: Enemy = Enemy.make_from_name(n, floor_num)
+		e.gold_reward = OrbUI.gauntlet_price(n, floor_num) * GAUNTLET_PAYOUT
+		group.append(e)
 	_in_gauntlet = true
 	_launch_combat(group)
 

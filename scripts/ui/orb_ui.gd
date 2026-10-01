@@ -151,8 +151,8 @@ func _set_status(msg: String) -> void:
 #
 # A paid practice fight, for grinding: up to four monsters out of the bestiary,
 # met at this floor's level, as many of one kind as the player likes. A win
-# pays experience and the monsters' gold, like a corridor fight, but no item
-# drops; the gold is about half the price, so it never turns a profit. Only the ordinary roster is on offer: wardens and
+# pays experience and twice what the lineup cost (Main.GAUNTLET_PAYOUT), but no
+# item drops: it is how gold is made, at the price of the risk. Only the ordinary roster is on offer: wardens and
 # dragons are set pieces met once.
 const GAUNTLET_MAX: int = 4
 

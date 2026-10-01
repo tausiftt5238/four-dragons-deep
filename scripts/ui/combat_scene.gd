@@ -465,6 +465,9 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 					return {msg = "[color=aqua]Used %s.[/color] %s is already %s." % [
 							item["name"], enemy.enemy_name, sname],
 							cost = PressTurn.COST_FULL}
+				if enemy.resists_status(inflicts):
+					return {msg = "[color=aqua]Used %s.[/color] [color=gray]%s shrugs it off.[/color]" % [
+							item["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
 				enemy.apply_status(inflicts)
 				return {msg = "[color=aqua]Used %s![/color]  [color=violet]%s is now %s.[/color]" % [
 						item["name"], enemy.enemy_name, sname], cost = PressTurn.COST_FULL}
@@ -2986,6 +2989,9 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		var target_status: String = data.get("status", "")
 		if target_status == "" or enemy.has_status(target_status):
 			return {msg = "[color=gray]Nothing happened.[/color]", cost = PressTurn.COST_FULL}
+		if enemy.resists_status(target_status):
+			return {msg = "You cast %s!  [color=gray]%s shrugs it off.[/color]" % [
+					data["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
 		enemy.apply_status(target_status)
 		return {msg = "You cast %s!  [color=violet]%s is now %s.[/color]" % [
 				data["name"], enemy.display_name(),
@@ -3518,10 +3524,20 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
 
+	# The same two rules the party's own menus keep. Silence takes every cast
+	# away — elements, buffs, ailments and bites — and leaves the swing;
+	# Immobilize takes the swing away and leaves the casts. Both together leave
+	# nothing at all.
+	var silenced: bool = actor.has_status(Status.SILENCE)
+	var bound: bool = actor.has_status(Status.IMMOBILIZE)
+	if silenced and bound:
+		return {msg = "[color=gray]%s is silenced and bound, and can do nothing.[/color]" % \
+				actor.display_name(), cost = PressTurn.COST_FULL}
+
 	# The ailment goes out early or not at all: it is worth most on a full party
 	# and worthless once everyone standing already has it, which is also what
 	# keeps it to a cast or two a fight rather than a loop.
-	if randi() % 10 < AIL_CAST_ODDS and _ail_cast_ready(actor):
+	if not silenced and randi() % 10 < AIL_CAST_ODDS and _ail_cast_ready(actor):
 		return _enemy_cast_ailment(actor)
 
 	# Support next: a demon that can stack a buff will, while it still has
@@ -3529,7 +3545,8 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# Both come out of the one pool, and Mire costs ten against a Cave Bat's
 	# twenty-four, so a demon carrying both used to spend everything on buffs
 	# and never once cast the thing it is named for.
-	if actor.support_skill != "" and randi() % 10 < 3 and _can_spare_support(actor):
+	if not silenced and actor.support_skill != "" and randi() % 10 < 3 \
+			and _can_spare_support(actor):
 		var sup: Dictionary = Spell.get_data(actor.support_skill)
 		# A dispel against a side with nothing stacked is a wasted phase, so a
 		# demon carrying one holds it until there is something to take.
@@ -3565,7 +3582,7 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 						"rises" if delta > 0 else "falls", moved],
 						cost = PressTurn.COST_FULL}
 
-	var bit: Dictionary = _enemy_leech(actor)
+	var bit: Dictionary = {} if silenced else _enemy_leech(actor)
 	if not bit.is_empty():
 		return bit
 
@@ -3584,8 +3601,12 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# five. A demon it takes from the hero does not come back, so those
 	# stay something that happens rather than the opening move of every fight.
 	var paid: bool = false
-	var pool: Array[String] = actor.affordable_elements(randi() % 10 < 2)
-	if not pool.is_empty():
+	var pool: Array[String] = []
+	if not silenced:
+		pool = actor.affordable_elements(randi() % 10 < 2)
+	if silenced:
+		dry = "[color=gray]%s is silenced.[/color]\n" % actor.display_name()
+	elif not pool.is_empty():
 		actor.mp -= actor.skill_cost()
 		element = pool[randi() % pool.size()]
 		base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
@@ -3611,6 +3632,11 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# single-target consolation, and a swing is a swing.
 	if paid and actor.attack_reach != Spell.SHAPE_ONE:
 		return _enemy_spread(actor, element, base, dry)
+
+	# Bound, it cannot swing; if all it had left was a swing, the turn is gone.
+	if bound and element == Affinity.PHYS:
+		return {msg = dry + "[color=gray]%s strains against its bonds.[/color]" % \
+				actor.display_name(), cost = PressTurn.COST_FULL}
 
 	var target: CharacterSheet = _pick_target(element)
 

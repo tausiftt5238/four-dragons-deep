@@ -49,8 +49,8 @@ The only place you can save, heal or shop. Stand on one and every tab is there:
   the depth you have reached has opened up.
 - **Save** — write the run to a slot.
 - **Gauntlet** — pay to fight up to four monsters from your bestiary at this
-  floor's level. A win pays experience and their gold (about half what you paid),
-  but no item drops.
+  floor's level. A win pays experience and twice what you paid, but no item
+  drops. Lose, and it is a lost fight like any other.
 
 **Every boss corridor has an orb one step inside it**, facing you. That is the
 last chance to prepare before the dragon, and there are no traps between the
