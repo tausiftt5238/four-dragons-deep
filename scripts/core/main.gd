@@ -1203,6 +1203,11 @@ func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
 func _resume_from_overlay() -> void:
 	hud_layer.visible = true
 	in_combat = false
+	if _reopen_orb_tab != "":
+		var tab: String = _reopen_orb_tab
+		_reopen_orb_tab = ""
+		_open_orb(tab)
+		return
 	if _pending_congratulations:
 		_pending_congratulations = false
 		_show_congratulations()
@@ -1565,7 +1570,35 @@ func _open_orb(tab: String = "rest") -> void:
 		_close_orb()
 		_start_gauntlet(names)
 	)
+	ui.gacha_exp_won.connect(_gacha_exp)
 	orb_layer.add_child(ui)
+
+
+# Experience off the orb's slot machine, paid the way a fight pays it: the hero
+# and the roster both. A level-up closes the orb for the same screens a fight
+# shows, and the orb comes back on the slot machine after the last of them.
+var _reopen_orb_tab: String = ""
+
+func _gacha_exp(amount: int) -> void:
+	var before: Dictionary = _player_snapshot()
+	player_char.gain_exp(amount)
+	var after: Dictionary = _player_snapshot()
+	var demons_before: Dictionary = _demon_snapshots()
+	var grew: Dictionary = player_char.award_demon_exp(amount)
+	var ups: Array[Dictionary] = _demon_level_ups(grew, demons_before)
+	var leveled: bool = after["lv"] > before["lv"]
+	if not leveled and ups.is_empty():
+		return
+	# After the reels have settled and the result is up, not in the middle.
+	await get_tree().create_timer(0.8).timeout
+	_close_orb()
+	in_combat = true
+	hud_layer.visible = false
+	_reopen_orb_tab = "gacha"
+	if leveled:
+		_show_level_up(before, after, ups)
+	else:
+		_show_demon_level_ups(ups)
 
 
 func _close_orb() -> void:

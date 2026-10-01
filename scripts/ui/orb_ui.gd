@@ -9,6 +9,9 @@ signal closed
 signal save_requested
 # The lineup the player paid for, as template names. Main runs the fight.
 signal gauntlet_requested(names: Array[String])
+# Experience won on the slot machine. Main pays it, so a level-up gets the same
+# screens a fight's would.
+signal gacha_exp_won(amount: int)
 
 var player: PlayerCharacter
 var floor_num: int = 1
@@ -96,7 +99,7 @@ func _build() -> void:
 	for pair: Array in [["rest", "Rest"], ["bind", "Recruit"],
 			["sell", "Sell"], ["buy", "Supplies"],
 			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"],
-			["gauntlet", "Gauntlet"]]:
+			["gauntlet", "Gauntlet"], ["gacha", "Gacha"]]:
 		var btn: Button = Button.new()
 		btn.text = pair[1] as String
 		btn.toggle_mode = true
@@ -131,6 +134,7 @@ func _switch(tab: String) -> void:
 		"scrolls": _build_scrolls()
 		"save": _build_save()
 		"gauntlet": _build_gauntlet()
+		"gacha": _build_gacha()
 
 
 # Rebuilds the tab after a purchase or a sale, keeping the scroll where it was.
@@ -145,6 +149,195 @@ func _refresh() -> void:
 
 func _set_status(msg: String) -> void:
 	_status.text = msg
+
+
+# ── Gacha ─────────────────────────────────────────────────────────────────────
+#
+# A slot machine: pay, spin three reels, keep what matches. The rules and the
+# prizes live in Gacha; this is the cabinet.
+const REEL_LOOK: Dictionary = {
+	"exp":  {text = "EXP",  color = Color(0.50, 0.80, 1.00)},
+	"gold": {text = "GOLD", color = Color(1.00, 0.85, 0.35)},
+	"item": {text = "ITEM", color = Color(0.55, 0.95, 0.60)},
+	"monster": {text = "MON", color = Color(1.00, 0.50, 0.50)},
+}
+const REEL_TICK: float = 0.06
+# When each reel stops, counted from the pull, so they land left to right.
+const REEL_STOPS: Array[float] = [0.7, 1.1, 1.5]
+
+var _reels: Array[Label] = []
+var _reel_boxes: Array[PanelContainer] = []
+var _spin_btn: Button
+var _gacha_result: Label
+var _spinning: bool = false
+
+
+func _build_gacha() -> void:
+	var cost: int = Gacha.price(floor_num)
+	var reels: HBoxContainer = HBoxContainer.new()
+	reels.add_theme_constant_override("separation", 8)
+	reels.alignment = BoxContainer.ALIGNMENT_CENTER
+	_content.add_child(reels)
+	_reels.clear()
+	_reel_boxes.clear()
+	for i: int in 3:
+		var box: PanelContainer = PanelContainer.new()
+		box.custom_minimum_size = Vector2(120, 96)
+		box.add_theme_stylebox_override("panel", _reel_style(Color(0.30, 0.34, 0.42)))
+		reels.add_child(box)
+		var lbl: Label = Label.new()
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 25)
+		box.add_child(lbl)
+		_reels.append(lbl)
+		_reel_boxes.append(box)
+		_show_face(i, [Gacha.GOLD, Gacha.MONSTER, Gacha.ITEM][i])
+
+	_gacha_result = Label.new()
+	_gacha_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_gacha_result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_gacha_result.custom_minimum_size = Vector2(0, 44)
+	_gacha_result.add_theme_font_size_override("font_size", 18)
+	_gacha_result.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92))
+	_gacha_result.text = "Two alike pays. Three alike is the jackpot."
+	_content.add_child(_gacha_result)
+
+	_spin_btn = Button.new()
+	_spin_btn.text = "Spin  (%d g)" % cost
+	_spin_btn.custom_minimum_size = Vector2(240, 48)
+	_spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_spin_btn.disabled = player.gold < cost
+	_spin_btn.pressed.connect(_spin)
+	_content.add_child(_spin_btn)
+
+	_content.add_child(HSeparator.new())
+	var exp_pair: int = Gacha.exp_prize(floor_num, false)
+	var gold_pair: int = Gacha.gold_prize(floor_num, false)
+	for row: Array in [
+			["EXP", "%d exp" % exp_pair, "%d exp" % Gacha.exp_prize(floor_num, true)],
+			["GOLD", "%d g" % gold_pair, "%d g" % Gacha.gold_prize(floor_num, true)],
+			["ITEM", "a supply", "gear, tier %s" % _tier_name(1)],
+			["MON", "tier %s monster" % _tier_name(0), "tier %s monster" % _tier_name(1)]]:
+		_content.add_child(_paytable_row(row[0] as String, row[1] as String, row[2] as String))
+	_content.add_child(_note("Pair pays the middle column, jackpot the right. Prizes grow with the floor."))
+
+
+# This floor's band, or the one below it, as a roman numeral.
+func _tier_name(deeper: int) -> String:
+	return ["I", "II", "III", "IV"][mini(4, Enemy.tier_for_floor(floor_num) + deeper) - 1]
+
+
+func _paytable_row(face: String, pair: String, jackpot: String) -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	var look: Dictionary = {}
+	for key: String in REEL_LOOK:
+		if REEL_LOOK[key]["text"] == face:
+			look = REEL_LOOK[key]
+	for cell: Array in [[face, look["color"]], [pair, Color(0.80, 0.80, 0.86)],
+			[jackpot, Color(1.0, 0.85, 0.35)]]:
+		var lbl: Label = Label.new()
+		lbl.text = cell[0] as String
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.add_theme_color_override("font_color", cell[1] as Color)
+		row.add_child(lbl)
+	return row
+
+
+static func _reel_style(edge: Color) -> StyleBoxFlat:
+	var sb: StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.08, 0.11)
+	sb.border_color = edge
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(6)
+	return sb
+
+
+func _show_face(i: int, face: String) -> void:
+	if i >= _reels.size() or not is_instance_valid(_reels[i]):
+		return
+	var look: Dictionary = REEL_LOOK[face]
+	_reels[i].text = look["text"] as String
+	_reels[i].add_theme_color_override("font_color", look["color"] as Color)
+
+
+func _spin() -> void:
+	var cost: int = Gacha.price(floor_num)
+	if _spinning or player.gold < cost:
+		return
+	_spinning = true
+	player.gold -= cost
+	_gold_lbl.text = "Gold:  %d" % player.gold
+	_spin_btn.disabled = true
+	_gacha_result.text = "..."
+	for b: PanelContainer in _reel_boxes:
+		b.add_theme_stylebox_override("panel", _reel_style(Color(0.30, 0.34, 0.42)))
+	var reels: Array[String] = Gacha.spin()
+	# The reels flicker through faces and stop one at a time on what was rolled.
+	var t: float = 0.0
+	var stopped: int = 0
+	while stopped < 3:
+		await get_tree().create_timer(REEL_TICK).timeout
+		if not is_instance_valid(self) or _tab != "gacha":
+			break
+		t += REEL_TICK
+		while stopped < 3 and t >= REEL_STOPS[stopped]:
+			_show_face(stopped, reels[stopped])
+			stopped += 1
+		for i: int in range(stopped, 3):
+			_show_face(i, Gacha.FACES[randi() % Gacha.FACES.size()])
+	_spinning = false
+	if not is_instance_valid(self):
+		return
+	# Paid whether or not the tab is still showing: the gold has gone.
+	var said: String = _pay_out(reels)
+	if _tab != "gacha":
+		# Switched away mid-spin: the cabinet is gone, so say it down below.
+		_set_status(said)
+		return
+	_gacha_result.text = said
+	var won: Dictionary = Gacha.outcome(reels)
+	if not won.is_empty():
+		var glow: Color = Color(1.0, 0.85, 0.35) if won["jackpot"] else Color(0.55, 0.95, 0.60)
+		for i: int in 3:
+			if reels[i] == won["face"]:
+				_reel_boxes[i].add_theme_stylebox_override("panel", _reel_style(glow))
+	_gold_lbl.text = "Gold:  %d" % player.gold
+	_spin_btn.disabled = player.gold < cost
+
+
+# Hands over what the reels say and returns the line that says so.
+func _pay_out(reels: Array[String]) -> String:
+	var won: Dictionary = Gacha.outcome(reels)
+	if won.is_empty():
+		return "No match."
+	var jackpot: bool = won["jackpot"]
+	var head: String = "JACKPOT!  " if jackpot else ""
+	match won["face"]:
+		Gacha.GOLD:
+			var g: int = Gacha.gold_prize(floor_num, jackpot)
+			player.gold += g
+			return "%sWon %d gold." % [head, g]
+		Gacha.ITEM:
+			var it: Dictionary = Gacha.item_prize(_supplies(), floor_num, jackpot)
+			player.add_item(it, 1)
+			return "%sWon %s." % [head, it["name"]]
+		Gacha.MONSTER:
+			var mon: Dictionary = Gacha.monster_prize(player, floor_num, jackpot)
+			if mon.is_empty() or not player.can_bind(mon["name"] as String):
+				# No room, or nobody left to meet: it pays what binding one would
+				# have cost instead, so the win is never empty.
+				var g: int = (40 + Enemy.level_for_floor(floor_num, 0) * 35) \
+						* (3 if jackpot else 1)
+				player.gold += g
+				return "%sRoster full. Won %d gold instead." % [head, g]
+			player.remember_recruit(mon["name"] as String, int(mon["lv"]))
+			return "%s%s (LV %d) joins you!" % [head, mon["name"], int(mon["lv"])]
+		_:
+			var xp: int = Gacha.exp_prize(floor_num, jackpot)
+			gacha_exp_won.emit(xp)
+			return "%sWon %d exp." % [head, xp]
 
 
 # ── Gauntlet ──────────────────────────────────────────────────────────────────

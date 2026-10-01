@@ -51,6 +51,11 @@ The only place you can save, heal or shop. Stand on one and every tab is there:
 - **Gauntlet** — pay to fight up to four monsters from your bestiary at this
   floor's level. A win pays experience and twice what you paid, but no item
   drops. Lose, and it is a lost fight like any other.
+- **Gacha** — a slot machine. Pay, spin three reels of EXP, GOLD, ITEM and
+  MON (a monster), and keep what matches. Two alike pays that prize; three
+  alike is the jackpot and pays it bigger: more experience or gold, gear from
+  the next tier, or a monster from the next tier. Prizes grow with the floor.
+  A monster won with a full roster pays out in gold instead.
 
 **Every boss corridor has an orb one step inside it**, facing you. That is the
 last chance to prepare before the dragon, and there are no traps between the
