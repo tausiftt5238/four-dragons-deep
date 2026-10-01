@@ -128,6 +128,9 @@ static func supply(it: Dictionary) -> String:
 		parts.append(_paint("Max HP +%d" % int(it["max_hp_gain"]), Color(HP_COLOR)))
 	if int(it.get("max_mp_gain", 0)) > 0:
 		parts.append(_paint("Max MP +%d" % int(it["max_mp_gain"]), Color(MP_COLOR)))
+	if it.has("stat_up"):
+		parts.append(_paint("%s +%d for good" % [(it["stat_up"] as String).to_upper(),
+				int(it.get("stat_up_amount", 1))], Color(0.55, 0.95, 0.60)))
 	if int(it.get("dmg", 0)) > 0:
 		parts.append("%s x1" % icon(it.get("element", "") as String))
 		parts.append("%d dmg" % int(it["dmg"]))
@@ -177,4 +180,7 @@ static func gear(it: Dictionary, deltas: String = "") -> String:
 		chart.append(icon(w) + _paint("W", Affinity.color(Affinity.WEAK)))
 	if not chart.is_empty():
 		parts.append(" ".join(chart))
+	var wards: String = GearTooltip.wards_text(it)
+	if wards != "":
+		parts.append(_paint("Wards " + wards, Color(0.55, 0.95, 0.60)))
 	return SEP.join(parts)

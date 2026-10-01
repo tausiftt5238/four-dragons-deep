@@ -1,7 +1,7 @@
 # How to Play
 
-**Four Dragons Deep** is a first-person dungeon crawler. Twenty floors, four
-dragons, one run. Death ends it — a saved game is the only way back.
+**Four Dragons Deep** is a first-person dungeon crawler. Twenty-five floors,
+four dragons, one run. Death ends it — a saved game is the only way back.
 
 ---
 
@@ -26,9 +26,15 @@ opens it.
 |---|---|
 | **Save orbs** | Rest, shop, save, and manage your monsters. Press **Orb** while standing on one. |
 | **Chests** | Set into the walls. Gold, and usually an item. |
-| **Mimics** | From floor 6, some of those chests are not chests. Nothing tells you which. |
-| **Spike traps** | 15% of your maximum HP. Once sprung, they stay marked on your map — but they bite every time you cross them. |
+| **Ice** (floors 1–5) | Slides you along the corridor to solid floor. Never hurts. |
+| **Charged plates** (floors 6–10) | A plate on every other tile, in two groups that swap every two steps you take. A lit plate costs 15% of your maximum HP when you step on it; thunder-resistant gear halves it. If the next plate is lit, step back and forward once and it will be dark, and then a steady walk keeps the rest dark too. Turning and standing still never count. |
+| **Lava** (floors 11–15) | Pools of two to four tiles. Each lava tile you step on takes 15% of your maximum HP; fire-resistant gear halves it. There is always a way around. |
+| **Teleporters** (floors 16–20) | Carry you to their twin (same colour). Step off and back on to return. Once used, the map joins the pair. |
 | **Roamers** | Monsters walking the floor. They come for you when you get close; touching one starts a fight. Their colour tells you which band you are in. |
+
+The Abyss (floors 21–24) lays all four at once.
+
+Hazards you've set off stay marked on your map. Warden and dragon floors have none.
 
 Your MP creeps back up as you walk, so exploring is never wasted.
 
@@ -43,9 +49,20 @@ The only place you can save, heal or shop. Stand on one and every tab is there:
 - **Sell** — monsters *and* anything in your pack. Sells for half the asking price.
 - **Supplies / Gear / Scrolls** — potions, weapons and armour, and every spell
   the depth you have reached has opened up.
+  From floor 6 the Gear shelf carries ward trinkets, each keeping one ailment
+  off the hero for good: Star Pendant (poison), Silver Specs (blindness), Echo
+  Bangle (silence), Grounding Cord (paralysis). The **Ribbon** wards every
+  ailment, and is never sold: it turns up in chests, drops and Gacha jackpots
+  in the deepest band.
 - **Save** — write the run to a slot.
 - **Gauntlet** — pay to fight up to four monsters from your bestiary at this
-  floor's level. Experience only: no gold, no drops.
+  floor's level. A win pays experience and twice what you paid, but no item
+  drops. Lose, and it is a lost fight like any other.
+- **Gacha** — a slot machine. Pay, spin three reels of EXP, GOLD, ITEM and
+  MON (a monster), and keep what matches. Two alike pays that prize; three
+  alike is the jackpot and pays it bigger: more experience or gold, gear from
+  the next tier, or a monster from the next tier. Prizes grow with the floor.
+  A monster won with a full roster pays out in gold instead.
 
 **Every boss corridor has an orb one step inside it**, facing you. That is the
 last chance to prepare before the dragon, and there are no traps between the
@@ -186,6 +203,16 @@ Two items never wear off: a **Heartstone** raises maximum HP for good, a
 **Wellstone** raises maximum MP. Both refill you completely when used. They
 come from chests and from kills, and they are worth carrying to a boss door.
 
+**Seeds** do the same for a stat: a Seed of Strength, Defence, Wisdom (magic),
+Agility or Luck adds one point to a stat for good, half a level's worth, put
+exactly where you want it. They are rarer than stones: about one chest in
+twelve, one kill in fifty.
+
+Use a stone or a seed from the menu and it asks who gets it: the hero or any
+monster on your roster, benched ones included. Monsters have no Luck, so the
+Seed of Luck is the hero's. What a monster is given stays with it, and goes
+with it if you sell it.
+
 ---
 
 ## The four dragons
@@ -199,5 +226,28 @@ next. You begin holding Ember, which is why Ice comes first.
 
 The walls of a band burn in that band's dragon's colour. When the corridor
 around you changes, you know what is waiting at the end of it.
+
+## The Abyss
+
+Beating the Void Dragon on floor 20 opens its corridor onto **the Abyss**: four
+more maze floors with no colour left in their walls. Every hazard is on every floor,
+and every band's demons roam it together, all at Abyss depth. There is no
+warden; each floor's key lies somewhere to be found.
+
+## The Necromancer
+
+It waits at the end of a corridor on floor 25, like the dragons, and beating
+it ends the run.
+
+- **It changes form every turn.** Each of its turns it takes one of the four
+  dragons' forms, and with it that dragon's weaknesses, until its next turn. It
+  only casts its form's element, one target at a time, so the spell it opens
+  with tells you what to hit it with.
+- **It raises the dead.** Every turn it raises a skeleton at half its level, up
+  to three. Each one fights as its kind does and brings its own turn: the
+  Necromancer's two turns grow to five. They crumble when it falls.
+- **It keeps its slate clean.** Now and then it strips your buffs (Purge) or its
+  own side's debuffs (Steady), when there is something to clear.
+- Silence and Blind take hold on it only one time in five, as on a dragon.
 
 Good luck. Four dragons deep is further than it sounds.

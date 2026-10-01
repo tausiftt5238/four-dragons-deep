@@ -7,7 +7,7 @@
 #
 # A side opens its phase with one icon per living combatant and keeps acting
 # until the icons run out, so weakness hits and criticals buy extra actions for
-# whoever landed them — see PressTurn for the exact economy. The detective and
+# whoever landed them — see PressTurn for the exact economy. The hero and
 # his bound demons share the player side; summoning binds one into the party,
 # which is what raises the icon count on the following phase.
 class_name CombatScene extends Control
@@ -33,8 +33,8 @@ var _departed: Array[Enemy] = []
 # freed, so the loss can be reported where the player will actually see it.
 var lost_demons: Array[String] = []
 
-# The detective plus every demon he has bound this battle. Index 0 is always
-# the detective; _actor is the member currently holding the turn.
+# The hero plus every demon he has bound this battle. Index 0 is always
+# the hero; _actor is the member currently holding the turn.
 const MAX_PARTY: int = 4
 var party: Array[CharacterSheet] = []
 var _actor_idx: int = 0
@@ -45,13 +45,13 @@ var _foe_press: PressTurn
 var _negotiation: CombatNegotiation
 
 # When set, enemy actions ignore target selection and swing at this member.
-# Used by the negotiation handlers, where the detective is the one talking.
+# Used by the negotiation handlers, where the hero is the one talking.
 var _force_target: CharacterSheet = null
 
 var _log_label:      RichTextLabel
 var _log_first_line: bool = true
 
-# The detective's portrait, kept as its own reference because the CombatNeg*
+# The hero's portrait, kept as its own reference because the CombatNeg*
 # handlers shake it directly.
 var _player_portrait: TextureRect
 
@@ -353,6 +353,8 @@ func _show_item_submenu() -> void:
 		var usable: bool = is_throwable or item.has("mirror") or player.can_use_item(item)
 		if item.has("revive"):
 			usable = not _fallen_members().is_empty()
+		elif _restorative(item):
+			usable = _living_party().any(func(m: CharacterSheet) -> bool: return m.could_use(item))
 		entries.append({title = item["name"] as String,
 				detail = "x%d" % int(item.get("qty", 1)),
 				disabled = not usable,
@@ -373,14 +375,14 @@ func _show_talk_submenu() -> void:
 		["Threaten", "Threaten"],
 		["Recruit",  "Recruit"],
 	]
-	# Nothing above the detective's own level will answer to him, so Recruit is
+	# Nothing above the hero's own level will answer to him, so Recruit is
 	# closed rather than allowed to eat three rounds and fail. Refusing up front
 	# is the honest version of the same rule.
 	var outranks: bool = enemy.lv > player.lv
 	# Six already answer to you: Recruit has nowhere to put it.
 	var full: bool = not player.can_bind(enemy.enemy_name)
 	# No "bound" state here any more: Talk never reaches this menu on a demon
-	# whose name is already in the rolodex — that one pays you off instead.
+	# whose name is already in the roster — that one pays you off instead.
 	for opt: Array in opts:
 		var recruit: bool = opt[0] == "Recruit"
 		var note: String = ""
@@ -463,6 +465,9 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 					return {msg = "[color=aqua]Used %s.[/color] %s is already %s." % [
 							item["name"], enemy.enemy_name, sname],
 							cost = PressTurn.COST_FULL}
+				if enemy.resists_status(inflicts):
+					return {msg = "[color=aqua]Used %s.[/color] [color=gray]%s shrugs it off.[/color]" % [
+							item["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
 				enemy.apply_status(inflicts)
 				return {msg = "[color=aqua]Used %s![/color]  [color=violet]%s is now %s.[/color]" % [
 						item["name"], enemy.enemy_name, sname], cost = PressTurn.COST_FULL}
@@ -498,6 +503,14 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 				return {msg = "[color=aqua]Used %s![/color]  [color=#d070ff]A mirror goes up before the party: %s attacks are turned back until your next turn.[/color]" % [
 						item["name"], "physical" if item["mirror"] == "phys" else "magic"],
 						cost = PressTurn.COST_FULL}
+			if _restorative(item):
+				var who: CharacterSheet = _ally_target \
+						if _ally_target != null and _ally_target.is_alive() else player
+				var done: String = who.apply_restorative(item)
+				player.remove_item(item, 1)
+				_refresh_hp()
+				return {msg = "[color=aqua]Used %s on %s. %s[/color]" % [
+						item["name"], _member_name(who), done], cost = PressTurn.COST_FULL}
 			var result: String = player.use_item(item)
 			return {msg = "[color=aqua]Used %s. %s[/color]" % [item["name"], result],
 					cost = PressTurn.COST_FULL}
@@ -520,12 +533,12 @@ func _check_counter() -> String:
 
 
 
-# A bound demon that goes down is struck off here — off the rolodex, not just
+# A bound demon that goes down is struck off here — off the roster, not just
 # out of this fight — which is the whole reason the compendium is there. It is
 # struck off at this moment and not the one it dropped in, so everything up to
 # the last enemy is a window in which Revive can still pull it back.
 func _end_combat(result: String) -> void:
-	# The detective outlives the fight; a mirror must not.
+	# The hero outlives the fight; a mirror must not.
 	for member: CharacterSheet in party:
 		member.mirror = ""
 	# Not cleared: a body swapped off the field was already struck off and
@@ -573,7 +586,7 @@ func _pick_ally(fallen: bool, title: String, back: Callable, then: Callable) -> 
 	for m: CharacterSheet in pool:
 		var who: CharacterSheet = m
 		entries.append({title = _member_name(who),
-				detail = "%d / %d HP" % [who.hp, who.max_hp],
+				detail = "%d/%d HP  %d/%d MP" % [who.hp, who.max_hp, who.mp, who.max_mp],
 				press = func() -> void:
 					_ally_target = who
 					then.call()})
@@ -645,7 +658,7 @@ func _begin_player_phase() -> void:
 # That also means the old single check on phase two had to go: almost nothing is
 # hurt that early, so the event would have stopped firing altogether. It is
 # rolled at the top of every phase from the second on, still only once a battle,
-# and at five per cent, plus half a point per point of the detective's luck,
+# and at five per cent, plus half a point per point of the hero's luck,
 # capped at fifteen.
 const BEG_CHANCE: float = 0.05
 const BEG_PER_LUK: float = 0.005
@@ -842,6 +855,12 @@ func _do_end_of_round() -> void:
 	if not tick_msg.is_empty():
 		_log(tick_msg)
 		_refresh_hp()
+	# Poison has bitten for the round; now the foes' ailments count down a
+	# turn, as the party's did when its phase ended.
+	var worn_msg: String = _wear_off(foes)
+	if not worn_msg.is_empty():
+		_log(worn_msg)
+		_refresh_hp()
 	if _living_party().is_empty():
 		await get_tree().create_timer(1.6).timeout
 		if is_instance_valid(self):
@@ -888,9 +907,20 @@ func _actor_portrait() -> TextureRect:
 
 
 
+# A potion, an ether or a cure: anything that mends rather than hurts or
+# raises a ceiling. Any of the party can take one, so it asks who.
+static func _restorative(item: Dictionary) -> bool:
+	return int(item.get("hp_restore", 0)) > 0 or int(item.get("mp_restore", 0)) > 0 \
+			or item.get("cures_status", "") != ""
+
+
 func _on_use_item(item: Dictionary) -> void:
 	if item.has("revive"):
 		_pick_ally(true, "Revive who?", _show_item_submenu,
+				func() -> void: await _commit_item(item))
+		return
+	if _restorative(item):
+		_pick_ally(false, "Use %s on?" % item["name"], _show_item_submenu,
 				func() -> void: await _commit_item(item))
 		return
 	var offensive: bool = item.has("inflicts_status") \
@@ -912,7 +942,7 @@ func _commit_item(item: Dictionary) -> void:
 # Returns { msg, cost } — the log line and what the action cost in icons.
 func _resolve_action(action: String) -> Dictionary:
 	var actor: CharacterSheet = _actor()
-	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
+	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % _actor_name(),
 				cost = PressTurn.COST_FULL}
 	if action.begins_with("Magic:"):
@@ -1028,11 +1058,15 @@ func _defense_of(member: CharacterSheet) -> int:
 # What a dry caster's cast is worth, against the 2.0 an paid one gets.
 const CASTER_DREGS: float = 1.0
 
+# The odds a paralysed member, on either side, loses the action it was about
+# to take. It still costs the icon.
+const PARALYSIS_SKIP: float = 0.5
+
 const AIL_SPELLS: Dictionary = {
 	Status.POISON:     "venom",
 	Status.PARALYZED:  "shock",
 	Status.SILENCE:    "mute",
-	Status.IMMOBILIZE: "bind",
+	Status.BLIND:      "blind",
 }
 const AIL_CAST_ODDS: int = 3    # in ten, while someone standing is still clean
 const AIL_LAND_MULT: int = 3
@@ -1079,6 +1113,12 @@ func _enemy_cast_ailment(actor: Enemy) -> Dictionary:
 	var lead: String = "[color=violet]%s casts %s![/color]" % [
 			actor.display_name(), sp.get("name", sname)]
 
+	# A ward trinket never fails, and it is checked before the dice so a
+	# warded hero sees why, every time.
+	if target == player and not player.ward_against(status_id).is_empty():
+		return {msg = "%s  [color=lime]%s's %s wards it off![/color]" % [lead,
+				PlayerCharacter.DISPLAY_NAME, player.ward_against(status_id)["name"]],
+				cost = PressTurn.COST_FULL}
 	if randi() % 100 >= ail_landing_chance(actor.ailment_chance):
 		return {msg = "%s  [color=gray]%s shrugs it off.[/color]" % [
 				lead, _member_name(target)], cost = PressTurn.COST_FULL}
@@ -1090,7 +1130,7 @@ func _enemy_cast_ailment(actor: Enemy) -> Dictionary:
 			lead, _member_name(target), sname], cost = PressTurn.COST_FULL}
 
 
-# Kept for the CombatNeg* handlers: one provoked swing at the detective, taken
+# Kept for the CombatNeg* handlers: one provoked swing at the hero, taken
 # outside the icon economy because a failed negotiation is its own risk.
 func _apply_enemy_turn() -> String:
 	_force_target = player
@@ -1471,7 +1511,10 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
 	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	icon.set_zoom(3.0)
-	icon.modulate = foe.tint
+	# self_modulate, not modulate: the tint is the monster's colour, and the
+	# ailment marks drawn over it should keep their own.
+	icon.self_modulate = foe.tint
+	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
@@ -1499,7 +1542,7 @@ func _build_foe_card(foe: Enemy) -> Control:
 	var chart: AffinityChart = AffinityChart.new()
 	chart.foe = foe
 	chart.knows = func(element: String) -> bool:
-		return player.knows_affinity(foe.enemy_name, element)
+		return player.knows_affinity(foe.lore_name(), element)
 	# Fill, not shrink: the chart is drawn, so it has no width of its own to
 	# shrink to, and centred it came out zero pixels wide.
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1525,9 +1568,9 @@ func _foe_portrait(foe: Enemy) -> TextureRect:
 func _reveal(foe: Enemy, element: String) -> void:
 	if foe == null or element == "":
 		return
-	player.learn_affinity(foe.enemy_name, element)
+	player.learn_affinity(foe.lore_name(), element)
 	for r: Dictionary in _foe_rows:
-		if r["foe"] == foe or (r["foe"] as Enemy).enemy_name == foe.enemy_name:
+		if r["foe"] == foe or (r["foe"] as Enemy).lore_name() == foe.lore_name():
 			(r["chart"] as AffinityChart).queue_redraw()
 
 
@@ -1576,6 +1619,7 @@ func _refresh_foe_rows() -> void:
 			(r["hp_lbl"] as Label).add_theme_color_override("font_color",
 					Color(0.45, 0.45, 0.52))
 			(r["stages"] as StageArrows).visible = false
+			(r["chart"] as AffinityChart).visible = false
 			continue
 		var alive: bool = foe.is_alive()
 		var targeted: bool = (foe == enemy) and alive
@@ -1646,9 +1690,17 @@ func _after_action(cost: String) -> void:
 
 
 func _enemy_phase() -> void:
+	# The party's turn is over, so its ailments count down a turn.
+	var worn_msg: String = _wear_off(party)
+	if not worn_msg.is_empty():
+		_log(worn_msg)
 	_step_back_immediate()
 	_set_buttons(false)
 	_show_main_actions()
+	# The Necromancer changes form at the top of each of its phases.
+	for f: Enemy in _living_foes():
+		if f.is_necromancer():
+			_necro_begin_phase(f)
 	# One icon per demon still standing — the same rule the player side runs on,
 	# which is what makes a pack of four genuinely dangerous.
 	var living: Array[Enemy] = _living_foes()
@@ -1662,12 +1714,20 @@ func _enemy_phase() -> void:
 
 	while is_instance_valid(self) and _foe_press.has_turns() \
 			and not _living_foes().is_empty() and not _living_party().is_empty():
-		var actors: Array[Enemy] = _living_foes()
+		# Only what stood when the phase began takes turns in it: a minion
+		# raised mid-phase starts acting next phase, rather than taking the
+		# icons its master was still spending.
+		var actors: Array[Enemy] = []
+		for f: Enemy in _living_foes():
+			if f in living:
+				actors.append(f)
+		if actors.is_empty():
+			break
 		var actor: Enemy = actors[_foe_turn_idx % actors.size()]
 		_foe_turn_idx += 1
 		_clear_floats()
 		_step_forward_foe(actor)
-		var res: Dictionary = _enemy_act(actor)
+		var res: Dictionary = _necro_act(actor) if actor.is_necromancer() else _enemy_act(actor)
 		_log(res["msg"] as String)
 		# Their phase ends on a repel or a drain exactly as yours does, and it
 		# is worth saying out loud — the reason the pack stopped is a read the
@@ -1699,6 +1759,21 @@ func _enemy_phase() -> void:
 	await _do_end_of_round()
 
 
+# Counts one turn off every living member's ailments and says which ones
+# lifted. Ailments last CharacterSheet.STATUS_TURNS of the afflicted's own turns.
+func _wear_off(members: Array) -> String:
+	var msgs: Array[String] = []
+	for m: CharacterSheet in members:
+		if not m.is_alive():
+			continue
+		for id: String in m.tick_statuses():
+			var who: String = (m as Enemy).display_name() if m is Enemy else _member_name(m)
+			msgs.append("[color=gray]%s recovers from %s.[/color]" % [
+					who, Status.get_data(id).get("noun", id)])
+	_refresh_hp()
+	return "\n".join(msgs)
+
+
 func _do_poison_ticks() -> String:
 	var msgs: Array[String] = []
 	for m: CharacterSheet in party:
@@ -1726,10 +1801,12 @@ func _do_poison_ticks() -> String:
 # ── Fleeing ───────────────────────────────────────────────────────────────────
 
 func _do_flee() -> void:
-	var fastest: int = 0
+	# Agility as it stands this fight, so a blind hero struggles to get away
+	# and a blind foe struggles to stop him.
+	var fastest: float = 0.0
 	for f: Enemy in _living_foes():
-		fastest = maxi(fastest, f.agl)
-	if player.effective_agl() >= fastest or randi() % 2 == 0:
+		fastest = maxf(fastest, f.agl * f.agility_mult())
+	if player.effective_agl() * player.agility_mult() >= fastest or randi() % 2 == 0:
 		_log("You slip away into the dark.")
 		await get_tree().create_timer(0.9).timeout
 		if is_instance_valid(self):
@@ -1807,14 +1884,14 @@ func _on_action(action: String) -> void:
 
 
 # Everything the acting member can swing lives in one list: the plain attack
-# first, then whatever they carry. For the detective that is his equipped
+# first, then whatever they carry. For the hero that is his equipped
 # spells; for a bound demon it is its own element.
 
 
 
 # ── Button state ──────────────────────────────────────────────────────────────
 
-# Talk, Item, Summon and Flee are the detective's alone. On a demon's turn they
+# Talk, Item, Summon and Flee are the hero's alone. On a demon's turn they
 # are hidden rather than greyed — there is not much room on a phone, and a row
 # of dead buttons reads as a bug.
 func _refresh_button_states() -> void:
@@ -1824,11 +1901,9 @@ func _refresh_button_states() -> void:
 
 	_buttons["Skills"].disabled = false
 	# Bracing on top of a brace does nothing but spend the icon, and at half an
-	# icon it is cheap enough to do by accident — unless it is the only thing
-	# left. A demon that is immobilized (no Attack) and cannot pay for any of
-	# its skills would otherwise have no button at all, and the phase would
-	# wait on it forever. Bracing again is its way of passing.
-	_buttons["Defend"].disabled = _actor().defending and _has_another_move(_actor())
+	# icon it is cheap enough to do by accident. Attack is never taken away, so
+	# there is always something better to press.
+	_buttons["Defend"].disabled = _actor().defending
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	# Live whenever there is anything to move: a body to raise, a demon waiting
@@ -1840,26 +1915,6 @@ func _refresh_button_states() -> void:
 
 
 
-
-
-# Whether this party member can do anything but brace. The detective always
-# can — Flee is never taken from him. A demon can if it can swing, or if one of
-# its skills passes the same checks the skills menu greys buttons out by.
-func _has_another_move(member: CharacterSheet) -> bool:
-	if member == player or not member is Enemy:
-		return true
-	var demon: Enemy = member as Enemy
-	if not demon.has_status(Status.IMMOBILIZE):
-		return true
-	var silenced: bool = demon.has_status(Status.SILENCE)
-	for skill: Dictionary in player.skills_of(demon.enemy_name):
-		var hp_price: int = _demon_hp_cost(demon, skill)
-		if hp_price > 0:
-			if demon.hp > hp_price:
-				return true
-		elif not silenced and demon.mp >= _demon_skill_cost(demon, skill):
-			return true
-	return false
 
 
 func _member_portrait(member: CharacterSheet) -> TextureRect:
@@ -1880,6 +1935,9 @@ func _member_portrait(member: CharacterSheet) -> TextureRect:
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
 func _refresh_hp() -> void:
+	# Run here because every action on either side ends in a refresh, so the
+	# blow that drops the Necromancer takes its minions with it at once.
+	_crumble_orphans()
 	_refresh_party_slots()
 	_refresh_foe_rows()
 	_refresh_icons()
@@ -1957,8 +2015,7 @@ func _show_skills_submenu() -> void:
 	# a flat fill silently dropped the last one.
 	var entries: Array[Dictionary] = []
 	entries.append(_skill_entry("Attack", "Attack",
-			Affinity.element_name(Affinity.PHYS), "\u2014",
-			actor.has_status(Status.IMMOBILIZE)))
+			Affinity.element_name(Affinity.PHYS), "\u2014", false))
 
 	if _actor_is_player():
 		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
@@ -1980,7 +2037,7 @@ func _show_skills_submenu() -> void:
 			if element != "":
 				tag += "  " + Spell.reach_tag(spell_id)
 			# A physical skill is paid in blood, not mana: silence does not
-			# stop it, and it will not spend the last of the detective's HP.
+			# stop it, and it will not spend the last of the hero's HP.
 			var blocked: bool
 			var hp_price: int = Spell.hp_cost(spell_id, player.max_hp)
 			if hp_price > 0:
@@ -2026,7 +2083,7 @@ func _show_skills_submenu() -> void:
 
 
 # An elemental cast is paid out of the demon's own pool and gets dearer as its
-# rung climbs; a buff costs what the spell costs, the same as the detective pays.
+# rung climbs; a buff costs what the spell costs, the same as the hero pays.
 func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
 	if skill.get("kind", "") != "element":
 		return int(Spell.get_data(skill.get("id", "") as String).get("mp", 8))
@@ -2036,7 +2093,7 @@ func _demon_skill_cost(demon: Enemy, skill: Dictionary) -> int:
 
 
 # A physical line is paid in HP, the same share of the demon's own pool the
-# detective pays for the same skill. 0 for everything paid in MP.
+# hero pays for the same skill. 0 for everything paid in MP.
 func _demon_hp_cost(demon: Enemy, skill: Dictionary) -> int:
 	if skill.get("element", "") != Affinity.PHYS:
 		return 0
@@ -2191,7 +2248,7 @@ func _enemy_leech(actor: Enemy) -> Dictionary:
 
 
 # One demon of yours, one line, one foe. Light and dark expel rather than burn,
-# the same as they do out of the detective's own hands.
+# the same as they do out of the hero's own hands.
 func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 		power: float, boost: float = 0.0) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
@@ -2221,13 +2278,13 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 			cost = PressTurn.COST_FULL}
 
 
-# A bound demon's wide cast. Same arithmetic as the detective's own spread —
+# A bound demon's wide cast. Same arithmetic as the hero's own spread —
 # what it gains in width it gives up on each target.
 func _demon_spread(actor: Enemy, element: String, base: float,
 		banishing: bool, boost: float = 0.0, named: String = "") -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
-	# A physical line cuts each of them at full weight, as the detective's does.
+	# A physical line cuts each of them at full weight, as the hero's does.
 	var phys: bool = element == Affinity.PHYS
 	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
 	var lines: Array[String] = ["[color=#9ad0ff]%s uses %s on %d of them![/color]" % [
@@ -2458,6 +2515,7 @@ const FLOAT_FADE:  float = 0.25
 const FLOAT_RISE:  float = 36.0
 const FLOAT_HURT:  Color = Color(1.0, 0.30, 0.28)
 const FLOAT_HEAL:  Color = Color(0.40, 1.0, 0.50)
+const FLOAT_MISS:  Color = Color(0.85, 0.87, 0.92)
 
 # The number showing over each target right now, if any.
 var _float_of: Dictionary = {}
@@ -2472,6 +2530,9 @@ func _watch_hp(who: CharacterSheet) -> void:
 		who.hp_lost.connect(lost)
 	if not who.hp_gained.is_connected(gained):
 		who.hp_gained.connect(gained)
+	var missed: Callable = _show_float.bind(who, "MISS", FLOAT_MISS)
+	if not who.evaded.is_connected(missed):
+		who.evaded.connect(missed)
 
 
 func _clear_floats() -> void:
@@ -2482,6 +2543,10 @@ func _clear_floats() -> void:
 
 
 func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: String) -> void:
+	_show_float(who, "%s%d" % [prefix, amount], color)
+
+
+func _show_float(who: CharacterSheet, text: String, color: Color) -> void:
 	if not is_inside_tree():
 		return
 	# A bound demon is an Enemy too, but only foes have a row in _foe_rows.
@@ -2498,7 +2563,7 @@ func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: Stri
 	var rect: Rect2 = portrait.get_global_rect()
 
 	var lbl: Label = Label.new()
-	lbl.text = "%s%d" % [prefix, amount]
+	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 30)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
@@ -2595,6 +2660,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 		else:
 			icon.load_static(load("res://icon.svg") as Texture2D)
 			icon.modulate = Color(0.55, 0.85, 0.65)
+	icon.add_child(StatusOverlay.new(member))
 	card.add_child(icon)
 
 	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))
@@ -2765,7 +2831,7 @@ func _build_menu_panel(parent: Control) -> void:
 		_action_bar.add_child(btn)
 		_buttons[action] = btn
 
-	_sub_scroll = ScrollContainer.new()
+	_sub_scroll = TouchScroll.new()
 	_sub_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sub_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	_sub_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -2964,6 +3030,9 @@ func _cast_spell(spell_id: String) -> Dictionary:
 		var target_status: String = data.get("status", "")
 		if target_status == "" or enemy.has_status(target_status):
 			return {msg = "[color=gray]Nothing happened.[/color]", cost = PressTurn.COST_FULL}
+		if enemy.resists_status(target_status):
+			return {msg = "You cast %s!  [color=gray]%s shrugs it off.[/color]" % [
+					data["name"], enemy.display_name()], cost = PressTurn.COST_FULL}
 		enemy.apply_status(target_status)
 		return {msg = "You cast %s!  [color=violet]%s is now %s.[/color]" % [
 				data["name"], enemy.display_name(),
@@ -3129,7 +3198,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
 # many actually moved is what tells the player they have hit the cap.
-# `lead` names who cast it — "You cast Whet" for the detective, "Hellbat calls
+# `lead` names who cast it — "You cast Whet" for the hero, "Hellbat calls
 # up Whet" for a demon of his.
 func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
 	if lead == "":
@@ -3166,7 +3235,7 @@ func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
 #
 # Dekaja and dekunda by another name. Both read from where the caster stands:
 # "foes" is the other side and "party" is the caster's own, so one function
-# serves the detective and the demon that casts it back at him. All or nothing
+# serves the hero and the demon that casts it back at him. All or nothing
 # across a whole side — there is no picking which stage to take.
 # Is there anything on that side for this cast to take? The player is allowed
 # to waste the turn; a demon deciding its own move is not.
@@ -3421,7 +3490,7 @@ func _resolve_attack() -> Dictionary:
 	if _actor_is_player() and "last_stand" in player.passive_skills \
 			and player.hp * 4 < player.max_hp:
 		atk *= 2.0
-	# A bound demon swings with its claws. Only the detective carries a blade,
+	# A bound demon swings with its claws. Only the hero carries a blade,
 	# so only his swing can be something other than phys.
 	var element: String = player.attack_element() if _actor_is_player() \
 			else Affinity.PHYS
@@ -3492,14 +3561,18 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	var epr: TextureRect = _foe_portrait(actor)
 	if epr != null:
 		_play_anim(epr, "attack")
-	if actor.has_status(Status.PARALYZED) and randi() % 4 == 0:
+	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
+
+	# The same rule the party's own menus keep: Silence takes every cast away
+	# (elements, buffs, ailments and bites) and leaves the swing.
+	var silenced: bool = actor.has_status(Status.SILENCE)
 
 	# The ailment goes out early or not at all: it is worth most on a full party
 	# and worthless once everyone standing already has it, which is also what
 	# keeps it to a cast or two a fight rather than a loop.
-	if randi() % 10 < AIL_CAST_ODDS and _ail_cast_ready(actor):
+	if not silenced and randi() % 10 < AIL_CAST_ODDS and _ail_cast_ready(actor):
 		return _enemy_cast_ailment(actor)
 
 	# Support next: a demon that can stack a buff will, while it still has
@@ -3507,7 +3580,8 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# Both come out of the one pool, and Mire costs ten against a Cave Bat's
 	# twenty-four, so a demon carrying both used to spend everything on buffs
 	# and never once cast the thing it is named for.
-	if actor.support_skill != "" and randi() % 10 < 3 and _can_spare_support(actor):
+	if not silenced and actor.support_skill != "" and randi() % 10 < 3 \
+			and _can_spare_support(actor):
 		var sup: Dictionary = Spell.get_data(actor.support_skill)
 		# A dispel against a side with nothing stacked is a wasted phase, so a
 		# demon carrying one holds it until there is something to take.
@@ -3543,7 +3617,7 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 						"rises" if delta > 0 else "falls", moved],
 						cost = PressTurn.COST_FULL}
 
-	var bit: Dictionary = _enemy_leech(actor)
+	var bit: Dictionary = {} if silenced else _enemy_leech(actor)
 	if not bit.is_empty():
 		return bit
 
@@ -3559,11 +3633,15 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# resistance that answers it — which is the point of giving a wizard three.
 	#
 	# A banishing line is the exception, and only joins the pool one turn in
-	# five. A demon it takes from the detective does not come back, so those
+	# five. A demon it takes from the hero does not come back, so those
 	# stay something that happens rather than the opening move of every fight.
 	var paid: bool = false
-	var pool: Array[String] = actor.affordable_elements(randi() % 10 < 2)
-	if not pool.is_empty():
+	var pool: Array[String] = []
+	if not silenced:
+		pool = actor.affordable_elements(randi() % 10 < 2)
+	if silenced:
+		dry = "[color=gray]%s is silenced.[/color]\n" % actor.display_name()
+	elif not pool.is_empty():
 		actor.mp -= actor.skill_cost()
 		element = pool[randi() % pool.size()]
 		base    = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
@@ -3594,7 +3672,13 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 
 	if Affinity.is_banishing(element):
 		return _enemy_banish(actor, target, element, dry)
+	return _enemy_strike(actor, target, element, base, dry)
 
+
+# One blow or one single-target cast from the other side, from the hit roll to
+# the log line. `base` is the attack's raw power before the target's guard.
+func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
+		base: float, dry: String) -> Dictionary:
 	# A swing misses on agility; a spell misses half as often. A miss does not
 	# spend the target's brace — it never had to absorb anything.
 	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
@@ -3653,11 +3737,114 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}
 
 
+# ── The Necromancer ───────────────────────────────────────────────────────────
+#
+# Its rules, in Enemy's notes on it: a new form each phase, one skeleton a
+# phase, a dispel when there is something to clear, and otherwise the form's
+# element at one target.
+const NECRO_DISPEL_ODDS: float = 0.5
+
+# What it has done this phase: one summon and at most one dispel per phase.
+var _necro_turn: Dictionary = {summoned = false, dispelled = false}
+
+
+func _necro_begin_phase(necro: Enemy) -> void:
+	necro.take_form(necro.next_form())
+	necro.mp = necro.max_mp
+	_necro_turn = {summoned = false, dispelled = false}
+	for r: Dictionary in _foe_rows:
+		if r["foe"] == necro:
+			(r["chart"] as AffinityChart).queue_redraw()
+
+
+func _necro_act(actor: Enemy) -> Dictionary:
+	var epr: TextureRect = _foe_portrait(actor)
+	if epr != null:
+		_play_anim(epr, "attack")
+	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
+		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
+				cost = PressTurn.COST_FULL}
+	# Silenced, it can neither raise the dead nor cast: it swings.
+	if actor.has_status(Status.SILENCE):
+		return _enemy_strike(actor, _pick_target(Affinity.PHYS), Affinity.PHYS,
+				float(actor.str), "[color=gray]%s is silenced.[/color]\n" % actor.display_name())
+
+	if not _necro_turn["summoned"]:
+		_necro_turn["summoned"] = true
+		if _necro_minions().size() < Enemy.NECRO_MINIONS_MAX:
+			return _summon_minion(actor)
+
+	if not _necro_turn["dispelled"]:
+		var steady: Dictionary = Spell.get_data("steady")
+		var purge: Dictionary = Spell.get_data("purge")
+		var pick: Dictionary = {}
+		if _dispel_would_bite(steady, false) and randf() < NECRO_DISPEL_ODDS:
+			pick = steady
+		elif _dispel_would_bite(purge, false) and randf() < NECRO_DISPEL_ODDS:
+			pick = purge
+		if not pick.is_empty():
+			_necro_turn["dispelled"] = true
+			var out: Dictionary = _cast_dispel(pick, false)
+			out["msg"] = "[color=#c9a6ff]%s casts[/color] %s" % [actor.display_name(), out["msg"]]
+			return out
+
+	var element: String = actor.form
+	var base: float = float(actor.mag) * actor.stage_mult(CharacterSheet.STAT_MAG) * 2.0
+	return _enemy_strike(actor, _pick_target(element), element, base, "")
+
+
+func _necro_minions() -> Array[Enemy]:
+	var out: Array[Enemy] = []
+	for f: Enemy in _living_foes():
+		if f.summoned:
+			out.append(f)
+	return out
+
+
+# Raises a skeleton onto the field. The fallen ones' cards are cleared first,
+# so the column only ever holds the master and what is standing beside it.
+func _summon_minion(master: Enemy) -> Dictionary:
+	for r: Dictionary in _foe_rows.duplicate():
+		var f: Enemy = r["foe"] as Enemy
+		if f.summoned and not f.is_alive():
+			(r["card"] as Control).queue_free()
+			_foe_rows.erase(r)
+			foes.erase(f)
+	var m: Enemy = Enemy.make_minion(master)
+	# Owned by the scene, so it is freed with the fight; the foes Main brought
+	# in are Main's to free.
+	add_child(m)
+	m.reset_stages()
+	foes.append(m)
+	_assign_battle_tags()
+	_enemy_side.add_child(_build_foe_card(m))
+	for r: Dictionary in _foe_rows:
+		(r["name_lbl"] as Label).text = (r["foe"] as Enemy).display_name()
+	_fit_columns.call_deferred()
+	return {msg = "[color=#c9a6ff]%s raises a %s (LV %d) from the bones![/color]" % [
+			master.display_name(), m.display_name(), m.lv], cost = PressTurn.COST_FULL}
+
+
+# With the Necromancer down, whatever it raised falls with it.
+func _crumble_orphans() -> void:
+	var master_up: bool = false
+	var had_master: bool = false
+	for f: Enemy in foes:
+		if f.is_necromancer():
+			had_master = true
+			master_up = master_up or f.is_alive()
+	if not had_master or master_up:
+		return
+	for m: Enemy in _necro_minions():
+		m.hp = 0
+		_log("[color=gray]%s crumbles to dust.[/color]" % m.display_name())
+
+
 # ── Wide casts from the other side ────────────────────────────────────────────
 #
-# The mirror of the detective's own 2-3 and all-reach spells, and priced the
+# The mirror of the hero's own 2-3 and all-reach spells, and priced the
 # same way: what it gains in width it gives up on each target. Which of the
-# detective's line a FEW cast catches is drawn fresh each time, so covering the
+# hero's line a FEW cast catches is drawn fresh each time, so covering the
 # demon on three HP is a hope rather than a plan.
 func _enemy_spread_targets(actor: Enemy) -> Array[CharacterSheet]:
 	var standing: Array[CharacterSheet] = _living_party()
@@ -3721,7 +3908,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 		lines.append("[color=#d070ff]%s takes %d from what came back.[/color]" % [
 				actor.display_name(), reflected])
 
-	# The demons' side pays the same press-turn arithmetic the detective does.
+	# The demons' side pays the same press-turn arithmetic the hero does.
 	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
 
 
@@ -3759,7 +3946,7 @@ func _apply_enemy_banish_one(actor: Enemy, who: CharacterSheet, element: String,
 	return "hit"
 
 
-# A demon reaching for light or dark is reaching for one of yours. The detective
+# A demon reaching for light or dark is reaching for one of yours. The hero
 # cannot be expelled, so it tears at him instead; a bound demon it takes is gone
 # for good, which is what makes these the frightening ones to meet.
 func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
@@ -3797,7 +3984,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			return {msg = dry + "[color=lime]%s calls the %s — %s drinks it.[/color]" % [
 					ename, word, tname], cost = PressTurn.COST_LOST}
 
-	# The detective takes it as a wound rather than an expulsion.
+	# The hero takes it as a wound rather than an expulsion.
 	var hurt: int = int(res["dmg"])
 	target.take_damage(hurt)
 	var hit_pr: TextureRect = _member_portrait(target)

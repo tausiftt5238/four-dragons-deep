@@ -96,7 +96,7 @@ const BANISH_RESIST: float = 0.08   # it barely has purchase
 
 
 # Luck moves the coin flip, never the chart. A demon that nulls the light is
-# immune to a lucky detective and an unlucky one alike — what luck buys is an
+# immune to a lucky hero and an unlucky one alike — what luck buys is an
 # edge on the rows that were already uncertain, and each row keeps its own
 # floor and ceiling so no amount of it turns a resistance into a kill.
 const BANISH_PER_LUK: float = 0.012
@@ -138,11 +138,11 @@ static func banish_chance(target: CharacterSheet, element: String,
 	return clampf(clampf(base + edge, bounds.x, bounds.y) + boost, 0.0, BANISH_MAX)
 
 
-# Resolves one banishing cast. The detective is never expelled — he is the mind
-# holding the case open, and a coin-flip game over at an unsaved moment is not a
-# fight, it is a dice roll. It costs him HP instead.
+# Resolves one banishing cast. The hero is never expelled — a coin-flip game
+# over at an unsaved moment is not a fight, it is a dice roll. It costs him HP
+# instead.
 static func resolve_banish(target: CharacterSheet, element: String,
-		power: int, is_detective: bool, caster: CharacterSheet = null,
+		power: int, is_hero: bool, caster: CharacterSheet = null,
 		spread: float = 1.0, boost: float = 0.0) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	match state:
@@ -153,7 +153,7 @@ static func resolve_banish(target: CharacterSheet, element: String,
 		Affinity.NULL:
 			return {outcome = "null", dmg = 0, taken = false}
 
-	if is_detective:
+	if is_hero:
 		# Not expelled, but the attempt still tears at him — and a weakness
 		# still tears harder.
 		var hurt: int = variance(power)
@@ -175,17 +175,15 @@ static func resolve_banish(target: CharacterSheet, element: String,
 # behaves the same at level 2 and level 20: even agility lands 95%, and four
 # stages either way swings it roughly 95% <-> 55%.
 static func hit_chance(attacker: CharacterSheet, target: CharacterSheet) -> float:
-	var atk: float = maxf(1.0, float(attacker.battle_agility())
-			* attacker.stage_mult(CharacterSheet.STAT_AGL))
-	var eva: float = maxf(1.0, float(target.battle_agility())
-			* target.stage_mult(CharacterSheet.STAT_AGL))
+	var atk: float = maxf(1.0, float(attacker.battle_agility()) * attacker.agility_mult())
+	var eva: float = maxf(1.0, float(target.battle_agility()) * target.agility_mult())
 	return clampf(0.95 * (atk / (atk + eva)) * 2.0, 0.30, 0.99)
 
 
 # Does a physical swing connect? A miss costs two icons, so a slowed party
 # bleeds turns rather than damage.
 static func lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
-	return randf() < hit_chance(attacker, target)
+	return _rolled(randf() < hit_chance(attacker, target), target)
 
 
 # What a damaging spell keeps of a swing's chance to miss. It used to be zero —
@@ -200,7 +198,15 @@ static func spell_hit_chance(attacker: CharacterSheet, target: CharacterSheet) -
 
 
 static func spell_lands(attacker: CharacterSheet, target: CharacterSheet) -> bool:
-	return randf() < spell_hit_chance(attacker, target)
+	return _rolled(randf() < spell_hit_chance(attacker, target), target)
+
+
+# Every miss in a fight comes through the two rolls above, so this is the one
+# place that tells the target it was missed.
+static func _rolled(hit: bool, target: CharacterSheet) -> bool:
+	if not hit:
+		target.evaded.emit()
+	return hit
 
 
 # Which press-turn cost an outcome carries. Repel/drain/null are checked before

@@ -52,6 +52,14 @@ const BOSS_HP_MULT: int = 8
 # how they threaten a full party without inflating their damage numbers.
 var icons: int = 1
 
+# The final boss's current form: the element it casts this phase, and the
+# matching dragon's affinity chart it wears until its next phase. "" for
+# everything else.
+var form: String = ""
+# Raised by the Necromancer mid-fight. Worth nothing when it falls, and it
+# crumbles when its master does.
+var summoned: bool = false
+
 # Wardens and bosses keep their chart to themselves — Analyze refuses them and
 # killing one teaches nothing. They are met once each in a whole run, so a
 # chart handed over in advance would turn the one fight that is supposed to be
@@ -201,7 +209,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  2, def =  3, mag =  3, agl =  3,
 		exp =  22, gold =   7, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire", light = "weak", dark = "null",
-		attack_element = "ice", status_attack = "immobilize", ail = 5,
+		attack_element = "ice", status_attack = "blind", ail = 5,
 		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "any",
 		sprite_id = "Skeleton_Archer"},
 	{name = "Demon",            lv =  3,
@@ -215,7 +223,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  3, def =  3, mag =  4, agl =  5,
 		exp =  28, gold =   9, tier = 1, rank = 1, min_floor = 1, max_floor =  3,
 		weakness = "thunder",
-		attack_element = "thunder", reach = "few", status_attack = "immobilize", ail = 5, support = "ward",
+		attack_element = "thunder", reach = "few", status_attack = "blind", ail = 5, support = "ward",
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "any",
 		sprite_id = "Demon_B"},
 	# ── Tier 2 · Floors 2-4 ──────────────────────────────────────────────────
@@ -223,14 +231,14 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  5, def =  4, mag =  4, agl =  2,
 		exp =  30, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "null",
-		attack_element = "ice", status_attack = "immobilize", ail = 12, support = "ward",
+		attack_element = "ice", status_attack = "blind", ail = 12, support = "ward",
 		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "throwable",
 		sprite_id = "Armored_Skeleton"},
 	{name = "Greatsword Skeleton", lv =  5,
 		str =  6, def =  3, mag =  4, agl =  2,
 		exp =  32, gold =  11, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "null",
-		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 12,
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "blind", ail = 12,
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "throwable",
 		sprite_id = "Greatsword_Skeleton"},
 	{name = "Armored Orc",      lv =  5,
@@ -288,7 +296,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  3, def =  3, mag =  6, agl =  3,
 		exp =  35, gold =  10, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "thunder", nulls = ["dark"], light = "resist",
-		attack_element = "ice", reach = "few", status_attack = "immobilize", ail = 12, support = "sunder",
+		attack_element = "ice", reach = "few", status_attack = "blind", ail = 12, support = "sunder",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite_id = "Eyeball_Monster"},
 	# ── Tier 3 · Floors 3+ ───────────────────────────────────────────────────
@@ -310,7 +318,7 @@ const TEMPLATES: Array[Dictionary] = [
 		str =  6, def =  6, mag =  5, agl =  2,
 		exp =  45, gold =  14, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "thunder", phys = "resist",
-		attack_element = "ice", status_attack = "immobilize", ail = 18, support = "ward",
+		attack_element = "ice", status_attack = "blind", ail = 18, support = "ward",
 		negotiable = true, talk_difficulty = 3, personality = "lonely", wants = "potion",
 		sprite_id = "Werebear"},
 	{name = "Arch Demon",       lv =  9, icons = 2,
@@ -355,8 +363,8 @@ const TEMPLATES: Array[Dictionary] = [
 
 # ── Written for this game, still waiting on art ───────────────────────────────
 #
-# Everything below is original to the detective case: the fantasy roster above
-# is placeholder and these are not. Each carries `needs_art=true` and an
+# Everything below is original to this game: the fantasy roster above is
+# placeholder and these are not. Each carries `needs_art=true` and an
 # `art_note` describing exactly what it looks like, because the sprite is the
 # only thing standing between these and the live game. Nothing here is or ever
 # was an object of worship.
@@ -370,7 +378,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 	{name = "Black Knight",    icons = WARDEN_ICONS,
 		str =  6, def =  7, mag =  6, agl =  2,
 		weakness = "thunder", nulls = ["ice"], reflect_element = "fire", phys = "resist", light = "resist",
-		attack_elements = ["thunder", "light"], reach = "few", status_attack = "immobilize", ail = 8,
+		attack_elements = ["thunder", "light"], reach = "few", status_attack = "blind", ail = 8,
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Black_Knight_A"},
 
@@ -393,7 +401,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 		str = 10, def =  9, mag =  7, agl =  5,
 		weakness = "thunder", nulls = ["fire"], absorb_element = "ice", phys = "resist",
 		light = "weak", dark = "drain",
-		attack_elements = ["ice", "dark"], reach = "few", status_attack = "immobilize", ail = 20,
+		attack_elements = ["ice", "dark"], reach = "few", status_attack = "blind", ail = 20,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Minotaur"},
@@ -402,44 +410,6 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 
 # Boss templates — one per 5-floor milestone, cycling every 4 bosses.
-# ── The mimic ─────────────────────────────────────────────────────────────────
-#
-# Not in the rotation above and not in the wandering pack either: a mimic is a
-# chest. It is only ever met by opening one, which is why the floors it lives on
-# carry extra chests — most of them are chests.
-const MIMIC_TEMPLATES: Array[Dictionary] = [
-	{name = "Mimic",           icons = WARDEN_ICONS,
-		str =  8, def =  6, mag =  6, agl =  4,
-		weakness = "fire", dark = "drain", reflect_element = "thunder", phys = "resist", light = "weak",
-		attack_elements = ["thunder", "dark"], reach = "few", status_attack = "poison", ail = 12,
-		negotiable = false, talk_difficulty = 0,
-		sprite = "res://resources/enemySprites/Mimic.png",
-		art_note = "A cache set into the wall, lit from inside exactly like the real ones, sitting a "
-				+ "little further forward than a recess should allow. When it opens, the opening keeps "
-				+ "going: the lid is the upper jaw and the shelf it was resting on is the lower one.",
-		design_note = "Placed among real caches, so the floor's own furniture becomes a thing to read "
-				+ "twice. Weak to fire and to light because the disguise is the whole of its defence."},
-]
-
-# The shallowest floor a chest might be lying about what it is.
-const MIMIC_FROM_FLOOR: int = 6
-
-
-static func make_mimic(floor_num: int) -> Enemy:
-	var e: Enemy = _build(MIMIC_TEMPLATES[0], floor_num)
-	# Its own colours: the whole trick is that it looks like the chest it is
-	# imitating, and a depth tint would be the one thing giving it away.
-	e.tint = Color.WHITE
-	# Priced like a warden: it is an ambush with two icons, and being wrong
-	# about a chest should be worth something when you win.
-	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
-	e.exp_reward = exp_for_level(e.lv) * 2
-	e.gold_reward = e.lv * 6
-	e.compute_max_hp()
-	e.compute_max_mp()
-	return e
-
-
 # Four dragons, one at the bottom of each band. A boss is no longer a different
 # kind of thing every five floors — it is the same kind of thing four times, and
 # what changes is which element it is made of. That is what makes the wall colour
@@ -459,7 +429,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		str = 12, def =  9, mag = 10, agl =  4,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
 		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "null", dark = "null",
-		attack_elements = ["ice"], reach = "few", status_attack = "immobilize", ail = 25,
+		attack_elements = ["ice"], reach = "few", status_attack = "blind", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Ice_Dragon",
@@ -576,6 +546,13 @@ static func _pick_from_tier(tier: int) -> Dictionary:
 # stats make it the lighter hitter in the pack, not a pushover.
 static func make_group(floor_num: int) -> Array[Enemy]:
 	var count: int = 1 + randi() % clampi(floor_num, 1, 4)
+	# The Abyss keeps no roster of its own: every demon of every band comes
+	# up out of it, each slot from any tier, all built at this depth.
+	if Level.is_abyss(floor_num):
+		var mixed: Array[Enemy] = []
+		for _i: int in count:
+			mixed.append(_build(_pick_from_tier(1 + randi() % 4), floor_num))
+		return mixed
 	var tier: int = tier_for_floor(floor_num)
 	var group: Array[Enemy] = [make_random(floor_num)]
 	for _i: int in range(count - 1):
@@ -584,6 +561,147 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 			from = 1 + randi() % (tier - 1)
 		group.append(_build(_pick_from_tier(from), floor_num))
 	return group
+
+
+# Whether this is one of the four dragons.
+func is_dragon() -> bool:
+	for t: Dictionary in BOSS_TEMPLATES:
+		if t["name"] == enemy_name:
+			return true
+	return false
+
+
+# How often Silence or Blind takes hold on a dragon.
+const DRAGON_AILMENT_CHANCE: float = 0.2
+
+# A dragon often shrugs off Silence and Blind. One takes away its element, the
+# other its speed, and a single Silence Dust landing every time would turn a
+# dragon into a punching bag. So they land one time in five: a long shot,
+# never a plan. Poison and Paralysis always take hold.
+# Rolls each time it is asked, so ask once per attempt.
+func resists_status(status_id: String) -> bool:
+	if not (is_dragon() or is_necromancer()) or status_id not in [Status.SILENCE, Status.BLIND]:
+		return false
+	return randf() >= DRAGON_AILMENT_CHANCE
+
+
+# ── The Necromancer ───────────────────────────────────────────────────────────
+#
+# The final boss, at the end of the corridor under the Abyss. Everything it
+# does is its own, run by CombatScene._necro_act rather than the shared demon
+# turn:
+#   * Each of its phases it takes one of the four dragons' forms (ice, thunder,
+#     fire or dark, never the one it just had) and wears that dragon's affinity
+#     chart until its next phase. It casts only that element, one target at a
+#     time, so the spell it opens with says what it is weak to.
+#   * Each phase it raises one skeleton (up to three standing) at half its own
+#     level. A minion fights with its own kind's attacks and carries its own
+#     press-turn icon, so the Necromancer's two icons grow to five with three
+#     minions up.
+#   * It clears debuffs off its side (Steady) or buffs off yours (Purge) when
+#     there is something to clear, and not every phase.
+const NECROMANCER: String = "Necromancer"
+const NECRO_FORMS: Array[String] = ["ice", "thunder", "fire", "dark"]
+const NECRO_ICONS: int = 2
+const NECRO_MINIONS_MAX: int = 3
+# The art goes here when it exists; until then a stand-in sheet, tinted.
+const NECRO_SPRITE: String = "Necromancer"
+const NECRO_STAND_IN: String = "Wizard"
+const NECRO_STAND_IN_TINT: Color = Color(0.62, 0.50, 0.95)
+
+
+# Its own sheet once it is drawn (characterSprites/Necromancer/Necromancer_Idle.png),
+# the stand-in until then.
+static func necro_sprite() -> String:
+	var own: String = "res://resources/characterSprites/%s/%s_Idle.png" % [
+			NECRO_SPRITE, NECRO_SPRITE]
+	return NECRO_SPRITE if ResourceLoader.exists(own) else NECRO_STAND_IN
+const NECRO_TEMPLATE: Dictionary = {
+	name = NECROMANCER, str = 12, def = 12, mag = 17, agl = 9, tier = 4,
+}
+
+
+func is_necromancer() -> bool:
+	return enemy_name == NECROMANCER
+
+
+# What the bestiary and the affinity chart file what you learn under. The
+# Necromancer keeps a separate chart per form, so a weakness found in its ice
+# form is still known the next time it turns to ice, and never shown for fire.
+func lore_name() -> String:
+	if is_necromancer() and form != "":
+		return "%s:%s" % [enemy_name, form]
+	return enemy_name
+
+
+static func make_necromancer(floor_num: int) -> Enemy:
+	var t: Dictionary = NECRO_TEMPLATE
+	var e: Enemy = Enemy.new()
+	e.spawn_floor     = maxi(1, floor_num)
+	e.enemy_name      = NECROMANCER
+	e.lv              = maxi(2, floor_num * 2)
+	var scale: float = 1.0 + float(e.lv - 1) * 0.22
+	e.str             = maxi(1, roundi(float(t["str"]) * scale))
+	e.def             = maxi(1, roundi(float(t["def"]) * scale))
+	e.mag             = roundi(float(t["mag"]) * scale)
+	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
+	e.exp_to_next     = 0
+	e.exp_reward      = exp_for_level(e.lv) * 5
+	e.gold_reward     = e.lv * 20
+	e.negotiable      = false
+	e.talk_difficulty = 0
+	e.talk_personality = "proud"
+	e.caster          = true
+	e.attack_reach    = Spell.SHAPE_ONE
+	e.tier            = int(t["tier"])
+	e.icons           = NECRO_ICONS
+	e.unreadable      = true
+	e.ailment_chance  = 0
+	e.sprite_id = necro_sprite()
+	e.tint = Color.WHITE if e.sprite_id == NECRO_SPRITE else NECRO_STAND_IN_TINT
+	e.compute_max_hp()
+	e.max_hp *= BOSS_HP_MULT
+	e.hp = e.max_hp
+	e.compute_max_mp()
+	e.take_form(NECRO_FORMS[randi() % NECRO_FORMS.size()])
+	return e
+
+
+# Turns to a new form, never the one it has. Its chart becomes that element's
+# dragon's, and that element is all it casts until the next turn.
+func take_form(element: String) -> void:
+	form = element
+	for t: Dictionary in BOSS_TEMPLATES:
+		var els: Array = _elements_from(t)
+		if not els.is_empty() and els[0] == element:
+			affinities = _affinities_from(t)
+			break
+	attack_elements.assign([element])
+	attack_element = element
+
+
+func next_form() -> String:
+	var others: Array[String] = []
+	for f: String in NECRO_FORMS:
+		if f != form:
+			others.append(f)
+	return others[randi() % others.size()]
+
+
+# A skeleton raised at half its master's level. Fights as its own kind does.
+static func make_minion(master: Enemy) -> Enemy:
+	var kinds: Array[String] = []
+	for t: Dictionary in TEMPLATES:
+		if "Skeleton" in (t["name"] as String):
+			kinds.append(t["name"] as String)
+	var e: Enemy = make_at_level(kinds[randi() % kinds.size()], maxi(1, master.lv / 2))
+	e.summoned    = true
+	e.negotiable  = false
+	e.exp_reward  = 0
+	e.gold_reward = 0
+	e.icons       = 1
+	e.tint        = Color(0.80, 0.78, 0.95)
+	return e
 
 
 # One boss per run of FLOOR_COUNT floors. The old index went negative on a
@@ -693,8 +811,8 @@ static func needing_art() -> Array[Dictionary]:
 
 # Where a template is actually met, worked out from the same rules that place
 # it rather than from its min_floor/max_floor, which nothing spawns from any
-# more: the pack draws by tier, wardens and bosses stand on fixed floors, and a
-# mimic waits in a chest. Reading the old fields put the floor-four warden down
+# more: the pack draws by tier, and wardens and bosses stand on fixed floors.
+# Reading the old fields put the floor-four warden down
 # as "Floors 1+".
 static func where_found(tmpl: Dictionary) -> String:
 	var tname: String = tmpl.get("name", "") as String
@@ -704,9 +822,6 @@ static func where_found(tmpl: Dictionary) -> String:
 	for i: int in BOSS_TEMPLATES.size():
 		if BOSS_TEMPLATES[i]["name"] == tname:
 			return "Floor %d" % ((i + 1) * Level.BOSS_EVERY)
-	for t: Dictionary in MIMIC_TEMPLATES:
-		if t["name"] == tname:
-			return "Chests, floor %d+" % MIMIC_FROM_FLOOR
 	# A tier's band is five floors, the last of which is the boss corridor and
 	# carries no pack.
 	var tier: int = int(tmpl.get("tier", 1))
@@ -718,10 +833,19 @@ static func all_templates() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	result.append_array(TEMPLATES)
 	result.append_array(WARDEN_TEMPLATES)
-	result.append_array(MIMIC_TEMPLATES)
 	result.append_array(BOSS_TEMPLATES)
 	return result
 
+
+
+# Whether a name is a monster the game still has. A save can remember one that
+# has since been taken out (the Mimic), and the bestiary must not show a random
+# stand-in for it.
+static func is_known(enemy_name: String) -> bool:
+	for tmpl: Dictionary in all_templates():
+		if tmpl["name"] == enemy_name:
+			return true
+	return false
 
 
 static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
@@ -766,9 +890,16 @@ static func opening_hp_scale(floor_num: int) -> float:
 
 
 # Which band of demons a floor draws from. Five floors to a tier, four tiers,
-# and a boss closing each one.
+# and a boss closing each one. The Abyss draws from all four (see make_group)
+# and counts as tier IV for anything that needs one number.
 static func tier_for_floor(floor_num: int) -> int:
 	return clampi((floor_num - 1) / Level.BOSS_EVERY + 1, 1, 4)
+
+
+# The band colour a roamer burns in. In the Abyss each one shows a random
+# band's, so the floor reads as every band's demons at once.
+static func roamer_tier(floor_num: int) -> int:
+	return 1 + randi() % 4 if Level.is_abyss(floor_num) else tier_for_floor(floor_num)
 
 
 static func _build(t: Dictionary, floor_num: int) -> Enemy:
@@ -874,7 +1005,7 @@ func affordable_elements(with_banishing: bool) -> Array[String]:
 
 
 # What a dry caster reaches for. Never a banishing line — expelling one of the
-# detective's demons should never be the thing something does for free.
+# hero's demons should never be the thing something does for free.
 func dregs_element() -> String:
 	for e: String in attack_elements:
 		if not Affinity.is_banishing(e):
@@ -885,7 +1016,7 @@ func dregs_element() -> String:
 # Returns a random item drop, or an empty dict if nothing drops (65% no-drop).
 func roll_drop() -> Dictionary:
 	# Rolled ahead of the table and on its own odds — see Item.roll_stone.
-	var stone: Dictionary = Item.roll_stone(Item.STONE_FROM_KILL)
+	var stone: Dictionary = Item.roll_keepsake(Item.STONE_FROM_KILL, Item.SEED_FROM_KILL)
 	if not stone.is_empty():
 		return stone
 	if randi() % 100 < 65:

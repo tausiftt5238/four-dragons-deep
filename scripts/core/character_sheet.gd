@@ -145,6 +145,8 @@ func compute_max_mp() -> void:
 # max HP reports what was left, and a heal at full reports nothing.
 signal hp_lost(amount: int)
 signal hp_gained(amount: int)
+# A swing or a cast aimed at this member missed. The battle screen floats MISS.
+signal evaded
 
 
 func take_damage(amount: int) -> int:
@@ -213,15 +215,87 @@ func apply_stat_bonus(bonus: Dictionary) -> void:
 
 var active_statuses: Array[String] = []
 
+# Every ailment wears off after this many of the afflicted's own turns.
+const STATUS_TURNS: int = 3
+# status id -> turns left. Only read for ids in active_statuses; an id that
+# got there some other way (a save, a clear) counts as freshly applied.
+var status_turns: Dictionary = {}
+
 func apply_status(status_id: String) -> void:
 	if status_id not in active_statuses:
 		active_statuses.append(status_id)
+		status_turns[status_id] = STATUS_TURNS
+
+# One of this member's turns has passed. Returns the ailments that wore off.
+func tick_statuses() -> Array[String]:
+	var worn: Array[String] = []
+	for id: String in active_statuses.duplicate():
+		var left: int = int(status_turns.get(id, STATUS_TURNS)) - 1
+		if left <= 0:
+			remove_status(id)
+			worn.append(id)
+		else:
+			status_turns[id] = left
+	return worn
 
 func remove_status(status_id: String) -> void:
 	active_statuses.erase(status_id)
+	status_turns.erase(status_id)
 
 func has_status(status_id: String) -> bool:
 	return status_id in active_statuses
+
+
+# What Blind leaves of agility. Half is a steep cut: an even swing that lands
+# 95% lands about 63% blind, and a blind target gets hit nearly every time.
+const BLIND_AGL_MULT: float = 0.5
+
+# Everything that scales agility in a fight: buff stages and Blind.
+func agility_mult() -> float:
+	var m: float = stage_mult(STAT_AGL)
+	if has_status(Status.BLIND):
+		m *= BLIND_AGL_MULT
+	return m
+
+# A potion, an ether or a cure taken by this member: HP, MP and ailments only.
+# Anyone in the party can drink one — the hero and every monster alike — so it
+# lives here rather than on the hero. Returns what it did, for the log.
+func apply_restorative(item: Dictionary) -> String:
+	var msg: String = ""
+	var hp_val: int  = int(item.get("hp_restore", 0))
+	var mp_val: int  = int(item.get("mp_restore", 0))
+	var cure: String = item.get("cures_status", "") as String
+	if hp_val > 0:
+		var before: int = hp
+		heal(hp_val)
+		msg += "Restored %d HP. " % (hp - before)
+	if mp_val > 0:
+		var before_mp: int = mp
+		restore_mp(mp_val)
+		msg += "Restored %d MP. " % (mp - before_mp)
+	if cure == "all":
+		active_statuses.clear()
+		msg += "Cured all ailments."
+	elif cure != "":
+		if has_status(cure):
+			remove_status(cure)
+			msg += "Cured %s." % Status.get_data(cure).get("name", cure)
+		else:
+			msg += "Not afflicted."
+	return msg.strip_edges()
+
+
+# Whether a restorative would do anything for this member right now.
+func could_use(item: Dictionary) -> bool:
+	if int(item.get("hp_restore", 0)) > 0 and hp < max_hp:
+		return true
+	if int(item.get("mp_restore", 0)) > 0 and mp < max_mp:
+		return true
+	var cure: String = item.get("cures_status", "") as String
+	if cure == "all":
+		return not active_statuses.is_empty()
+	return cure != "" and has_status(cure)
+
 
 func poison_tick() -> int:
 	if not has_status(Status.POISON):

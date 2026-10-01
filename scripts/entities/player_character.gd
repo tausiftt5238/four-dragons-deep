@@ -85,7 +85,7 @@ func battle_items() -> Array[Dictionary]:
 			out.append(item)
 	return out
 
-# Every demon he has bound. The rolodex.
+# Every demon he has bound. The roster.
 var recruited: Array[String] = []
 
 # Every demon that has EVER answered to him, kept after one is sold or falls.
@@ -109,6 +109,10 @@ var demon_exp: Dictionary = {}
 # two Bats raised from the same floor are not the same Bat.
 var demon_gains: Dictionary = {}
 
+# Max HP and MP a demon has been given by stones, per demon: {"hp": n, "mp": n}.
+# Seeds given to a demon go into demon_gains with its own level-up points.
+var demon_bonus: Dictionary = {}
+
 # What each bound demon can call on. One entry per skill:
 #   {kind = "element", element = "fire", rung = 1, shape = "one"}
 #   {kind = "support", id = "ward"}
@@ -124,7 +128,7 @@ const DEMON_POINTS_PER_LEVEL: int = 2
 const DEMON_EXP_FACTOR: int = 6
 
 # Five, because the skills menu is a fixed six cells and Attack takes one — see
-# CombatScene.MENU_SLOTS. The same five the detective gets in SPELL_SLOTS. A
+# CombatScene.MENU_SLOTS. The same five the hero gets in SPELL_SLOTS. A
 # full demon can still be offered something new; taking it means forgetting
 # something it has.
 const DEMON_SKILL_CAP: int = 5
@@ -145,14 +149,57 @@ static func demon_exp_to_next(lv: int) -> int:
 func bound_demon(demon_name: String) -> Enemy:
 	var e: Enemy = Enemy.make_at_level(demon_name, int(bound_level.get(demon_name, 1)))
 	var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
-	if not gains.is_empty():
+	var bonus: Dictionary = demon_bonus.get(demon_name, {}) as Dictionary
+	if not gains.is_empty() or not bonus.is_empty():
 		e.str = maxi(1, e.str + int(gains.get("str", 0)))
 		e.def = maxi(1, e.def + int(gains.get("def", 0)))
 		e.mag = maxi(0, e.mag + int(gains.get("mag", 0)))
 		e.agl = maxi(1, e.agl + int(gains.get("agl", 0)))
+		e._hp_bonus = int(bonus.get("hp", 0))
+		e._mp_bonus = int(bonus.get("mp", 0))
 		e.compute_max_hp()
 		e.compute_max_mp()
 	return e
+
+
+# A seed or a stone: the items that can be given to a demon as well as used.
+static func is_keepsake(item: Dictionary) -> bool:
+	return item.has("stat_up") or int(item.get("max_hp_gain", 0)) > 0 \
+			or int(item.get("max_mp_gain", 0)) > 0
+
+
+# Demons have no Luck, so a Seed of Luck is the hero's alone.
+static func demon_can_take(item: Dictionary) -> bool:
+	return is_keepsake(item) and item.get("stat_up", "") != "luk"
+
+
+# Feeds a seed or a stone to a bound demon, for good. Kept with its other
+# gains, so it is there every time the demon is called, and it goes if the
+# demon is sold. Returns the line for the status bar.
+func give_keepsake(item: Dictionary, demon_name: String) -> String:
+	if not demon_can_take(item) or demon_name not in recruited:
+		return "%s cannot take that." % demon_name
+	var out: String = ""
+	if item.has("stat_up"):
+		var stat: String = item["stat_up"] as String
+		var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
+		gains[stat] = int(gains.get(stat, 0)) + int(item.get("stat_up_amount", 1))
+		demon_gains[demon_name] = gains
+		var e: Enemy = bound_demon(demon_name)
+		out = "%s's %s rises to %d." % [demon_name, Item.SEEDS[stat][2], int(e.get(stat))]
+		e.free()
+	else:
+		var bonus: Dictionary = demon_bonus.get(demon_name, {}) as Dictionary
+		bonus["hp"] = int(bonus.get("hp", 0)) + int(item.get("max_hp_gain", 0))
+		bonus["mp"] = int(bonus.get("mp", 0)) + int(item.get("max_mp_gain", 0))
+		demon_bonus[demon_name] = bonus
+		var e2: Enemy = bound_demon(demon_name)
+		out = "%s's maximum %s is now %d." % [demon_name,
+				"HP" if int(item.get("max_hp_gain", 0)) > 0 else "MP",
+				e2.max_hp if int(item.get("max_hp_gain", 0)) > 0 else e2.max_mp]
+		e2.free()
+	remove_item(item, 1)
+	return out
 
 
 # What a benched demon banks of a fight it sat out. Without a share the bench
@@ -163,8 +210,8 @@ const BENCH_EXP_PERCENT: int = 50
 
 # Exp from a won fight: in full to every demon that was standing in it, and a
 # share to the rest of the roster on the bench. A demon never passes the
-# detective: he is the one holding the case open, and a party that outgrows him
-# would make his own levels pointless.
+# hero: he is the one leading the descent, and a party that outgrows him would
+# make his own levels pointless.
 #
 # Returns {climbed = [names], learned = {name: [rungs it climbed]},
 # offers = {name: [skill entries]}}. A rung climb is simply taken; a new skill
@@ -201,7 +248,7 @@ func award_demon_exp(amount: int) -> Dictionary:
 					pending.append(got["offer"])
 					offers[demon_name] = pending
 		bound_level[demon_name] = at
-		# At the detective's level it stops banking, so the overflow is not
+		# At the hero's level it stops banking, so the overflow is not
 		# sitting there waiting to fire off three levels the moment he gains one.
 		demon_exp[demon_name] = 0 if at >= lv else banked
 		if gained:
@@ -335,7 +382,7 @@ func demon_gain_string(demon_name: String) -> String:
 
 # The ones he actually walks in with, in slot order. Chosen in the menu before
 # a fight rather than assembled mid-battle — CombatScene.MAX_PARTY - 1 of them,
-# since the detective takes the first slot himself.
+# since the hero takes the first slot himself.
 const ACTIVE_SLOTS: int = 3
 var active_demons: Array[String] = []
 
@@ -360,7 +407,7 @@ func deactivate_demon(demon_name: String) -> void:
 	active_demons.erase(demon_name)
 
 
-# Struck off the rolodex for good — sold at an orb. The level goes with it:
+# Struck off the roster for good — sold at an orb. The level goes with it:
 # remember_recruit keeps the best copy ever bound, so leaving the old level
 # behind would hand a later, weaker recruit the sold demon's strength for free.
 func release_demon(demon_name: String) -> void:
@@ -369,6 +416,7 @@ func release_demon(demon_name: String) -> void:
 	bound_level.erase(demon_name)
 	demon_exp.erase(demon_name)
 	demon_gains.erase(demon_name)
+	demon_bonus.erase(demon_name)
 	demon_skills.erase(demon_name)
 	demon_levels_gained.erase(demon_name)
 
@@ -396,7 +444,7 @@ func remember_recruit(demon_name: String, lv: int = 1) -> void:
 	if demon_name not in ever_bound:
 		ever_bound.append(demon_name)
 	# Keep the best one ever bound: re-catching a weaker copy should never
-	# downgrade what is already in the rolodex.
+	# downgrade what is already in the roster.
 	bound_level[demon_name] = maxi(int(bound_level.get(demon_name, 0)), maxi(1, lv))
 	seed_demon_skills(demon_name)
 	activate_demon(demon_name)
@@ -462,10 +510,10 @@ static func skill_name(skill: Dictionary) -> String:
 	# "few" damage rung, for one. Fall back on naming the line itself.
 	return "%s Strike" % Affinity.element_name(skill.get("element", "") as String)
 
-# Nobody walks into their first case empty-handed. A first-floor demon, not a
+# Nobody goes down into the Deep empty-handed. A first-floor demon, not a
 # strong one — it will grow on its own from here, and a powerful gift would
 # flatten the whole run. One demon is already bound,
-# which is also what makes the opening floors survivable — a lone detective
+# which is also what makes the opening floors survivable — a lone hero
 # against a pack of three loses on action economy no matter how well he reads
 # the affinity chart.
 const STARTING_DEMON: String = "Hellbat"
@@ -476,6 +524,10 @@ var encountered_enemies: Array[String] = []
 # Enemy names whose affinity chart he has read with Analyze. Meeting something
 # records that it exists; only Analyze records what it is made of.
 var analyzed: Array[String] = []
+
+# Floor hazards met at least once. The first of each kind stops to say what it
+# does; after that it just happens.
+var hazards_seen: Array[String] = []
 
 
 func has_analyzed(enemy_name: String) -> bool:
@@ -541,6 +593,7 @@ func _ready() -> void:
 	# without this the gift carried no skills at all until a save was loaded.
 	demon_skills    = {}
 	seed_demon_skills(STARTING_DEMON)
+	hazards_seen    = []
 
 	# He is human. No resistances of his own, and the cold gets through —
 	# which is what makes putting him in front of anything a real decision.
@@ -626,6 +679,14 @@ func unequip_accessory(item_id: String) -> void:
 			equipped_accessories.erase(acc)
 			inventory.append(acc)
 			return
+
+
+# The worn trinket that keeps this ailment off, or {} if none does.
+func ward_against(status_id: String) -> Dictionary:
+	for acc: Dictionary in equipped_accessories:
+		if Accessory.wards_off(acc, status_id):
+			return acc
+	return {}
 
 
 func _accessory_sum(key: String) -> int:
@@ -736,7 +797,8 @@ func can_use_item(item: Dictionary) -> bool:
 		"consumable":
 			# A stone always has something to do: the ceiling it raises is never
 			# already full.
-			if item.get("max_hp_gain", 0) > 0 or item.get("max_mp_gain", 0) > 0:
+			if item.get("max_hp_gain", 0) > 0 or item.get("max_mp_gain", 0) > 0 \
+					or item.has("stat_up"):
 				return true
 			if item.get("hp_restore", 0) > 0 and hp < max_hp:
 				return true
@@ -758,6 +820,19 @@ func use_item(item: Dictionary) -> String:
 	match item["type"]:
 		"consumable":
 			var msg: String = ""
+			if item.has("stat_up"):
+				var stat: String = item["stat_up"] as String
+				set(stat, int(get(stat)) + int(item.get("stat_up_amount", 1)))
+				# Defence and Magic feed the HP and MP ceilings. Recomputing
+				# refills them, which a seed should not do: keep what was there.
+				var keep_hp: int = hp
+				var keep_mp: int = mp
+				compute_max_hp()
+				compute_max_mp()
+				hp = mini(keep_hp, max_hp)
+				mp = mini(keep_mp, max_mp)
+				remove_item(item, 1)
+				return "%s rises to %d." % [Item.SEEDS[stat][2], int(get(stat))]
 			var max_hp_up: int = item.get("max_hp_gain", 0)
 			var max_mp_up: int = item.get("max_mp_gain", 0)
 			if max_hp_up > 0 or max_mp_up > 0:
@@ -775,28 +850,9 @@ func use_item(item: Dictionary) -> String:
 				msg += "Restored to full."
 				remove_item(item, 1)
 				return msg.strip_edges()
-			var hp_val: int  = item.get("hp_restore", 0)
-			var mp_val: int  = item.get("mp_restore", 0)
-			var cure: String = item.get("cures_status", "")
-			if hp_val > 0:
-				var before: int = hp
-				heal(hp_val)
-				msg += "Restored %d HP. " % (hp - before)
-			if mp_val > 0:
-				var before: int = mp
-				restore_mp(mp_val)
-				msg += "Restored %d MP. " % (mp - before)
-			if cure == "all":
-				active_statuses.clear()
-				msg += "Cured all ailments."
-			elif cure != "":
-				if has_status(cure):
-					remove_status(cure)
-					msg += "Cured %s." % Status.get_data(cure).get("name", cure)
-				else:
-					msg += "Not afflicted."
+			msg = apply_restorative(item)
 			remove_item(item, 1)
-			return msg.strip_edges()
+			return msg
 		"scroll":
 			var spell_id: String = item.get("teaches", "")
 			if spell_id in known_spells:

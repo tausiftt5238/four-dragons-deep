@@ -36,9 +36,6 @@ func _initialize() -> void:
 	for i: int in Enemy.WARDEN_TEMPLATES.size():
 		f.store_line(_row("warden", Enemy.WARDEN_TEMPLATES[i], i + 1))
 		n += 1
-	for t: Dictionary in Enemy.MIMIC_TEMPLATES:
-		f.store_line(_row("mimic", t, 0))
-		n += 1
 	for i: int in Enemy.BOSS_TEMPLATES.size():
 		f.store_line(_row("dragon", Enemy.BOSS_TEMPLATES[i], i + 1))
 		n += 1

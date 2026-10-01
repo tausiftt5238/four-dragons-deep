@@ -317,7 +317,7 @@ func _scene_chest() -> void:
 			await _go_to_floor(f)
 		var lvl: Level = main.current_level
 		for wall: Variant in lvl.chest_cells.keys():
-			if lvl.mimic_cells.has(wall) or lvl.looted.has(wall):
+			if lvl.looted.has(wall):
 				continue
 			var cell: Vector2i = lvl.chest_cells[wall]
 			var face: int = Main.DIR_OFFSET.find((wall as Vector2i) - cell)

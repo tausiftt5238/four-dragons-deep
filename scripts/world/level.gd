@@ -4,17 +4,26 @@
 # Each map script extends this and sets the fields in _ready().
 class_name Level extends Node3D
 
-# The whole run: two mazes, then a corridor with the boss at the end of it.
-# Twenty floors, a boss closing every fifth. A boss floor is a straight
-# corridor rather than a maze, so the last thing before the stairs is a fight
-# you cannot walk around.
-const FLOOR_COUNT: int = 20
-const BOSS_EVERY:  int = 5
+# The whole run: four bands of five floors, each closed by a dragon in a
+# straight corridor (a fight you cannot walk around), then the Abyss: four more
+# maze floors under the last dragon, with every trick tile and every tier of
+# demon in them at once and no warden, and a fifth that is the Necromancer's
+# corridor. Beating it ends the run.
+const DRAGON_FLOORS: int = 20
+const ABYSS_FLOORS:  int = 5
+const FLOOR_COUNT:   int = DRAGON_FLOORS + ABYSS_FLOORS
+const BOSS_EVERY:    int = 5
 
 
-# Boss floors are the multiples of five; the run ends after the last one.
+# Boss floors are the multiples of five: the four dragons' corridors, and the
+# Necromancer's at the bottom of the Abyss.
 static func is_boss_floor(floor_num: int) -> bool:
-	return floor_num % BOSS_EVERY == 0
+	return floor_num % BOSS_EVERY == 0 and floor_num <= FLOOR_COUNT
+
+
+# The five floors under the Void Dragon.
+static func is_abyss(floor_num: int) -> bool:
+	return floor_num > DRAGON_FLOORS
 
 
 # A warden stands on the last maze floor of its band and nowhere else — floors
@@ -29,13 +38,20 @@ const WARDEN_OFFSET: int = 4
 
 
 static func is_warden_floor(floor_num: int) -> bool:
-	return not is_boss_floor(floor_num) and floor_num % BOSS_EVERY == WARDEN_OFFSET
+	return not is_boss_floor(floor_num) and not is_abyss(floor_num) \
+			and floor_num % BOSS_EVERY == WARDEN_OFFSET
 
 
 # Which band of five this floor belongs to, 1 through 4 — the same tiers the
-# gear tables and the demon pools are cut on.
+# gear tables and the demon pools are cut on. The Abyss counts as tier IV here:
+# its gear and its prices are the deepest the run has.
 static func tier_of(floor_num: int) -> int:
 	return clampi((floor_num - 1) / BOSS_EVERY + 1, 1, 4)
+
+
+# Which band it looks like, 1 through 5: the four dragons' bands, then the Abyss.
+static func band_of(floor_num: int) -> int:
+	return 5 if is_abyss(floor_num) else tier_of(floor_num)
 
 
 # The line colour each tier draws its walls in. The dungeon is nothing but
@@ -52,11 +68,12 @@ const TIER_WIRE: Array[Color] = [
 	Color(1.00, 0.88, 0.31),   # II  · Thunder Dragon  · too bright to look at
 	Color(1.00, 0.45, 0.24),   # III · Fire Dragon     · banked, not yet lit
 	Color(0.66, 0.58, 0.82),   # IV  · Void Dragon     · the colour draining out
+	Color(0.86, 0.85, 0.80),   # V   · the Abyss       · bone white: no colour left
 ]
 
 
 static func tier_wire(floor_num: int) -> Color:
-	return TIER_WIRE[tier_of(floor_num) - 1]
+	return TIER_WIRE[band_of(floor_num) - 1]
 
 
 # The boss corridor burns its band's own colour rather than a flat red: the
@@ -158,12 +175,45 @@ var orb_cells: Array[Vector2i] = []
 var chest_cells: Dictionary = {}
 var looted: Dictionary = {}
 
-# The subset of chest_cells that are not chests. Keyed the same way, so a cache
-# is looked up once and its nature answered by a second lookup — nothing about
-# the recess itself gives it away, which is the whole point of the thing.
-var mimic_cells: Dictionary = {}
-
-# Traps: grid position → trap type. Only "spike" is laid now — a trap costs HP
-# and nothing else — but the value is kept so an older save still reads.
-# A sprung trap is recorded in found_traps, not erased: it bites every crossing.
+# Floor hazards: grid position → kind. Each band of five floors lays its own,
+# after its dragon:
+#   "ice"          floors 1-5    slide on to the next plain floor
+#   "spark0/1"     floors 6-10   two groups, swapping every two steps
+#   "lava"         floors 11-15  burns on every crossing
+#   "tele:x,y:i"   floors 16-20  moves you to its partner at x,y; i is the pair
+# The Abyss, floors 21-24, lays all four at once.
+# "spike" is the old damage tile and still reads from older saves, as lava.
+# A hazard that has gone off is recorded in found_traps, not erased.
 var trap_cells: Dictionary = {}
+
+const HAZARD_ICE: String   = "ice"
+const HAZARD_LAVA: String  = "lava"
+const HAZARD_SPARK: String = "spark"
+const HAZARD_TELE: String  = "tele"
+
+
+static func hazard_kind(value: String) -> String:
+	if value.begins_with(HAZARD_TELE):
+		return HAZARD_TELE
+	if value.begins_with(HAZARD_SPARK):
+		return HAZARD_SPARK
+	if value == HAZARD_ICE:
+		return HAZARD_ICE
+	return HAZARD_LAVA
+
+
+# Which of the two thunder groups a spark tile belongs to.
+static func spark_group(value: String) -> int:
+	return 1 if value.ends_with("1") else 0
+
+
+# A teleporter's partner cell and its pair index.
+static func tele_target(value: String) -> Vector2i:
+	var parts: PackedStringArray = value.split(":")
+	var xy: PackedStringArray = parts[1].split(",")
+	return Vector2i(int(xy[0]), int(xy[1]))
+
+
+static func tele_pair(value: String) -> int:
+	var parts: PackedStringArray = value.split(":")
+	return int(parts[2]) if parts.size() > 2 else 0

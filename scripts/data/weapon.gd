@@ -1,5 +1,5 @@
 # Weapon
-# What the detective swings. One slot, and a clear progression across the run's
+# What the hero swings. One slot, and a clear progression across the run's
 # four tiers — a tier-one blade on floor eighteen is the same as no blade.
 #
 # Every weapon trades: reach and weight cost agility, and a caster's weapon
