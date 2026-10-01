@@ -1451,32 +1451,34 @@ func _open_chest(wall: Vector2i) -> void:
 	var ui: ChestUI = ChestUI.new()
 	ui.closed.connect(func() -> void: _close_chest())
 	ui.opened.connect(func() -> void:
-		_loot_chest(wall)
-		_close_chest())
+		var found: Dictionary = _loot_chest(wall)
+		ui.show_found(int(found["gold"]), found["items"] as Array))
 	chest_layer.add_child(ui)
 
 
 # What was in it. Gold always, and better odds of something on top of that
 # than a demon carries — a cache you had to find should beat a demon you
 # tripped over.
-func _loot_chest(wall: Vector2i) -> void:
+# Returns {gold, items} for the chest panel to show.
+func _loot_chest(wall: Vector2i) -> Dictionary:
 	current_level.looted[wall] = true
 
 	var coin: int = 25 + floor_num * 20 + (randi() % (20 + floor_num * 10))
 	player_char.gold += coin
-	var found: Array[String] = ["%d gold" % coin]
+	var items: Array = []
 
 	var stone: Dictionary = Item.roll_stone(Item.STONE_FROM_CHEST)
 	if not stone.is_empty():
 		player_char.add_item(stone, 1)
-		found.append(stone["name"] as String)
+		items.append(stone)
 	elif randi() % 100 < 70:
 		var item: Dictionary = Item.pick_drop(floor_num).duplicate()
-		player_char.add_item(item, 1)
-		found.append(item["name"] as String)
+		if not item.is_empty():
+			player_char.add_item(item, 1)
+			items.append(item)
 
-	_show_hud_popup("Opened:  %s" % ", ".join(found), Color(1.0, 0.82, 0.40))
 	_rebuild_dungeon()
+	return {gold = coin, items = items}
 
 
 # Rebuild so an emptied recess reads as emptied.

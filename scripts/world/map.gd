@@ -490,18 +490,66 @@ func _place_sparks(occupied: Dictionary) -> void:
 		placed += 1
 
 
+# Three pools of two to four tiles. A pool only goes where the rest of the
+# floor still connects without it, so there is always a way round: lava is a
+# shortcut you pay for, never a toll on the only road.
 func _place_lava(occupied: Dictionary) -> void:
-	const COUNT: int = 3
-	var placed: int = 0
+	var lava: Dictionary = {}
+	var pools: int = 0
 	var attempts: int = 0
-	while placed < COUNT and attempts < 60:
+	while pools < 3 and attempts < 60:
 		attempts += 1
-		var pos: Vector2i = _random_reachable_cell(maze, player_start)
-		if occupied.has(pos):
+		var seed_cell: Vector2i = _random_reachable_cell(maze, player_start)
+		if occupied.has(seed_cell) or lava.has(seed_cell):
 			continue
-		occupied[pos] = true
-		trap_cells[pos] = Level.HAZARD_LAVA
-		placed += 1
+		var pool: Array[Vector2i] = [seed_cell]
+		var want: int = randi_range(2, 4)
+		var grow: int = 0
+		while pool.size() < want and grow < 12:
+			grow += 1
+			var from: Vector2i = pool[randi() % pool.size()]
+			var next: Vector2i = from + _DIRS4[randi() % 4]
+			if _open(next) and not occupied.has(next) and not lava.has(next) \
+					and not next in pool:
+				pool.append(next)
+		if pool.size() < 2:
+			continue
+		var trial: Dictionary = lava.duplicate()
+		for c: Vector2i in pool:
+			trial[c] = true
+		if not _connected_without(trial):
+			continue
+		lava = trial
+		for c: Vector2i in pool:
+			trap_cells[c] = Level.HAZARD_LAVA
+		_claim_run(pool, occupied)
+		pools += 1
+
+
+# Whether every cell the start reaches today it still reaches with `blocked`
+# walled off. Measured against what is reachable now, not every open cell: a
+# maze can carry an open pocket the start never reaches, and counting it made
+# every pool look like it cut the floor in two.
+func _connected_without(blocked: Dictionary) -> bool:
+	var before: Dictionary = _reach_from_start({})
+	var after: Dictionary = _reach_from_start(blocked)
+	for c: Vector2i in before:
+		if not blocked.has(c) and not after.has(c):
+			return false
+	return true
+
+
+func _reach_from_start(blocked: Dictionary) -> Dictionary:
+	var seen: Dictionary = {player_start: true}
+	var queue: Array[Vector2i] = [player_start]
+	while not queue.is_empty():
+		var cur: Vector2i = queue.pop_back()
+		for off: Vector2i in _DIRS4:
+			var n: Vector2i = cur + off
+			if _open(n) and not blocked.has(n) and not seen.has(n):
+				seen[n] = true
+				queue.append(n)
+	return seen
 
 
 # One or two linked pairs, both ends in dead ends. A teleporter is a tile you

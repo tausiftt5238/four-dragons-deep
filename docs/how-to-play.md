@@ -28,7 +28,7 @@ opens it.
 | **Chests** | Set into the walls. Gold, and usually an item. |
 | **Ice** (floors 1–5) | Slides you along the corridor to solid floor. Never hurts. |
 | **Charged plates** (floors 6–10) | Two sets that take turns lighting up, about a second each. A lit plate takes 15% of your maximum HP, and standing on one as it lights up counts too. Cross on the dark ones. Thunder-resistant gear halves it. |
-| **Lava** (floors 11–15) | 15% of your maximum HP every time you cross it. Fire-resistant gear halves it. |
+| **Lava** (floors 11–15) | Pools of two to four tiles. Each lava tile you step on takes 15% of your maximum HP; fire-resistant gear halves it. There is always a way around. |
 | **Teleporters** (floors 16–20) | Carry you to their twin (same colour). Step off and back on to return. Once used, the map joins the pair. |
 | **Roamers** | Monsters walking the floor. They come for you when you get close; touching one starts a fight. Their colour tells you which band you are in. |
 
