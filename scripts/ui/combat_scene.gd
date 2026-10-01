@@ -855,6 +855,12 @@ func _do_end_of_round() -> void:
 	if not tick_msg.is_empty():
 		_log(tick_msg)
 		_refresh_hp()
+	# Poison has bitten for the round; now the foes' ailments count down a
+	# turn, as the party's did when its phase ended.
+	var worn_msg: String = _wear_off(foes)
+	if not worn_msg.is_empty():
+		_log(worn_msg)
+		_refresh_hp()
 	if _living_party().is_empty():
 		await get_tree().create_timer(1.6).timeout
 		if is_instance_valid(self):
@@ -1675,6 +1681,10 @@ func _after_action(cost: String) -> void:
 
 
 func _enemy_phase() -> void:
+	# The party's turn is over, so its ailments count down a turn.
+	var worn_msg: String = _wear_off(party)
+	if not worn_msg.is_empty():
+		_log(worn_msg)
 	_step_back_immediate()
 	_set_buttons(false)
 	_show_main_actions()
@@ -1726,6 +1736,21 @@ func _enemy_phase() -> void:
 		return
 
 	await _do_end_of_round()
+
+
+# Counts one turn off every living member's ailments and says which ones
+# lifted. Ailments last CharacterSheet.STATUS_TURNS of the afflicted's own turns.
+func _wear_off(members: Array) -> String:
+	var msgs: Array[String] = []
+	for m: CharacterSheet in members:
+		if not m.is_alive():
+			continue
+		for id: String in m.tick_statuses():
+			var who: String = (m as Enemy).display_name() if m is Enemy else _member_name(m)
+			msgs.append("[color=gray]%s recovers from %s.[/color]" % [
+					who, Status.get_data(id).get("noun", id)])
+	_refresh_hp()
+	return "\n".join(msgs)
 
 
 func _do_poison_ticks() -> String:

@@ -213,12 +213,32 @@ func apply_stat_bonus(bonus: Dictionary) -> void:
 
 var active_statuses: Array[String] = []
 
+# Every ailment wears off after this many of the afflicted's own turns.
+const STATUS_TURNS: int = 3
+# status id -> turns left. Only read for ids in active_statuses; an id that
+# got there some other way (a save, a clear) counts as freshly applied.
+var status_turns: Dictionary = {}
+
 func apply_status(status_id: String) -> void:
 	if status_id not in active_statuses:
 		active_statuses.append(status_id)
+		status_turns[status_id] = STATUS_TURNS
+
+# One of this member's turns has passed. Returns the ailments that wore off.
+func tick_statuses() -> Array[String]:
+	var worn: Array[String] = []
+	for id: String in active_statuses.duplicate():
+		var left: int = int(status_turns.get(id, STATUS_TURNS)) - 1
+		if left <= 0:
+			remove_status(id)
+			worn.append(id)
+		else:
+			status_turns[id] = left
+	return worn
 
 func remove_status(status_id: String) -> void:
 	active_statuses.erase(status_id)
+	status_turns.erase(status_id)
 
 func has_status(status_id: String) -> bool:
 	return status_id in active_statuses

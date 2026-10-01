@@ -1090,7 +1090,8 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	if result != "lose":
 		player_char.hp = maxi(1, player_char.hp)
 
-	# Every ailment lasts the fight and no longer, so nothing follows the player
+	# An ailment wears off after three turns, and never outlasts the fight, so
+	# nothing follows the player
 	# into the corridor. Bound demons are rebuilt per fight and need no clearing.
 	player_char.active_statuses.clear()
 
