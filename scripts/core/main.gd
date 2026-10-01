@@ -181,10 +181,12 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	current_level.floor_num = floor_num
 	world.add_child(current_level)
 
+	_spark_steps = 0
 	# Build geometry using the level's colours and maze
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
+	_show_sparks()
 
 	# Place the player at the appropriate spawn point
 	if first_load:
@@ -585,10 +587,12 @@ func _recover_mp_on_step() -> void:
 
 
 func _post_move() -> void:
+	_spark_steps += 1
 	_sync_player()
 	_recover_mp_on_step()
 	_take_key_here()
 	_check_trap()
+	_show_sparks()
 	if not player_char.is_alive():
 		return
 	# Walking into a roamer counts before it gets its own step, which is also
@@ -1272,19 +1276,38 @@ func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> voi
 # you on; a teleporter moves you to its partner.
 
 const HAZARD_DAMAGE: float = 0.15
-# How long each of the two spark groups stays live before the other takes over.
-# Counted only while exploring, so a fight or a menu never costs a pulse.
-const SPARK_PULSE: float = 1.1
 
 const _HAZARD_NOTES: Dictionary = {
 	"ice":   "Ice! You slide until you reach solid floor.",
-	"spark": "Charged floor. Cross while your next tile is dark.",
+	"spark": "Charged plates change every two steps. Lit ones hurt: step back and forth to wait.",
 	"lava":  "Lava! Fire-resistant armour halves the burn.",
 	"tele":  "A teleporter. It carries you to its twin, and back.",
 }
 
-var _spark_clock: float = 0.0
-var _spark_live: int = 0
+# Charged plates count the player's moves on this floor, not time: two groups,
+# always opposite, each lit for two steps and dark for two. Two, not one — at
+# one step per change every move flips both the tile you reach and its state,
+# so walking stays in lock-step and waiting does nothing. At two, stepping back
+# and forth once flips the plate ahead, which is the whole of the puzzle.
+# Turning is not a step, and standing still never hurts.
+var _spark_steps: int = 0
+
+
+# Which group is lit at a given step count.
+static func _spark_live_at(steps: int) -> int:
+	return (steps / 2) % 2
+
+
+# What the plates show: the group that would be lit if you stepped onto it now.
+# Damage lands on arrival, so the plates show the arrival, and "do not step on
+# a lit plate" is the whole rule the player has to learn.
+func _shown_spark_group() -> int:
+	return _spark_live_at(_spark_steps + 1)
+
+
+func _show_sparks() -> void:
+	if is_instance_valid(dungeon):
+		dungeon.set_spark_live(_shown_spark_group())
 
 
 func _hazard_here() -> String:
@@ -1319,6 +1342,8 @@ func _slide(dir: Vector2i) -> void:
 		if not _is_open(nxt.x, nxt.y) or _roamer_at(nxt):
 			break
 		player_pos = nxt
+		# Seen on the way past, so the map has no hole down the middle.
+		_mark_visited()
 
 
 func _roamer_at(cell: Vector2i) -> bool:
@@ -1341,7 +1366,7 @@ func _check_trap() -> void:
 		Level.HAZARD_TELE:
 			_teleport(here)
 		Level.HAZARD_SPARK:
-			if Level.spark_group(here) == _spark_live:
+			if Level.spark_group(here) == _spark_live_at(_spark_steps):
 				_hazard_hurt("thunder", "Shocked!", Color(0.55, 0.85, 1.0), first)
 		_:
 			_hazard_hurt("fire", "Lava!", Color(1.0, 0.45, 0.20), first)
@@ -1376,23 +1401,6 @@ func _teleport(here: String) -> void:
 	_sync_player()
 
 
-# The spark clock. Runs only while the player is free to move; when the live
-# group changes, anyone standing on a tile of the new one is caught by it.
-func _process(delta: float) -> void:
-	if in_combat or menu_open or save_open or orb_open or chest_open \
-			or not is_instance_valid(current_level) or current_level.trap_cells.is_empty():
-		return
-	_spark_clock += delta
-	var live: int = int(_spark_clock / SPARK_PULSE) % 2
-	if live == _spark_live:
-		return
-	_spark_live = live
-	if is_instance_valid(dungeon):
-		dungeon.set_spark_live(live)
-	var here: String = _hazard_here()
-	if Level.hazard_kind(here) == Level.HAZARD_SPARK and here != "" \
-			and Level.spark_group(here) == live and player_char.is_alive():
-		_hazard_hurt("thunder", "Shocked!", Color(0.55, 0.85, 1.0), false)
 
 
 
@@ -1488,6 +1496,7 @@ func _rebuild_dungeon() -> void:
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
+	_show_sparks()
 	dungeon.set_viewer(cam_base_pos)
 	_sync_door()
 
@@ -1710,9 +1719,11 @@ func _restore_save(data: Dictionary) -> void:
 	# Saves from before the door needed turning: holding the key meant open.
 	_pending_door_open            = bool(map_data.get("door_open", _pending_has_key))
 
+	_spark_steps = 0
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
+	_show_sparks()
 
 	# Restore fog-of-war.
 	var raw_visited: Dictionary = data["visited"] as Dictionary

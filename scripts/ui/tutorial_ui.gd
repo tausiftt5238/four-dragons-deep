@@ -23,7 +23,7 @@ const PAGES: Array[Dictionary] = [
 			+ "Walk into the door to unlock it, then walk in again to go down."},
 	{title = "Floors and chests", shot = "trap.png",
 		text = "Each stretch of the Deep has its own floor to watch for. Ice slides you to "
-			+ "solid ground. Charged plates hurt while lit, so cross on the dark ones. Lava "
+			+ "solid ground. Charged plates change every two steps; a lit one hurts, so step back and forth to wait. Lava "
 			+ "burns every crossing. Teleporters carry you to their twin.\n\n"
 			+ "Chests sit in alcoves in the walls. Walk into one to open it."},
 	{title = "Save orbs", shot = "orb.png",

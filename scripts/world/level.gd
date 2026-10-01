@@ -161,7 +161,7 @@ var looted: Dictionary = {}
 # Floor hazards: grid position → kind. Each band of five floors lays its own,
 # after its dragon:
 #   "ice"          floors 1-5    slide on to the next plain floor
-#   "spark0/1"     floors 6-10   live every other pulse, in two groups
+#   "spark0/1"     floors 6-10   two groups, swapping every two steps
 #   "lava"         floors 11-15  burns on every crossing
 #   "tele:x,y:i"   floors 16-20  moves you to its partner at x,y; i is the pair
 # "spike" is the old damage tile and still reads from older saves, as lava.

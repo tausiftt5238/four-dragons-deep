@@ -473,21 +473,39 @@ func _place_ice(occupied: Dictionary) -> void:
 		placed += 1
 
 
-# Two stretches of corridor wired in a checkerboard, so whichever group is
-# live, the one beside it is dark.
+# Up to three stretches of corridor with a plate on every other tile —
+# plate, floor, plate, floor, plate — the plates alternating between the two
+# groups. You reach each plate two steps after the last, which is exactly when
+# both groups swap, so a strip you start on a dark plate stays dark all the way
+# across at a steady walk. And the floor tile between two plates always has
+# one dark plate either side of it, so nobody is ever boxed in.
 func _place_sparks(occupied: Dictionary) -> void:
 	var placed: int = 0
-	for length: int in [5, 4, 4, 3, 3]:
-		if placed >= 2:
+	for length: int in [5, 5, 5, 3, 3, 3]:
+		if placed >= 3:
 			return
-		var runs: Array = _corridor_runs(length, occupied)
+		# Both ends need somewhere to step aside to, or the one way to wait
+		# for a lit plate — a step off and back — is not there.
+		var runs: Array = _corridor_runs(length, occupied).filter(
+				func(run: Array) -> bool:
+					var dir: Vector2i = run[1] - run[0]
+					return _exits(run[0] - dir) >= 2 \
+							and _exits(run[run.size() - 1] + dir) >= 2)
 		if runs.is_empty():
 			continue
 		var cells: Array = runs[0]
-		for c: Vector2i in cells:
-			trap_cells[c] = "%s%d" % [Level.HAZARD_SPARK, (c.x + c.y) % 2]
+		for i: int in range(0, cells.size(), 2):
+			trap_cells[cells[i]] = "%s%d" % [Level.HAZARD_SPARK, (i / 2) % 2]
 		_claim_run(cells, occupied)
 		placed += 1
+
+
+func _exits(p: Vector2i) -> int:
+	var n: int = 0
+	for off: Vector2i in _DIRS4:
+		if _open(p + off):
+			n += 1
+	return n
 
 
 # Three pools of two to four tiles. A pool only goes where the rest of the
