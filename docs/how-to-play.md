@@ -32,7 +32,7 @@ opens it.
 | **Teleporters** (floors 16–20) | Carry you to their twin (same colour). Step off and back on to return. Once used, the map joins the pair. |
 | **Roamers** | Monsters walking the floor. They come for you when you get close; touching one starts a fight. Their colour tells you which band you are in. |
 
-The Abyss (floors 21–25) lays all four at once.
+The Abyss (floors 21–24) lays all four at once.
 
 Hazards you've set off stay marked on your map. Warden and dragon floors have none.
 
@@ -219,14 +219,15 @@ around you changes, you know what is waiting at the end of it.
 
 ## The Abyss
 
-Beating the Void Dragon on floor 20 opens its corridor onto **the Abyss**: five
-more floors with no colour left in their walls. Every hazard is on every floor,
+Beating the Void Dragon on floor 20 opens its corridor onto **the Abyss**: four
+more maze floors with no colour left in their walls. Every hazard is on every floor,
 and every band's demons roam it together, all at Abyss depth. There is no
 warden; each floor's key lies somewhere to be found.
 
 ## The Necromancer
 
-It waits in the stairwell on floor 25, and beating it ends the run.
+It waits at the end of a corridor on floor 25, like the dragons, and beating
+it ends the run.
 
 - **It changes form every turn.** Each of its turns it takes one of the four
   dragons' forms, and with it that dragon's weaknesses, until its next turn. It

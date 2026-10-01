@@ -5,19 +5,20 @@
 class_name Level extends Node3D
 
 # The whole run: four bands of five floors, each closed by a dragon in a
-# straight corridor (a fight you cannot walk around), then the Abyss: five more
+# straight corridor (a fight you cannot walk around), then the Abyss: four more
 # maze floors under the last dragon, with every trick tile and every tier of
-# demon in them at once, and no warden. The run ends at the bottom of it.
+# demon in them at once and no warden, and a fifth that is the Necromancer's
+# corridor. Beating it ends the run.
 const DRAGON_FLOORS: int = 20
 const ABYSS_FLOORS:  int = 5
 const FLOOR_COUNT:   int = DRAGON_FLOORS + ABYSS_FLOORS
 const BOSS_EVERY:    int = 5
 
 
-# Boss floors are the multiples of five down to the last dragon. The Abyss has
-# none of its own.
+# Boss floors are the multiples of five: the four dragons' corridors, and the
+# Necromancer's at the bottom of the Abyss.
 static func is_boss_floor(floor_num: int) -> bool:
-	return floor_num % BOSS_EVERY == 0 and floor_num <= DRAGON_FLOORS
+	return floor_num % BOSS_EVERY == 0 and floor_num <= FLOOR_COUNT
 
 
 # The five floors under the Void Dragon.
@@ -180,7 +181,7 @@ var looted: Dictionary = {}
 #   "spark0/1"     floors 6-10   two groups, swapping every two steps
 #   "lava"         floors 11-15  burns on every crossing
 #   "tele:x,y:i"   floors 16-20  moves you to its partner at x,y; i is the pair
-# The Abyss, floors 21-25, lays all four at once.
+# The Abyss, floors 21-24, lays all four at once.
 # "spike" is the old damage tile and still reads from older saves, as lava.
 # A hazard that has gone off is recorded in found_traps, not erased.
 var trap_cells: Dictionary = {}

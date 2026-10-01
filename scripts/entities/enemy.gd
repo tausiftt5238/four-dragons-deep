@@ -587,7 +587,7 @@ func resists_status(status_id: String) -> bool:
 
 # ── The Necromancer ───────────────────────────────────────────────────────────
 #
-# The final boss, at the stairs on the last floor of the Abyss. Everything it
+# The final boss, at the end of the corridor under the Abyss. Everything it
 # does is its own, run by CombatScene._necro_act rather than the shared demon
 # turn:
 #   * Each of its phases it takes one of the four dragons' forms (ice, thunder,

@@ -476,10 +476,13 @@ func _is_open(col: int, row: int) -> bool:
 func _check_portal() -> void:
 	# On a boss floor the far end of the corridor is the boss, not a door. Beat
 	# it and the corridor opens onward, the last dragon's included: under it
-	# is the Abyss.
+	# is the Abyss. Past the Necromancer there is nowhere further to go.
 	if Level.is_boss_floor(floor_num):
 		if not _boss_beaten:
 			_start_boss_combat()
+			return
+		if floor_num >= Level.FLOOR_COUNT:
+			_show_congratulations()
 			return
 
 	if not _has_key:
@@ -495,14 +498,6 @@ func _check_portal() -> void:
 		return
 
 	if current_level.next_scene == "":
-		return
-	# The bottom of the Abyss. The Necromancer stands in its stairwell, and
-	# getting past it is the end of the run.
-	if floor_num >= Level.FLOOR_COUNT:
-		if not _boss_beaten:
-			_start_boss_combat()
-		else:
-			_show_congratulations()
 		return
 	_descend()
 
@@ -1086,7 +1081,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	# On a boss floor an encounter with no roamer behind it is the boss. Only a
 	# win counts: a flee used to pass as "not a loss", so slipping away from the
 	# Ice Dragon marked it beaten and the corridor let you walk on past it.
-	if result not in ["lose", "flee"] and _is_boss_ground() and met.is_empty() \
+	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty() \
 			and not _in_gauntlet:
 		_boss_beaten = true
 		_sync_boss_banner()
@@ -1330,15 +1325,8 @@ func _shown_spark_group() -> int:
 
 # The dragon of a boss corridor, waiting in the stairwell at its far end until
 # it is beaten. Hung on the dungeon so every rebuild clears it with the rest.
-const NECRO_BANNER_DROP: float = 0.45
-
-# A dragon's corridor, or the last floor, where the Necromancer waits.
-func _is_boss_ground() -> bool:
-	return Level.is_boss_floor(floor_num) or floor_num >= Level.FLOOR_COUNT
-
-
 func _sync_boss_banner() -> void:
-	if not is_instance_valid(dungeon) or not _is_boss_ground():
+	if not is_instance_valid(dungeon) or not Level.is_boss_floor(floor_num):
 		return
 	var old: Node = dungeon.get_node_or_null("DragonBanner")
 	if old != null:
@@ -1367,10 +1355,6 @@ func _sync_boss_banner() -> void:
 	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, DragonBanner.HEIGHT * 0.5,
 			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * 0.35)
 	banner.rotation = Vector3(0.0, atan2(toward.x, toward.z), 0.0)
-	# A maze's way down is a stair cut into the wall rather than a corridor's
-	# flat end, so the Necromancer stands a few steps down it, in the opening.
-	if floor_num >= Level.FLOOR_COUNT:
-		banner.position.y -= NECRO_BANNER_DROP
 	dungeon.add_child(banner)
 
 
