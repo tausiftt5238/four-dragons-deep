@@ -2337,7 +2337,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 			continue
 
 		if not (CombatMath.lands(actor, foe) if phys else CombatMath.spell_lands(actor, foe)):
-			outcomes.append("miss")
+			outcomes.append("miss" if phys else "slip")
 			lines.append("[color=#9aa0aa]%s %s it.[/color]" % [foe.display_name(),
 					"dodges" if phys else "slips"])
 			continue
@@ -2371,10 +2371,9 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 
 	_ensure_target()
 	var cost: String = _spread_cost(outcomes)
-	if cost == PressTurn.COST_FULL and took_weak:
+	# A slipped spell cancels the weakness bonus here too (see _spread_cost).
+	if cost == PressTurn.COST_FULL and took_weak and "slip" not in outcomes:
 		cost = PressTurn.COST_HALF
-	if phys and outcomes.count("miss") == outcomes.size():
-		cost = PressTurn.COST_MISS
 	return {msg = " ".join(lines), cost = cost}
 
 
@@ -3153,17 +3152,22 @@ func _spread_targets(shape: String) -> Array[Enemy]:
 
 
 # The press-turn cost of a cast that landed on several demons at once. The
-# worst thing that happened decides, and a loss always outranks a gain: a
-# repel or a drain ends the phase, any null costs two icons, and only a cast
-# nothing blocked gets the half icon back for a weakness. One demon that
-# nulls it is enough to make a wide cast cost two, whatever it hit on the
-# way, which is what makes an ALL spell a gamble against a mixed line rather
-# than a strict upgrade. The same rule holds for the demons' wide casts.
+# worst thing that happened decides, and a loss always outranks a gain, each
+# priced as it would be on one target:
+#   repel / drain              the phase ends
+#   null, or a swing missed    two icons ("miss": a physical cut dodged)
+#   a spell slipped            one icon, and no weakness bonus ("slip")
+#   a weakness hit             half an icon, when nothing above happened
+# One demon that nulls or dodges it is enough, whatever it hit on the way,
+# which is what makes an ALL spell a gamble against a mixed line rather than a
+# strict upgrade. The same rule holds for the demons' wide casts.
 static func _spread_cost(outcomes: Array[String]) -> String:
 	if "repel" in outcomes or "drain" in outcomes:
 		return PressTurn.COST_LOST
-	if "null" in outcomes:
+	if "null" in outcomes or "miss" in outcomes:
 		return PressTurn.COST_MISS
+	if "slip" in outcomes:
+		return PressTurn.COST_FULL
 	if "weak" in outcomes:
 		return PressTurn.COST_HALF
 	return PressTurn.COST_FULL
@@ -3185,7 +3189,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 	var rung: float = float(data.get("power", Spell.POWER_I))
 	for foe: Enemy in targets:
 		if not (CombatMath.lands(player, foe) if phys else CombatMath.spell_lands(player, foe)):
-			outcomes.append("miss")
+			outcomes.append("miss" if phys else "slip")
 			lines.append("[color=#9aa0aa]%s %s it.[/color]" % [foe.display_name(),
 					"dodges" if phys else "slips"])
 			continue
@@ -3233,11 +3237,8 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 				_actor_name(), reflected])
 
 	_ensure_target()
-	var price: String = _spread_cost(outcomes)
-	# A sweep that touched nobody wasted the turn the way a missed swing does.
-	if phys and outcomes.count("miss") == outcomes.size():
-		price = PressTurn.COST_MISS
-	return {msg = " ".join(lines), cost = price}
+	# A dodged cut costs two icons like a missed swing (see _spread_cost).
+	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}
 
 
 # Buffs stack across the party, debuffs across the enemy line. Reporting how
@@ -3992,7 +3993,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
 			continue
 		if element != Affinity.PHYS and not CombatMath.spell_lands(actor, who):
-			outcomes.append("miss")
+			outcomes.append("slip")
 			lines.append("[color=#9aa0aa]%s slips it.[/color]" % _member_name(who))
 			continue
 		var res: Dictionary = CombatMath.resolve(
