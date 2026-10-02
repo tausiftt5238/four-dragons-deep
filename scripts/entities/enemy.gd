@@ -42,7 +42,22 @@ var reflect_element:  String = ""
 # party's four, a boss gets four — it is one thing standing where a pack would
 # be, so the icons are what make it a fight rather than a health bar.
 const BOSS_ICONS:   int = 4
-const WARDEN_ICONS: int = 2
+const WARDEN_ICONS: int = 3
+# Between an ordinary demon (1x) and a dragon (BOSS_HP_MULT): about one and a
+# half full packs of its floor, a third of the dragon waiting below it.
+const WARDEN_HP_MULT: int = 4
+
+# Each warden has one thing of its own, run by CombatScene:
+#   counter  Black Knight   strikes back at a blade, one time in two
+#   drain    Dark Knight    its spells heal it for half the damage they deal
+#   raise    Death Knight   raises a skeleton whenever none of its own stands
+#   enrage   Minotaur       below half HP it goes berserk, once: +1 icon, +2 ATK
+const WARDEN_TRICKS: Dictionary = {
+	"Black Knight": "counter",
+	"Dark Knight":  "drain",
+	"Death Knight": "raise",
+	"Minotaur":     "enrage",
+}
 
 # A boss's HP as a multiple of what the ordinary formula (lv*10 + def*3) gives
 # it, so a dragon is a long fight rather than a few good rounds.
@@ -59,6 +74,8 @@ var form: String = ""
 # Raised by the Necromancer mid-fight. Worth nothing when it falls, and it
 # crumbles when its master does.
 var summoned: bool = false
+# The Minotaur's rage, once it has gone off.
+var enraged: bool = false
 
 # Wardens and bosses keep their chart to themselves — Analyze refuses them and
 # killing one teaches nothing. They are met once each in a whole run, so a
@@ -334,6 +351,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "ice",
 		attack_elements = ["fire", "thunder"], reach = "few", status_attack = "", ail = 18, support = "whet",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "throwable",
+		unique = ["hp_leech", "mp_leech"],
 		sprite_id = "Demoness_A"},
 	{name = "Flame Golem",      lv =  9,
 		str =  4, def =  6, mag =  7, agl =  1,
@@ -350,6 +368,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "thunder", nulls = ["fire"], dark = "resist",
 		attack_elements = ["fire", "dark"], status_attack = "silence", ail = 22, support = "stoke",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "any",
+		unique = ["hp_leech", "mp_leech"],
 		sprite_id = "Demoness_B"},
 	{name = "Warlock",          lv = 11,
 		str =  3, def =  3, mag =  9, agl =  4,
@@ -377,21 +396,21 @@ const TEMPLATES: Array[Dictionary] = [
 const WARDEN_TEMPLATES: Array[Dictionary] = [
 	{name = "Black Knight",    icons = WARDEN_ICONS,
 		str =  6, def =  7, mag =  6, agl =  2,
-		weakness = "thunder", nulls = ["ice"], reflect_element = "fire", phys = "resist", light = "resist",
+		weakness = "thunder", light = "resist", dark = "resist", nulls = ["ice"], reflect_element = "fire", phys = "resist",
 		attack_elements = ["thunder", "light"], reach = "few", status_attack = "blind", ail = 8,
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Black_Knight_A"},
 
 	{name = "Dark Knight",     icons = WARDEN_ICONS,
 		str =  7, def =  6, mag =  6, agl =  3,
-		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "drain",
+		weakness = "fire", light = "resist", dark = "resist", nulls = ["ice"], phys = "resist",
 		attack_elements = ["ice", "dark"], reach = "all", status_attack = "silence", ail = 10, support = "mire",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Black_Knight_B"},
 
 	{name = "Death Knight",    icons = WARDEN_ICONS,
 		str =  4, def =  7, mag = 11, agl =  4,
-		weakness = "ice", nulls = ["thunder"], reflect_element = "fire", light = "weak", dark = "drain",
+		weakness = "ice", light = "resist", dark = "resist", nulls = ["thunder"], reflect_element = "fire",
 		attack_elements = ["fire", "dark", "ice"], reach = "all", caster = true,
 		status_attack = "silence", ail = 20, support = "purge",
 		negotiable = false, talk_difficulty = 0,
@@ -399,8 +418,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 	{name = "Minotaur",        icons = WARDEN_ICONS,
 		str = 10, def =  9, mag =  7, agl =  5,
-		weakness = "thunder", nulls = ["fire"], absorb_element = "ice", phys = "resist",
-		light = "weak", dark = "drain",
+		weakness = "thunder", light = "resist", dark = "resist", nulls = ["fire"], absorb_element = "ice", phys = "resist",
 		attack_elements = ["ice", "dark"], reach = "few", status_attack = "blind", ail = 20,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
@@ -421,14 +439,17 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 # stand. The Void Dragon closes the ring back onto ice because there is no fifth
 # element to hand out, and by floor 20 finding the ice again is the point.
 #
-# All four null light and dark: a dragon is not a thing the banishing lines can
-# talk out of the room, and a run that ended on a lucky Hama would end a lot of
-# runs. Four icons each — see BOSS_ICONS.
+# All four resist light and dark, as do the wardens and the Necromancer's
+# forms. Against them banishing runs on the boss odds instead of the chart's
+# (CombatMath.banish_chance): about nothing for an ordinary hero, up to 30% a
+# cast for one who has put enough into Luck to out-luck the boss. So a luck
+# build can end a boss fight early, and nobody else can. Four icons each — see
+# BOSS_ICONS.
 const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Ice Dragon",       lv = 12, icons = BOSS_ICONS,
 		str = 12, def =  9, mag = 10, agl =  4,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
-		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "null", dark = "null",
+		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "resist", dark = "resist",
 		attack_elements = ["ice"], reach = "few", status_attack = "blind", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
@@ -441,7 +462,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Thunder Dragon",   lv = 14, icons = BOSS_ICONS,
 		str = 13, def =  9, mag = 13, agl = 10,
 		exp = 280, gold = 110, tier = 4, rank = 0, min_floor = 10, max_floor = -1,
-		weakness = "ice", nulls = ["fire"], absorb_element = "thunder", light = "null", dark = "null",
+		weakness = "ice", nulls = ["fire"], absorb_element = "thunder", light = "resist", dark = "resist",
 		attack_elements = ["thunder"], reach = "all", status_attack = "paralyzed", ail = 25,
 		support = "steady",
 		negotiable = false, talk_difficulty = 0,
@@ -455,7 +476,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		str = 16, def = 11, mag = 13, agl =  6,
 		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
 		weakness = "thunder", nulls = ["ice"], absorb_element = "fire", phys = "resist",
-		light = "null", dark = "null",
+		light = "resist", dark = "resist",
 		attack_elements = ["fire"], reach = "all", status_attack = "poison", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
@@ -469,13 +490,13 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		str = 15, def = 12, mag = 15, agl =  7,
 		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
 		weakness = "ice", nulls = ["fire", "thunder"], phys = "resist",
-		light = "null", dark = "drain",
+		light = "resist", dark = "resist",
 		attack_elements = ["dark", "fire", "thunder"], reach = "all",
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Void_Dragon",
 		design_note = "The last fight. It answers to exactly one element out of six and shrugs at a "
-				+ "blade, casts three lines room-wide, drinks the dark and purges anything put on it. "
+				+ "blade, casts three lines room-wide, resists the banishing lines and purges anything put on it. "
 				+ "Silence is the real danger — it can close the one door it is vulnerable through, "
 				+ "which is why the corridor has an orb at the mouth and the player should arrive "
 				+ "with more than one way to say ice."},
@@ -580,7 +601,8 @@ const DRAGON_AILMENT_CHANCE: float = 0.2
 # never a plan. Poison and Paralysis always take hold.
 # Rolls each time it is asked, so ask once per attempt.
 func resists_status(status_id: String) -> bool:
-	if not (is_dragon() or is_necromancer()) or status_id not in [Status.SILENCE, Status.BLIND]:
+	if not (is_dragon() or is_necromancer() or is_warden()) \
+			or status_id not in [Status.SILENCE, Status.BLIND]:
 		return false
 	return randf() >= DRAGON_AILMENT_CHANCE
 
@@ -627,6 +649,20 @@ func is_necromancer() -> bool:
 	return enemy_name == NECROMANCER
 
 
+func is_warden() -> bool:
+	return WARDEN_TRICKS.has(enemy_name)
+
+
+# This warden's trick (see WARDEN_TRICKS), or "" for anything else.
+func warden_trick() -> String:
+	return WARDEN_TRICKS.get(enemy_name, "") as String
+
+
+# A dragon, a warden or the Necromancer: what banishing judges by the boss odds.
+func is_boss_class() -> bool:
+	return is_dragon() or is_warden() or is_necromancer()
+
+
 # What the bestiary and the affinity chart file what you learn under. The
 # Necromancer keeps a separate chart per form, so a weakness found in its ice
 # form is still known the next time it turns to ice, and never shown for fire.
@@ -665,6 +701,9 @@ static func make_necromancer(floor_num: int) -> Enemy:
 	e.max_hp *= BOSS_HP_MULT
 	e.hp = e.max_hp
 	e.compute_max_mp()
+	# Luck to match its level: out-lucking it for a banish takes a build, and
+	# it crits more (CombatMath caps a monster's crit rate).
+	e.luk = e.lv
 	e.take_form(NECRO_FORMS[randi() % NECRO_FORMS.size()])
 	return e
 
@@ -751,6 +790,9 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.max_hp *= BOSS_HP_MULT
 	e.hp = e.max_hp
 	e.compute_max_mp()
+	# Luck to match its level: out-lucking it for a banish takes a build, and
+	# it crits more (CombatMath caps a monster's crit rate).
+	e.luk = e.lv
 	return e
 
 
@@ -768,6 +810,7 @@ static func make_at_level(enemy_name: String, lv: int) -> Enemy:
 			e.def = maxi(1, roundi(float(tmpl["def"]) * scale))
 			e.mag = roundi(float(tmpl["mag"]) * scale)
 			e.agl = maxi(1, roundi(float(tmpl["agl"]) * scale))
+			e.luk = monster_luck(e.lv)
 			e.exp_reward = exp_for_level(e.lv)
 			e.gold_reward = maxi(4, e.lv * 3)
 			e.compute_max_hp()
@@ -785,19 +828,32 @@ static func make_warden(floor_num: int) -> Enemy:
 	# the floor says which band it is in and the band says which warden.
 	var idx: int = clampi(tier_for_floor(floor_num) - 1,
 			0, WARDEN_TEMPLATES.size() - 1)
-	var e: Enemy = _build(WARDEN_TEMPLATES[idx], floor_num)
+	var t: Dictionary = WARDEN_TEMPLATES[idx]
+	var e: Enemy = _build(t, floor_num)
 	# Its own colours, like a boss. The depth tint exists so the same sprite read
 	# twice in one tier is visibly deeper the second time; a warden is met once in
 	# the whole run, so the tint has nothing to say and only fights the art.
 	e.tint = Color.WHITE
 	# A warden is the floor's locked door: a step above its neighbours, a step
-	# below the boss waiting one floor down.
+	# below the boss waiting one floor down. Its stats are scaled at that level
+	# too; they used to stay at the ordinary floor level the build had used,
+	# with only HP and MP recomputed, so a warden hit like any other demon.
 	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
+	var scale: float = 1.0 + float(e.lv - 1) * 0.22
+	e.str = maxi(1, roundi(float(t["str"]) * scale))
+	e.def = maxi(1, roundi(float(t["def"]) * scale))
+	e.mag = roundi(float(t["mag"]) * scale)
+	e.agl = maxi(1, roundi(float(t["agl"]) * scale))
 	e.exp_reward = exp_for_level(e.lv) * 2
 	e.gold_reward = e.lv * 6
 	e.unreadable = true
 	e.compute_max_hp()
+	e.max_hp *= WARDEN_HP_MULT
+	e.hp = e.max_hp
 	e.compute_max_mp()
+	# Luck to match its level: out-lucking it for a banish takes a build, and
+	# it crits more (CombatMath caps a monster's crit rate).
+	e.luk = e.lv
 	return e
 
 
@@ -848,6 +904,14 @@ static func is_known(enemy_name: String) -> bool:
 		if tmpl["name"] == enemy_name:
 			return true
 	return false
+
+
+# A demon's luck: half its level. It used to sit at 1 everywhere, so a demon
+# on the last floor crit no more often than one on the first and a hero's luck
+# edge over any of them never shrank. Half keeps the deepest packs under the
+# monster crit cap (CombatMath.MONSTER_CRIT_CAP); bosses carry their full level.
+static func monster_luck(lv: int) -> int:
+	return maxi(1, lv / 2)
 
 
 static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
@@ -916,6 +980,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.def             = maxi(1, roundi(float(t["def"]) * scale))
 	e.mag             = roundi(float(t["mag"]) * scale)
 	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
+	e.luk             = monster_luck(e.lv)
 	e.exp_to_next     = 0
 	e.exp_reward      = exp_for_level(e.lv)
 	e.gold_reward     = maxi(4, e.lv * 3)
@@ -977,16 +1042,6 @@ func skill_cost() -> int:
 	if attack_elements.is_empty():
 		return 0
 	return maxi(4, roundi(float(max_mp) / float(MAGAZINE.get(attack_reach, 6))))
-
-
-# What each target keeps of a cast that was split across several of them.
-func reach_spread(banishing: bool) -> float:
-	match attack_reach:
-		Spell.SHAPE_FEW:
-			return Spell.SPREAD_FEW_BANISH if banishing else Spell.SPREAD_FEW_DMG
-		Spell.SHAPE_ALL:
-			return Spell.SPREAD_ALL_BANISH if banishing else Spell.SPREAD_ALL_DMG
-	return 1.0
 
 
 func can_afford_skill() -> bool:

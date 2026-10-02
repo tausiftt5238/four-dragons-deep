@@ -16,7 +16,14 @@ opens it.
 
 - On most floors the **key lies somewhere in the maze**. Walk onto it to take it.
 - On floors **4, 9, 14 and 19** a **warden** holds it instead. Beat the warden
-  to take it.
+  to take it. A warden is a real fight: three turns a phase, about a third of
+  the next dragon's HP, Silence and Blind land only one time in five, and each
+  has a trick of its own:
+  - **Black Knight** (4) strikes back at blades, one time in two.
+  - **Dark Knight** (9) heals for half the damage its spells deal.
+  - **Death Knight** (14) raises a skeleton whenever none of its own stands;
+    they crumble when it falls.
+  - **Minotaur** (19) goes berserk below half HP: one more turn, harder hits.
 - While you carry the key, a **key icon** shows at the right edge of the screen.
   Walk into the door to **unlock** it, then walk forward again to go down.
 
@@ -93,6 +100,12 @@ does not just fail — it ends your round on the spot, whatever you had left.
 The same rules apply to the monsters attacking you, so a resistance of yours can
 end *their* phase just as hard.
 
+A spell or skill that reaches several targets pays for the **worst** thing that
+happened, as it would on one target: one repel or drain still ends the phase,
+**one null or one dodged swing costs two icons**, and one target slipping a spell
+costs a full icon, **even if another target was weak to it**. Read the whole line
+before throwing a wide spell.
+
 ### The six lines
 
 **Phys, fire, ice, thunder, light** and **dark**. Every creature answers each
@@ -102,7 +115,16 @@ Light and dark do not wound. They **banish** — either the monster is expelled
 outright or nothing happens at all. Roughly **3 in 5** against something the
 line is made to expel, **1 in 4** against a monster with no opinion, and almost
 never against one that resists. A monster that nulls, reflects or drains the line
-can never be banished by it at all, and **every dragon is immune to both**.
+can never be banished by it at all.
+
+**Bosses** (the wardens, the dragons and the Necromancer) resist both lines, and
+banishing one runs on **luck** instead of the chart: about 1 in 100 for an
+ordinary hero, plus half a point for every point of luck you have over the boss
+(bosses carry luck equal to their level), **up to 3 in 10** a cast. A hero built
+around luck can end a boss fight with one cast. Bosses' own luck makes them
+land critical hits more often, up to 1 in 4. Ordinary monsters carry luck of
+half their level, so the deeper ones crit a little more and are a little
+harder to banish.
 
 ### Reading a monster
 

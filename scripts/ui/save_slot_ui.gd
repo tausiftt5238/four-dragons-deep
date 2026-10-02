@@ -12,12 +12,21 @@ signal slot_chosen(slot: int)
 signal cancelled
 
 const SLOT_COUNT: int = 3
+const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
 
 var mode: String = "save"  # "save" or "load"
+var _bare: bool = false
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# In a run, Main restyles every control as it is added. The title screen has
+	# no such hook, so the picker carries the font itself and its buttons get
+	# the size and height the hook would have given them.
+	_bare = not get_tree().current_scene is Main
+	if _bare:
+		theme = Theme.new()
+		theme.default_font = _FONT
 	_build()
 
 
@@ -71,6 +80,7 @@ func _build() -> void:
 	cancel_btn.custom_minimum_size   = Vector2(0, 30)
 	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel_btn.pressed.connect(func() -> void: cancelled.emit())
+	_dress(cancel_btn)
 	col.add_child(cancel_btn)
 
 
@@ -99,14 +109,15 @@ func _make_slot_row(slot: int) -> VBoxContainer:
 	btn.disabled = mode == "load" and not has_save
 	if not btn.disabled:
 		btn.pressed.connect(func() -> void: slot_chosen.emit(slot))
+	_dress(btn)
 	head.add_child(btn)
 
 	var detail: Label = Label.new()
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.add_theme_font_size_override("font_size", 11)
 	if has_save:
-		detail.text = "Floor %d   LV %d   %s" % [
-				info["floor"], info["lv"], _when(info["timestamp"] as String)]
+		detail.text = "Floor %d   LV %d   %s   %s" % [info["floor"], info["lv"],
+				_played(float(info["play_time"])), _when(info["timestamp"] as String)]
 		detail.add_theme_color_override("font_color", Color(0.60, 0.62, 0.70))
 	else:
 		detail.text = "Empty"
@@ -114,6 +125,21 @@ func _make_slot_row(slot: int) -> VBoxContainer:
 	row.add_child(detail)
 
 	return row
+
+
+# What Main's hook does to a button, done here when there is no Main.
+func _dress(btn: Button) -> void:
+	if not _bare:
+		return
+	btn.add_theme_font_size_override("font_size", 20)
+	btn.custom_minimum_size.y = roundf(btn.custom_minimum_size.y * 1.5)
+
+
+# Play time as hours and minutes, "2h 05m"; a save from before it was counted
+# shows "0h 00m".
+func _played(secs: float) -> String:
+	var mins: int = int(secs) / 60
+	return "%dh %02dm" % [mins / 60, mins % 60]
 
 
 # Saves are stamped in ISO, which is a lot of characters for a line that also

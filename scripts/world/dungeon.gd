@@ -1003,7 +1003,8 @@ func _axis_box(out: Vector3, across: Vector3, depth: float, height: float,
 const _HAZARD_SHADER := preload("res://resources/shaders/hazard.gdshader")
 const _PAIR_COLORS: Array[Color] = [Color(0.66, 0.38, 1.0), Color(0.30, 0.85, 0.80)]
 
-var _spark_mats: Array[ShaderMaterial] = []
+# cell -> the plate's material, so the one underfoot can show its own state.
+var _spark_mats: Dictionary = {}
 # Kept across rebuilds (a looted chest rebuilds the floor mid-pulse).
 var _spark_live: int = 0
 
@@ -1025,7 +1026,7 @@ func _add_trap_markers(level: Level) -> void:
 				mat.set_shader_parameter("mode", 2)
 				mat.set_shader_parameter("group", Level.spark_group(value))
 				mat.set_shader_parameter("live", _spark_live)
-				_spark_mats.append(mat)
+				_spark_mats[gp] = mat
 				size = CELL_SIZE * 0.9
 			Level.HAZARD_TELE:
 				mat.set_shader_parameter("mode", 3)
@@ -1045,10 +1046,18 @@ func _add_trap_markers(level: Level) -> void:
 
 # Which spark group is live, for every plate on the floor. Called by Main on the
 # pulse, so the tiles and the damage never disagree.
-func set_spark_live(group: int) -> void:
+#
+# Every plate shows `group`, the state it will be in when stepped onto next,
+# except the one at `under`: it shows `under_live`, the state that judged the
+# player as they landed on it, so what is underfoot always matches whether it
+# hurt. Without that exception the plate under you could flip the moment you
+# arrived, and you stood on a lit plate unhurt or were hurt by a dark one.
+func set_spark_live(group: int, under: Vector2i = Vector2i(-1, -1),
+		under_live: int = -1) -> void:
 	_spark_live = group
-	for mat: ShaderMaterial in _spark_mats:
-		mat.set_shader_parameter("live", group)
+	for cell: Variant in _spark_mats:
+		var shown: int = under_live if cell == under and under_live >= 0 else group
+		(_spark_mats[cell] as ShaderMaterial).set_shader_parameter("live", shown)
 
 
 func _add_box_child(parent: Node3D, pos: Vector3, size: Vector3,

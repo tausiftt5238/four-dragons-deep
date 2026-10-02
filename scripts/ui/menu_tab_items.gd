@@ -51,7 +51,11 @@ func build() -> void:
 	# One shelf per kind. Weapons, armour and trinkets live on the Equipment tab,
 	# where they can be compared against what is worn, so they are left out
 	# here. Anything of a kind not named still lists, under Other.
-	var shelves: Array[Array] = [["consumable", "Consumables"], ["scroll", "Scrolls"]]
+	# Throwables get their own shelf, by the same test the orb's shop and the
+	# battle's item menu use: anything that inflicts an ailment or deals an
+	# element's damage is thrown at a foe rather than used on yourself.
+	var shelves: Array[Array] = [["consumable", "Consumables"], ["throwable", "Throwables"],
+			["scroll", "Scrolls"]]
 	var by_type: Dictionary = {}
 	var other: Array = []
 	for shelf: Array in shelves:
@@ -60,6 +64,9 @@ func build() -> void:
 		var kind: String = item.get("type", "") as String
 		if kind in ["weapon", "armor", "accessory"]:
 			continue
+		if kind == "consumable" and (item.has("inflicts_status") \
+				or (item.has("element") and int(item.get("dmg", 0)) > 0)):
+			kind = "throwable"
 		if by_type.has(kind):
 			(by_type[kind] as Array).append(item["id"] as String)
 		else:

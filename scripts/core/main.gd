@@ -22,6 +22,7 @@ var cam_yaw: float  = 0.0  # continuous Y rotation — never wrapped, avoids sho
 var turn_tween: Tween
 
 var floor_num: int = 1
+var play_time: float = 0.0  # seconds this run has been played, saved with it
 var floor_label: Label
 
 # The camera hangs off a rig at the cell centre. The rig carries the position
@@ -126,6 +127,10 @@ func _notification(what: int) -> void:
 				_close_menu()
 			else:
 				_open_menu()
+
+
+func _process(delta: float) -> void:
+	play_time += delta
 
 
 func _ready() -> void:
@@ -1318,7 +1323,9 @@ static func _spark_live_at(steps: int) -> int:
 
 # What the plates show: the group that would be lit if you stepped onto it now.
 # Damage lands on arrival, so the plates show the arrival, and "do not step on
-# a lit plate" is the whole rule the player has to learn.
+# a lit plate" is the whole rule the player has to learn. The plate you are
+# standing on is the exception: it keeps the state it judged you by (see
+# Dungeon.set_spark_live), so lit underfoot means it shocked you.
 func _shown_spark_group() -> int:
 	return _spark_live_at(_spark_steps + 1)
 
@@ -1360,7 +1367,7 @@ func _sync_boss_banner() -> void:
 
 func _show_sparks() -> void:
 	if is_instance_valid(dungeon):
-		dungeon.set_spark_live(_shown_spark_group())
+		dungeon.set_spark_live(_shown_spark_group(), player_pos, _spark_live_at(_spark_steps))
 
 
 func _hazard_here() -> String:
@@ -1683,6 +1690,7 @@ func _gather_save_data() -> Dictionary:
 	return {
 		timestamp   = Time.get_datetime_string_from_system(),
 		floor_num   = floor_num,
+		play_time   = play_time,
 		player_pos  = [player_pos.x, player_pos.y],
 		player_facing = player_facing,
 		player = {
@@ -1747,6 +1755,7 @@ func _restore_save(data: Dictionary) -> void:
 	_apply_player_data(data["player"] as Dictionary)
 
 	floor_num = int(data["floor_num"])
+	play_time = float(data.get("play_time", 0.0))
 	floor_label.text = "Floor %d" % floor_num
 
 	if is_instance_valid(dungeon):

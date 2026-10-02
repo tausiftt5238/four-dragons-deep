@@ -20,6 +20,7 @@ static func slot_info(slot: int) -> Dictionary:
 		floor = d.get("floor_num", 1),
 		lv    = (d.get("player", {}) as Dictionary).get("lv", 1),
 		timestamp = d.get("timestamp", ""),
+		play_time = float(d.get("play_time", 0.0)),
 	}
 
 static func write(slot: int, data: Dictionary) -> void:

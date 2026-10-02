@@ -10,14 +10,11 @@ const CRIT_MULT: float = 1.75
 # and a swing that can miss had no business being the weaker option as well.
 const PHYS_POWER: float = 1.5
 
-# What each target keeps of a damaging cast split across several of them. The
-# more it reaches, the thinner it runs: 1 target keeps it all, 2 keep 67%, 3
-# keep 50%, 4 keep 40%. The total still grows with width, just not by much.
-const SPLIT_FALLOFF: float = 0.5
-
-
-static func split_share(targets: int) -> float:
-	return 1.0 / (1.0 + SPLIT_FALLOFF * float(maxi(0, targets - 1)))
+# A damaging cast reaching several targets used to thin out across them (one
+# target kept it all, four kept 40% each). It no longer does: every target
+# takes the whole cast, and the price of the reach is the risk instead, since
+# one target that nulls, dodges or turns it back prices the whole cast (see
+# CombatScene._spread_cost).
 
 
 static func variance(dmg: int) -> int:
@@ -30,12 +27,19 @@ static func variance(dmg: int) -> int:
 # worth a level-up point next to a flat +1 STR.
 const CRIT_BASE: float = 0.10
 const CRIT_PER_LUK: float = 0.005
+# The ceiling is the hero's to break, not a monster's: bosses carry luck equal
+# to their level (it is what a banishing luck build has to beat), and uncapped
+# that would have the Necromancer critting one swing in three.
+const MONSTER_CRIT_CAP: float = 0.25
 
 
 static func roll_crit(attacker: CharacterSheet = null) -> bool:
 	if attacker == null:
 		return randf() < CRIT_BASE
-	return randf() < CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck())
+	var chance: float = CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck())
+	if attacker is Enemy:
+		chance = minf(chance, MONSTER_CRIT_CAP)
+	return randf() < chance
 
 
 # Resolves one offensive hit against a target's affinity chart.
@@ -104,6 +108,17 @@ const BANISH_LUK_CAP: float = 0.15
 # No cast is ever a certainty, whatever rung it sits on.
 const BANISH_MAX: float = 0.92
 
+# Against a boss (a dragon, a warden, the Necromancer) the chart's odds are
+# set aside for these: next to nothing on its own, half a point per point of
+# luck the caster has over the boss, and a quarter of the rung's boost, all
+# capped at 30%. Bosses carry luck equal to their level, so a balanced hero
+# never gets a real chance and a luck build gets one worth building for.
+# Null, repel and drain still cannot be taken at all.
+const BOSS_BANISH_BASE:     float = 0.01
+const BOSS_BANISH_PER_LUK:  float = 0.005
+const BOSS_BANISH_BOOST:    float = 0.25
+const BOSS_BANISH_CAP:      float = 0.30
+
 const BANISH_BOUNDS: Dictionary = {
 	Affinity.WEAK:   Vector2(0.45, 0.80),
 	Affinity.RESIST: Vector2(0.02, 0.18),
@@ -125,6 +140,13 @@ static func banish_chance(target: CharacterSheet, element: String,
 			return 0.0
 		_: state = Affinity.NORMAL
 
+	if target is Enemy and (target as Enemy).is_boss_class():
+		var lead: float = 0.0
+		if caster != null:
+			lead = maxf(0.0, float(caster.battle_luck() - target.battle_luck()))
+		return clampf(BOSS_BANISH_BASE + lead * BOSS_BANISH_PER_LUK
+				+ boost * BOSS_BANISH_BOOST, 0.0, BOSS_BANISH_CAP)
+
 	if caster == null:
 		return clampf(base + boost, 0.0, BANISH_MAX)
 	var edge: float = clampf(
@@ -142,7 +164,7 @@ static func banish_chance(target: CharacterSheet, element: String,
 # instead.
 static func resolve_banish(target: CharacterSheet, element: String,
 		power: int, is_hero: bool, caster: CharacterSheet = null,
-		spread: float = 1.0, boost: float = 0.0) -> Dictionary:
+		boost: float = 0.0) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	match state:
 		Affinity.DRAIN:
@@ -163,9 +185,11 @@ static func resolve_banish(target: CharacterSheet, element: String,
 		return {outcome = "weak" if state == Affinity.WEAK else "hit",
 				dmg = max(1, hurt), taken = false}
 
-	# A cast thrown across several demons is thinner on each of them, which is
-	# what stops the wide versions from simply ending fights.
-	if randf() < banish_chance(target, element, caster, boost) * spread:
+	# A wide cast rolls the full odds on every target it reaches, as a single
+	# one does. What keeps the wide versions from simply ending fights is the
+	# chart (null, repel and drain cannot be taken) and the press-turn price of
+	# a cast any one target blocks (CombatScene._spread_cost).
+	if randf() < banish_chance(target, element, caster, boost):
 		return {outcome = "banished", dmg = 0, taken = true}
 	return {outcome = "failed", dmg = 0, taken = false}
 
