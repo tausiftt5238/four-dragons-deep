@@ -42,7 +42,22 @@ var reflect_element:  String = ""
 # party's four, a boss gets four — it is one thing standing where a pack would
 # be, so the icons are what make it a fight rather than a health bar.
 const BOSS_ICONS:   int = 4
-const WARDEN_ICONS: int = 2
+const WARDEN_ICONS: int = 3
+# Between an ordinary demon (1x) and a dragon (BOSS_HP_MULT): about one and a
+# half full packs of its floor, a third of the dragon waiting below it.
+const WARDEN_HP_MULT: int = 4
+
+# Each warden has one thing of its own, run by CombatScene:
+#   counter  Black Knight   strikes back at a blade, one time in two
+#   drain    Dark Knight    its spells heal it for half the damage they deal
+#   raise    Death Knight   raises a skeleton whenever none of its own stands
+#   enrage   Minotaur       below half HP it goes berserk, once: +1 icon, +2 ATK
+const WARDEN_TRICKS: Dictionary = {
+	"Black Knight": "counter",
+	"Dark Knight":  "drain",
+	"Death Knight": "raise",
+	"Minotaur":     "enrage",
+}
 
 # A boss's HP as a multiple of what the ordinary formula (lv*10 + def*3) gives
 # it, so a dragon is a long fight rather than a few good rounds.
@@ -59,6 +74,8 @@ var form: String = ""
 # Raised by the Necromancer mid-fight. Worth nothing when it falls, and it
 # crumbles when its master does.
 var summoned: bool = false
+# The Minotaur's rage, once it has gone off.
+var enraged: bool = false
 
 # Wardens and bosses keep their chart to themselves — Analyze refuses them and
 # killing one teaches nothing. They are met once each in a whole run, so a
@@ -580,7 +597,8 @@ const DRAGON_AILMENT_CHANCE: float = 0.2
 # never a plan. Poison and Paralysis always take hold.
 # Rolls each time it is asked, so ask once per attempt.
 func resists_status(status_id: String) -> bool:
-	if not (is_dragon() or is_necromancer()) or status_id not in [Status.SILENCE, Status.BLIND]:
+	if not (is_dragon() or is_necromancer() or is_warden()) \
+			or status_id not in [Status.SILENCE, Status.BLIND]:
 		return false
 	return randf() >= DRAGON_AILMENT_CHANCE
 
@@ -625,6 +643,15 @@ const NECRO_TEMPLATE: Dictionary = {
 
 func is_necromancer() -> bool:
 	return enemy_name == NECROMANCER
+
+
+func is_warden() -> bool:
+	return WARDEN_TRICKS.has(enemy_name)
+
+
+# This warden's trick (see WARDEN_TRICKS), or "" for anything else.
+func warden_trick() -> String:
+	return WARDEN_TRICKS.get(enemy_name, "") as String
 
 
 # What the bestiary and the affinity chart file what you learn under. The
@@ -785,18 +812,28 @@ static func make_warden(floor_num: int) -> Enemy:
 	# the floor says which band it is in and the band says which warden.
 	var idx: int = clampi(tier_for_floor(floor_num) - 1,
 			0, WARDEN_TEMPLATES.size() - 1)
-	var e: Enemy = _build(WARDEN_TEMPLATES[idx], floor_num)
+	var t: Dictionary = WARDEN_TEMPLATES[idx]
+	var e: Enemy = _build(t, floor_num)
 	# Its own colours, like a boss. The depth tint exists so the same sprite read
 	# twice in one tier is visibly deeper the second time; a warden is met once in
 	# the whole run, so the tint has nothing to say and only fights the art.
 	e.tint = Color.WHITE
 	# A warden is the floor's locked door: a step above its neighbours, a step
-	# below the boss waiting one floor down.
+	# below the boss waiting one floor down. Its stats are scaled at that level
+	# too; they used to stay at the ordinary floor level the build had used,
+	# with only HP and MP recomputed, so a warden hit like any other demon.
 	e.lv = maxi(2, roundi(float(floor_num) * 1.75))
+	var scale: float = 1.0 + float(e.lv - 1) * 0.22
+	e.str = maxi(1, roundi(float(t["str"]) * scale))
+	e.def = maxi(1, roundi(float(t["def"]) * scale))
+	e.mag = roundi(float(t["mag"]) * scale)
+	e.agl = maxi(1, roundi(float(t["agl"]) * scale))
 	e.exp_reward = exp_for_level(e.lv) * 2
 	e.gold_reward = e.lv * 6
 	e.unreadable = true
 	e.compute_max_hp()
+	e.max_hp *= WARDEN_HP_MULT
+	e.hp = e.max_hp
 	e.compute_max_mp()
 	return e
 

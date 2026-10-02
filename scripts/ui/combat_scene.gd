@@ -1008,12 +1008,15 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 		var heal_amt: int = max(1, dmg / 5)
 		player.heal(heal_amt)
 		extra = "  [color=lime]Vampiric: +%d HP.[/color]" % heal_amt
-	var downed: String = ""
+	# What happened after the blow: the foe going down, or a warden answering it.
+	var after: String = ""
 	if not enemy.is_alive():
-		downed = "  [color=lime]%s goes down![/color]" % enemy.display_name()
+		after = "  [color=lime]%s goes down![/color]" % enemy.display_name()
+	elif melee or element == Affinity.PHYS:
+		after = _warden_counter(enemy, actor)
 	return {msg = "%s%s  [color=orange]%s takes %d damage.[/color]%s%s" % [
 			prefix, CombatMath.outcome_tag(outcome, crit, muted), enemy.display_name(),
-			dmg, extra, downed],
+			dmg, extra, after],
 			cost = CombatMath.cost_for(outcome, crit, muted)}
 
 
@@ -1697,10 +1700,19 @@ func _enemy_phase() -> void:
 	_step_back_immediate()
 	_set_buttons(false)
 	_show_main_actions()
-	# The Necromancer changes form at the top of each of its phases.
+	# The Necromancer changes form at the top of each of its phases; a wounded
+	# Minotaur may lose its temper here, in time for the icon to count.
+	_warden_raised = false
 	for f: Enemy in _living_foes():
 		if f.is_necromancer():
 			_necro_begin_phase(f)
+		elif f.warden_trick() == "enrage" and not f.enraged and f.hp * 2 < f.max_hp:
+			f.enraged = true
+			f.icons += 1
+			f.shift_stage(CharacterSheet.STAT_ATK, 2)
+			_log("[color=#ff6a4a]%s bellows and goes berserk! Its attack rises.[/color]"
+					% f.display_name())
+			_refresh_hp()
 	# One icon per demon still standing — the same rule the player side runs on,
 	# which is what makes a pack of four genuinely dangerous.
 	var living: Array[Enemy] = _living_foes()
@@ -1727,7 +1739,8 @@ func _enemy_phase() -> void:
 		_foe_turn_idx += 1
 		_clear_floats()
 		_step_forward_foe(actor)
-		var res: Dictionary = _necro_act(actor) if actor.is_necromancer() else _enemy_act(actor)
+		var res: Dictionary = _necro_act(actor) if actor.is_necromancer() \
+				else (_warden_act(actor) if actor.is_warden() else _enemy_act(actor))
 		_log(res["msg"] as String)
 		# Their phase ends on a repel or a drain exactly as yours does, and it
 		# is worth saying out loud — the reason the pack stopped is a read the
@@ -3732,6 +3745,8 @@ func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
 			SpellFX.cast(hit_pr, element)
 	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s" % [
 			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted)]
+	if element != Affinity.PHYS:
+		msg += _warden_drain(actor, dmg)
 	if target == player:
 		msg += _check_counter()
 	return {msg = msg, cost = CombatMath.cost_for(outcome, crit, muted)}
@@ -3840,12 +3855,13 @@ func _summon_minion(master: Enemy) -> Dictionary:
 			master.display_name(), m.display_name(), m.lv], cost = PressTurn.COST_FULL}
 
 
-# With the Necromancer down, whatever it raised falls with it.
+# With the Necromancer (or the Death Knight) down, whatever it raised falls
+# with it.
 func _crumble_orphans() -> void:
 	var master_up: bool = false
 	var had_master: bool = false
 	for f: Enemy in foes:
-		if f.is_necromancer():
+		if f.is_necromancer() or f.warden_trick() == "raise":
 			had_master = true
 			master_up = master_up or f.is_alive()
 	if not had_master or master_up:
@@ -3853,6 +3869,60 @@ func _crumble_orphans() -> void:
 	for m: Enemy in _necro_minions():
 		m.hp = 0
 		_log("[color=gray]%s crumbles to dust.[/color]" % m.display_name())
+
+
+# ── Wardens ───────────────────────────────────────────────────────────────────
+#
+# Each warden's one trick (Enemy.WARDEN_TRICKS). The rage is checked at the
+# top of the enemy phase; the rest are here.
+const WARDEN_COUNTER_ODDS: float = 0.5
+
+# The Death Knight raises at most one skeleton a phase.
+var _warden_raised: bool = false
+
+
+func _warden_act(actor: Enemy) -> Dictionary:
+	if actor.warden_trick() == "raise" and not _warden_raised \
+			and not actor.has_status(Status.SILENCE) \
+			and not actor.has_status(Status.PARALYZED) and _necro_minions().is_empty():
+		_warden_raised = true
+		var epr: TextureRect = _foe_portrait(actor)
+		if epr != null:
+			_play_anim(epr, "attack")
+		return _summon_minion(actor)
+	return _enemy_act(actor)
+
+
+# The Black Knight's answer to a blade that did not finish it.
+func _warden_counter(target: Enemy, attacker: CharacterSheet) -> String:
+	if target.warden_trick() != "counter" or attacker == null or not attacker.is_alive() \
+			or randf() >= WARDEN_COUNTER_ODDS:
+		return ""
+	var base: float = float(target.str) * target.stage_mult(CharacterSheet.STAT_ATK)
+	var res: Dictionary = CombatMath.resolve(int(base) - _guard_vs(attacker, Affinity.PHYS),
+			Affinity.PHYS, attacker, false, attacker.defending)
+	if res["outcome"] in ["null", "drain", "repel"]:
+		return ""
+	var dmg: int = int(res["dmg"])
+	attacker.take_damage(dmg)
+	var pr: TextureRect = _member_portrait(attacker)
+	if pr != null:
+		_shake_portrait(pr, attacker.defending)
+	return "\n[color=#ff8a4a]%s counters! %s takes %d.[/color]" % [
+			target.display_name(), _member_name(attacker), dmg]
+
+
+# The Dark Knight drinks what its spells take.
+func _warden_drain(actor: Enemy, dealt: int) -> String:
+	if actor.warden_trick() != "drain" or dealt <= 0 or not actor.is_alive():
+		return ""
+	var back: int = maxi(1, dealt / 2)
+	var before: int = actor.hp
+	actor.heal(back)
+	if actor.hp == before:
+		return ""
+	return " [color=#b070ff]%s drinks %d HP from it.[/color]" % [
+			actor.display_name(), actor.hp - before]
 
 
 # ── Wide casts from the other side ────────────────────────────────────────────
@@ -3882,6 +3952,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 			reach_word, targets.size()]]
 	var outcomes: Array[String] = []
 	var reflected: int = 0
+	var dealt: int = 0
 
 	for who: CharacterSheet in targets:
 		if banishing:
@@ -3911,6 +3982,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 				lines.append("[color=#999999]%s does not feel it.[/color]" % _member_name(who))
 			_:
 				who.take_damage(dmg)
+				dealt += dmg
 				var pr: TextureRect = _member_portrait(who)
 				if pr != null:
 					_shake_portrait(pr, who.defending)
@@ -3922,6 +3994,8 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 		actor.take_damage(reflected)
 		lines.append("[color=#d070ff]%s takes %d from what came back.[/color]" % [
 				actor.display_name(), reflected])
+	if element != Affinity.PHYS:
+		lines.append(_warden_drain(actor, dealt))
 
 	# The demons' side pays the same press-turn arithmetic the hero does.
 	return {msg = " ".join(lines), cost = _spread_cost(outcomes)}

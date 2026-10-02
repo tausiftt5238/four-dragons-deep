@@ -16,7 +16,14 @@ opens it.
 
 - On most floors the **key lies somewhere in the maze**. Walk onto it to take it.
 - On floors **4, 9, 14 and 19** a **warden** holds it instead. Beat the warden
-  to take it.
+  to take it. A warden is a real fight: three turns a phase, about a third of
+  the next dragon's HP, Silence and Blind land only one time in five, and each
+  has a trick of its own:
+  - **Black Knight** (4) strikes back at blades, one time in two.
+  - **Dark Knight** (9) heals for half the damage its spells deal.
+  - **Death Knight** (14) raises a skeleton whenever none of its own stands;
+    they crumble when it falls.
+  - **Minotaur** (19) goes berserk below half HP: one more turn, harder hits.
 - While you carry the key, a **key icon** shows at the right edge of the screen.
   Walk into the door to **unlock** it, then walk forward again to go down.
 
