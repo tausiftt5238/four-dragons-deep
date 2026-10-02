@@ -3,13 +3,15 @@
 # monster), each equally likely on every reel. Two alike pays that face; three
 # alike is the jackpot and pays it bigger. All three different pays nothing.
 #
-# With four faces the odds come out at:
-#   any pair       36 in 64   (56%)
-#   jackpot         4 in 64   (6%)
-#   nothing        24 in 64   (38%)
-# Gold alone gives back about a third of the stake on average, so it is not a
-# way to make money (the Gauntlet is). What makes a spin worth it is the
-# experience, the monsters, and the chance of gear from the band below.
+# A reel that lands on a face already showing slips to another one time in
+# five (MISS_SLIP), so with no luck the odds come out at about:
+#   any pair       48%
+#   jackpot         4%
+#   nothing        48%
+# A spin costs twice the base price (PRICE_MULT) while every prize is still
+# reckoned off the base, so gold alone gives back about a sixth of the stake.
+# It is not a way to make money (the Gauntlet is). What makes a spin worth it
+# is the experience, the monsters, and the chance of gear from the band below.
 #
 # Luck leans on the last two reels: each has LUCK_PULL per point of the hero's
 # luck to land on a face already showing, with no ceiling. At 30 luck a jackpot
@@ -28,9 +30,18 @@ const GOLD_JACKPOT: float = 10.0
 const EXP_PAIR_FIGHTS: int = 3    # about one ordinary fight on this floor
 const EXP_JACKPOT_MULT: int = 5
 const LUCK_PULL: float = 0.005
+const MISS_SLIP: float = 0.20
+const PRICE_MULT: int = 2
 
 
+# What a spin costs.
 static func price(floor_num: int) -> int:
+	return base_price(floor_num) * PRICE_MULT
+
+
+# What the prizes are reckoned off: the price before it was doubled, so making
+# a spin dearer did not make its gold prizes richer with it.
+static func base_price(floor_num: int) -> int:
 	return 25 + 15 * maxi(1, floor_num)
 
 
@@ -40,8 +51,17 @@ static func spin(luck: int = 0) -> Array[String]:
 	for i: int in 2:
 		if randf() < pull:
 			out.append(out[randi() % out.size()])
-		else:
-			out.append(FACES[randi() % FACES.size()])
+			continue
+		var face: String = FACES[randi() % FACES.size()]
+		# A near miss: a match that was not pulled by luck sometimes slips off.
+		if face in out and randf() < MISS_SLIP:
+			var others: Array[String] = []
+			for f: String in FACES:
+				if f not in out:
+					others.append(f)
+			if not others.is_empty():
+				face = others[randi() % others.size()]
+		out.append(face)
 	return out
 
 
@@ -55,7 +75,7 @@ static func outcome(reels: Array[String]) -> Dictionary:
 
 
 static func gold_prize(floor_num: int, jackpot: bool) -> int:
-	return roundi(price(floor_num) * (GOLD_JACKPOT if jackpot else GOLD_PAIR))
+	return roundi(base_price(floor_num) * (GOLD_JACKPOT if jackpot else GOLD_PAIR))
 
 
 static func exp_prize(floor_num: int, jackpot: bool) -> int:
