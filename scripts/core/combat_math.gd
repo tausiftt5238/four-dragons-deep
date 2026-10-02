@@ -27,12 +27,19 @@ static func variance(dmg: int) -> int:
 # worth a level-up point next to a flat +1 STR.
 const CRIT_BASE: float = 0.10
 const CRIT_PER_LUK: float = 0.005
+# The ceiling is the hero's to break, not a monster's: bosses carry luck equal
+# to their level (it is what a banishing luck build has to beat), and uncapped
+# that would have the Necromancer critting one swing in three.
+const MONSTER_CRIT_CAP: float = 0.25
 
 
 static func roll_crit(attacker: CharacterSheet = null) -> bool:
 	if attacker == null:
 		return randf() < CRIT_BASE
-	return randf() < CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck())
+	var chance: float = CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck())
+	if attacker is Enemy:
+		chance = minf(chance, MONSTER_CRIT_CAP)
+	return randf() < chance
 
 
 # Resolves one offensive hit against a target's affinity chart.
@@ -101,6 +108,17 @@ const BANISH_LUK_CAP: float = 0.15
 # No cast is ever a certainty, whatever rung it sits on.
 const BANISH_MAX: float = 0.92
 
+# Against a boss (a dragon, a warden, the Necromancer) the chart's odds are
+# set aside for these: next to nothing on its own, half a point per point of
+# luck the caster has over the boss, and a quarter of the rung's boost, all
+# capped at 30%. Bosses carry luck equal to their level, so a balanced hero
+# never gets a real chance and a luck build gets one worth building for.
+# Null, repel and drain still cannot be taken at all.
+const BOSS_BANISH_BASE:     float = 0.01
+const BOSS_BANISH_PER_LUK:  float = 0.005
+const BOSS_BANISH_BOOST:    float = 0.25
+const BOSS_BANISH_CAP:      float = 0.30
+
 const BANISH_BOUNDS: Dictionary = {
 	Affinity.WEAK:   Vector2(0.45, 0.80),
 	Affinity.RESIST: Vector2(0.02, 0.18),
@@ -121,6 +139,13 @@ static func banish_chance(target: CharacterSheet, element: String,
 		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
 			return 0.0
 		_: state = Affinity.NORMAL
+
+	if target is Enemy and (target as Enemy).is_boss_class():
+		var lead: float = 0.0
+		if caster != null:
+			lead = maxf(0.0, float(caster.battle_luck() - target.battle_luck()))
+		return clampf(BOSS_BANISH_BASE + lead * BOSS_BANISH_PER_LUK
+				+ boost * BOSS_BANISH_BOOST, 0.0, BOSS_BANISH_CAP)
 
 	if caster == null:
 		return clampf(base + boost, 0.0, BANISH_MAX)

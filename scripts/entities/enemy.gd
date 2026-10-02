@@ -394,21 +394,21 @@ const TEMPLATES: Array[Dictionary] = [
 const WARDEN_TEMPLATES: Array[Dictionary] = [
 	{name = "Black Knight",    icons = WARDEN_ICONS,
 		str =  6, def =  7, mag =  6, agl =  2,
-		weakness = "thunder", nulls = ["ice"], reflect_element = "fire", phys = "resist", light = "resist",
+		weakness = "thunder", light = "resist", dark = "resist", nulls = ["ice"], reflect_element = "fire", phys = "resist",
 		attack_elements = ["thunder", "light"], reach = "few", status_attack = "blind", ail = 8,
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Black_Knight_A"},
 
 	{name = "Dark Knight",     icons = WARDEN_ICONS,
 		str =  7, def =  6, mag =  6, agl =  3,
-		weakness = "fire", nulls = ["ice"], phys = "resist", light = "weak", dark = "drain",
+		weakness = "fire", light = "resist", dark = "resist", nulls = ["ice"], phys = "resist",
 		attack_elements = ["ice", "dark"], reach = "all", status_attack = "silence", ail = 10, support = "mire",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Black_Knight_B"},
 
 	{name = "Death Knight",    icons = WARDEN_ICONS,
 		str =  4, def =  7, mag = 11, agl =  4,
-		weakness = "ice", nulls = ["thunder"], reflect_element = "fire", light = "weak", dark = "drain",
+		weakness = "ice", light = "resist", dark = "resist", nulls = ["thunder"], reflect_element = "fire",
 		attack_elements = ["fire", "dark", "ice"], reach = "all", caster = true,
 		status_attack = "silence", ail = 20, support = "purge",
 		negotiable = false, talk_difficulty = 0,
@@ -416,8 +416,7 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 
 	{name = "Minotaur",        icons = WARDEN_ICONS,
 		str = 10, def =  9, mag =  7, agl =  5,
-		weakness = "thunder", nulls = ["fire"], absorb_element = "ice", phys = "resist",
-		light = "weak", dark = "drain",
+		weakness = "thunder", light = "resist", dark = "resist", nulls = ["fire"], absorb_element = "ice", phys = "resist",
 		attack_elements = ["ice", "dark"], reach = "few", status_attack = "blind", ail = 20,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
@@ -438,14 +437,17 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 # stand. The Void Dragon closes the ring back onto ice because there is no fifth
 # element to hand out, and by floor 20 finding the ice again is the point.
 #
-# All four null light and dark: a dragon is not a thing the banishing lines can
-# talk out of the room, and a run that ended on a lucky Hama would end a lot of
-# runs. Four icons each — see BOSS_ICONS.
+# All four resist light and dark, as do the wardens and the Necromancer's
+# forms. Against them banishing runs on the boss odds instead of the chart's
+# (CombatMath.banish_chance): about nothing for an ordinary hero, up to 30% a
+# cast for one who has put enough into Luck to out-luck the boss. So a luck
+# build can end a boss fight early, and nobody else can. Four icons each — see
+# BOSS_ICONS.
 const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Ice Dragon",       lv = 12, icons = BOSS_ICONS,
 		str = 12, def =  9, mag = 10, agl =  4,
 		exp = 200, gold =  80, tier = 4, rank = 0, min_floor = 5, max_floor = -1,
-		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "null", dark = "null",
+		weakness = "fire", nulls = ["thunder"], absorb_element = "ice", light = "resist", dark = "resist",
 		attack_elements = ["ice"], reach = "few", status_attack = "blind", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
@@ -458,7 +460,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Thunder Dragon",   lv = 14, icons = BOSS_ICONS,
 		str = 13, def =  9, mag = 13, agl = 10,
 		exp = 280, gold = 110, tier = 4, rank = 0, min_floor = 10, max_floor = -1,
-		weakness = "ice", nulls = ["fire"], absorb_element = "thunder", light = "null", dark = "null",
+		weakness = "ice", nulls = ["fire"], absorb_element = "thunder", light = "resist", dark = "resist",
 		attack_elements = ["thunder"], reach = "all", status_attack = "paralyzed", ail = 25,
 		support = "steady",
 		negotiable = false, talk_difficulty = 0,
@@ -472,7 +474,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		str = 16, def = 11, mag = 13, agl =  6,
 		exp = 360, gold = 140, tier = 4, rank = 0, min_floor = 15, max_floor = -1,
 		weakness = "thunder", nulls = ["ice"], absorb_element = "fire", phys = "resist",
-		light = "null", dark = "null",
+		light = "resist", dark = "resist",
 		attack_elements = ["fire"], reach = "all", status_attack = "poison", ail = 25,
 		support = "ward",
 		negotiable = false, talk_difficulty = 0,
@@ -486,13 +488,13 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 		str = 15, def = 12, mag = 15, agl =  7,
 		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
 		weakness = "ice", nulls = ["fire", "thunder"], phys = "resist",
-		light = "null", dark = "drain",
+		light = "resist", dark = "resist",
 		attack_elements = ["dark", "fire", "thunder"], reach = "all",
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Void_Dragon",
 		design_note = "The last fight. It answers to exactly one element out of six and shrugs at a "
-				+ "blade, casts three lines room-wide, drinks the dark and purges anything put on it. "
+				+ "blade, casts three lines room-wide, resists the banishing lines and purges anything put on it. "
 				+ "Silence is the real danger — it can close the one door it is vulnerable through, "
 				+ "which is why the corridor has an orb at the mouth and the player should arrive "
 				+ "with more than one way to say ice."},
@@ -654,6 +656,11 @@ func warden_trick() -> String:
 	return WARDEN_TRICKS.get(enemy_name, "") as String
 
 
+# A dragon, a warden or the Necromancer: what banishing judges by the boss odds.
+func is_boss_class() -> bool:
+	return is_dragon() or is_warden() or is_necromancer()
+
+
 # What the bestiary and the affinity chart file what you learn under. The
 # Necromancer keeps a separate chart per form, so a weakness found in its ice
 # form is still known the next time it turns to ice, and never shown for fire.
@@ -692,6 +699,9 @@ static func make_necromancer(floor_num: int) -> Enemy:
 	e.max_hp *= BOSS_HP_MULT
 	e.hp = e.max_hp
 	e.compute_max_mp()
+	# Luck to match its level: out-lucking it for a banish takes a build, and
+	# it crits more (CombatMath caps a monster's crit rate).
+	e.luk = e.lv
 	e.take_form(NECRO_FORMS[randi() % NECRO_FORMS.size()])
 	return e
 
@@ -778,6 +788,9 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.max_hp *= BOSS_HP_MULT
 	e.hp = e.max_hp
 	e.compute_max_mp()
+	# Luck to match its level: out-lucking it for a banish takes a build, and
+	# it crits more (CombatMath caps a monster's crit rate).
+	e.luk = e.lv
 	return e
 
 
@@ -835,6 +848,9 @@ static func make_warden(floor_num: int) -> Enemy:
 	e.max_hp *= WARDEN_HP_MULT
 	e.hp = e.max_hp
 	e.compute_max_mp()
+	# Luck to match its level: out-lucking it for a banish takes a build, and
+	# it crits more (CombatMath caps a monster's crit rate).
+	e.luk = e.lv
 	return e
 
 

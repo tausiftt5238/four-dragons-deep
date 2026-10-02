@@ -115,7 +115,14 @@ Light and dark do not wound. They **banish** — either the monster is expelled
 outright or nothing happens at all. Roughly **3 in 5** against something the
 line is made to expel, **1 in 4** against a monster with no opinion, and almost
 never against one that resists. A monster that nulls, reflects or drains the line
-can never be banished by it at all, and **every dragon is immune to both**.
+can never be banished by it at all.
+
+**Bosses** (the wardens, the dragons and the Necromancer) resist both lines, and
+banishing one runs on **luck** instead of the chart: about 1 in 100 for an
+ordinary hero, plus half a point for every point of luck you have over the boss
+(bosses carry luck equal to their level), **up to 3 in 10** a cast. A hero built
+around luck can end a boss fight with one cast. Bosses' own luck makes them
+land critical hits more often, up to 1 in 4.
 
 ### Reading a monster
 
