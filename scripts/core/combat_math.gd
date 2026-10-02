@@ -10,14 +10,11 @@ const CRIT_MULT: float = 1.75
 # and a swing that can miss had no business being the weaker option as well.
 const PHYS_POWER: float = 1.5
 
-# What each target keeps of a damaging cast split across several of them. The
-# more it reaches, the thinner it runs: 1 target keeps it all, 2 keep 67%, 3
-# keep 50%, 4 keep 40%. The total still grows with width, just not by much.
-const SPLIT_FALLOFF: float = 0.5
-
-
-static func split_share(targets: int) -> float:
-	return 1.0 / (1.0 + SPLIT_FALLOFF * float(maxi(0, targets - 1)))
+# A damaging cast reaching several targets used to thin out across them (one
+# target kept it all, four kept 40% each). It no longer does: every target
+# takes the whole cast, and the price of the reach is the risk instead, since
+# one target that nulls, dodges or turns it back prices the whole cast (see
+# CombatScene._spread_cost).
 
 
 static func variance(dmg: int) -> int:

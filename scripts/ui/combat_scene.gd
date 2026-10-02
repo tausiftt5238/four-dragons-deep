@@ -2296,9 +2296,8 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 		banishing: bool, boost: float = 0.0, named: String = "") -> Dictionary:
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
-	# A physical line cuts each of them at full weight, as the hero's does.
+	# Every target takes the whole cast, as the hero's does (see _cast_spread).
 	var phys: bool = element == Affinity.PHYS
-	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
 	var lines: Array[String] = ["[color=#9ad0ff]%s uses %s on %d of them![/color]" % [
 			actor.display_name(), named, targets.size()] if phys
 			else "[color=#9ad0ff]%s calls up %s over %d of them![/color]" % [
@@ -2342,7 +2341,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 					"dodges" if phys else "slips"])
 			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * split) - _guard_vs(foe, element), element, foe,
+				int(base) - _guard_vs(foe, element), element, foe,
 				CombatMath.roll_crit(actor), foe.defending)
 		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
@@ -3177,9 +3176,10 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
 	var phys: bool = element == Affinity.PHYS
-	# Magic spreads thin across a line; a physical skill is a separate cut to
-	# each of them, so every one lands at full weight.
-	var split: float = 1.0 if phys else CombatMath.split_share(targets.size())
+	# Every target takes the whole cast, magic and physical alike. A wide spell
+	# used to thin out across the line; it no longer needs to, because one
+	# demon that nulls, dodges or turns it back now prices the whole cast (see
+	# _spread_cost), and that risk is what a wide spell pays for its reach.
 	var power: float = _skill_power(phys)
 
 	var lines: Array[String] = ["%s %s!" % ["You use" if phys else "You cast", data["name"]]]
@@ -3193,7 +3193,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 			lines.append("[color=#9aa0aa]%s %s it.[/color]" % [foe.display_name(),
 					"dodges" if phys else "slips"])
 			continue
-		var base: int = int(power * rung * split) - _guard_vs(foe, element)
+		var base: int = int(power * rung) - _guard_vs(foe, element)
 		if not phys and "scholar" in player.passive_skills:
 			base = int(base * 1.25)
 		var crit: bool = CombatMath.roll_crit(player)
@@ -3976,7 +3976,6 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 	var banishing: bool = Affinity.is_banishing(element)
 	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[CharacterSheet] = _enemy_spread_targets(actor)
-	var split: float = CombatMath.split_share(targets.size())
 	var reach_word: String = "across" if actor.attack_reach == Spell.SHAPE_FEW else "over"
 
 	var lines: Array[String] = [dry + "[color=#ff9a6a]%s calls up %s %s %d of you![/color]" % [
@@ -3997,7 +3996,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 			lines.append("[color=#9aa0aa]%s slips it.[/color]" % _member_name(who))
 			continue
 		var res: Dictionary = CombatMath.resolve(
-				int(base * split) - _guard_vs(who, element), element, who,
+				int(base) - _guard_vs(who, element), element, who,
 				CombatMath.roll_crit(actor), who.defending)
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
