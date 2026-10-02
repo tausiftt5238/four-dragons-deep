@@ -5,7 +5,7 @@
 #
 # A reel that lands on a face already showing slips to another one time in
 # five (MISS_SLIP), so with no luck the odds come out at about:
-#   any pair       48%
+#   any win        52%  (a pair or better)
 #   jackpot         4%
 #   nothing        48%
 # A spin costs twice the base price (PRICE_MULT) while every prize is still
@@ -15,7 +15,7 @@
 #
 # Luck leans on the last two reels: each has LUCK_PULL per point of the hero's
 # luck to land on a face already showing, with no ceiling. At 30 luck a jackpot
-# is about 13 in 100 instead of 6, and an empty spin 27 instead of 38; at 200
+# is about 10 in 100 instead of 4, and an empty spin 35 instead of 48; at 200
 # every spin is a jackpot.
 class_name Gacha
 
