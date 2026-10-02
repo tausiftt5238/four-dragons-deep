@@ -12,9 +12,9 @@
 # experience, the monsters, and the chance of gear from the band below.
 #
 # Luck leans on the last two reels: each has LUCK_PULL per point of the hero's
-# luck to land on a face already showing, up to LUCK_PULL_CAP — the same 30
-# luck that caps crits. At that cap a jackpot is about 13 in 100 instead of 6,
-# and an empty spin 27 instead of 38.
+# luck to land on a face already showing, with no ceiling. At 30 luck a jackpot
+# is about 13 in 100 instead of 6, and an empty spin 27 instead of 38; at 200
+# every spin is a jackpot.
 class_name Gacha
 
 const EXP:  String = "exp"
@@ -28,7 +28,6 @@ const GOLD_JACKPOT: float = 10.0
 const EXP_PAIR_FIGHTS: int = 3    # about one ordinary fight on this floor
 const EXP_JACKPOT_MULT: int = 5
 const LUCK_PULL: float = 0.005
-const LUCK_PULL_CAP: float = 0.15
 
 
 static func price(floor_num: int) -> int:
@@ -36,7 +35,7 @@ static func price(floor_num: int) -> int:
 
 
 static func spin(luck: int = 0) -> Array[String]:
-	var pull: float = minf(LUCK_PULL_CAP, LUCK_PULL * float(maxi(0, luck)))
+	var pull: float = LUCK_PULL * float(maxi(0, luck))
 	var out: Array[String] = [FACES[randi() % FACES.size()]]
 	for i: int in 2:
 		if randf() < pull:

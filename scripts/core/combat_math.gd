@@ -24,19 +24,18 @@ static func variance(dmg: int) -> int:
 	return max(1, roundi(dmg * randf_range(0.8, 1.2)))
 
 
-# 10% bare, climbing half a point per point of luck and capped at a quarter.
+# 10% bare, climbing half a point per point of luck, with no ceiling: at 180
+# luck every swing crits.
 # Luck is the only thing that moves it, which is the whole reason the stat is
 # worth a level-up point next to a flat +1 STR.
 const CRIT_BASE: float = 0.10
 const CRIT_PER_LUK: float = 0.005
-const CRIT_CAP: float = 0.25
 
 
 static func roll_crit(attacker: CharacterSheet = null) -> bool:
 	if attacker == null:
 		return randf() < CRIT_BASE
-	return randf() < minf(CRIT_CAP,
-			CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck()))
+	return randf() < CRIT_BASE + CRIT_PER_LUK * float(attacker.battle_luck())
 
 
 # Resolves one offensive hit against a target's affinity chart.
