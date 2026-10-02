@@ -808,6 +808,7 @@ static func make_at_level(enemy_name: String, lv: int) -> Enemy:
 			e.def = maxi(1, roundi(float(tmpl["def"]) * scale))
 			e.mag = roundi(float(tmpl["mag"]) * scale)
 			e.agl = maxi(1, roundi(float(tmpl["agl"]) * scale))
+			e.luk = monster_luck(e.lv)
 			e.exp_reward = exp_for_level(e.lv)
 			e.gold_reward = maxi(4, e.lv * 3)
 			e.compute_max_hp()
@@ -903,6 +904,14 @@ static func is_known(enemy_name: String) -> bool:
 	return false
 
 
+# A demon's luck: half its level. It used to sit at 1 everywhere, so a demon
+# on the last floor crit no more often than one on the first and a hero's luck
+# edge over any of them never shrank. Half keeps the deepest packs under the
+# monster crit cap (CombatMath.MONSTER_CRIT_CAP); bosses carry their full level.
+static func monster_luck(lv: int) -> int:
+	return maxi(1, lv / 2)
+
+
 static func make_from_name(enemy_name: String, floor_num: int = 1) -> Enemy:
 	for tmpl: Dictionary in all_templates():
 		if tmpl["name"] == enemy_name:
@@ -969,6 +978,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.def             = maxi(1, roundi(float(t["def"]) * scale))
 	e.mag             = roundi(float(t["mag"]) * scale)
 	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
+	e.luk             = monster_luck(e.lv)
 	e.exp_to_next     = 0
 	e.exp_reward      = exp_for_level(e.lv)
 	e.gold_reward     = maxi(4, e.lv * 3)

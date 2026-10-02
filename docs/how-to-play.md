@@ -122,7 +122,9 @@ banishing one runs on **luck** instead of the chart: about 1 in 100 for an
 ordinary hero, plus half a point for every point of luck you have over the boss
 (bosses carry luck equal to their level), **up to 3 in 10** a cast. A hero built
 around luck can end a boss fight with one cast. Bosses' own luck makes them
-land critical hits more often, up to 1 in 4.
+land critical hits more often, up to 1 in 4. Ordinary monsters carry luck of
+half their level, so the deeper ones crit a little more and are a little
+harder to banish.
 
 ### Reading a monster
 
