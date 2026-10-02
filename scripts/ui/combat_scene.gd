@@ -2213,6 +2213,7 @@ func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
 					cost = PressTurn.COST_FULL}
 		target.mp -= took
 		actor.mp = mini(actor.max_mp, actor.mp + took)
+		_bite_fx(target, LEECH_MP_TINT)
 		return {msg = "[color=#7fb0ff]%s! It drinks %d MP from %s.[/color]" % [lead, took, who],
 				cost = PressTurn.COST_FULL}
 
@@ -2222,10 +2223,7 @@ func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
 	var dmg: int = mini(int(res["dmg"]), target.hp)
 	target.take_damage(dmg)
 	actor.heal(dmg)
-	var pr: TextureRect = _foe_portrait(target as Enemy) if target is Enemy \
-			else _member_portrait(target)
-	if pr != null:
-		_shake_portrait(pr, guarded)
+	_bite_fx(target, LEECH_HP_TINT, guarded)
 	var tail: String = ""
 	if not target.is_alive():
 		tail = "  [color=lime]%s goes down![/color]" % who
@@ -2235,6 +2233,21 @@ func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
 					bool(res.get("suppressed", false))), tail],
 			cost = PressTurn.COST_HALF if bool(res["crit"]) and not guarded
 				else PressTurn.COST_FULL}
+
+
+# A bite lands like a swing: the portrait shakes and the slash crosses it,
+# tinted for what was drunk, red for blood and blue for MP.
+const LEECH_HP_TINT: Color = Color(1.0, 0.45, 0.45)
+const LEECH_MP_TINT: Color = Color(0.55, 0.75, 1.0)
+
+
+func _bite_fx(target: CharacterSheet, tint: Color, guarded: bool = false) -> void:
+	var pr: TextureRect = _foe_portrait(target as Enemy) if target is Enemy \
+			else _member_portrait(target)
+	if pr == null:
+		return
+	_shake_portrait(pr, guarded)
+	SlashFX.strike(pr, tint)
 
 
 # What a bat or a blood thing on the other side bites with this turn, if it
