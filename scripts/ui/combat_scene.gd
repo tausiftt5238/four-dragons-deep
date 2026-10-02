@@ -1263,7 +1263,7 @@ func _fill_submenu(entries: Array[Dictionary]) -> void:
 
 func _entry_button(e: Dictionary) -> Button:
 	var btn: Button = _big_button(e["title"] as String, e["detail"] as String,
-			bool(e.get("disabled", false)))
+			bool(e.get("disabled", false)), e.get("icon", "") as String)
 	btn.pressed.connect(e["press"] as Callable)
 	return btn
 
@@ -2027,8 +2027,7 @@ func _show_skills_submenu() -> void:
 	# Paged like Summon: Attack plus a demon's full six is seven entries, and
 	# a flat fill silently dropped the last one.
 	var entries: Array[Dictionary] = []
-	entries.append(_skill_entry("Attack", "Attack",
-			Affinity.element_name(Affinity.PHYS), "\u2014", false))
+	entries.append(_skill_entry("Attack", "Attack", "", "\u2014", false, Affinity.PHYS))
 
 	if _actor_is_player():
 		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
@@ -2043,12 +2042,11 @@ func _show_skills_submenu() -> void:
 			if data.is_empty():
 				continue
 			var element: String = data.get("element", "")
-			var tag: String = Affinity.element_name(element) if element != "" \
-					else (data.get("type", "dmg") as String).capitalize()
+			# An element is its icon; anything without one says what it is.
 			# How far it reaches is the thing a player most needs to know
 			# before spending 22 MP, so it rides next to the element.
-			if element != "":
-				tag += "  " + Spell.reach_tag(spell_id)
+			var tag: String = Spell.reach_tag(spell_id) if element != "" \
+					else (data.get("type", "dmg") as String).capitalize()
 			# A physical skill is paid in blood, not mana: silence does not
 			# stop it, and it will not spend the last of the hero's HP.
 			var blocked: bool
@@ -2058,7 +2056,7 @@ func _show_skills_submenu() -> void:
 			else:
 				blocked = silenced or player.mp < int(data.get("mp", 0))
 			entries.append(_skill_entry("Magic:" + spell_id,
-					data["name"] as String, tag, Spell.cost_text(spell_id), blocked))
+					data["name"] as String, tag, Spell.cost_text(spell_id), blocked, element))
 		_fill_submenu(entries)
 		return
 
@@ -2075,6 +2073,7 @@ func _show_skills_submenu() -> void:
 		var blocked: bool = demon.hp <= hp_price if hp_price > 0 \
 				else silenced_demon or demon.mp < cost
 		var tag: String = ""
+		var icon: String = ""
 		if skill.get("kind", "") == "unique":
 			var u: Dictionary = Spell.get_data(skill.get("id", "") as String)
 			tag = "Drain %s  one" % (u.get("drain", "hp") as String).to_upper()
@@ -2086,12 +2085,11 @@ func _show_skills_submenu() -> void:
 					else "%s%s  foes" % [(d.get("stat", "") as String).to_upper(),
 					"+" if int(d.get("delta", 1)) > 0 else "-"]
 		else:
-			tag = "%s  %s  %s" % [
-					Affinity.element_name(skill.get("element", "") as String),
-					reach, "I".repeat(int(skill.get("rung", 1)))]
+			icon = skill.get("element", "") as String
+			tag = "%s  %s" % [reach, "I".repeat(int(skill.get("rung", 1)))]
 		entries.append(_skill_entry("Skill:%d" % i,
 				PlayerCharacter.skill_name(skill), tag,
-				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked))
+				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked, icon))
 	_fill_submenu(entries)
 
 
@@ -2492,9 +2490,13 @@ static func _px_ring(img: Image, cx: float, cy: float, r: float, c: Color) -> vo
 # underneath. Built from child Labels because a Button's own text is one line.
 
 # The same button as an entry for _fill_submenu, so a long list scrolls.
-func _skill_entry(action: String, label: String, element: String,
-		cost: String, disabled: bool) -> Dictionary:
-	return {title = label, detail = "%s   %s" % [element, cost], disabled = disabled,
+# `icon` is an element, drawn as its picture in front of the detail line in
+# place of its name: "[fire] x2-3   14 MP" reads at a glance on a phone where
+# "Fire  x2-3   14 MP" had to be read.
+func _skill_entry(action: String, label: String, tag: String,
+		cost: String, disabled: bool, icon: String = "") -> Dictionary:
+	var detail: String = "%s   %s" % [tag, cost] if tag != "" else cost
+	return {title = label, detail = detail, disabled = disabled, icon = icon,
 			press = func() -> void: await _on_skill_chosen(action)}
 
 
@@ -2943,7 +2945,12 @@ func _submenu_add(control: Control) -> void:
 
 # A slot-sized submenu entry: title on top, the detail that decides the choice
 # underneath. Built from child Labels because a Button's own text is one line.
-func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
+# The element icon on a submenu button's detail line.
+const ICON_PX: int = 16
+
+
+func _big_button(title: String, subtitle: String, disabled: bool,
+		icon: String = "") -> Button:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = Vector2(0, 0)
 	btn.disabled = disabled
@@ -2965,7 +2972,7 @@ func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
 	title_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
 	box.add_child(title_lbl)
 
-	if subtitle != "":
+	if subtitle != "" or icon != "":
 		var sub_lbl: Label = Label.new()
 		sub_lbl.text                 = subtitle
 		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2973,7 +2980,27 @@ func _big_button(title: String, subtitle: String, disabled: bool) -> Button:
 		sub_lbl.add_theme_font_size_override("font_size", 10)
 		sub_lbl.add_theme_color_override("font_color", Color(0.66, 0.68, 0.78))
 		sub_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-		box.add_child(sub_lbl)
+		var path: String = ItemInfo.ICONS.get(icon, "") as String
+		if path == "":
+			box.add_child(sub_lbl)
+		else:
+			# The element's picture in front of the line, in place of its name.
+			var row: HBoxContainer = HBoxContainer.new()
+			row.alignment    = BoxContainer.ALIGNMENT_CENTER
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_theme_constant_override("separation", 4)
+			var pic: TextureRect = TextureRect.new()
+			pic.texture             = load(path) as Texture2D
+			pic.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+			pic.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			pic.texture_filter      = CanvasItem.TEXTURE_FILTER_NEAREST
+			pic.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
+			pic.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+			row.add_child(pic)
+			sub_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+			if subtitle != "":
+				row.add_child(sub_lbl)
+			box.add_child(row)
 
 	return btn
 
