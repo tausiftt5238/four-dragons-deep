@@ -29,6 +29,10 @@ const _TAIL: float = 0.55
 const _CORE_W: float = 0.018
 
 var tint: Color = Color(1.0, 0.94, 0.82)
+# A solid cut is the tint through and through, core included, for when the
+# colour is the point (a leech's red or blue). Otherwise the core stays white
+# and the tint only rims it.
+var solid: bool = false
 
 var t: float = 0.0:
 	set(value):
@@ -38,11 +42,13 @@ var t: float = 0.0:
 
 # Cuts across `over` and cleans itself up. Safe to call on a portrait that is
 # about to be rebuilt: the effect is a child, so it goes with it.
-static func strike(over: Control, color: Color = Color(1.0, 0.94, 0.82)) -> void:
+static func strike(over: Control, color: Color = Color(1.0, 0.94, 0.82),
+		solid_core: bool = false) -> void:
 	if over == null or not is_instance_valid(over):
 		return
 	var fx: SlashFX = SlashFX.new()
 	fx.tint = color
+	fx.solid = solid_core
 	fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	over.add_child(fx)
@@ -85,8 +91,9 @@ func _draw() -> void:
 		var belly: Vector2 = tail.lerp(tip, 0.5)
 		var w: float = maxf(1.0, span * _CORE_W) * (1.0 if i == 0 else 0.62)
 		_blade(belly, tail, tip, across, w * 3.2,
-				Color(tint.r, tint.g, tint.b, alpha * 0.33))
-		_blade(belly, tail, tip, across, w, Color(1.0, 1.0, 1.0, alpha))
+				Color(tint.r, tint.g, tint.b, alpha * (0.5 if solid else 0.33)))
+		var core: Color = tint if solid else Color.WHITE
+		_blade(belly, tail, tip, across, w, Color(core.r, core.g, core.b, alpha))
 
 
 func _blade(belly: Vector2, tail: Vector2, tip: Vector2, across: Vector2,

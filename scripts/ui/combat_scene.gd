@@ -2236,9 +2236,9 @@ func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
 
 
 # A bite lands like a swing: the portrait shakes and the slash crosses it,
-# tinted for what was drunk, red for blood and blue for MP.
-const LEECH_HP_TINT: Color = Color(1.0, 0.45, 0.45)
-const LEECH_MP_TINT: Color = Color(0.55, 0.75, 1.0)
+# red for blood and blue for MP, the whole stroke and not just its rim.
+const LEECH_HP_TINT: Color = Color(1.0, 0.22, 0.22)
+const LEECH_MP_TINT: Color = Color(0.30, 0.60, 1.0)
 
 
 func _bite_fx(target: CharacterSheet, tint: Color, guarded: bool = false) -> void:
@@ -2247,7 +2247,7 @@ func _bite_fx(target: CharacterSheet, tint: Color, guarded: bool = false) -> voi
 	if pr == null:
 		return
 	_shake_portrait(pr, guarded)
-	SlashFX.strike(pr, tint)
+	SlashFX.strike(pr, tint, true)
 
 
 # What a bat or a blood thing on the other side bites with this turn, if it
