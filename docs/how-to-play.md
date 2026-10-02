@@ -100,6 +100,10 @@ does not just fail — it ends your round on the spot, whatever you had left.
 The same rules apply to the monsters attacking you, so a resistance of yours can
 end *their* phase just as hard.
 
+A spell that reaches several targets pays for the **worst** thing that happened:
+one repel or drain still ends the phase, and **one null costs two icons even if
+another target was weak to it**. Read the whole line before throwing a wide spell.
+
 ### The six lines
 
 **Phys, fire, ice, thunder, light** and **dark**. Every creature answers each

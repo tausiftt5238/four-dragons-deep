@@ -3153,19 +3153,16 @@ func _spread_targets(shape: String) -> Array[Enemy]:
 
 
 # The press-turn cost of a cast that landed on several demons at once. The
-# worst thing that happened decides, with one exception: a single null among
-# demons that otherwise took it is not worth two icons, so only a cast that
-# every demon nulled pays that. This is what makes an ALL spell a gamble
-# against a mixed line rather than a strict upgrade.
+# worst thing that happened decides, and a loss always outranks a gain: a
+# repel or a drain ends the phase, any null costs two icons, and only a cast
+# nothing blocked gets the half icon back for a weakness. One demon that
+# nulls it is enough to make a wide cast cost two, whatever it hit on the
+# way, which is what makes an ALL spell a gamble against a mixed line rather
+# than a strict upgrade. The same rule holds for the demons' wide casts.
 static func _spread_cost(outcomes: Array[String]) -> String:
-	for o: String in outcomes:
-		if o == "repel" or o == "drain":
-			return PressTurn.COST_LOST
-	var nulled: int = 0
-	for o: String in outcomes:
-		if o == "null":
-			nulled += 1
-	if nulled == outcomes.size():
+	if "repel" in outcomes or "drain" in outcomes:
+		return PressTurn.COST_LOST
+	if "null" in outcomes:
 		return PressTurn.COST_MISS
 	if "weak" in outcomes:
 		return PressTurn.COST_HALF
