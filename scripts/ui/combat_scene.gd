@@ -2264,7 +2264,7 @@ func _enemy_leech(actor: Enemy) -> Dictionary:
 func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 		power: float, boost: float = 0.0) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
-			maxi(1, int(power)), false, actor, 1.0, boost)
+			maxi(1, int(power)), false, actor, boost)
 	_reveal(foe, element)
 	var lead: String = "%s calls the %s!" % [
 			actor.display_name(), Affinity.element_name(element)]
@@ -2294,7 +2294,6 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 # what it gains in width it gives up on each target.
 func _demon_spread(actor: Enemy, element: String, base: float,
 		banishing: bool, boost: float = 0.0, named: String = "") -> Dictionary:
-	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
 	# Every target takes the whole cast, as the hero's does (see _cast_spread).
 	var phys: bool = element == Affinity.PHYS
@@ -2309,8 +2308,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 	for foe: Enemy in targets:
 		if banishing:
 			var br: Dictionary = CombatMath.resolve_banish(
-					foe, element, maxi(1, int(base * spread)), false, actor,
-					spread, boost)
+					foe, element, maxi(1, int(base)), false, actor, boost)
 			_reveal(foe, element)
 			match br["outcome"]:
 				"banished":
@@ -3385,7 +3383,7 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 	var power: int = maxi(1, int(float(player.effective_mag())
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
 	var res: Dictionary = CombatMath.resolve_banish(enemy, element, power, false, player,
-			1.0, float(data.get("boost", Spell.BOOST_I)))
+			float(data.get("boost", Spell.BOOST_I)))
 	_reveal(enemy, element)
 	var name: String = data["name"] as String
 	var who: String  = enemy.display_name()
@@ -3427,7 +3425,6 @@ func _cast_banish(data: Dictionary) -> Dictionary:
 # them, and one that repels it still ends the phase for everyone.
 func _cast_banish_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", Affinity.LIGHT) as String
-	var spread: float = float(data.get("spread", 1.0))
 	var boost: float = float(data.get("boost", Spell.BOOST_I))
 	var power: int = maxi(1, int(float(player.effective_mag())
 			* player.stage_mult(CharacterSheet.STAT_MAG)))
@@ -3442,7 +3439,7 @@ func _cast_banish_spread(data: Dictionary) -> Dictionary:
 	var wide_rung: float = Spell.rung_of(data)
 	for foe: Enemy in targets:
 		var res: Dictionary = CombatMath.resolve_banish(
-				foe, element, power, false, player, spread, boost)
+				foe, element, power, false, player, boost)
 		_reveal(foe, element)
 		var outcome: String = res["outcome"] as String
 		var wide_pr: TextureRect = _foe_portrait(foe)
@@ -3974,7 +3971,6 @@ func _enemy_spread_targets(actor: Enemy) -> Array[CharacterSheet]:
 func _enemy_spread(actor: Enemy, element: String, base: float,
 		dry: String) -> Dictionary:
 	var banishing: bool = Affinity.is_banishing(element)
-	var spread: float = actor.reach_spread(banishing)
 	var targets: Array[CharacterSheet] = _enemy_spread_targets(actor)
 	var reach_word: String = "across" if actor.attack_reach == Spell.SHAPE_FEW else "over"
 
@@ -3988,7 +3984,7 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 	for who: CharacterSheet in targets:
 		if banishing:
 			var br: Dictionary = CombatMath.resolve_banish(who, element,
-					maxi(1, int(base * spread)), who == player, actor, spread)
+					maxi(1, int(base)), who == player, actor)
 			outcomes.append(_apply_enemy_banish_one(actor, who, element, br, lines))
 			continue
 		if element != Affinity.PHYS and not CombatMath.spell_lands(actor, who):

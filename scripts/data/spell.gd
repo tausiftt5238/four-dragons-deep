@@ -9,8 +9,7 @@
 #   type    – "dmg" | "banish" | "heal" | "buff" | "dispel" | "ailment"
 #   element – affinity key it is scored against ("" for the ones that aren't)
 #   shape   – SHAPE_ONE | SHAPE_FEW | SHAPE_ALL, how many demons it reaches
-#   spread  – banishing only: what each target's odds keep when the cast is
-#             split. Damage does not split: every target takes the whole cast
+#   spread  – unused: a wide cast no longer thins out on damage or banish odds
 #   power   – multiplier on MAG (damage spells); the rung it sits on
 #   boost   – added to the expulsion odds (banishing spells); the same rung
 #   heal    – HP restored (heals only)
@@ -60,8 +59,9 @@ static func rung_of(data: Dictionary) -> float:
 	return POWER_I
 
 
-# The two _DMG values are no longer read: a wide damaging cast hits every
-# target at full strength. Only the _BANISH values still thin anything out.
+# None of these are read any more: a wide cast hits every target at full
+# strength and rolls the full banish odds on each. They stay only as the
+# spread= field the spell table still carries.
 const SPREAD_FEW_DMG:    float = 0.75
 const SPREAD_ALL_DMG:    float = 0.60
 const SPREAD_FEW_BANISH: float = 0.70

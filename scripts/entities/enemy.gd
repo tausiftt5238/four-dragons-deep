@@ -1016,16 +1016,6 @@ func skill_cost() -> int:
 	return maxi(4, roundi(float(max_mp) / float(MAGAZINE.get(attack_reach, 6))))
 
 
-# What each target keeps of a cast that was split across several of them.
-func reach_spread(banishing: bool) -> float:
-	match attack_reach:
-		Spell.SHAPE_FEW:
-			return Spell.SPREAD_FEW_BANISH if banishing else Spell.SPREAD_FEW_DMG
-		Spell.SHAPE_ALL:
-			return Spell.SPREAD_ALL_BANISH if banishing else Spell.SPREAD_ALL_DMG
-	return 1.0
-
-
 func can_afford_skill() -> bool:
 	return not attack_elements.is_empty() and mp >= skill_cost()
 

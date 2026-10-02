@@ -139,7 +139,7 @@ static func banish_chance(target: CharacterSheet, element: String,
 # instead.
 static func resolve_banish(target: CharacterSheet, element: String,
 		power: int, is_hero: bool, caster: CharacterSheet = null,
-		spread: float = 1.0, boost: float = 0.0) -> Dictionary:
+		boost: float = 0.0) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	match state:
 		Affinity.DRAIN:
@@ -160,9 +160,11 @@ static func resolve_banish(target: CharacterSheet, element: String,
 		return {outcome = "weak" if state == Affinity.WEAK else "hit",
 				dmg = max(1, hurt), taken = false}
 
-	# A cast thrown across several demons is thinner on each of them, which is
-	# what stops the wide versions from simply ending fights.
-	if randf() < banish_chance(target, element, caster, boost) * spread:
+	# A wide cast rolls the full odds on every target it reaches, as a single
+	# one does. What keeps the wide versions from simply ending fights is the
+	# chart (null, repel and drain cannot be taken) and the press-turn price of
+	# a cast any one target blocks (CombatScene._spread_cost).
+	if randf() < banish_chance(target, element, caster, boost):
 		return {outcome = "banished", dmg = 0, taken = true}
 	return {outcome = "failed", dmg = 0, taken = false}
 
