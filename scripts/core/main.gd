@@ -1318,7 +1318,9 @@ static func _spark_live_at(steps: int) -> int:
 
 # What the plates show: the group that would be lit if you stepped onto it now.
 # Damage lands on arrival, so the plates show the arrival, and "do not step on
-# a lit plate" is the whole rule the player has to learn.
+# a lit plate" is the whole rule the player has to learn. The plate you are
+# standing on is the exception: it keeps the state it judged you by (see
+# Dungeon.set_spark_live), so lit underfoot means it shocked you.
 func _shown_spark_group() -> int:
 	return _spark_live_at(_spark_steps + 1)
 
@@ -1360,7 +1362,7 @@ func _sync_boss_banner() -> void:
 
 func _show_sparks() -> void:
 	if is_instance_valid(dungeon):
-		dungeon.set_spark_live(_shown_spark_group())
+		dungeon.set_spark_live(_shown_spark_group(), player_pos, _spark_live_at(_spark_steps))
 
 
 func _hazard_here() -> String:

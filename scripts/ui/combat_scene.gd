@@ -2027,7 +2027,7 @@ func _show_skills_submenu() -> void:
 	# Paged like Summon: Attack plus a demon's full six is seven entries, and
 	# a flat fill silently dropped the last one.
 	var entries: Array[Dictionary] = []
-	entries.append(_skill_entry("Attack", "Attack", "", "\u2014", false, Affinity.PHYS))
+	entries.append(_skill_entry("Attack", "Attack", _reach_count("one"), "", false, Affinity.PHYS))
 
 	if _actor_is_player():
 		# Analyze is no longer bolted on here \u2014 it is an ordinary equipped spell
@@ -2045,7 +2045,7 @@ func _show_skills_submenu() -> void:
 			# An element is its icon; anything without one says what it is.
 			# How far it reaches is the thing a player most needs to know
 			# before spending 22 MP, so it rides next to the element.
-			var tag: String = Spell.reach_tag(spell_id) if element != "" \
+			var tag: String = _reach_count(Spell.reach_tag(spell_id)) if element != "" \
 					else (data.get("type", "dmg") as String).capitalize()
 			# A physical skill is paid in blood, not mana: silence does not
 			# stop it, and it will not spend the last of the hero's HP.
@@ -2085,8 +2085,9 @@ func _show_skills_submenu() -> void:
 					else "%s%s  foes" % [(d.get("stat", "") as String).to_upper(),
 					"+" if int(d.get("delta", 1)) > 0 else "-"]
 		else:
+			# Its rung is already in its name (Ember, Blaze, Inferno).
 			icon = skill.get("element", "") as String
-			tag = "%s  %s" % [reach, "I".repeat(int(skill.get("rung", 1)))]
+			tag = _reach_count(reach)
 		entries.append(_skill_entry("Skill:%d" % i,
 				PlayerCharacter.skill_name(skill), tag,
 				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked, icon))
@@ -2491,13 +2492,19 @@ static func _px_ring(img: Image, cx: float, cy: float, r: float, c: Color) -> vo
 
 # The same button as an entry for _fill_submenu, so a long list scrolls.
 # `icon` is an element, drawn as its picture in front of the detail line in
-# place of its name: "[fire] x2-3   14 MP" reads at a glance on a phone where
-# "Fire  x2-3   14 MP" had to be read.
+# place of its name, and the line reads "[fire] x 2-3 (14 MP)": how many it
+# reaches, then what it costs.
 func _skill_entry(action: String, label: String, tag: String,
 		cost: String, disabled: bool, icon: String = "") -> Dictionary:
-	var detail: String = "%s   %s" % [tag, cost] if tag != "" else cost
+	var paid: String = "(%s)" % cost if cost != "" and cost != "\u2014" else ""
+	var detail: String = ("%s %s" % [tag, paid]).strip_edges()
 	return {title = label, detail = detail, disabled = disabled, icon = icon,
 			press = func() -> void: await _on_skill_chosen(action)}
+
+
+# How many a cast reaches, as the skill menu says it: "x 1", "x 2-3", "x all".
+static func _reach_count(reach: String) -> String:
+	return "x %s" % ("1" if reach == "one" else reach)
 
 
 func _make_skill_button(action: String, label: String, element: String,
