@@ -232,7 +232,7 @@ func _build_gacha() -> void:
 			[Gacha.ITEM, "a supply", "gear, tier %s" % _tier_name(1)],
 			[Gacha.MONSTER, "tier %s monster" % _tier_name(0), "tier %s monster" % _tier_name(1)]]:
 		_content.add_child(_paytable_row(row[0] as String, row[1] as String, row[2] as String))
-	_content.add_child(_note("Pair pays the middle column, jackpot the right. Prizes grow with the floor."))
+	_content.add_child(_note("Pair pays the middle column, jackpot the right. Prizes grow with the floor; luck nudges the reels."))
 
 
 # This floor's band, or the one below it, as a roman numeral.
@@ -299,7 +299,7 @@ func _spin() -> void:
 	_gacha_result.text = "..."
 	for b: PanelContainer in _reel_boxes:
 		b.add_theme_stylebox_override("panel", _reel_style(Color(0.30, 0.34, 0.42)))
-	var reels: Array[String] = Gacha.spin()
+	var reels: Array[String] = Gacha.spin(player.battle_luck())
 	# The reels flicker through faces and stop one at a time on what was rolled.
 	var t: float = 0.0
 	var stopped: int = 0
