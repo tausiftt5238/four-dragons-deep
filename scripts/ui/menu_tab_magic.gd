@@ -39,19 +39,57 @@ func build() -> void:
 		_m._content.add_child(none_lbl)
 		return
 
-	# Equipped first, so the loadout reads as a block rather than being hunted
-	# for among everything he has ever learned.
-	var ordered: Array[String] = []
+	# Shelved the way the pack is: the loadout first as a block, then what is
+	# not equipped by element, then healing, stat shifts and ailments. A known
+	# list runs past forty by the deep floors, and as one list it had to be
+	# scrolled end to end to find anything.
+	var equipped: Array[String] = []
 	for spell_id: String in p.equipped_spells:
 		if not Spell.get_data(spell_id).is_empty():
-			ordered.append(spell_id)
+			equipped.append(spell_id)
+	var rest: Array[String] = []
 	for spell_id2: String in p.known_spells:
 		if not p.is_equipped(spell_id2) and not Spell.get_data(spell_id2).is_empty():
-			ordered.append(spell_id2)
+			rest.append(spell_id2)
 
-	_m.add_list(_m._content, ordered,
+	var groups: Array = [{title = "Equipped", entries = equipped}]
+	groups.append_array(spell_groups(rest))
+	_m.add_sections(_m._content, "magic", groups,
 			func(list: SlotList, spell_id: String) -> void:
 				_add_spell(list, spell_id))
+
+
+const ELEMENT_ORDER: Array[String] = ["phys", "fire", "ice", "thunder", "light", "dark"]
+
+
+# One shelf per element, then Healing, Buffs & Debuffs, Ailments and Other.
+# Each keeps the order the spells were learned in.
+static func spell_groups(ids: Array[String]) -> Array:
+	var by_key: Dictionary = {heal = [], shift = [], ailment = [], other = []}
+	for element: String in ELEMENT_ORDER:
+		by_key[element] = []
+	for spell_id: String in ids:
+		var data: Dictionary = Spell.get_data(spell_id)
+		var element: String = data.get("element", "") as String
+		var kind: String = data.get("type", "") as String
+		if by_key.has(element) and element != "":
+			(by_key[element] as Array).append(spell_id)
+		elif kind == "heal":
+			(by_key["heal"] as Array).append(spell_id)
+		elif kind in ["buff", "dispel"]:
+			(by_key["shift"] as Array).append(spell_id)
+		elif kind == "ailment":
+			(by_key["ailment"] as Array).append(spell_id)
+		else:
+			(by_key["other"] as Array).append(spell_id)
+	var out: Array = []
+	for element: String in ELEMENT_ORDER:
+		out.append({title = Affinity.element_name(element), entries = by_key[element]})
+	out.append({title = "Healing", entries = by_key["heal"]})
+	out.append({title = "Buffs & Debuffs", entries = by_key["shift"]})
+	out.append({title = "Ailments", entries = by_key["ailment"]})
+	out.append({title = "Other", entries = by_key["other"]})
+	return out
 
 
 func _add_spell(list: SlotList, spell_id: String) -> void:
