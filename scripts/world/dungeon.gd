@@ -485,8 +485,13 @@ func _add_exit_marker(wall_pos: Vector2i, entry_pos: Vector2i) -> void:
 	var dark: StandardMaterial3D = StandardMaterial3D.new()
 	dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	dark.albedo_color = Color(0.01, 0.02, 0.02)
-	_add_box_child(root, out * -half + Vector3(0.0, (lintel_y - pit) * 0.5, 0.0),
+	# One thickness inside the cell, with stone at the cell's edge behind it:
+	# the stairwell's back can be seen from the corridor on the other side, and
+	# on the edge itself the dark showed through there as a black band.
+	_add_box_child(root, out * (-half + 0.06) + Vector3(0.0, (lintel_y - pit) * 0.5, 0.0),
 			_axis_box(out, across, 0.06, lintel_y + pit, CELL_SIZE), dark)
+	_add_box_child(root, out * -half + Vector3(0.0, (lintel_y - pit) * 0.5, 0.0),
+			_axis_box(out, across, 0.06, lintel_y + pit, CELL_SIZE), wall)
 
 	# The flight: each step a solid block of stone from the bottom of the shaft
 	# up to its tread, each tread one riser lower and one tread further away.

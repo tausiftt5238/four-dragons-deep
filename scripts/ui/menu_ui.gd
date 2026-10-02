@@ -66,6 +66,9 @@ func _build_shell() -> void:
 	_status_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status_line.add_theme_color_override("font_color", Color(0.9, 0.85, 0.45))
 	_status_line.custom_minimum_size = Vector2(0, 22)
+	# Wrapped, or a long message sets the menu's width and pushes the rows'
+	# buttons and the tab grid off a phone screen.
+	_status_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	shell.add_child(_status_line)
 
 	shell.add_child(HSeparator.new())

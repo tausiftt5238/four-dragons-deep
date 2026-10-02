@@ -85,6 +85,7 @@ func _build() -> void:
 
 	_status = Label.new()
 	_status.add_theme_color_override("font_color", Color(0.65, 0.90, 0.70))
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_status)
 
 	col.add_child(HSeparator.new())
@@ -155,17 +156,20 @@ func _set_status(msg: String) -> void:
 #
 # A slot machine: pay, spin three reels, keep what matches. The rules and the
 # prizes live in Gacha; this is the cabinet.
-const REEL_LOOK: Dictionary = {
-	"exp":  {text = "EXP",  color = Color(0.50, 0.80, 1.00)},
-	"gold": {text = "GOLD", color = Color(1.00, 0.85, 0.35)},
-	"item": {text = "ITEM", color = Color(0.55, 0.95, 0.60)},
-	"monster": {text = "MON", color = Color(1.00, 0.50, 0.50)},
+# Each face's 16px icon, drawn in the same hand as the element icons.
+const REEL_ICON: Dictionary = {
+	"exp":     "res://resources/icons/gacha_exp.png",
+	"gold":    "res://resources/icons/gacha_gold.png",
+	"item":    "res://resources/icons/gacha_item.png",
+	"monster": "res://resources/icons/gacha_monster.png",
 }
+const REEL_ICON_SIZE: float = 64.0
+const PAYTABLE_ICON_SIZE: float = 28.0
 const REEL_TICK: float = 0.06
 # When each reel stops, counted from the pull, so they land left to right.
 const REEL_STOPS: Array[float] = [0.7, 1.1, 1.5]
 
-var _reels: Array[Label] = []
+var _reels: Array[TextureRect] = []
 var _reel_boxes: Array[PanelContainer] = []
 var _spin_btn: Button
 var _gacha_result: Label
@@ -194,12 +198,11 @@ func _build_gacha() -> void:
 		box.custom_minimum_size = Vector2(120, 96)
 		box.add_theme_stylebox_override("panel", _reel_style(Color(0.30, 0.34, 0.42)))
 		reels.add_child(box)
-		var lbl: Label = Label.new()
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 25)
-		box.add_child(lbl)
-		_reels.append(lbl)
+		var face: TextureRect = _face_icon(REEL_ICON_SIZE)
+		face.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		box.add_child(face)
+		_reels.append(face)
 		_reel_boxes.append(box)
 		_show_face(i, [Gacha.GOLD, Gacha.MONSTER, Gacha.ITEM][i])
 
@@ -224,12 +227,12 @@ func _build_gacha() -> void:
 	var exp_pair: int = Gacha.exp_prize(floor_num, false)
 	var gold_pair: int = Gacha.gold_prize(floor_num, false)
 	for row: Array in [
-			["EXP", "%d exp" % exp_pair, "%d exp" % Gacha.exp_prize(floor_num, true)],
-			["GOLD", "%d g" % gold_pair, "%d g" % Gacha.gold_prize(floor_num, true)],
-			["ITEM", "a supply", "gear, tier %s" % _tier_name(1)],
-			["MON", "tier %s monster" % _tier_name(0), "tier %s monster" % _tier_name(1)]]:
+			[Gacha.EXP, "%d exp" % exp_pair, "%d exp" % Gacha.exp_prize(floor_num, true)],
+			[Gacha.GOLD, "%d g" % gold_pair, "%d g" % Gacha.gold_prize(floor_num, true)],
+			[Gacha.ITEM, "a supply", "gear, tier %s" % _tier_name(1)],
+			[Gacha.MONSTER, "tier %s monster" % _tier_name(0), "tier %s monster" % _tier_name(1)]]:
 		_content.add_child(_paytable_row(row[0] as String, row[1] as String, row[2] as String))
-	_content.add_child(_note("Pair pays the middle column, jackpot the right. Prizes grow with the floor."))
+	_content.add_child(_note("Pair pays the middle column, jackpot the right. Prizes grow with the floor; luck nudges the reels."))
 
 
 # This floor's band, or the one below it, as a roman numeral.
@@ -239,11 +242,15 @@ func _tier_name(deeper: int) -> String:
 
 func _paytable_row(face: String, pair: String, jackpot: String) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
-	var look: Dictionary = {}
-	for key: String in REEL_LOOK:
-		if REEL_LOOK[key]["text"] == face:
-			look = REEL_LOOK[key]
-	for cell: Array in [[face, look["color"]], [pair, Color(0.80, 0.80, 0.86)],
+	var icon: TextureRect = _face_icon(PAYTABLE_ICON_SIZE)
+	icon.texture = load(REEL_ICON[face]) as Texture2D
+	# The pair and jackpot columns still split the rest of the row evenly.
+	var icon_cell: Control = Control.new()
+	icon_cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	icon_cell.custom_minimum_size = Vector2(PAYTABLE_ICON_SIZE, PAYTABLE_ICON_SIZE)
+	icon_cell.add_child(icon)
+	row.add_child(icon_cell)
+	for cell: Array in [[pair, Color(0.80, 0.80, 0.86)],
 			[jackpot, Color(1.0, 0.85, 0.35)]]:
 		var lbl: Label = Label.new()
 		lbl.text = cell[0] as String
@@ -266,9 +273,19 @@ static func _reel_style(edge: Color) -> StyleBoxFlat:
 func _show_face(i: int, face: String) -> void:
 	if i >= _reels.size() or not is_instance_valid(_reels[i]):
 		return
-	var look: Dictionary = REEL_LOOK[face]
-	_reels[i].text = look["text"] as String
-	_reels[i].add_theme_color_override("font_color", look["color"] as Color)
+	_reels[i].texture = load(REEL_ICON[face]) as Texture2D
+
+
+# A face icon at a fixed size, pixels kept square.
+static func _face_icon(px: float) -> TextureRect:
+	var tr: TextureRect = TextureRect.new()
+	tr.custom_minimum_size = Vector2(px, px)
+	tr.size = Vector2(px, px)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
 
 
 func _spin() -> void:
@@ -282,7 +299,7 @@ func _spin() -> void:
 	_gacha_result.text = "..."
 	for b: PanelContainer in _reel_boxes:
 		b.add_theme_stylebox_override("panel", _reel_style(Color(0.30, 0.34, 0.42)))
-	var reels: Array[String] = Gacha.spin()
+	var reels: Array[String] = Gacha.spin(player.battle_luck())
 	# The reels flicker through faces and stop one at a time on what was rolled.
 	var t: float = 0.0
 	var stopped: int = 0
