@@ -39,10 +39,7 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(title)
 
-	var subtitle: Label = _make_lbl("twenty-five floors. four dragons. one run.", 15,
-			Color(0.50, 0.45, 0.55))
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(subtitle)
+	head.add_child(TitleVignette.new())
 
 	var lower: CenterContainer = CenterContainer.new()
 	lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -78,17 +75,6 @@ func _build() -> void:
 	var opt_btn: Button = _make_btn("OPTIONS", Vector2(220, 46))
 	opt_btn.pressed.connect(_on_options)
 	vbox.add_child(opt_btn)
-
-	vbox.add_child(HSeparator.new())
-
-	# The keyboard hints were desktop-only and are a lie on a phone, which is
-	# what this is now. Swipe is the real control.
-	var hint: Label = _make_lbl(
-			"swipe to move and turn  ·  tap MENU for party, gear and magic",
-			12, Color(0.35, 0.32, 0.40))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(hint)
 
 
 func _on_new_game() -> void:
