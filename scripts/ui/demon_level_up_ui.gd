@@ -25,6 +25,7 @@ const STATS: Array[Array] = [
 
 
 func _ready() -> void:
+	Sfx.play("level_up")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build()
 

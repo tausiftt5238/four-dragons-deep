@@ -44,6 +44,15 @@ static func roll_crit(attacker: CharacterSheet = null) -> bool:
 # The caller applies the damage — this only decides how much and to whom.
 static func resolve(base: int, element: String, target: CharacterSheet,
 		crit: bool, guarded: bool = false) -> Dictionary:
+	var res: Dictionary = _resolve(base, element, target, crit, guarded)
+	# Whatever earns the half-icon back gets the bigger sound.
+	if cost_for(res["outcome"], res["crit"], res["suppressed"]) == PressTurn.COST_HALF:
+		Sfx.play("weak")
+	return res
+
+
+static func _resolve(base: int, element: String, target: CharacterSheet,
+		crit: bool, guarded: bool) -> Dictionary:
 	var state: String = target.affinity_of(element)
 	var dmg: int = variance(base)
 	if crit:

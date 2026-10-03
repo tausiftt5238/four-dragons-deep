@@ -99,16 +99,20 @@ func _build() -> void:
 	col.add_child(tabs)
 	for pair: Array in [["rest", "Rest"], ["bind", "Recruit"],
 			["sell", "Sell"], ["buy", "Supplies"],
-			["gear", "Gear"], ["scrolls", "Scrolls"], ["save", "Save"],
-			["gauntlet", "Gauntlet"], ["gacha", "Gacha"]]:
-		var btn: Button = Button.new()
-		btn.text = pair[1] as String
-		btn.toggle_mode = true
-		btn.custom_minimum_size = Vector2(0, 34)
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.pressed.connect(_switch.bind(pair[0] as String))
-		tabs.add_child(btn)
-		_tab_btns[pair[0]] = btn
+			["gear", "Gear"], ["scrolls", "Scrolls"], ["gacha", "Gacha"],
+			["gauntlet", "Gauntlet"]]:
+		tabs.add_child(_tab_btn(pair[0] as String, pair[1] as String))
+
+	# Save is the odd ninth tab, so it sits alone under the grid, centred and
+	# one column wide, rather than hanging off the left of a half-empty row.
+	var save_row: HBoxContainer = HBoxContainer.new()
+	save_row.add_theme_constant_override("separation", 6)
+	col.add_child(save_row)
+	for part: int in 3:
+		var c: Control = _tab_btn("save", "Save") if part == 1 else Control.new()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.size_flags_stretch_ratio = 1.0 if part == 1 else 0.5
+		save_row.add_child(c)
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Leave"
@@ -118,8 +122,20 @@ func _build() -> void:
 	col.add_child(close_btn)
 
 
+func _tab_btn(id: String, label: String) -> Button:
+	var btn: Button = Button.new()
+	btn.text = label
+	btn.toggle_mode = true
+	btn.custom_minimum_size = Vector2(0, 34)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.pressed.connect(_switch.bind(id))
+	_tab_btns[id] = btn
+	return btn
+
+
 func _switch(tab: String) -> void:
 	_tab = tab
+	Music.play(Music.CASINO if tab == "gacha" else Music.ORB)
 	_scroll.scroll_vertical = 0
 	for id: String in _tab_btns:
 		(_tab_btns[id] as Button).button_pressed = (id == tab)
@@ -310,6 +326,8 @@ func _spin() -> void:
 		t += REEL_TICK
 		while stopped < 3 and t >= REEL_STOPS[stopped]:
 			_show_face(stopped, reels[stopped])
+			# C, E, G: three stops spell a chord.
+			Sfx.play("reel", [0.0, 4.0, 7.0][stopped])
 			stopped += 1
 		for i: int in range(stopped, 3):
 			_show_face(i, Gacha.FACES[randi() % Gacha.FACES.size()])
@@ -325,6 +343,7 @@ func _spin() -> void:
 	_gacha_result.text = said
 	var won: Dictionary = Gacha.outcome(reels)
 	if not won.is_empty():
+		Sfx.play("jackpot" if won["jackpot"] else "pair")
 		var glow: Color = Color(1.0, 0.85, 0.35) if won["jackpot"] else Color(0.55, 0.95, 0.60)
 		for i: int in 3:
 			if reels[i] == won["face"]:

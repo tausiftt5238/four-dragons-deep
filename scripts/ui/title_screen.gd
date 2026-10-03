@@ -7,6 +7,8 @@ const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as F
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Music.play(Music.TITLE)
+	Sfx.init()
 	_build()
 
 

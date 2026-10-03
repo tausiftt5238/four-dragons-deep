@@ -1821,6 +1821,7 @@ func _do_flee() -> void:
 # A successful negotiation removes one demon, not the encounter. The battle
 # only ends here if it was the last one standing.
 func _foe_departs(reason: String) -> void:
+	Sfx.play("recruit")
 	var leaving: Enemy = enemy
 	foes.erase(leaving)
 	_departed.append(leaving)
@@ -2533,6 +2534,7 @@ func _watch_hp(who: CharacterSheet) -> void:
 	var missed: Callable = _show_float.bind(who, "MISS", FLOAT_MISS)
 	if not who.evaded.is_connected(missed):
 		who.evaded.connect(missed)
+		who.evaded.connect(func() -> void: Sfx.play("miss"))
 
 
 func _clear_floats() -> void:
@@ -2544,6 +2546,12 @@ func _clear_floats() -> void:
 
 func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: String) -> void:
 	_show_float(who, "%s%d" % [prefix, amount], color)
+	if prefix == "+":
+		Sfx.play("heal")
+	elif who in foes:
+		Sfx.play("hit" if who.is_alive() else "defeat")
+	else:
+		Sfx.play("hurt")
 
 
 func _show_float(who: CharacterSheet, text: String, color: Color) -> void:

@@ -130,6 +130,7 @@ func _notification(what: int) -> void:
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
+	Sfx.init()
 
 	# The world pane has to exist before anything three-dimensional, since
 	# everything 3D is parented into it rather than onto Main.
@@ -215,6 +216,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	# key at all and so whether the way on is shut.
 	_door_open = _has_key
 	_sync_door()
+	Music.play(Music.dungeon_track(floor_num))
 
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -510,6 +512,7 @@ func _descend() -> void:
 		return
 	floor_num += 1
 	floor_label.text = "Floor %d" % floor_num
+	Sfx.play("descend")
 	# Cleared per floor. It used to be raised when a dragon fell and never put
 	# back down, so beating the Ice Dragon on floor five left every later boss
 	# corridor already counted as beaten — floors ten, fifteen and twenty were
@@ -540,6 +543,7 @@ func _action_forward() -> void:
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
 		_slide(DIR_OFFSET[player_facing])
+		Sfx.play("step")
 		_post_move()
 	elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
 		_check_portal()
@@ -555,6 +559,7 @@ func _action_back() -> void:
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
 		_slide(-DIR_OFFSET[player_facing])
+		Sfx.play("step")
 		_post_move()
 	else:
 		_shake_camera()
@@ -768,6 +773,7 @@ func _take_key_here() -> void:
 	minimap_ctrl.key_pos = Vector2i(-1, -1)
 	minimap_ctrl.queue_redraw()
 	_rebuild_dungeon()
+	Sfx.play("key")
 	_show_hud_popup("You take the key. Find the door.", Color(0.75, 0.55, 1.0))
 
 
@@ -953,7 +959,7 @@ func _engage_roamer_here() -> bool:
 	# wall rather than getting lost in a pack.
 	if warden_here:
 		var keeper: Array[Enemy] = [Enemy.make_warden(floor_num)]
-		_launch_combat(keeper)
+		_launch_combat(keeper, true)
 		return true
 
 	_launch_combat(Enemy.make_group(floor_num))
@@ -992,8 +998,9 @@ func _start_boss_combat() -> void:
 	_launch_combat(solo)
 
 
-func _launch_combat(group: Array[Enemy]) -> void:
+func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	in_combat = true
+	Music.play(Music.battle_track(group, floor_num, warden))
 	hud_layer.visible = false
 	for foe: Enemy in group:
 		add_child(foe)
@@ -1043,6 +1050,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	for foe: Enemy in group:
 		foe.queue_free()
 	combat_layer.queue_free()
+	Music.play(Music.dungeon_track(floor_num))
 
 	# Whatever walked into the fight is already off the floor. Winning or talking
 	# your way out keeps it that way; slipping away puts them back, moved on.
@@ -1076,6 +1084,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		minimap_ctrl.warden_pos = Vector2i(-1, -1)
 		minimap_ctrl.queue_redraw()
 		_sync_door()
+		Sfx.play("key")
 		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
 	# On a boss floor an encounter with no roamer behind it is the boss. Only a
@@ -1261,6 +1270,7 @@ func _show_level_up(before: Dictionary, after: Dictionary,
 
 
 func _show_game_over() -> void:
+	Sfx.play("game_over")
 	var ui: GameOverUI = GameOverUI.new()
 	ui.load_game.connect(func():
 		ui.queue_free()
@@ -1432,6 +1442,7 @@ func _hazard_hurt(element: String, what: String, color: Color, quiet: bool) -> v
 			dmg = maxi(1, dmg / 2)
 		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
 			dmg = 0
+	Sfx.play("trap")
 	if dmg > 0:
 		player_char.take_damage(dmg)
 		_shake_camera()
@@ -1513,6 +1524,7 @@ func _open_chest(wall: Vector2i) -> void:
 	ui.closed.connect(func() -> void: _close_chest())
 	ui.opened.connect(func() -> void:
 		var found: Dictionary = _loot_chest(wall)
+		Sfx.play("loot")
 		ui.show_found(int(found["gold"]), found["items"] as Array))
 	chest_layer.add_child(ui)
 
@@ -1606,10 +1618,12 @@ func _gacha_exp(amount: int, orb: OrbUI) -> void:
 	orb.lock_gacha()
 	# After the reels have settled and the result is up, not in the middle.
 	await get_tree().create_timer(0.8).timeout
+	# Set before closing, so the slot machine's music plays on under the
+	# level-up screens rather than dipping into the floor's for a moment.
+	_reopen_orb_tab = "gacha"
 	_close_orb()
 	in_combat = true
 	hud_layer.visible = false
-	_reopen_orb_tab = "gacha"
 	if leveled:
 		_show_level_up(before, after, ups)
 	else:
@@ -1622,6 +1636,8 @@ func _close_orb() -> void:
 			child.queue_free()
 	hud_layer.visible = true
 	orb_open = false
+	if _reopen_orb_tab == "":
+		Music.play(Music.dungeon_track(floor_num))
 
 
 func _open_save_menu() -> void:
@@ -1748,6 +1764,7 @@ func _restore_save(data: Dictionary) -> void:
 
 	floor_num = int(data["floor_num"])
 	floor_label.text = "Floor %d" % floor_num
+	Music.play(Music.dungeon_track(floor_num))
 
 	if is_instance_valid(dungeon):
 		dungeon.queue_free()

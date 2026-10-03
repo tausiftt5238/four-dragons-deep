@@ -48,6 +48,7 @@ static func count_for(rung: float) -> int:
 # The one entry point combat calls. Fire, ice and thunder have sprites; light
 # and dark are drawn by BanishFX and phys is the slash, so neither lands here.
 static func cast(over: Control, elem: String, rung: float = Spell.POWER_I) -> void:
+	Sfx.cast(elem)
 	if BanishFX.handles(elem):
 		BanishFX.burst(over, elem, rung)
 		return

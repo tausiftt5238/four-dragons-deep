@@ -22,6 +22,7 @@ var _confirm_btn:   Button
 
 
 func _ready() -> void:
+	Sfx.play("level_up")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var levels_gained: int = after["lv"] - before["lv"]
 	_pts_remaining = POINTS_PER_LEVEL * levels_gained
