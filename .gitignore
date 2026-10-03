@@ -6,3 +6,7 @@ build/
 # See tools/real_art.sh and tools/make_placeholder_sprites.py.
 art-private/
 .claude/
+
+# Commercial music pack, kept out of the repo. The game plays silence
+# without it; see scripts/core/music.gd.
+resources/music/

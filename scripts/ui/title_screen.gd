@@ -7,6 +7,8 @@ const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as F
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Music.play(Music.TITLE)
+	Sfx.init()
 	_build()
 
 
@@ -37,10 +39,7 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(title)
 
-	var subtitle: Label = _make_lbl("twenty-five floors. four dragons. one run.", 15,
-			Color(0.50, 0.45, 0.55))
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(subtitle)
+	head.add_child(TitleVignette.new())
 
 	var lower: CenterContainer = CenterContainer.new()
 	lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -77,21 +76,24 @@ func _build() -> void:
 	opt_btn.pressed.connect(_on_options)
 	vbox.add_child(opt_btn)
 
-	vbox.add_child(HSeparator.new())
 
-	# The keyboard hints were desktop-only and are a lie on a phone, which is
-	# what this is now. Swipe is the real control.
-	var hint: Label = _make_lbl(
-			"swipe to move and turn  ·  tap MENU for party, gear and magic",
-			12, Color(0.35, 0.32, 0.40))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(hint)
-
-
+# A new run opens on the captain's briefing; loading a save skips it.
 func _on_new_game() -> void:
 	GameBoot.pending_slot = 0
+	var fade: ScreenFade = ScreenFade.cover(get_tree())
+	await fade.covered
+	var intro: IntroUI = IntroUI.new()
+	intro.finished.connect(_descend_into_game)
+	add_child(intro)
+	fade.reveal()
+
+
+# Through black to the loading screen, which carries on into the game.
+func _descend_into_game() -> void:
+	var fade: ScreenFade = ScreenFade.cover(get_tree())
+	await fade.covered
 	LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
+	fade.reveal()
 
 
 func _on_tutorial() -> void:
@@ -111,7 +113,7 @@ func _on_load_game() -> void:
 	picker.mode = "load"
 	picker.slot_chosen.connect(func(slot: int) -> void:
 		GameBoot.pending_slot = slot
-		LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
+		_descend_into_game()
 	)
 	picker.cancelled.connect(func() -> void:
 		picker.queue_free()

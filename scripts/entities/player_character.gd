@@ -6,14 +6,12 @@ class_name PlayerCharacter extends CharacterSheet
 const DISPLAY_NAME: String = "Hero"
 
 const SPRITE_KNIGHT: String = "Knight"
-const SPRITE_MAGE:   String = "Wizard"
 
 
+# Always the Knight, whatever is in hand: he is who walks down the stairs on the
+# loading screen and up them at the end, so he is who fights in between. A
+# spell shows in his special attack instead (see CombatScene._commit_action).
 func hero_sprite_id() -> String:
-	if not equipped_weapon.is_empty() \
-			and int(equipped_weapon.get("mag_bonus", 0)) > 0 \
-			and int(equipped_weapon.get("str_bonus", 0)) == 0:
-		return SPRITE_MAGE
 	return SPRITE_KNIGHT
 
 

@@ -890,7 +890,14 @@ func _commit_action(action: String) -> void:
 	_set_buttons(false)
 	var actor_pr: TextureRect = _actor_portrait()
 	if actor_pr != null:
-		_play_anim(actor_pr, "block" if action == "Defend" else "attack")
+		var anim: String = "attack"
+		if action == "Defend":
+			anim = "block"
+		# The Knight's third swing is his burst of flame: what a spell looks
+		# like in his hands. A plain swing is his first.
+		elif action.begins_with("Magic:") and _actor_is_player():
+			anim = "attack03"
+		_play_anim(actor_pr, anim)
 	var res: Dictionary = _resolve_action(action)
 	_log(res["msg"] as String)
 	await _after_action(res["cost"] as String)
@@ -1834,6 +1841,7 @@ func _do_flee() -> void:
 # A successful negotiation removes one demon, not the encounter. The battle
 # only ends here if it was the last one standing.
 func _foe_departs(reason: String) -> void:
+	Sfx.play("recruit")
 	var leaving: Enemy = enemy
 	foes.erase(leaving)
 	_departed.append(leaving)
@@ -2564,6 +2572,7 @@ func _watch_hp(who: CharacterSheet) -> void:
 	var missed: Callable = _show_float.bind(who, "MISS", FLOAT_MISS)
 	if not who.evaded.is_connected(missed):
 		who.evaded.connect(missed)
+		who.evaded.connect(func() -> void: Sfx.play("miss"))
 
 
 func _clear_floats() -> void:
@@ -2575,6 +2584,12 @@ func _clear_floats() -> void:
 
 func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: String) -> void:
 	_show_float(who, "%s%d" % [prefix, amount], color)
+	if prefix == "+":
+		Sfx.play("heal")
+	elif who in foes:
+		Sfx.play("hit" if who.is_alive() else "defeat")
+	else:
+		Sfx.play("hurt")
 
 
 func _show_float(who: CharacterSheet, text: String, color: Color) -> void:

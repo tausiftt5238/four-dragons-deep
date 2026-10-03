@@ -103,6 +103,6 @@ func _run(scene_path: String) -> void:
 	var fade: Tween = create_tween()
 	for child: Node in get_children():
 		if child is CanvasItem:
-			fade.parallel().tween_property(child, "modulate:a", 0.0, 0.25)
+			fade.parallel().tween_property(child, "modulate:a", 0.0, 0.5)
 	await fade.finished
 	queue_free()

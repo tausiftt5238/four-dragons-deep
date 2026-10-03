@@ -1,0 +1,65 @@
+{
+"tap":        {"desc": "Any button press", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 880, "f1": 820, "a": 0.003, "d": 0.05, "lp": 2500, "vol": 0.6}]},
+"back":       {"desc": "Back / Close / Leave buttons", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 660, "f1": 500, "a": 0.003, "d": 0.06, "lp": 2000, "vol": 0.6}]},
+"step":       {"desc": "Each tile walked (plays constantly)", "gain": 0.35, "jitter": 1.0, "layers": [
+	{"wave": "noise", "f0": 1800, "f1": 900, "a": 0.002, "d": 0.05, "lp": 500, "vol": 0.6},
+	{"wave": "sine", "f0": 110, "f1": 70, "a": 0.002, "d": 0.06, "lp": 800, "vol": 0.5}]},
+"hit":        {"desc": "A foe takes damage", "gain": 0.7, "jitter": 0.8, "layers": [
+	{"wave": "noise", "f0": 3000, "f1": 800, "a": 0.002, "d": 0.09, "lp": 1400, "vol": 0.6},
+	{"wave": "sine", "f0": 180, "f1": 70, "a": 0.002, "d": 0.1, "lp": 1000, "vol": 0.8}]},
+"weak":       {"desc": "Weakness or critical (replaces hit)", "gain": 0.7, "jitter": 0.5, "layers": [
+	{"wave": "noise", "f0": 3000, "f1": 800, "a": 0.002, "d": 0.09, "lp": 1400, "vol": 0.6},
+	{"wave": "sine", "f0": 180, "f1": 70, "a": 0.002, "d": 0.1, "lp": 1000, "vol": 0.8},
+	{"wave": "tri", "f0": 1046, "f1": 1046, "notes": [0, 7], "step": 0.05, "a": 0.003, "d": 0.18, "lp": 4000, "vol": 0.4, "delay": 0.02}]},
+"hurt":       {"desc": "You or your demon take damage", "gain": 0.7, "jitter": 0.6, "layers": [
+	{"wave": "noise", "f0": 1500, "f1": 400, "a": 0.003, "d": 0.14, "lp": 900, "vol": 0.6},
+	{"wave": "sine", "f0": 140, "f1": 55, "a": 0.003, "d": 0.16, "lp": 800, "vol": 0.8}]},
+"miss":       {"desc": "Anything dodges", "gain": 0.5, "jitter": 0.5, "layers": [
+	{"wave": "noise", "f0": 2500, "f1": 600, "a": 0.03, "d": 0.12, "lp": 1800, "vol": 0.6}]},
+"cast":       {"desc": "Spell with no element of its own", "gain": 0.5, "jitter": 0.3, "layers": [
+	{"wave": "sine", "f0": 400, "f1": 900, "a": 0.04, "d": 0.22, "lp": 3000, "vol": 0.6, "vib": 0.3, "vrate": 12}]},
+"cast_fire":  {"desc": "Fire spell", "gain": 0.6, "jitter": 0.3, "layers": [
+	{"wave": "noise", "f0": 900, "f1": 400, "a": 0.02, "d": 0.3, "lp": 1200, "vol": 0.6},
+	{"wave": "sine", "f0": 220, "f1": 160, "a": 0.02, "d": 0.3, "lp": 800, "vol": 0.35}]},
+"cast_ice":   {"desc": "Ice spell", "gain": 0.5, "jitter": 0.3, "layers": [
+	{"wave": "sine", "f0": 1318, "f1": 1318, "notes": [0, 4, 7, 12], "step": 0.04, "a": 0.003, "d": 0.25, "lp": 5000, "vol": 0.4, "vib": 0.15, "vrate": 9}]},
+"cast_thunder": {"desc": "Thunder spell", "gain": 0.5, "jitter": 0.3, "layers": [
+	{"wave": "square", "f0": 220, "f1": 110, "a": 0.002, "d": 0.18, "lp": 1500, "vol": 0.35, "vib": 2, "vrate": 30},
+	{"wave": "noise", "f0": 4000, "f1": 1000, "a": 0.002, "d": 0.2, "lp": 2500, "vol": 0.35}]},
+"cast_light": {"desc": "Light (banishing) spell", "gain": 0.5, "jitter": 0.2, "layers": [
+	{"wave": "sine", "f0": 784, "f1": 784, "notes": [0, 7, 12], "step": 0.06, "a": 0.01, "d": 0.4, "lp": 4000, "vol": 0.4},
+	{"wave": "tri", "f0": 1568, "f1": 1568, "notes": [0, 7, 12], "step": 0.06, "a": 0.01, "d": 0.3, "lp": 3000, "vol": 0.15}]},
+"cast_dark":  {"desc": "Dark (banishing) spell", "gain": 0.6, "jitter": 0.2, "layers": [
+	{"wave": "tri", "f0": 196, "f1": 98, "a": 0.05, "d": 0.45, "lp": 700, "vol": 0.7, "vib": 0.5, "vrate": 5}]},
+"heal":       {"desc": "Anyone regains HP", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "sine", "f0": 523, "f1": 523, "notes": [0, 4, 7, 12], "step": 0.07, "a": 0.01, "d": 0.3, "lp": 3000, "vol": 0.5}]},
+"defeat":     {"desc": "The blow that kills a foe", "gain": 0.7, "jitter": 0.4, "layers": [
+	{"wave": "noise", "f0": 1200, "f1": 150, "a": 0.005, "d": 0.35, "lp": 900, "vol": 0.6},
+	{"wave": "sine", "f0": 160, "f1": 40, "a": 0.005, "d": 0.4, "lp": 700, "vol": 0.7}]},
+"level_up":   {"desc": "Level-up screen", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 523, "f1": 523, "notes": [0, 4, 7, 12], "step": 0.09, "a": 0.005, "d": 0.25, "lp": 3000, "vol": 0.5},
+	{"wave": "sine", "f0": 1046, "f1": 1046, "a": 0.01, "d": 0.6, "lp": 3000, "vol": 0.35, "delay": 0.27, "vib": 0.2, "vrate": 6}]},
+"loot":       {"desc": "Opening a chest", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 988, "f1": 988, "notes": [0, 5], "step": 0.07, "a": 0.003, "d": 0.2, "lp": 3500, "vol": 0.5}]},
+"key":        {"desc": "Taking the key", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 659, "f1": 659, "notes": [0, 4, 7], "step": 0.07, "a": 0.003, "d": 0.2, "lp": 3000, "vol": 0.5},
+	{"wave": "noise", "f0": 3000, "f1": 3000, "a": 0.001, "d": 0.03, "lp": 2500, "vol": 0.3, "delay": 0.25}]},
+"trap":       {"desc": "Lava / shock tile", "gain": 0.7, "jitter": 0.4, "layers": [
+	{"wave": "noise", "f0": 800, "f1": 200, "a": 0.003, "d": 0.25, "lp": 700, "vol": 0.6},
+	{"wave": "sine", "f0": 90, "f1": 50, "a": 0.003, "d": 0.3, "lp": 600, "vol": 0.7}]},
+"descend":    {"desc": "Taking the stairs down", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 392, "f1": 392, "notes": [12, 7, 4, 0], "step": 0.08, "a": 0.005, "d": 0.2, "lp": 2500, "vol": 0.5}]},
+"recruit":    {"desc": "A demon joins or takes a bribe", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "sine", "f0": 587, "f1": 587, "notes": [0, 4, 7, 11, 12], "step": 0.06, "a": 0.01, "d": 0.3, "lp": 3000, "vol": 0.45}]},
+"reel":       {"desc": "Each gacha reel stopping (game raises it C, E, G per reel)", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 523, "f1": 523, "a": 0.002, "d": 0.06, "lp": 2500, "vol": 0.5}]},
+"pair":       {"desc": "Gacha: two alike", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 659, "f1": 659, "notes": [0, 4, 7], "step": 0.06, "a": 0.003, "d": 0.25, "lp": 3000, "vol": 0.5}]},
+"jackpot":    {"desc": "Gacha: three alike", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 523, "f1": 523, "notes": [0, 4, 7, 12, 7, 12], "step": 0.08, "a": 0.005, "d": 0.3, "lp": 3000, "vol": 0.5},
+	{"wave": "sine", "f0": 1046, "f1": 1046, "a": 0.01, "d": 0.8, "lp": 3000, "vol": 0.35, "delay": 0.48, "vib": 0.2, "vrate": 6}]},
+"game_over":  {"desc": "The hero falls", "gain": 0.5, "jitter": 0, "layers": [
+	{"wave": "tri", "f0": 392, "f1": 392, "notes": [7, 3, 0, -5], "step": 0.22, "a": 0.02, "d": 0.6, "lp": 1500, "vol": 0.5, "vib": 0.1, "vrate": 5}]}
+}
