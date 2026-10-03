@@ -56,6 +56,8 @@ var orb_open:   bool = false
 var chest_open: bool = false
 
 var _encounters_enabled:       bool = true
+# Set while ScreenFade has the screen dark for a floor change; input waits.
+var _fading: bool = false
 
 # Demons walking this floor. They step when the player steps; sharing a cell
 # with one starts a battle.
@@ -153,7 +155,7 @@ func _ready() -> void:
 	if GameBoot.pending_slot > 0:
 		var slot: int = GameBoot.pending_slot
 		GameBoot.pending_slot = 0
-		call_deferred("_do_load", slot)
+		call_deferred("_do_load", slot, false)
 	else:
 		player_pos    = current_level.player_start
 		player_facing = current_level.player_start_facing
@@ -508,11 +510,16 @@ func _check_portal() -> void:
 # the two cannot drift, which is the whole reason it is a function: a floor
 # arrived at by one path and not the other is a floor carrying stale state.
 func _descend() -> void:
-	if current_level == null or current_level.next_scene == "":
+	if current_level == null or current_level.next_scene == "" or _fading:
 		return
+	# Down through the dark, the new floor's number on it, and the floor is
+	# built while nothing can be seen.
+	_fading = true
+	Sfx.play("descend")
+	var fade: ScreenFade = ScreenFade.cover(get_tree(), "Floor %d" % (floor_num + 1))
+	await fade.covered
 	floor_num += 1
 	floor_label.text = "Floor %d" % floor_num
-	Sfx.play("descend")
 	# Cleared per floor. It used to be raised when a dragon fell and never put
 	# back down, so beating the Ice Dragon on floor five left every later boss
 	# corridor already counted as beaten — floors ten, fifteen and twenty were
@@ -520,6 +527,9 @@ func _descend() -> void:
 	_boss_beaten = false
 	visited_by_map.erase(current_level.next_scene)
 	_load_level(current_level.next_scene, true)
+	await get_tree().process_frame
+	_fading = false
+	fade.reveal()
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
@@ -647,6 +657,9 @@ func _on_menu_btn_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# The screen is black and the floor is changing under it.
+	if _fading:
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_swipe_start  = event.position
@@ -675,7 +688,7 @@ func _input(event: InputEvent) -> void:
 					Color(0.55, 0.85, 1.0))
 		else:
 			_descend()
-			_show_hud_popup("[DEBUG] Skipped to floor %d" % floor_num,
+			_show_hud_popup("[DEBUG] Skipped to floor %d" % (floor_num + 1),
 					Color(0.55, 0.85, 1.0))
 		return
 
@@ -1228,16 +1241,23 @@ func _resume_from_overlay() -> void:
 		_show_congratulations()
 
 
+# The Necromancer is down: through black into the climb home and the credits,
+# and from there back to the title. The run is over.
 func _show_congratulations() -> void:
 	in_combat = true
+	_fading = true
+	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
+	await fade.covered
 	hud_layer.visible = false
-	var ui: CongratulationsUI = CongratulationsUI.new()
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		hud_layer.visible = true
-		in_combat = false
+	var ui: EndingUI = EndingUI.new()
+	ui.finished.connect(func() -> void:
+		var out: ScreenFade = ScreenFade.cover(get_tree())
+		await out.covered
+		get_tree().change_scene_to_file("res://scenes/title.tscn")
+		out.reveal()
 	)
 	_get_overlay_layer().add_child(ui)
+	fade.reveal(0.8)
 
 
 func _player_snapshot() -> Dictionary:
@@ -1682,12 +1702,23 @@ func _do_save(slot: int) -> void:
 	_show_hud_popup("Game saved to Slot %d." % slot)
 
 
-func _do_load(slot: int) -> void:
+func _do_load(slot: int, through_black: bool = true) -> void:
 	var data: Dictionary = SaveSystem.read(slot)
 	if data.is_empty():
 		return
+	# From the title the loading screen is already covering this; in the game
+	# the floor would swap in plain view, so it goes through black.
+	var fade: ScreenFade = null
+	if through_black:
+		_fading = true
+		fade = ScreenFade.cover(get_tree())
+		await fade.covered
 	_close_save_layer()
 	_restore_save(data)
+	if fade != null:
+		await get_tree().process_frame
+		_fading = false
+		fade.reveal()
 
 
 func _gather_save_data() -> Dictionary:

@@ -77,9 +77,23 @@ func _build() -> void:
 	vbox.add_child(opt_btn)
 
 
+# A new run opens on the captain's briefing; loading a save skips it.
 func _on_new_game() -> void:
 	GameBoot.pending_slot = 0
+	var fade: ScreenFade = ScreenFade.cover(get_tree())
+	await fade.covered
+	var intro: IntroUI = IntroUI.new()
+	intro.finished.connect(_descend_into_game)
+	add_child(intro)
+	fade.reveal()
+
+
+# Through black to the loading screen, which carries on into the game.
+func _descend_into_game() -> void:
+	var fade: ScreenFade = ScreenFade.cover(get_tree())
+	await fade.covered
 	LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
+	fade.reveal()
 
 
 func _on_tutorial() -> void:
@@ -99,7 +113,7 @@ func _on_load_game() -> void:
 	picker.mode = "load"
 	picker.slot_chosen.connect(func(slot: int) -> void:
 		GameBoot.pending_slot = slot
-		LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
+		_descend_into_game()
 	)
 	picker.cancelled.connect(func() -> void:
 		picker.queue_free()

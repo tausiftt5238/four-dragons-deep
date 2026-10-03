@@ -890,7 +890,14 @@ func _commit_action(action: String) -> void:
 	_set_buttons(false)
 	var actor_pr: TextureRect = _actor_portrait()
 	if actor_pr != null:
-		_play_anim(actor_pr, "block" if action == "Defend" else "attack")
+		var anim: String = "attack"
+		if action == "Defend":
+			anim = "block"
+		# The Knight's third swing is his burst of flame: what a spell looks
+		# like in his hands. A plain swing is his first.
+		elif action.begins_with("Magic:") and _actor_is_player():
+			anim = "attack03"
+		_play_anim(actor_pr, anim)
 	var res: Dictionary = _resolve_action(action)
 	_log(res["msg"] as String)
 	await _after_action(res["cost"] as String)

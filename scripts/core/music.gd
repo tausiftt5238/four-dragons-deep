@@ -19,6 +19,8 @@ const NECRO:   String = "demon_decisive_battle"
 const ORB:     String = "calm_houses"
 const CASINO:  String = "a_moment_at_the_casino"
 const TITLE:   String = "overture"
+const ENDING:  String = "ending_theme"
+const INTRO:   String = "preparation_for_departure"
 
 const VOLUME_DB: float = -8.0
 const FADE: float = 0.6
@@ -74,7 +76,12 @@ static func play(track: String) -> void:
 		if stream == null:
 			return
 		p.volume_db = -40.0
-		p.play()
+		# The very first track can be asked for before the player has been
+		# added to the tree, which it is on the next idle moment.
+		if p.is_inside_tree():
+			p.play()
+		else:
+			p.tree_entered.connect(p.play, CONNECT_ONE_SHOT)
 	)
 	if stream != null:
 		_tween.tween_property(p, "volume_db", VOLUME_DB, FADE)
