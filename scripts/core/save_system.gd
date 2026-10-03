@@ -1,7 +1,20 @@
 class_name SaveSystem
 
+# The game writes this one itself, when the app goes to the background and
+# whenever play settles (a floor reached, a fight over), so a phone that kills
+# the app loses at most the fight that was going on. It can be loaded like any
+# other slot but never chosen to save into.
+const AUTO_SLOT: int = 4
+
 static func slot_path(slot: int) -> String:
 	return "user://save_slot_%d.json" % slot
+
+# Whether there is anything to load: a hand save or the autosave.
+static func any_save() -> bool:
+	for i: int in range(1, AUTO_SLOT + 1):
+		if not slot_info(i).is_empty():
+			return true
+	return false
 
 static func slot_info(slot: int) -> Dictionary:
 	var path: String = slot_path(slot)

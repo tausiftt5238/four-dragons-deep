@@ -12,6 +12,28 @@ func _ready() -> void:
 	_build()
 
 
+# Android's back: close whatever is open over the title, and from the bare
+# title leave the app, the way a phone expects. The intro plays out; skipping
+# it is its own button.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_WM_GO_BACK_REQUEST:
+		return
+	for i: int in range(get_child_count() - 1, -1, -1):
+		var c: Node = get_child(i)
+		if c is SaveSlotUI:
+			(c as SaveSlotUI).cancelled.emit()
+			return
+		if c is OptionsUI:
+			(c as OptionsUI).closed.emit()
+			return
+		if c is TutorialUI:
+			(c as TutorialUI).closed.emit()
+			return
+		if c is IntroUI:
+			return
+	get_tree().quit()
+
+
 func _build() -> void:
 	var bg: ColorRect = ColorRect.new()
 	bg.color = Color(0.04, 0.03, 0.07, 1.0)
@@ -57,11 +79,7 @@ func _build() -> void:
 	new_btn.pressed.connect(_on_new_game)
 	vbox.add_child(new_btn)
 
-	var any_save: bool = false
-	for i: int in range(1, 4):
-		if not SaveSystem.slot_info(i).is_empty():
-			any_save = true
-			break
+	var any_save: bool = SaveSystem.any_save()
 
 	var load_btn: Button = _make_btn("LOAD GAME", Vector2(220, 46))
 	load_btn.disabled = not any_save

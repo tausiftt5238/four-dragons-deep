@@ -68,8 +68,9 @@ commands that rebuild it from `Enemy.TEMPLATES` and `Spell.DATA`.
 
 ## Exporting
 
-Four presets are configured: Web, Windows, Linux, Android. Web is the one that
-ships.
+Four presets are configured: Web, Windows, Linux, Android. Web ships on
+itch.io; Android is set up for Google Play, and `docs/releasing-android.md` has
+the steps.
 
 One setting is load-bearing and easy to undo by accident: the Web preset's
 `variant/thread_support` **must stay `false`**. Turning it on makes the export
