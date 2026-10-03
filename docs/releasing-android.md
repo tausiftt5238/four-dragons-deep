@@ -12,7 +12,7 @@ own machine and in Play Console.
 | Exports an **AAB** (App Bundle) through the Gradle build, which Play requires | same |
 | `min_sdk` 24, `target_sdk` **36** (Play's requirement for new apps from 31 Aug 2026) | same |
 | arm64-v8a and armeabi-v7a | same |
-| Launcher icon: legacy 192, adaptive foreground/background/monochrome 432 | `resources/app_icon/`, from `tools/make_icons.py` |
+| Launcher icon: legacy 192, adaptive foreground/background/monochrome 432 | `resources/app_icon/`, from `tools/icon_render.gd` + `tools/make_icons.py` |
 | Store icon, 512×512 | `icon.png` |
 | Autosave when the app is backgrounded or closed, on reaching a floor, and after a fight | `Main._autosave`, slot `SaveSystem.AUTO_SLOT` |
 | Back button: closes the open panel; from the bare title it leaves the app | `Main._notification`, `TitleScreen._notification` |
@@ -73,9 +73,12 @@ from `main` › `/docs`, the policy is at
 ## Redrawing the icon
 
 ```sh
+xvfb-run -a godot --path . --rendering-driver opengl3 --script tools/icon_render.gd
 python3 tools/make_icons.py
 ```
 
-It draws everything from the game's own wall and floor textures. To use your
+The first renders a corridor in the dungeon's own stone shader, the second
+puts the eyes on it and cuts every size. (`xvfb-run` only matters on a machine
+with no screen.) To use your
 own art instead, replace `icon.png` and the four files in
 `resources/app_icon/` at the same sizes.
