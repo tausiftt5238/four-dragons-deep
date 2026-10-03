@@ -28,6 +28,8 @@ own machine and in Play Console.
    *Java SDK Path* and *Android SDK Path*.
 3. **Android build template.** Project › Install Android Build Template. This
    creates `android/`, which `.gitignore` already leaves out of the repo.
+   Headless, `godot --headless --install-android-build-template --export-debug "Android" <out>.aab`
+   does the same as part of an export.
 4. **Upload key.** Make one keystore and keep it **outside** the repo, backed up
    somewhere safe:
 
@@ -42,6 +44,12 @@ own machine and in Play Console.
 
    With Play App Signing (the default), Google holds the real signing key and
    this is only the upload key; if it is ever lost, Play support can reset it.
+
+## Test builds
+
+For a phone, `tools/export_android.sh install` builds a debug APK from the
+"Android APK" preset (no Gradle, arm64 only) and installs it over adb. Keep
+its version and icons in step with the "Android" preset when you change them.
 
 ## Each release
 

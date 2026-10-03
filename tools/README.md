@@ -62,3 +62,10 @@ godot --headless --path . --script tools/monster_report.gd   # CSV -> docs/monst
 
 The report reads the CSV, so an edited sheet can be checked before the game
 reads it. The game itself still builds monsters from `Enemy`'s tables for now.
+
+# Android test builds
+
+`export_android.sh` builds a debug APK from the "Android APK" preset (no
+Gradle, arm64 only) into `build/android/`; `export_android.sh install` also
+puts it on a phone over adb. The "Android" preset is the Play Store AAB; see
+`docs/releasing-android.md`.
