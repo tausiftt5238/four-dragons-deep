@@ -17,7 +17,7 @@ own machine and in Play Console.
 | Autosave when the app is backgrounded or closed, on reaching a floor, and after a fight | `Main._autosave`, slot `SaveSystem.AUTO_SLOT` |
 | Back button: closes the open panel; from the bare title it leaves the app | `Main._notification`, `TitleScreen._notification` |
 | Debug keys (Q no encounters, N skip floor) only in debug builds | `Main._input` |
-| Privacy policy | `docs/privacy-policy.html` (fill in the contact email first) |
+| Privacy policy | `docs/privacy-policy.html` |
 
 ## One-time setup on your machine
 
