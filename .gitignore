@@ -1,7 +1,8 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
-build/
+build/*
+!build/.gdignore
 # The real enemy art is a commercial pack, kept out of this repo.
 # See tools/real_art.sh and tools/make_placeholder_sprites.py.
 art-private/

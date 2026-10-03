@@ -19,6 +19,7 @@ var _fade: ColorRect
 var _band: ColorRect
 var _cap: Label
 var _cap_tween: Tween
+var _auto_backup: String = ""
 
 
 func _initialize() -> void:
@@ -27,6 +28,16 @@ func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	OS.low_processor_usage_mode = false
 	seed(20260928)
+	# The run autosaves as it goes; put this machine's own autosave back after.
+	var auto: String = SaveSystem.slot_path(SaveSystem.AUTO_SLOT)
+	_auto_backup = FileAccess.get_file_as_string(auto) if FileAccess.file_exists(auto) else ""
+	# Sound effects only: the music changes track with every scene, so one
+	# track is laid over the whole cut afterwards by tools/trailer_encode.sh.
+	# Not kept, so the device's own settings are untouched.
+	Settings.audio_bus(Settings.MUSIC_BUS)
+	Settings.audio_bus(Settings.SFX_BUS)
+	Settings.set_music_volume(0, false)
+	Settings.set_sfx_volume(100, false)
 	GameBoot.pending_slot = 0
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate() as Main
 	root.add_child(main)
@@ -50,7 +61,17 @@ func _initialize() -> void:
 	await _scene_key_and_door()
 	await _scene_dragons()
 	await _end_card()
+	_restore_autosave()
 	quit()
+
+
+func _restore_autosave() -> void:
+	var auto: String = SaveSystem.slot_path(SaveSystem.AUTO_SLOT)
+	if _auto_backup == "":
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(auto))
+	else:
+		var f: FileAccess = FileAccess.open(auto, FileAccess.WRITE)
+		f.store_string(_auto_backup)
 
 
 # ── Overlay: fades and captions ──────────────────────────────────────────────
@@ -267,10 +288,16 @@ func _approach(target: Vector2i, dist: int) -> Array:
 	return []
 
 
+# Through the game's own stairs, so the floor arrives as a real one would. It
+# happens under the trailer's black, and the stairs' sound is held back.
 func _go_to_floor(n: int) -> void:
+	var sfx: int = AudioServer.get_bus_index(Settings.SFX_BUS)
+	AudioServer.set_bus_mute(sfx, true)
 	main.floor_num = n - 1
-	main._descend()
-	main.floor_label.text = "Floor %d" % n
+	await main._descend()
+	# The game's own fade lifts on its own; wait it out under ours.
+	await _wait(ScreenFade.REVEAL_TIME + 0.1)
+	AudioServer.set_bus_mute(sfx, false)
 	_hide_roamers()
 	await _frames(3)
 
@@ -331,12 +358,10 @@ func _scene_chest() -> void:
 			await _turn_to(face)
 			await _wait(0.3)
 			main._action_forward()
-			await _wait(1.0)
-			for ui: Node in main.chest_layer.get_children():
-				if ui is ChestUI:
-					(ui as ChestUI).opened.emit()
+			await _press(main.chest_layer, "Open it", 1.0)
 			await _wait(1.8)
 			await _fade_to(1.0)
+			await _press(main.chest_layer, "Close", 0.0)
 			return
 
 

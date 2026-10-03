@@ -74,9 +74,40 @@ its version and icons in step with the "Android" preset when you change them.
 
 ## Hosting the privacy policy
 
-Play wants a public URL. If GitHub Pages is turned on for this repo, serving
-from `main` › `/docs`, the policy is at
+Play wants a public URL. GitHub Pages serves this repo's `main` › `/docs`, so
+the policy is live at
 `https://tausiftt5238.github.io/four-dragons-deep/privacy-policy.html`.
+
+## Store listing
+
+The text and the App content answers are in `docs/play-store-listing.md`.
+The images are made from the real art, so they go to `build/store/`, which git
+ignores, and never into the repo:
+
+```sh
+tools/real_art.sh status                     # must say REAL ART
+python3 tools/store_art.py feature           # 1024x500 feature graphic
+python3 tools/store_art.py shots DIR 170 335 640 960 1290 1590
+```
+
+`DIR` is a trailer recording (below); the numbers are its frames: the walk,
+a chest, a fight, the party, the door, a dragon. Play refuses screenshots
+longer than 2:1, so they come out 1080×2160.
+
+## The trailer
+
+Play takes the trailer as a YouTube link only. Record it with the music bus
+muted (the script does that), then lay one track over the whole cut:
+
+```sh
+D=/some/dir
+TRAILER_OUT=$D godot --path . --resolution 540x1170 \
+    --write-movie $D/frame.png --fixed-fps 30 --script tools/trailer.gd
+tools/trailer_encode.sh $D trailer.mp4 resources/music/overture.ogg
+```
+
+`build/` has a `.gdignore`: without it, Godot imports whatever sits there
+(store images, the web build) and packs it into every export.
 
 ## Redrawing the icon
 
