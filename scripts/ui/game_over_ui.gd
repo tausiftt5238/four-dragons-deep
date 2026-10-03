@@ -65,11 +65,7 @@ func _build() -> void:
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(btn_row)
 
-	var any_save: bool = false
-	for i: int in range(1, 4):
-		if not SaveSystem.slot_info(i).is_empty():
-			any_save = true
-			break
+	var any_save: bool = SaveSystem.any_save()
 
 	var load_btn: Button = Button.new()
 	load_btn.text = "Load Game"

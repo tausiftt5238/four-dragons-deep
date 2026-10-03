@@ -119,6 +119,11 @@ var dungeon: Dungeon
 
 
 func _notification(what: int) -> void:
+	# Android may kill a backgrounded app without another word, and a desktop
+	# window can be closed at any moment: either way, write the run down first.
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST \
+			or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_autosave()
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if not in_combat:
 			if save_open:
@@ -535,6 +540,7 @@ func _descend() -> void:
 	await get_tree().process_frame
 	_fading = false
 	fade.reveal()
+	_autosave()
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
@@ -678,7 +684,8 @@ func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
 
-	if event.keycode == KEY_Q and not in_combat:
+	# Q and N are cheats for testing; a release build has neither.
+	if OS.is_debug_build() and event.keycode == KEY_Q and not in_combat:
 		_encounters_enabled = not _encounters_enabled
 		_update_encounter_debug_label()
 		return
@@ -686,7 +693,7 @@ func _input(event: InputEvent) -> void:
 	# N drops a floor where you stand. Debug, alongside Q and F9, and it goes
 	# through _descend so a skipped floor arrives in exactly the state a walked
 	# one does — key, boss flag, fog and minimap all reset the same way.
-	if event.keycode == KEY_N and not in_combat and not save_open and not orb_open \
+	if OS.is_debug_build() and event.keycode == KEY_N and not in_combat and not save_open and not orb_open \
 			and not chest_open and not menu_open:
 		if floor_num >= Level.FLOOR_COUNT:
 			_show_hud_popup("[DEBUG] Floor %d is the last one." % floor_num,
@@ -1236,6 +1243,8 @@ func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
 func _resume_from_overlay() -> void:
 	hud_layer.visible = true
 	in_combat = false
+	# A fight and everything after it is over; this is a good place to be.
+	call_deferred("_autosave")
 	if _reopen_orb_tab != "":
 		var tab: String = _reopen_orb_tab
 		_reopen_orb_tab = ""
@@ -1701,6 +1710,17 @@ func _close_save_layer() -> void:
 			child.queue_free()
 	hud_layer.visible = true
 	save_open = false
+
+
+# Writes the autosave slot, but only from a moment a save can come back to:
+# walking the floor. Mid-fight, mid-fade, in the Gauntlet or dead, it keeps the
+# last one it wrote instead.
+func _autosave() -> void:
+	if player_char == null or current_level == null:
+		return
+	if in_combat or _fading or _in_gauntlet or chest_open or not player_char.is_alive():
+		return
+	SaveSystem.write(SaveSystem.AUTO_SLOT, _gather_save_data())
 
 
 func _do_save(slot: int) -> void:

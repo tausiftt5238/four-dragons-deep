@@ -70,6 +70,9 @@ func _build() -> void:
 
 	col.add_child(HSeparator.new())
 
+	# Loading also offers the autosave, first, since it is usually the newest.
+	if mode == "load":
+		col.add_child(_make_slot_row(SaveSystem.AUTO_SLOT))
 	for i: int in range(1, SLOT_COUNT + 1):
 		col.add_child(_make_slot_row(i))
 
@@ -96,7 +99,7 @@ func _make_slot_row(slot: int) -> VBoxContainer:
 	row.add_child(head)
 
 	var slot_lbl: Label = Label.new()
-	slot_lbl.text = "Slot %d" % slot
+	slot_lbl.text = "Autosave" if slot == SaveSystem.AUTO_SLOT else "Slot %d" % slot
 	slot_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slot_lbl.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 	slot_lbl.clip_text = true
