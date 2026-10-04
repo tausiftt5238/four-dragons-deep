@@ -63,6 +63,16 @@ const WARDEN_TRICKS: Dictionary = {
 # it, so a dragon is a long fight rather than a few good rounds.
 const BOSS_HP_MULT: int = 8
 
+# How many times over a dragon's well holds its MAGAZINE of casts. One was
+# three room-wide casts and then claws for the rest of a long fight (the
+# Thunder Dragon's rounding left it two); a dragon should breathe its element
+# for most of the fight.
+const BOSS_CASTS_MULT: int = 2
+
+# Casts per MAGAZINE this one carries (BOSS_CASTS_MULT for a dragon): its MP
+# holds that many times the magazine at the same price a cast.
+var cast_mult: int = 1
+
 # Press-turn icons this enemy opens its phase with. Bosses get more, which is
 # how they threaten a full party without inflating their damage numbers.
 var icons: int = 1
@@ -791,6 +801,13 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.max_hp *= BOSS_HP_MULT
 	e.hp = e.max_hp
 	e.compute_max_mp()
+	# The same price a cast, BOSS_CASTS_MULT times the casts, and exactly that:
+	# a well a point short of a whole cast used to leave one off.
+	if not e.attack_elements.is_empty():
+		var per_cast: int = e.skill_cost()
+		e.cast_mult = BOSS_CASTS_MULT
+		e.max_mp = per_cast * int(MAGAZINE.get(e.attack_reach, 6)) * BOSS_CASTS_MULT
+		e.mp = e.max_mp
 	# Luck to match its level: out-lucking it for a banish takes a build, and
 	# it crits more (CombatMath caps a monster's crit rate).
 	e.luk = e.lv
@@ -1042,7 +1059,7 @@ const MAGAZINE: Dictionary = {
 func skill_cost() -> int:
 	if attack_elements.is_empty():
 		return 0
-	return maxi(4, roundi(float(max_mp) / float(MAGAZINE.get(attack_reach, 6))))
+	return maxi(4, roundi(float(max_mp) / float(MAGAZINE.get(attack_reach, 6) * cast_mult)))
 
 
 func can_afford_skill() -> bool:
