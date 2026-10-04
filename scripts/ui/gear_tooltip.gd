@@ -52,6 +52,10 @@ static func build(item: Dictionary, player: PlayerCharacter) -> String:
 	var wards: String = wards_text(item)
 	if wards != "":
 		lines.append("Wards: %s" % wards)
+	if item.get("first_strike", false):
+		lines.append("Never ambushed: every fight opens on your turn")
+	if item.get("walk_mp", false):
+		lines.append("Walking brings MP back (full in fifty steps)")
 
 	return "
 ".join(lines)
