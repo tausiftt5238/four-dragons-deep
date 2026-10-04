@@ -43,7 +43,9 @@ The Abyss (floors 21–24) lays all four at once.
 
 Hazards you've set off stay marked on your map. Warden and dragon floors have none.
 
-Your MP creeps back up as you walk, so exploring is never wasted.
+MP comes back at orbs (Rest) and from ethers. Wear a **Wellspring Charm**
+(100 g, sold from the first orb) and it also creeps back as you walk: empty to
+full in fifty steps.
 
 ---
 
@@ -87,7 +89,8 @@ Most fights open on your turn, but now and then the monsters **get the jump on
 you** and take the first phase. The odds start near one in eight, rise the
 faster the pack is than the hero, and fall a point for every point of the
 hero's luck over theirs (from 2% up to 35%). Wardens, dragons, the Necromancer
-and Gauntlet lineups never ambush.
+and Gauntlet lineups never ambush, and nothing ambushes a hero wearing a
+**Sentry's Whistle** (500 g, sold from the first orb).
 
 | What happens | What it costs |
 |---|---|

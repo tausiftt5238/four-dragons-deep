@@ -16,7 +16,8 @@ const PAGES: Array[Dictionary] = [
 	{title = "Moving", shot = "explore.png",
 		text = "Swipe up to step forward and down to step back. Swipe left or right to turn. "
 			+ "On a keyboard: arrow keys or WASD.\n\n"
-			+ "The map on top fills in as you walk. Walking also brings your MP back."},
+			+ "The map on top fills in as you walk. Wear a Wellspring Charm (sold at orbs) "
+			+ "and walking brings your MP back too."},
 	{title = "Keys and doors", shot = "key.png",
 		text = "Every floor is locked. Find the key (the violet shard) and walk onto it.\n\n"
 			+ "On floors 4, 9, 14 and 19 a warden holds the key instead. Beat it.\n\n"

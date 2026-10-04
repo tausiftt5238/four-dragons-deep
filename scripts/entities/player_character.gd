@@ -687,6 +687,22 @@ func ward_against(status_id: String) -> Dictionary:
 	return {}
 
 
+# A Wellspring Charm worn: walking brings MP back.
+func recovers_mp_walking() -> bool:
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("walk_mp", false):
+			return true
+	return false
+
+
+# A Sentry's Whistle worn: no fight can open with an ambush.
+func never_ambushed() -> bool:
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("first_strike", false):
+			return true
+	return false
+
+
 func _accessory_sum(key: String) -> int:
 	var total: int = 0
 	for acc: Dictionary in equipped_accessories:

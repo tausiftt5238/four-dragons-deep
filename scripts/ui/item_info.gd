@@ -191,4 +191,8 @@ static func gear(it: Dictionary, deltas: String = "") -> String:
 	var wards: String = GearTooltip.wards_text(it)
 	if wards != "":
 		parts.append(_paint("Wards " + wards, Color(0.55, 0.95, 0.60)))
+	if it.get("first_strike", false):
+		parts.append(_paint("Never ambushed", Color(0.55, 0.95, 0.60)))
+	if it.get("walk_mp", false):
+		parts.append(_paint("MP back as you walk", Color(0.55, 0.95, 0.60)))
 	return SEP.join(parts)

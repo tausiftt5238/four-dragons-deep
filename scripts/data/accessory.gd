@@ -72,6 +72,34 @@ static func wards_off(acc: Dictionary, status_id: String) -> bool:
 	return "all" in w or status_id in w
 
 
+# ── Bought, not found ─────────────────────────────────────────────────────────
+
+# Nothing gets the jump on its wearer (CombatScene.can_ambush), however slow
+# they are. On the first shelf so a player who keeps being ambushed has an
+# answer, and priced so it is a decision on floor one rather than a given.
+const SENTRY_PRICE: int = 500
+
+static func sentrys_whistle() -> Dictionary:
+	var d: Dictionary = make("sentrys_whistle", "Sentry's Whistle",
+			"Blown at the first footstep. Nothing in the dark gets the first move on you.", 1)
+	d["first_strike"] = true
+	d["price"] = SENTRY_PRICE
+	return d
+
+
+# Walking brings MP back only while this is worn (Main._recover_mp_on_step):
+# a slice of the pool a step, fifty steps from empty to full. Without it MP
+# comes back at orbs and from ethers, and nowhere else.
+const WELL_PRICE: int = 100
+
+static func wellspring_charm() -> Dictionary:
+	var d: Dictionary = make("wellspring_charm", "Wellspring Charm",
+			"A wet stone on a cord. Every step you take, a little of what you spent comes back.", 1)
+	d["walk_mp"] = true
+	d["price"] = WELL_PRICE
+	return d
+
+
 # ── The trinkets ──────────────────────────────────────────────────────────────
 
 static func cold_iron_ring() -> Dictionary:
@@ -160,7 +188,7 @@ static func all() -> Array[Dictionary]:
 			scrying_mirror(), serpents_tooth(),
 			ferrymans_coin(), kings_signet(), thiefs_lantern(),
 			star_pendant(), silver_specs(), echo_bangle(), grounding_cord(),
-			ribbon()]
+			ribbon(), sentrys_whistle(), wellspring_charm()]
 
 
 # What a floor could plausibly turn up: this tier and everything above it.

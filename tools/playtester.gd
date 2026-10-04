@@ -963,6 +963,10 @@ func _acc_score(item: Dictionary) -> float:
 	var s: float = float(item.get("mag_bonus", 0)) * 1.3 + float(item.get("str_bonus", 0)) * 0.6 \
 			+ float(item.get("def_bonus", 0)) * 1.0 + float(item.get("agl_bonus", 0)) * 1.1 \
 			+ float(item.get("luk_bonus", 0)) * 0.8 + _chart_score(item)
+	if item.get("walk_mp", false):
+		s += 14.0      # MP between fights is every spell it casts
+	if item.get("first_strike", false):
+		s += 9.0
 	var wards: String = GearTooltip.wards_text(item)
 	if wards != "":
 		s += 5.0 + (10.0 if "," in wards or wards.to_lower().contains("every") else 0.0)

@@ -600,16 +600,15 @@ func _action_turn_right() -> void:
 	minimap_ctrl.queue_redraw()
 
 
-# Walking is how MP comes back. A flat point a step would be everything at
+# Walking brings MP back, but only with a Wellspring Charm worn: otherwise it
+# comes from orbs and ethers. A flat point a step would be everything at
 # level one and nothing at level thirty, so it is a slice of the pool instead:
-# fifty steps from empty to full at any level. That is short enough that a bad
-# fight never strands you at the far end of a floor, and long enough that three
-# fights in a row still leave you deciding whether this one is worth a Pyre.
+# fifty steps from empty to full at any level.
 const MP_PER_STEP: float = 0.02
 
 
 func _recover_mp_on_step() -> void:
-	if player_char.mp >= player_char.max_mp:
+	if player_char.mp >= player_char.max_mp or not player_char.recovers_mp_walking():
 		return
 	player_char.mp = mini(player_char.max_mp,
 			player_char.mp + maxi(1, roundi(float(player_char.max_mp) * MP_PER_STEP)))
@@ -1045,7 +1044,8 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	scene.foes = group.duplicate()
 	# Only an ordinary fight can open with an ambush: not the warden, a boss,
 	# or a Gauntlet lineup the player paid to face.
-	scene.can_ambush = not warden and not _in_gauntlet and not group.any(
+	scene.can_ambush = not warden and not _in_gauntlet and not player_char.never_ambushed() \
+			and not group.any(
 			func(f: Enemy) -> bool: return f.is_dragon() or f.is_necromancer() or f.is_warden())
 	scene.combat_ended.connect(_on_combat_ended.bind(group, combat_layer))
 	combat_layer.add_child(scene)
