@@ -750,6 +750,8 @@ func _supplies() -> Array[Dictionary]:
 		out.append(Item.panacea())
 		out.append(Item.eye_drops())
 		out.append(Item.revival_feather())
+	if floor_num >= Item.DEEP_SUPPLIES_FLOOR:
+		out.append_array(Item.deep_supplies())
 	return out
 
 
