@@ -106,6 +106,11 @@ happened, as it would on one target: one repel or drain still ends the phase,
 costs a full icon, **even if another target was weak to it**. Read the whole line
 before throwing a wide spell.
 
+Armoured monsters resist blades, and from the third band (floor 11) some turn
+them straight back. From floor 11 an orb sells **Pierce**: one blow, paid in
+HP, that lands as a plain hit through resist, null, reflect and drain alike. A
+weakness still counts.
+
 ### The six lines
 
 **Phys, fire, ice, thunder, light** and **dark**. Every creature answers each

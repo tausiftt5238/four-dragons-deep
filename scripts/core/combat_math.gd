@@ -46,9 +46,10 @@ static func roll_crit(attacker: CharacterSheet = null) -> bool:
 # Returns { dmg, outcome, crit } where outcome is one of
 # "hit" | "weak" | "resist" | "null" | "repel" | "drain".
 # The caller applies the damage — this only decides how much and to whom.
+# `pierce` (Pierce): resist, null, repel and drain land as a plain hit.
 static func resolve(base: int, element: String, target: CharacterSheet,
-		crit: bool, guarded: bool = false) -> Dictionary:
-	var res: Dictionary = _resolve(base, element, target, crit, guarded)
+		crit: bool, guarded: bool = false, pierce: bool = false) -> Dictionary:
+	var res: Dictionary = _resolve(base, element, target, crit, guarded, pierce)
 	# Whatever earns the half-icon back gets the bigger sound.
 	if cost_for(res["outcome"], res["crit"], res["suppressed"]) == PressTurn.COST_HALF:
 		Sfx.play("weak")
@@ -56,8 +57,10 @@ static func resolve(base: int, element: String, target: CharacterSheet,
 
 
 static func _resolve(base: int, element: String, target: CharacterSheet,
-		crit: bool, guarded: bool) -> Dictionary:
+		crit: bool, guarded: bool, pierce: bool = false) -> Dictionary:
 	var state: String = target.affinity_of(element)
+	if pierce and state != Affinity.WEAK:
+		state = Affinity.NORMAL
 	var dmg: int = variance(base)
 	if crit:
 		dmg = int(dmg * CRIT_MULT)
