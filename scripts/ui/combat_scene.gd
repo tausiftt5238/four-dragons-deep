@@ -503,6 +503,15 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 				return {msg = "[color=aqua]Used %s![/color]  [color=#d070ff]A mirror goes up before the party: %s attacks are turned back until your next turn.[/color]" % [
 						item["name"], "physical" if item["mirror"] == "phys" else "magic"],
 						cost = PressTurn.COST_FULL}
+			if _restorative(item) and item.get("party", false):
+				var lines: Array[String] = []
+				for m: CharacterSheet in _living_party():
+					if m.could_use(item):
+						lines.append("%s: %s" % [_member_name(m), m.apply_restorative(item)])
+				player.remove_item(item, 1)
+				_refresh_hp()
+				return {msg = "[color=aqua]Used %s on the party.[/color]\n%s" % [
+						item["name"], "\n".join(lines)], cost = PressTurn.COST_FULL}
 			if _restorative(item):
 				var who: CharacterSheet = _ally_target \
 						if _ally_target != null and _ally_target.is_alive() else player
@@ -925,6 +934,10 @@ func _on_use_item(item: Dictionary) -> void:
 	if item.has("revive"):
 		_pick_ally(true, "Revive who?", _show_item_submenu,
 				func() -> void: await _commit_item(item))
+		return
+	# A cauldron or a fountain is for everyone standing: nobody to pick.
+	if _restorative(item) and item.get("party", false):
+		await _commit_item(item)
 		return
 	if _restorative(item):
 		_pick_ally(false, "Use %s on?" % item["name"], _show_item_submenu,

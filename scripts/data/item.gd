@@ -73,6 +73,46 @@ static func ether() -> Dictionary:
 			"Restores 20 MP.",
 			0, 20, 1)
 
+# ── The fourth band's supplies ────────────────────────────────────────────────
+#
+# Sold and dropped from DEEP_SUPPLIES_FLOOR on (the first of the fourth band),
+# when a hero has some 400 HP and 200 MP and a Hi-Potion barely registers.
+# `depth` is that gate; `floor` stays the price tier the way it is for every
+# other consumable, and `price` overrides it, since what these are worth has
+# outgrown that scale. `party` means the whole living party drinks it at once.
+const DEEP_SUPPLIES_FLOOR: int = 16
+const FULL: int = 9999   # restores to the ceiling, whatever it is
+
+static func _deep(d: Dictionary, price: int, party: bool = false) -> Dictionary:
+	d["depth"] = DEEP_SUPPLIES_FLOOR
+	d["price"] = price
+	if party:
+		d["party"] = true
+	return d
+
+static func super_potion() -> Dictionary:
+	return _deep(consumable("super_potion", "Super Potion",
+			"Restores 250 HP.", 250, 0, 4), 160)
+
+static func hi_ether() -> Dictionary:
+	return _deep(consumable("hi_ether", "Hi-Ether",
+			"Restores 60 MP.", 0, 60, 4), 180)
+
+static func elixir() -> Dictionary:
+	return _deep(consumable("elixir", "Elixir",
+			"Restores all HP and MP.", FULL, FULL, 4), 600)
+
+static func potion_cauldron() -> Dictionary:
+	return _deep(consumable("potion_cauldron", "Potion Cauldron",
+			"Restores all HP to the whole party.", FULL, 0, 4), 750, true)
+
+static func ether_fountain() -> Dictionary:
+	return _deep(consumable("ether_fountain", "Ether Fountain",
+			"Restores 40 MP to the whole party.", 0, 40, 4), 600, true)
+
+static func deep_supplies() -> Array[Dictionary]:
+	return [super_potion(), hi_ether(), elixir(), potion_cauldron(), ether_fountain()]
+
 static func antidote() -> Dictionary:
 	return consumable("antidote", "Antidote",
 			"Cures Poison.",
@@ -444,6 +484,8 @@ static func drop_table_for_floor(floor_num: int) -> Array[Dictionary]:
 			continue
 		if kind == "scroll" and int(d.get("floor", 1)) > floor_num:
 			continue
+		if int(d.get("depth", 1)) > floor_num:
+			continue
 		out.append(d)
 	return out
 
@@ -485,6 +527,7 @@ static func drop_table() -> Array[Dictionary]:
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
 		fire_bomb(), ice_shard(), thunder_bead(), revival_feather(),
+		super_potion(), hi_ether(), elixir(), potion_cauldron(), ether_fountain(),
 		scroll_cure(), scroll_cura(), scroll_cure_all(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),
 		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
