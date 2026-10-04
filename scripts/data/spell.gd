@@ -124,6 +124,14 @@ static var DATA: Dictionary = {
 		shape=SHAPE_ALL, spread=SPREAD_ALL_DMG, power=POWER_III,
 		desc="The whole room, cut down to the last."},
 
+	# The answer to armour, sold from the third band, where blades start to
+	# come back off it. `pierce`: resist, null, repel and drain all land as a
+	# plain hit (CombatMath.resolve); a weakness is still a weakness. Outside
+	# the three-by-three block, so elemental_id never hands it to a demon.
+	"pierce":        {name="Pierce",       mp=0, hp=11, type="dmg", heal=0, element="phys",
+		shape=SHAPE_ONE, spread=1.0, power=POWER_II, pierce=true,
+		desc="Finds the gap in any armour: nothing resists it, nothing turns it back."},
+
 	# ── Fire ──────────────────────────────────────────────────────────────────
 	"ember":         {name="Ember",        mp=8, type="dmg", heal=0, element="fire",
 		shape=SHAPE_ONE, spread=1.0, power=POWER_I,
@@ -365,7 +373,8 @@ static func elemental_id(element: String, rung: int, shape: String) -> String:
 	var kind: String = "banish" if banishing else "dmg"
 	for id: String in DATA:
 		var d: Dictionary = DATA[id] as Dictionary
-		if d.get("element", "") != element or d.get("shape", "") != shape:
+		if d.get("element", "") != element or d.get("shape", "") != shape \
+				or d.get("pierce", false):
 			continue
 		if d.get("type", "") == kind \
 				and is_equal_approx(float(d.get(field, -99.0)), want):

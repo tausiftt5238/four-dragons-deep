@@ -84,6 +84,8 @@ static func _spell(spell_id: String) -> String:
 	match d.get("type", "dmg") as String:
 		"dmg", "banish":
 			parts = ["%s %s" % [icon(d.get("element", "") as String), reach], cost]
+			if d.get("pierce", false):
+				parts.append("Pierces resist, null and reflect")
 		"ailment":
 			parts = [reach, cost, ailment(d.get("status", "") as String)]
 		"heal":

@@ -2604,7 +2604,8 @@ func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: Stri
 	_show_float(who, "%s%d" % [prefix, amount], color)
 	if prefix == "+":
 		Sfx.play("heal")
-	elif who in foes:
+	# `foes` is typed to Enemy, and asking it about the hero is an engine error.
+	elif who is Enemy and (who as Enemy) in foes:
 		Sfx.play("hit" if who.is_alive() else "defeat")
 	else:
 		Sfx.play("hurt")
@@ -3183,7 +3184,8 @@ func _cast_spell(spell_id: String) -> Dictionary:
 	if not phys and "scholar" in player.passive_skills:
 		base = int(base * 1.25)
 	var crit: bool = CombatMath.roll_crit(player)
-	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending)
+	var res: Dictionary = CombatMath.resolve(base, element, enemy, crit, enemy.defending,
+			bool(data.get("pierce", false)))
 	return _land_hit(res, element, "%s %s!" % ["You use" if phys else "You cast",
 			data["name"]], phys, float(data.get("power", Spell.POWER_I)))
 

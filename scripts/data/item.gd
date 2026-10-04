@@ -251,6 +251,7 @@ const ELEMENTAL_SCROLLS: Dictionary = {
 
 	# Rung two
 	"blaze": 6, "frostbite": 6, "bolt": 6, "rend": 6,
+	"pierce": 11,   # the first floor of the third band, where armour reflects
 	"firestorm": 8, "blizzard": 8, "thunderstorm": 8, "scything_arc": 8,
 	"inferno": 10, "deepwinter": 10, "tempest": 10, "onslaught": 10,
 	"exile": 8, "erase": 8,
