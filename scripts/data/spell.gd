@@ -290,16 +290,20 @@ static var DATA: Dictionary = {
 	# ── Healing ───────────────────────────────────────────────────────────────
 	# The single ones pick who in the party they land on; the All ones take
 	# everyone standing, for a little less each and a good deal more MP.
-	"cure":      {name="Cure", mp=6, type="heal", heal=30,
-		desc="Restores 30 HP to one of you."},
-	"cura":      {name="Cura", mp=15, type="heal", heal=80,
-		desc="Restores 80 HP to one of you."},
+	# A heal is its base plus `mag_mult` times the caster's MAG
+	# (PlayerCharacter.heal_amount_for), so it keeps up with what the deeper
+	# bands hit for: at one MAG per heal, Cura on floor ten mended about half
+	# of what the Thunder Dragon took off each member a phase.
+	"cure":      {name="Cure", mp=6, type="heal", heal=40, mag_mult=2.0,
+		desc="Restores 40 HP, plus twice your MAG, to one of you."},
+	"cura":      {name="Cura", mp=15, type="heal", heal=100, mag_mult=2.0,
+		desc="Restores 100 HP, plus twice your MAG, to one of you."},
 	"curaga":    {name="Curaga", mp=30, type="heal", heal=9999,
 		desc="Fully restores one of you."},
-	"cure_all":  {name="Cure All", mp=14, type="heal", heal=25, shape=SHAPE_ALL,
-		desc="Restores 25 HP to the whole party."},
-	"cura_all":  {name="Cura All", mp=34, type="heal", heal=65, shape=SHAPE_ALL,
-		desc="Restores 65 HP to the whole party."},
+	"cure_all":  {name="Cure All", mp=14, type="heal", heal=35, mag_mult=1.5, shape=SHAPE_ALL,
+		desc="Restores 35 HP, plus half again your MAG, to the whole party."},
+	"cura_all":  {name="Cura All", mp=34, type="heal", heal=85, mag_mult=1.5, shape=SHAPE_ALL,
+		desc="Restores 85 HP, plus half again your MAG, to the whole party."},
 	"curaga_all": {name="Curaga All", mp=64, type="heal", heal=9999, shape=SHAPE_ALL,
 		desc="Fully restores the whole party."},
 
