@@ -95,9 +95,13 @@ func _skill_text(p: PlayerCharacter, demon_name: String) -> String:
 		return "[color=#8b8f99]knows nothing it can call on[/color]"
 	var names: Array[String] = []
 	for skill: Dictionary in known:
-		var colour: String = "c9a6ff" if skill.get("kind", "") == "support" else "7fd4ff"
-		names.append("[color=#%s]%s[/color]" % [colour,
-				PlayerCharacter.skill_name(skill)])
+		var line: String = "[color=#7fd4ff]%s[/color]" % PlayerCharacter.skill_name(skill)
+		# A buff or debuff says which stat it moves, in that stat's colour.
+		if skill.get("kind", "") == "support":
+			var d: Dictionary = Spell.get_data(skill.get("id", "") as String)
+			if d.has("stat"):
+				line += " " + ItemInfo.stat_tag(d["stat"] as String, int(d.get("delta", 1)))
+		names.append(line)
 	return "%s   [color=#8b8f99]%d/%d[/color]" % [
 			"  ".join(names), known.size(), PlayerCharacter.DEMON_SKILL_CAP]
 
