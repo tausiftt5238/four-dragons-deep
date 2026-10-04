@@ -608,15 +608,15 @@ func affinity_of(element: String) -> String:
 		return Affinity.NORMAL
 	if mirrors(element):
 		return Affinity.REPEL
-	if equipped_armor.get("resist_element", "") == element:
+	if element in Armor.resists_of(equipped_armor):
 		return Affinity.RESIST
 	for acc: Dictionary in equipped_accessories:
-		if acc.get("resist_element", "") == element:
+		if element in Armor.resists_of(acc):
 			return Affinity.RESIST
-	if equipped_armor.get("weakness", "") == element:
+	if element in Armor.weaknesses_of(equipped_armor):
 		return Affinity.WEAK
 	for acc2: Dictionary in equipped_accessories:
-		if acc2.get("weak_element", "") == element:
+		if element in Armor.weaknesses_of(acc2):
 			return Affinity.WEAK
 	return affinities.get(element, Affinity.NORMAL) as String
 

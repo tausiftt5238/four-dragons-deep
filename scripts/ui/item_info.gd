@@ -180,11 +180,9 @@ static func gear(it: Dictionary, deltas: String = "") -> String:
 		parts.append("Swings %s" % icon(swing))
 	# The chart's own letters, in the chart's own colours: S resists, W weak.
 	var chart: Array[String] = []
-	var r: String = it.get("resist_element", "") as String
-	if r != "":
+	for r: String in Armor.resists_of(it):
 		chart.append(icon(r) + _paint("S", Affinity.color(Affinity.RESIST)))
-	var w: String = it.get("weak_element", it.get("weakness", "")) as String
-	if w != "":
+	for w: String in Armor.weaknesses_of(it):
 		chart.append(icon(w) + _paint("W", Affinity.color(Affinity.WEAK)))
 	if not chart.is_empty():
 		parts.append(" ".join(chart))
