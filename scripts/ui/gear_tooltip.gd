@@ -39,12 +39,16 @@ static func build(item: Dictionary, player: PlayerCharacter) -> String:
 		lines.append("Swings: %s%s" % [Affinity.element_name(el),
 				"  (expels rather than wounds)" if Affinity.is_banishing(el) else ""])
 
-	var r: String = item.get("resist_element", "")
-	if r != "":
-		lines.append("Resists: %s" % Affinity.element_name(r))
-	var w: String = item.get("weak_element", item.get("weakness", ""))
-	if w != "":
-		lines.append("Opens: %s" % Affinity.element_name(w))
+	var r: PackedStringArray = PackedStringArray()
+	for e: String in Armor.resists_of(item):
+		r.append(Affinity.element_name(e))
+	if not r.is_empty():
+		lines.append("Resists: %s" % ", ".join(r))
+	var w: PackedStringArray = PackedStringArray()
+	for e: String in Armor.weaknesses_of(item):
+		w.append(Affinity.element_name(e))
+	if not w.is_empty():
+		lines.append("Opens: %s" % ", ".join(w))
 	var wards: String = wards_text(item)
 	if wards != "":
 		lines.append("Wards: %s" % wards)
