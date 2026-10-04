@@ -422,6 +422,20 @@ func _build_gauntlet() -> void:
 		_lineup.clear()
 		_refresh())
 	row.add_child(clear)
+	# A full lineup of four drawn from the bestiary, repeats allowed; pressed
+	# again, it draws a fresh one.
+	var pool: Array[String] = _gauntlet_pool()
+	var random: Button = Button.new()
+	random.text = "Random"
+	random.disabled = pool.is_empty()
+	random.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	random.pressed.connect(func() -> void:
+		_lineup.clear()
+		for i: int in GAUNTLET_MAX:
+			_lineup.append(pool[randi() % pool.size()])
+		_set_status("A random lineup steps up.")
+		_refresh())
+	row.add_child(random)
 	var total: int = _gauntlet_total()
 	var fight: Button = Button.new()
 	fight.text = "Fight  (%d g)" % total
@@ -453,6 +467,17 @@ func _build_gauntlet() -> void:
 		SlotList.new(_content).add_note("Meet a monster on the floor first. The gauntlet only offers what your bestiary knows.")
 		return
 	SlotList.sections(_content, _page, "gauntlet", groups, _gauntlet_offer)
+
+
+# Everything the gauntlet lists: the ordinary monsters the bestiary knows.
+func _gauntlet_pool() -> Array[String]:
+	var out: Array[String] = []
+	for n: String in player.encountered_enemies:
+		for t: Dictionary in Enemy.TEMPLATES:
+			if t["name"] == n:
+				out.append(n)
+				break
+	return out
 
 
 func _gauntlet_offer(list: SlotList, enemy_name: String) -> void:
