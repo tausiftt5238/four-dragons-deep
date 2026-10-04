@@ -91,7 +91,9 @@ static func _spell(spell_id: String) -> String:
 		"heal":
 			var who: String = "party" if Spell.is_multi(spell_id) else "ally"
 			# The base; the caster's MAG is added on top when it lands.
-			parts = [_paint("+%d HP +MAG" % int(d.get("heal", 0)), Color(HP_COLOR)), who, cost]
+			var mult: float = float(d.get("mag_mult", 1.0))
+			var mag_txt: String = "MAG" if mult == 1.0 else ("%sxMAG" % (str(int(mult)) if mult == floorf(mult) else str(mult)))
+			parts = [_paint("+%d HP +%s" % [int(d.get("heal", 0)), mag_txt], Color(HP_COLOR)), who, cost]
 		"buff":
 			var party: bool = d.get("scope", "party") == "party"
 			parts = ["%s %s" % [_stat_tag(d.get("stat", "") as String, int(d.get("delta", 1))),

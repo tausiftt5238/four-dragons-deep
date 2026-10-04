@@ -594,24 +594,28 @@ func _bind_offer(list: SlotList, enemy_name: String) -> void:
 	# The same rule the recruit menu keeps: nothing above the hero's level
 	# answers to him, bought or talked down. Without it an orb is a way around it.
 	var outranks: bool = demon.lv > player.lv
+	# Its chart, as the Party tab shows one: what you would be bringing into
+	# a fight, weaknesses and all, before you pay for it.
+	var chart: AffinityChart = AffinityChart.compact(demon)
 	demon.free()
 
-	list.add(enemy_name,
+	list.add_entry(enemy_name,
 			Color(0.62, 0.92, 0.74) if owned else Color(0.85, 0.85, 0.92),
 			about,
 			"recruited" if owned else "%d g" % price,
 			Color(0.55, 0.75, 0.60) if owned else Color(1.0, 0.85, 0.35),
-			"Owned" if owned else ("Full" if full
+			[{text = "Owned" if owned else ("Full" if full
 					else ("Lv %d" % offered_lv if outranks else "Recruit")),
-			owned or full or outranks or player.gold < price,
-			func() -> void:
-				if player.gold < price:
-					_set_status("Not enough gold.")
-				else:
-					player.gold -= price
-					player.remember_recruit(enemy_name, offered_lv)
-					_set_status("%s answers to you now." % enemy_name)
-				_refresh())
+				disabled = owned or full or outranks or player.gold < price,
+				press = func() -> void:
+					if player.gold < price:
+						_set_status("Not enough gold.")
+					else:
+						player.gold -= price
+						player.remember_recruit(enemy_name, offered_lv)
+						_set_status("%s answers to you now." % enemy_name)
+					_refresh()}],
+			null, chart)
 
 
 # ── Selling ───────────────────────────────────────────────────────────────────

@@ -752,7 +752,8 @@ func add_item(item: Dictionary, count: int = 1) -> void:
 func heal_amount_for(spell_id: String) -> int:
 	var data: Dictionary = Spell.get_data(spell_id)
 	var base: int = int(data.get("heal", 30))
-	var bonus: int = int(float(effective_mag()) * stage_mult(CharacterSheet.STAT_MAG))
+	var bonus: int = int(float(effective_mag()) * stage_mult(CharacterSheet.STAT_MAG)
+			* float(data.get("mag_mult", 1.0)))
 	return maxi(1, base + bonus)
 
 
