@@ -1043,6 +1043,10 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	# The scene removes negotiated demons from its own list, so hand it a copy
 	# and keep the full roster here for the reward tally.
 	scene.foes = group.duplicate()
+	# Only an ordinary fight can open with an ambush: not the warden, a boss,
+	# or a Gauntlet lineup the player paid to face.
+	scene.can_ambush = not warden and not _in_gauntlet and not group.any(
+			func(f: Enemy) -> bool: return f.is_dragon() or f.is_necromancer() or f.is_warden())
 	scene.combat_ended.connect(_on_combat_ended.bind(group, combat_layer))
 	combat_layer.add_child(scene)
 
