@@ -206,6 +206,36 @@ static func resolve_banish(target: CharacterSheet, element: String,
 	return {outcome = "failed", dmg = 0, taken = false}
 
 
+# ── Ambush ───────────────────────────────────────────────────────────────────
+#
+# Some fights open with the monsters' phase instead of yours. The odds come off
+# the two sides' agility, ratio-based like hit_chance so they read the same at
+# level two and level thirty, and off luck: AMBUSH_BASE at even agility and
+# even luck, scaled by how much faster the pack is than the hero, then moved a
+# point per point of luck either way. Ordinary fights only (CombatScene.can_ambush).
+const AMBUSH_BASE: float = 0.12
+const AMBUSH_PER_LUK: float = 0.01
+const AMBUSH_MIN: float = 0.02
+const AMBUSH_MAX: float = 0.35
+
+
+static func ambush_chance(hero: CharacterSheet, pack: Array[Enemy]) -> float:
+	if pack.is_empty():
+		return 0.0
+	var foe_agl: float = 0.0
+	var foe_luk: float = 0.0
+	for f: Enemy in pack:
+		foe_agl += float(f.battle_agility())
+		foe_luk += float(f.luk)
+	foe_agl = maxf(1.0, foe_agl / pack.size())
+	foe_luk /= pack.size()
+	var hero_agl: float = maxf(1.0, float(hero.battle_agility()))
+	var ratio: float = foe_agl / (foe_agl + hero_agl)   # 0.5 when even
+	var chance: float = AMBUSH_BASE * ratio * 2.0 \
+			+ (foe_luk - float(hero.battle_luck())) * AMBUSH_PER_LUK
+	return clampf(chance, AMBUSH_MIN, AMBUSH_MAX)
+
+
 # The odds a swing connects, from the two sides' agility. Ratio-based so it
 # behaves the same at level 2 and level 20: even agility lands 95%, and four
 # stages either way swings it roughly 95% <-> 55%.

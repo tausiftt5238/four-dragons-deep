@@ -83,6 +83,12 @@ Combat is turn-based and built on **press turns**. Your side opens each round
 with **one icon per living party member**, and every action spends from that
 pool.
 
+Most fights open on your turn, but now and then the monsters **get the jump on
+you** and take the first phase. The odds start near one in eight, rise the
+faster the pack is than the hero, and fall a point for every point of the
+hero's luck over theirs (from 2% up to 35%). Wardens, dragons, the Necromancer
+and Gauntlet lineups never ambush.
+
 | What happens | What it costs |
 |---|---|
 | An ordinary action | 1 icon |

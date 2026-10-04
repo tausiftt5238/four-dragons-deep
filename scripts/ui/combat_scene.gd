@@ -32,6 +32,9 @@ var _departed: Array[Enemy] = []
 # Bound demons that fell in this battle. Read by Main before the scene is
 # freed, so the loss can be reported where the player will actually see it.
 var lost_demons: Array[String] = []
+# Whether the monsters can get the jump on the party (CombatMath.ambush_chance).
+# Main turns it off for the set pieces and for a fight the player paid for.
+var can_ambush: bool = false
 
 # The hero plus every demon he has bound this battle. Index 0 is always
 # the hero; _actor is the member currently holding the turn.
@@ -111,6 +114,10 @@ func _ready() -> void:
 	_refresh_hp()
 	_negotiation = CombatNegotiation.new(self)
 	_log("[color=yellow]%s[/color]" % _encounter_line())
+	if can_ambush and randf() < CombatMath.ambush_chance(player, foes):
+		_log("[color=#ff6a4a]%s![/color]" % _ambush_line())
+		_enemy_phase()
+		return
 	_begin_player_phase()
 
 
@@ -1450,6 +1457,12 @@ func _assign_battle_tags() -> void:
 			var i: int = int(seen.get(f.enemy_name, 0))
 			f.battle_tag = TAGS[mini(i, TAGS.size() - 1)]
 			seen[f.enemy_name] = i + 1
+
+
+func _ambush_line() -> String:
+	if foes.size() == 1:
+		return "%s gets the jump on you" % foes[0].display_name()
+	return "They get the jump on you"
 
 
 func _encounter_line() -> String:
