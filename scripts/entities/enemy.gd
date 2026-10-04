@@ -761,8 +761,8 @@ static func make_boss(floor_num: int) -> Enemy:
 	e.mag             = roundi(float(t["mag"]) * scale)
 	e.agl             = maxi(1, roundi(float(t["agl"]) * scale))
 	e.exp_to_next     = 0
-	e.exp_reward      = exp_for_level(e.lv) * 3
-	e.gold_reward     = e.lv * 12
+	e.exp_reward      = exp_for_level(e.lv) * 6
+	e.gold_reward     = e.lv * 24
 	e.status_attack   = t.get("status_attack", "")
 	e.weakness        = t.get("weakness", "")
 	e.negotiable      = false
@@ -844,8 +844,8 @@ static func make_warden(floor_num: int) -> Enemy:
 	e.def = maxi(1, roundi(float(t["def"]) * scale))
 	e.mag = roundi(float(t["mag"]) * scale)
 	e.agl = maxi(1, roundi(float(t["agl"]) * scale))
-	e.exp_reward = exp_for_level(e.lv) * 2
-	e.gold_reward = e.lv * 6
+	e.exp_reward = exp_for_level(e.lv) * 4
+	e.gold_reward = e.lv * 12
 	e.unreadable = true
 	e.compute_max_hp()
 	e.max_hp *= WARDEN_HP_MULT
