@@ -165,11 +165,14 @@ func _show_offer(offer: Dictionary) -> void:
 	name_lbl.add_theme_color_override("font_color", Color(0.50, 0.85, 1.00))
 	_vbox.add_child(name_lbl)
 
-	var about: Label = Label.new()
-	about.text = _describe(offer)
-	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Rich text so a buff's stat can carry its colour ("AGL-" in green).
+	var about: RichTextLabel = RichTextLabel.new()
+	about.bbcode_enabled = true
+	about.fit_content = true
+	about.scroll_active = false
+	about.text = "[center]%s[/center]" % _describe(offer)
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	about.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+	about.add_theme_color_override("default_color", Color(0.85, 0.85, 0.85))
 	_vbox.add_child(about)
 
 	_vbox.add_child(HSeparator.new())
@@ -227,8 +230,8 @@ static func _describe(skill: Dictionary) -> String:
 		return ""
 	var head: String = ""
 	if skill.get("kind", "") == "support":
-		head = "%s%s %s" % [(d.get("stat", "") as String).to_upper(),
-				"+" if int(d.get("delta", 1)) > 0 else "-",
+		head = "%s %s" % [ItemInfo.stat_tag(d.get("stat", "") as String,
+				int(d.get("delta", 1))),
 				"party" if d.get("scope", "party") == "party" else "foes"]
 	else:
 		head = "%s %s" % [Affinity.element_name(d.get("element", "") as String),

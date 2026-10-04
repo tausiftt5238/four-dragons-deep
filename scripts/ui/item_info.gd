@@ -52,6 +52,12 @@ static func _reach(shape: String) -> String:
 	return "x1"
 
 
+# "AGL-" in AGL's arrow colour, as BBCode: how a stat shift is written
+# wherever a spell or skill is described.
+static func stat_tag(stat: String, delta: int) -> String:
+	return _stat_tag(stat, delta)
+
+
 static func _stat_tag(stat: String, delta: int) -> String:
 	var name: String = stat.to_upper()
 	return _paint("%s%s" % [name, "+" if delta > 0 else "-"],

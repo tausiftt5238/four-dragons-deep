@@ -2523,8 +2523,8 @@ func _skill_entry(action: String, label: String, tag: String,
 
 
 # A buff or a debuff in the skills menu: which stat, which way, and on whom
-# ("AGL-  foes"), and its name in that stat's arrow colour, so the button
-# matches the arrows it will put under the names.
+# ("AGL-  foes"), with the stat in its arrow colour, the same as a stat's
+# name is written everywhere else.
 static func _stage_tag(data: Dictionary) -> String:
 	return "%s%s  %s" % [(data.get("stat", "") as String).to_upper(),
 			"+" if int(data.get("delta", 1)) > 0 else "-",
@@ -3018,8 +3018,6 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
 	title_lbl.add_theme_font_size_override("font_size", 13)
-	if tint.a > 0.0:
-		title_lbl.add_theme_color_override("font_color", tint)
 	title_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
 	box.add_child(title_lbl)
 
@@ -3032,7 +3030,22 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 		sub_lbl.add_theme_color_override("font_color", Color(0.66, 0.68, 0.78))
 		sub_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
 		var path: String = ItemInfo.ICONS.get(icon, "") as String
-		if path == "":
+		if tint.a > 0.0 and " " in subtitle:
+			# The stat it moves ("AGL-") in that stat's colour, the rest as usual.
+			var split: HBoxContainer = HBoxContainer.new()
+			split.alignment    = BoxContainer.ALIGNMENT_CENTER
+			split.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			split.add_theme_constant_override("separation", 0)
+			var head: Label = sub_lbl.duplicate() as Label
+			head.text          = subtitle.get_slice(" ", 0)
+			head.autowrap_mode = TextServer.AUTOWRAP_OFF
+			head.add_theme_color_override("font_color", tint)
+			sub_lbl.text          = subtitle.substr(head.text.length())
+			sub_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+			split.add_child(head)
+			split.add_child(sub_lbl)
+			box.add_child(split)
+		elif path == "":
 			box.add_child(sub_lbl)
 		else:
 			# The element's picture in front of the line, in place of its name.
