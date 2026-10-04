@@ -1270,7 +1270,8 @@ func _fill_submenu(entries: Array[Dictionary]) -> void:
 
 func _entry_button(e: Dictionary) -> Button:
 	var btn: Button = _big_button(e["title"] as String, e["detail"] as String,
-			bool(e.get("disabled", false)), e.get("icon", "") as String)
+			bool(e.get("disabled", false)), e.get("icon", "") as String,
+			e.get("tint", Color.TRANSPARENT) as Color)
 	btn.pressed.connect(e["press"] as Callable)
 	return btn
 
@@ -2054,6 +2055,7 @@ func _show_skills_submenu() -> void:
 			# How far it reaches is the thing a player most needs to know
 			# before spending 22 MP, so it rides next to the element.
 			var tag: String = _reach_count(Spell.reach_tag(spell_id)) if element != "" \
+					else _stage_tag(data) if _stage_tint(data).a > 0.0 \
 					else (data.get("type", "dmg") as String).capitalize()
 			# A physical skill is paid in blood, not mana: silence does not
 			# stop it, and it will not spend the last of the hero's HP.
@@ -2064,7 +2066,8 @@ func _show_skills_submenu() -> void:
 			else:
 				blocked = silenced or player.mp < int(data.get("mp", 0))
 			entries.append(_skill_entry("Magic:" + spell_id,
-					data["name"] as String, tag, Spell.cost_text(spell_id), blocked, element))
+					data["name"] as String, tag, Spell.cost_text(spell_id), blocked, element,
+					_stage_tint(data)))
 		_fill_submenu(entries)
 		return
 
@@ -2082,23 +2085,22 @@ func _show_skills_submenu() -> void:
 				else silenced_demon or demon.mp < cost
 		var tag: String = ""
 		var icon: String = ""
+		var tint: Color = Color.TRANSPARENT
 		if skill.get("kind", "") == "unique":
 			var u: Dictionary = Spell.get_data(skill.get("id", "") as String)
 			tag = "Drain %s  one" % (u.get("drain", "hp") as String).to_upper()
 		elif skill.get("kind", "") == "support":
 			var d: Dictionary = Spell.get_data(skill.get("id", "") as String)
-			tag = "%s%s  party" % [(d.get("stat", "") as String).to_upper(),
-					"+" if int(d.get("delta", 1)) > 0 else "-"] \
-					if d.get("scope", "party") == "party" \
-					else "%s%s  foes" % [(d.get("stat", "") as String).to_upper(),
-					"+" if int(d.get("delta", 1)) > 0 else "-"]
+			tag = _stage_tag(d)
+			tint = _stage_tint(d)
 		else:
 			# Its rung is already in its name (Ember, Blaze, Inferno).
 			icon = skill.get("element", "") as String
 			tag = _reach_count(reach)
 		entries.append(_skill_entry("Skill:%d" % i,
 				PlayerCharacter.skill_name(skill), tag,
-				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked, icon))
+				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked, icon,
+				tint))
 	_fill_submenu(entries)
 
 
@@ -2512,11 +2514,27 @@ static func _px_ring(img: Image, cx: float, cy: float, r: float, c: Color) -> vo
 # place of its name, and the line reads "[fire] x 2-3 (14 MP)": how many it
 # reaches, then what it costs.
 func _skill_entry(action: String, label: String, tag: String,
-		cost: String, disabled: bool, icon: String = "") -> Dictionary:
+		cost: String, disabled: bool, icon: String = "",
+		tint: Color = Color.TRANSPARENT) -> Dictionary:
 	var paid: String = "(%s)" % cost if cost != "" and cost != "\u2014" else ""
 	var detail: String = ("%s %s" % [tag, paid]).strip_edges()
-	return {title = label, detail = detail, disabled = disabled, icon = icon,
+	return {title = label, detail = detail, disabled = disabled, icon = icon, tint = tint,
 			press = func() -> void: await _on_skill_chosen(action)}
+
+
+# A buff or a debuff in the skills menu: which stat, which way, and on whom
+# ("AGL-  foes"), and its name in that stat's arrow colour, so the button
+# matches the arrows it will put under the names.
+static func _stage_tag(data: Dictionary) -> String:
+	return "%s%s  %s" % [(data.get("stat", "") as String).to_upper(),
+			"+" if int(data.get("delta", 1)) > 0 else "-",
+			"party" if data.get("scope", "party") == "party" else "foes"]
+
+
+static func _stage_tint(data: Dictionary) -> Color:
+	if data.get("type", "") != "buff" or not data.has("stat"):
+		return Color.TRANSPARENT
+	return StageArrows.color_of(data["stat"] as String)
 
 
 # How many a cast reaches, as the skill menu says it: "x 1", "x 2-3", "x all".
@@ -2981,7 +2999,7 @@ const ICON_PX: int = 16
 
 
 func _big_button(title: String, subtitle: String, disabled: bool,
-		icon: String = "") -> Button:
+		icon: String = "", tint: Color = Color.TRANSPARENT) -> Button:
 	var btn: Button = Button.new()
 	btn.custom_minimum_size = Vector2(0, 0)
 	btn.disabled = disabled
@@ -3000,6 +3018,8 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
 	title_lbl.add_theme_font_size_override("font_size", 13)
+	if tint.a > 0.0:
+		title_lbl.add_theme_color_override("font_color", tint)
 	title_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
 	box.add_child(title_lbl)
 
