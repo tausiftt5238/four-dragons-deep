@@ -77,12 +77,6 @@ func _build() -> void:
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stage)
 
-	var tower: InvertedTowerArt = InvertedTowerArt.new()
-	tower.anchor_right = 1.0
-	tower.offset_top = 70.0
-	tower.offset_bottom = _feet_y() - BOX * 0.55
-	stage.add_child(tower)
-
 	var floor_line: ColorRect = ColorRect.new()
 	floor_line.color = Color(0.22, 0.18, 0.28)
 	floor_line.anchor_left = 0.08

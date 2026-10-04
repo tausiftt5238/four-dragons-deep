@@ -103,16 +103,9 @@ func _build() -> void:
 			["gauntlet", "Gauntlet"]]:
 		tabs.add_child(_tab_btn(pair[0] as String, pair[1] as String))
 
-	# Save is the odd ninth tab, so it sits alone under the grid, centred and
-	# one column wide, rather than hanging off the left of a half-empty row.
-	var save_row: HBoxContainer = HBoxContainer.new()
-	save_row.add_theme_constant_override("separation", 6)
-	col.add_child(save_row)
-	for part: int in 3:
-		var c: Control = _tab_btn("save", "Save") if part == 1 else Control.new()
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		c.size_flags_stretch_ratio = 1.0 if part == 1 else 0.5
-		save_row.add_child(c)
+	# Save is the odd ninth tab, so it runs the full width under the grid, as
+	# wide as Leave, rather than hanging off the left of a half-empty row.
+	col.add_child(_tab_btn("save", "Save"))
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Leave"
