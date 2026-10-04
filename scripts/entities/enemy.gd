@@ -437,8 +437,8 @@ const WARDEN_TEMPLATES: Array[Dictionary] = [
 # The elements chain. Each dragon is weak to the element the one before it was
 # made of, so the reward for the last boss is the key to the next one — you walk
 # out of the ice corridor holding ice, and ice is what the Thunder Dragon cannot
-# stand. The Void Dragon closes the ring back onto ice because there is no fifth
-# element to hand out, and by floor 20 finding the ice again is the point.
+# stand. The Void Dragon keeps the chain: weak to the Fire Dragon's fire, and
+# shrugging off the ice and thunder of the two before that.
 #
 # All four resist light and dark, as do the wardens and the Necromancer's
 # forms. Against them banishing runs on the boss odds instead of the chart's
@@ -490,9 +490,9 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 	{name = "Void Dragon",      lv = 18, icons = BOSS_ICONS,
 		str = 15, def = 12, mag = 15, agl =  7,
 		exp = 450, gold = 180, tier = 4, rank = 0, min_floor = 20, max_floor = -1,
-		weakness = "ice", nulls = ["fire", "thunder"], phys = "resist",
+		weakness = "fire", nulls = ["ice", "thunder"], phys = "resist",
 		light = "resist", dark = "resist",
-		attack_elements = ["dark", "fire", "thunder"], reach = "all",
+		attack_elements = ["dark", "ice", "thunder"], reach = "all",
 		status_attack = "silence", ail = 25, support = "purge",
 		negotiable = false, talk_difficulty = 0,
 		sprite_id = "Void_Dragon",
@@ -500,7 +500,7 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 				+ "blade, casts three lines room-wide, resists the banishing lines and purges anything put on it. "
 				+ "Silence is the real danger — it can close the one door it is vulnerable through, "
 				+ "which is why the corridor has an orb at the mouth and the player should arrive "
-				+ "with more than one way to say ice."},
+				+ "with more than one way to say fire."},
 ]
 
 
