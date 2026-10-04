@@ -909,14 +909,26 @@ func _commit_action(action: String) -> void:
 		var anim: String = "attack"
 		if action == "Defend":
 			anim = "block"
-		# The Knight's third swing is his burst of flame: what a spell looks
-		# like in his hands. A plain swing is his first.
-		elif action.begins_with("Magic:") and _actor_is_player():
-			anim = "attack03"
-		_play_anim(actor_pr, anim)
+		# A spell in the Knight's hands is his special attack, held on the
+		# flash of the blade and coloured by what he is casting
+		# (AnimatedPortrait.play_cast). A plain swing is his first attack.
+		if action.begins_with("Magic:") and _actor_is_player() and actor_pr is AnimatedPortrait:
+			(actor_pr as AnimatedPortrait).play_cast(_cast_kind(action.substr(6)))
+		else:
+			_play_anim(actor_pr, anim)
 	var res: Dictionary = _resolve_action(action)
 	_log(res["msg"] as String)
 	await _after_action(res["cost"] as String)
+
+
+# The colour a spell flashes in: its element, else green for a heal and teal
+# for anything else (a buff, an ailment, Analyze).
+static func _cast_kind(spell_id: String) -> String:
+	var d: Dictionary = Spell.get_data(spell_id)
+	var el: String = d.get("element", "") as String
+	if el != "":
+		return el
+	return "heal" if d.get("type", "") == "heal" else "other"
 
 
 func _actor_portrait() -> TextureRect:
