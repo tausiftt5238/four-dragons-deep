@@ -290,9 +290,15 @@ Good luck. Four dragons deep is further than it sounds.
 
 ## Abyss mode
 
-Beat the Necromancer and **ABYSS** appears on the title screen. The hero who
-did it goes on down, with everything they carried, into floors that never end.
-How deep you get is the score; the title remembers your deepest.
+Beat the Necromancer and **ABYSS** appears on the title screen, below Load
+Game. The hero who did it goes on down, with everything they carried, into
+floors that never end. How deep you get is the score; the title remembers your
+deepest.
+
+Every new descent starts from that hero as they were when they won; nothing
+from a run that dies carries over. Beat the game again and, after the credits,
+you choose which hero waits at the top of the Abyss: the one already there, or
+the one who just won.
 
 - **One life.** Orbs still rest and sell, but they do not save. The run keeps a
   single autosave of its own, and dying wipes it. From the title you can carry
