@@ -1558,8 +1558,11 @@ func _sync_boss_banner() -> void:
 	var wall: Vector2i = current_level.exit_wall_pos
 	var from: Vector2i = current_level.exit_pos
 	var toward: Vector3 = Vector3(float(from.x - wall.x), 0.0, float(from.y - wall.y))
-	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, DragonBanner.HEIGHT * 0.5,
-			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * 0.35)
+	# The Necromancer's corridor ends in wall, not a stairwell: he stands just
+	# in front of it rather than in it.
+	var inset: float = 0.62 if floor_num >= Level.FLOOR_COUNT else 0.35
+	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, banner.feet_drop,
+			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * inset)
 	banner.rotation = Vector3(0.0, atan2(toward.x, toward.z), 0.0)
 	dungeon.add_child(banner)
 
