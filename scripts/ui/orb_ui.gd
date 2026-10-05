@@ -362,13 +362,15 @@ func _pay_out(reels: Array[String]) -> String:
 			player.add_item(it, 1)
 			return "%sWon %s." % [head, it["name"]]
 		Gacha.MONSTER:
-			var mon: Dictionary = Gacha.monster_prize(player, floor_num, jackpot)
+			var full: bool = player.recruited.size() >= PlayerCharacter.ROSTER_SIZE
+			var mon: Dictionary = {} if full else Gacha.monster_prize(player, floor_num, jackpot)
 			if mon.is_empty() or not player.can_bind(mon["name"] as String):
 				# No room, or nobody left to meet: it pays as the gold face would,
 				# so the win is never empty but a full roster is no gold mine.
 				var g: int = Gacha.gold_prize(floor_num, jackpot)
 				player.gold += g
-				return "%sRoster full. Won %d gold instead." % [head, g]
+				return "%s%s Won %d gold instead." % [head,
+						"Roster full." if full else "Nobody new to meet.", g]
 			player.remember_recruit(mon["name"] as String, int(mon["lv"]))
 			return "%s%s (LV %d) joins you!" % [head, mon["name"], int(mon["lv"])]
 		_:

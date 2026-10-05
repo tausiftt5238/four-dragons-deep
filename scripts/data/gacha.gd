@@ -108,14 +108,21 @@ static func item_prize(supplies: Array[Dictionary], floor_num: int, jackpot: boo
 # Only what can be talked to (anything else could never be recruited anyway),
 # and nothing already on the roster. Joins at its level on this floor, but
 # never above the hero's, the same rule recruiting keeps. {} when nothing fits.
+#
+# A band with nobody left to meet steps down a band at a time. Tier IV has two
+# demons in it, so from floor eleven (a jackpot) or sixteen (anything) a player
+# who already kept both was told "Roster full" and paid in gold, however much
+# room the roster had.
 static func monster_prize(p: PlayerCharacter, floor_num: int, jackpot: bool) -> Dictionary:
 	var tier: int = Enemy.tier_for_floor(floor_num) + (1 if jackpot else 0)
 	tier = mini(4, tier)
 	var pool: Array[String] = []
-	for t: Dictionary in Enemy.TEMPLATES:
-		if int(t.get("tier", 1)) == tier and bool(t.get("negotiable", true)) \
-				and t["name"] not in p.recruited:
-			pool.append(t["name"] as String)
+	while pool.is_empty() and tier >= 1:
+		for t: Dictionary in Enemy.TEMPLATES:
+			if int(t.get("tier", 1)) == tier and bool(t.get("negotiable", true)) \
+					and t["name"] not in p.recruited:
+				pool.append(t["name"] as String)
+		tier -= 1
 	if pool.is_empty():
 		return {}
 	var picked: String = pool[randi() % pool.size()]
