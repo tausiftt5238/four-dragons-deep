@@ -6,6 +6,10 @@ class_name SaveSystem
 # other slot but never chosen to save into.
 const AUTO_SLOT: int = 4
 
+# The Abyss's one save: written as the autosave is, while an Abyss run is on,
+# and wiped when that run dies. Not a slot the load menu lists.
+const ABYSS_SLOT: int = 9
+
 static func slot_path(slot: int) -> String:
 	return "user://save_slot_%d.json" % slot
 

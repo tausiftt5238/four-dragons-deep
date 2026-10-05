@@ -477,10 +477,14 @@ static func thunder_bead() -> Dictionary:
 static func drop_table_for_floor(floor_num: int) -> Array[Dictionary]:
 	var tier: int = clampi((floor_num - 1) / 5 + 1, 1, 4)
 	var out: Array[Dictionary] = []
+	# In the Abyss the gear that drops is this band's, not the main game's.
+	var abyss: bool = Abyss.active and floor_num > Level.FLOOR_COUNT
+	if abyss:
+		out.append_array(Abyss.gear_for_depth(Abyss.depth_of(floor_num)))
 	for d: Dictionary in drop_table():
 		var kind: String = d.get("type", "") as String
 		if kind in ["weapon", "armor", "accessory"] \
-				and int(d.get("floor", 1)) > tier:
+				and (int(d.get("floor", 1)) > tier or abyss):
 			continue
 		if kind == "scroll" and int(d.get("floor", 1)) > floor_num:
 			continue

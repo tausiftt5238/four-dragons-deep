@@ -287,3 +287,28 @@ it ends the run.
 - Silence and Blind take hold on it only one time in five, as on a dragon.
 
 Good luck. Four dragons deep is further than it sounds.
+
+## Abyss mode
+
+Beat the Necromancer and **ABYSS** appears on the title screen. The hero who
+did it goes on down, with everything they carried, into floors that never end.
+How deep you get is the score; the title remembers your deepest.
+
+- **One life.** Orbs still rest and sell, but they do not save. The run keeps a
+  single autosave of its own, and dying wipes it. From the title you can carry
+  on from it, or start a new descent with your cleared hero (which ends the run
+  in progress).
+- **No boss floors.** Every floor is a maze with its key lying somewhere, and a
+  random mix of the four trap floors: ice, charged plates, lava, teleporters.
+- **Every monster comes up in an element**, painted in its colours: Ember
+  (fire), Frost (ice), Storm (thunder), Radiant (light) and Umbral (dark). It
+  casts only that element, takes its own the way a dragon does, and is weak to
+  the element the dragons' chain says: ice to fire, thunder to ice, fire to
+  thunder, dark to fire, and light to dark. The rest of its chart varies, but
+  every Frost Orc has the same one, and the bestiary learns each kind on its own.
+- **Wardens and dragons wander.** Now and then a warden, and rarely a dragon,
+  turns up on its own, painted in an element like everything else.
+- **New gear every five floors.** Each band of five has its own shelf of
+  reforged pieces, stronger than the last, with a twist on each: a weapon that
+  takes up an element, or armour and trinkets that turn one.
+- A demon talked into joining comes as its own kind, without the element.

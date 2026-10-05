@@ -4,3 +4,6 @@
 class_name GameBoot
 
 static var pending_slot: int = 0
+# The Abyss (Abyss): "new" starts a descent with the cleared hero, "continue"
+# picks up its autosave. Empty for the main game.
+static var pending_abyss: String = ""

@@ -105,7 +105,9 @@ func _build() -> void:
 
 	# Save is the odd ninth tab, so it runs the full width under the grid, as
 	# wide as Leave, rather than hanging off the left of a half-empty row.
-	col.add_child(_tab_btn("save", "Save"))
+	# The Abyss keeps no saves but its own autosave: no Save tab down there.
+	if not Abyss.active:
+		col.add_child(_tab_btn("save", "Save"))
 
 	var close_btn: Button = Button.new()
 	close_btn.text = "Leave"
@@ -770,6 +772,15 @@ func _supplies() -> Array[Dictionary]:
 # the tier-IV row — walked forward it sat ten pages in, behind every rusty
 # dagger the run had already outgrown.
 func _gear() -> Array[Dictionary]:
+	# The Abyss restocks every five floors (Abyss.gear_for_depth), beside the
+	# trinkets that do a job rather than add a number: the wards and the like.
+	if Abyss.active and floor_num > Level.FLOOR_COUNT:
+		var deep: Array[Dictionary] = Abyss.gear_for_depth(Abyss.depth_of(floor_num))
+		for a: Dictionary in Accessory.all():
+			if (a.has("wards") or a.has("first_strike") or a.has("walk_mp")) \
+					and not bool(a.get("found_only", false)):
+				deep.append(a)
+		return deep
 	var weapons: Array[Dictionary] = Weapon.for_floor(floor_num)
 	var worn: Array[Dictionary] = Armor.for_floor(floor_num)
 	var trinkets: Array[Dictionary] = Accessory.for_floor(floor_num)
