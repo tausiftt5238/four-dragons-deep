@@ -69,6 +69,13 @@ const BOSS_HP_MULT: int = 8
 # for most of the fight.
 const BOSS_CASTS_MULT: int = 2
 
+# Casts' worth of MP a dragon draws back at the top of each of its phases
+# (CombatScene._enemy_phase). Four icons spend a full well in about a phase
+# and a half, after which a dry dragon used to swing claws for the rest of the
+# fight, and a demon that turned blades back ended every one of its phases for
+# it. With this it settles to about two breaths and two swings a phase.
+const DRAGON_BREATH_PER_PHASE: int = 2
+
 # Casts per MAGAZINE this one carries (BOSS_CASTS_MULT for a dragon): its MP
 # holds that many times the magazine at the same price a cast.
 var cast_mult: int = 1
