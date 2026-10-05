@@ -38,6 +38,35 @@ const LINES: Array[String] = [
 	"Go now, hero. The Tower is waiting, and it is a long way down.",
 ]
 
+# The Abyss mode's opening: the captain sends for the hero again.
+const ABYSS_LINES: Array[String] = [
+	"Hero. I hoped I would never have to send for you again.",
+	"I am sorry to be the one to tell you. When the Necromancer fell, the Tower closed... and something else opened where it stood.",
+	"There is no Tower now. Only a pit. An abyss, with no stair and no floor that any of us can see.",
+	"We lowered a lantern on a thousand feet of rope. We never felt it land.",
+	"Things are coming up out of it. Old things, in new colours. Fire, frost, storm, light, shadow.",
+	"We do not know where it ends. Perhaps it does not.",
+	"So I am asking you, not ordering you: go down, and see how far you can go.",
+	"And when you can go no further, the Watch will be at the top of the rope. We will pull you back up.",
+]
+
+# The Abyss mode's last scene: she hauls the fallen hero back up the rope.
+const RESCUE_LINES: Array[String] = [
+	"Hold on. Hold on, I have you.",
+	"Easy, hero. Do not try to stand. The Watch has the rope, and we are pulling you up.",
+	"You did your best. You went deeper than any of us dared to look.",
+	"Rest now. We have you, and we are not letting go. Do not worry.",
+	"The Abyss will still be there tomorrow. So will we.",
+]
+
+# What this telling says, and how it closes. The defaults are the main game's
+# opening; the Abyss sets its own (TitleScreen, Main._show_game_over).
+var lines: Array[String] = LINES
+var closing_text: String = "And so, the descent begins."
+# The rescue: the captain hauling the fallen hero up a rope, rising as she
+# talks, with no Hellbat.
+var rescue: bool = false
+
 var _idx: int = -1
 var _typing: bool = false
 var _shown: float = 0.0
@@ -52,8 +81,10 @@ var _hint: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	Music.play(Music.INTRO)
+	Music.play(Music.ORB if rescue else Music.INTRO)
 	_build()
+	if rescue:
+		_build_rescue()
 	# The title fades through black to this; the first line waits for that.
 	var t: Tween = create_tween()
 	t.tween_interval(0.6)
@@ -208,10 +239,10 @@ func _next() -> void:
 	if _done:
 		return
 	_idx += 1
-	if _idx >= LINES.size():
+	if _idx >= lines.size():
 		_closing()
 		return
-	var line: String = LINES[_idx]
+	var line: String = lines[_idx]
 	if line.begins_with(">"):
 		line = line.substr(1)
 		_bring_bat()
@@ -253,7 +284,7 @@ func _bring_bat() -> void:
 # The box clears, and one last line stands on its own before the dark.
 func _closing() -> void:
 	_done = true
-	var line: Label = _label("And so, the descent begins.", 24, Color(0.90, 0.75, 0.30))
+	var line: Label = _label(closing_text, 24, Color(0.90, 0.75, 0.30))
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.anchor_right = 1.0
@@ -275,6 +306,39 @@ func _finish() -> void:
 	_done = true
 	_typing = false
 	finished.emit()
+
+
+# The rope from above, the captain holding it, and the hero lying at her feet,
+# all rising slowly while she talks: the Watch hauling the two of them up.
+func _build_rescue() -> void:
+	var stage: Control = _captain.get_parent() as Control
+	_bat.visible = false
+	var hero: AnimatedPortrait = _actor("Knight")
+	hero.anchor_left = 0.5
+	hero.anchor_right = 0.5
+	hero.offset_left = -BOX / 2.0 - CAPTAIN_STEP * 1.2
+	hero.offset_right = BOX / 2.0 - CAPTAIN_STEP * 1.2
+	stage.add_child(hero)
+	hero.play_once("death")          # and it stays down: death holds its last frame
+	_captain.flip_h = true
+	_captain.offset_left += CAPTAIN_STEP * 0.9
+	_captain.offset_right += CAPTAIN_STEP * 0.9
+	var rope: ColorRect = ColorRect.new()
+	rope.color = Color(0.55, 0.45, 0.30)
+	rope.anchor_left = 0.5
+	rope.anchor_right = 0.5
+	rope.offset_left = CAPTAIN_STEP * 0.9 - 2.0
+	rope.offset_right = CAPTAIN_STEP * 0.9 + 1.0
+	rope.offset_top = -40.0
+	rope.offset_bottom = _feet_y() - BOX * 0.18
+	rope.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.add_child(rope)
+	stage.move_child(rope, 0)
+	var rise: float = 150.0
+	var t: Tween = create_tween().set_parallel()
+	for n: Control in [_captain, hero, rope]:
+		t.tween_property(n, "offset_top", n.offset_top - rise, 30.0)
+		t.tween_property(n, "offset_bottom", n.offset_bottom - rise, 30.0)
 
 
 func _label(text: String, size: int, color: Color) -> Label:

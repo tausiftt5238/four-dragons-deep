@@ -1330,9 +1330,17 @@ func _show_level_up(before: Dictionary, after: Dictionary,
 
 func _show_game_over() -> void:
 	Sfx.play("game_over")
-	# The Abyss has one life: the run is over, and so is its save.
+	# The Abyss has one life: the run is over, and so is its save. The captain
+	# hauls the hero back up first, and the depth reached comes after.
 	if Abyss.active:
 		Abyss.wipe_run()
+		var rescue: IntroUI = IntroUI.new()
+		rescue.rescue = true
+		rescue.lines = IntroUI.RESCUE_LINES
+		rescue.closing_text = "Abyss %d. Back in the light." % Abyss.depth_of(floor_num)
+		_get_overlay_layer().add_child(rescue)
+		await rescue.finished
+		rescue.queue_free()
 	var ui: GameOverUI = GameOverUI.new()
 	ui.abyss_depth = Abyss.depth_of(floor_num) if Abyss.active else 0
 	ui.load_game.connect(func():

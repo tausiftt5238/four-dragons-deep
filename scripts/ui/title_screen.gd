@@ -170,11 +170,24 @@ func _on_abyss() -> void:
 
 
 func _start_abyss(how: String) -> void:
-	if how == "new":
-		Abyss.wipe_run()
 	GameBoot.pending_slot = 0
 	GameBoot.pending_abyss = how
-	_descend_into_game()
+	if how != "new":
+		_descend_into_game()
+		return
+	# A new descent opens with the captain sending for the hero again.
+	Abyss.wipe_run()
+	var fade: ScreenFade = ScreenFade.cover(get_tree())
+	await fade.covered
+	var menu: Node = get_node_or_null("AbyssMenu")
+	if menu:
+		menu.queue_free()
+	var intro: IntroUI = IntroUI.new()
+	intro.lines = IntroUI.ABYSS_LINES
+	intro.closing_text = "And so, the Abyss begins."
+	intro.finished.connect(_descend_into_game)
+	add_child(intro)
+	fade.reveal()
 
 
 func _on_tutorial() -> void:
