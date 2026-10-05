@@ -13,10 +13,14 @@ const WALL_HEIGHT: float = 2.0
 # Reads all visual settings and the portal position from the Level.
 func build(level: Level) -> void:
 	_tint = level.wire_color
+	# The Necromancer's corridor is the bottom: nothing goes on down from it,
+	# so it ends in plain wall where every other corridor has its stairwell.
+	# Walking into it still starts the fight (Main._check_portal).
+	_dead_end = Level.is_boss_floor(level.floor_num) and level.floor_num >= Level.FLOOR_COUNT
 	_build_geometry(level)
 	_exit_wall = level.exit_wall_pos
 	_exit_cell = level.exit_pos
-	if level.exit_pos.x >= 0 and level.exit_wall_pos.x >= 0:
+	if level.exit_pos.x >= 0 and level.exit_wall_pos.x >= 0 and not _dead_end:
 		_add_exit_marker(level.exit_wall_pos, level.exit_pos)
 	_add_trap_markers(level)
 	_add_orbs(level)
@@ -84,7 +88,7 @@ func _build_geometry(level: Level) -> void:
 				# depth over it and bury it.
 				var cache_face: Vector2i = Vector2i(-999, -999)
 				# Likewise the face the stairwell is cut through.
-				if here == level.exit_wall_pos:
+				if here == level.exit_wall_pos and not _dead_end:
 					cache_face = level.exit_pos
 				elif level.chest_cells.has(here):
 					cache_face = level.chest_cells[here] as Vector2i
@@ -542,6 +546,7 @@ const _DOOR_H: float = 1.6
 var _door: Node3D = null
 var _door_mats: Array[ShaderMaterial] = []
 var _exit_wall: Vector2i = Vector2i(-1, -1)
+var _dead_end: bool = false
 var _exit_cell: Vector2i = Vector2i(-1, -1)
 
 
@@ -555,6 +560,8 @@ func set_locked(locked: bool) -> void:
 	for mat: ShaderMaterial in _door_mats:
 		_stone_mats.erase(mat)
 	_door_mats.clear()
+	if _dead_end:
+		return
 	if not locked or _exit_wall.x < 0 or _exit_cell.x < 0:
 		_set_glow(_stair_glow, _STAIR_GREEN * _STAIR_GLOW, 3.6)
 		return
