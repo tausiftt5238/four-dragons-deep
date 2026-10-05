@@ -72,30 +72,18 @@ static func unlock(player_data: Dictionary) -> void:
 		f.store_string(JSON.stringify(player_data, "\t"))
 
 
-# The hero a new descent starts with: the one who cleared the game. A debug
-# build (the phone test builds) without one borrows the deepest main-game save,
-# so the mode can be tried before the game has been beaten on that device.
+# The hero a new descent starts with: the one who cleared the game.
 static func cleared_hero() -> Dictionary:
 	if FileAccess.file_exists(HERO_PATH):
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(HERO_PATH))
 		if parsed is Dictionary:
 			return parsed as Dictionary
-	if OS.is_debug_build():
-		var best: Dictionary = {}
-		for slot: int in range(1, SaveSystem.AUTO_SLOT + 1):
-			var d: Dictionary = SaveSystem.read(slot)
-			if d.is_empty():
-				continue
-			if best.is_empty() or int(d.get("floor_num", 0)) > int(best.get("floor_num", 0)):
-				best = d
-		if not best.is_empty():
-			return best.get("player", {}) as Dictionary
 	return {}
 
 
-# Whether the title offers the mode at all.
+# Whether the title offers the mode at all: only once the game has been beaten.
 static func available() -> bool:
-	return unlocked() or (OS.is_debug_build() and not cleared_hero().is_empty())
+	return unlocked() and not cleared_hero().is_empty()
 
 
 static func has_run() -> bool:

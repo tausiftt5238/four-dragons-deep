@@ -82,19 +82,19 @@ func _build() -> void:
 	new_btn.pressed.connect(_on_new_game)
 	vbox.add_child(new_btn)
 
-	# The endless mode, once the game has been beaten (Abyss).
-	if Abyss.available():
-		var abyss_btn: Button = _make_btn("ABYSS", Vector2(220, 46))
-		abyss_btn.add_theme_color_override("font_color", Color(0.78, 0.60, 1.0))
-		abyss_btn.pressed.connect(_on_abyss)
-		vbox.add_child(abyss_btn)
-
 	var any_save: bool = SaveSystem.any_save()
 
 	var load_btn: Button = _make_btn("LOAD GAME", Vector2(220, 46))
 	load_btn.disabled = not any_save
 	load_btn.pressed.connect(_on_load_game)
 	vbox.add_child(load_btn)
+
+	# The endless mode, once the game has been beaten (Abyss).
+	if Abyss.available():
+		var abyss_btn: Button = _make_btn("ABYSS", Vector2(220, 46))
+		abyss_btn.add_theme_color_override("font_color", Color(0.78, 0.60, 1.0))
+		abyss_btn.pressed.connect(_on_abyss)
+		vbox.add_child(abyss_btn)
 
 	var tut_btn: Button = _make_btn("TUTORIAL", Vector2(220, 46))
 	tut_btn.pressed.connect(_on_tutorial)
