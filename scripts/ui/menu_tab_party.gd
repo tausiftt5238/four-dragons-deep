@@ -65,9 +65,10 @@ func _add_demon(list: SlotList, demon_name: String) -> void:
 	var about: String = "Lv %d   HP %d   MP %d\n%s" % [
 			demon.lv, demon.max_hp, demon.max_mp, _skill_text(p, demon_name)]
 	var chart: AffinityChart = AffinityChart.compact(demon)
+	var shown: String = demon.display_name()    # "Frost Orc" for an Abyss one
 	demon.free()
 
-	list.add_entry("%s%s" % ["* " if active else "", demon_name],
+	list.add_entry("%s%s" % ["* " if active else "", shown],
 			Color(0.62, 0.92, 0.74) if active else Color(0.52, 0.52, 0.56),
 			about, "", Color.WHITE,
 			[{text = "Dismiss" if active else "Summon",

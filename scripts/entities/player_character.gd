@@ -118,6 +118,11 @@ var demon_bonus: Dictionary = {}
 # ever costs a slot.
 var demon_skills: Dictionary = {}
 
+# The element a demon was recruited in, in the Abyss (Abyss.apply_variant):
+# a Frost Orc stays a Frost Orc, painted, charted and casting as one. A demon
+# with no entry is its plain kind. One per kind, like the roster itself.
+var demon_element: Dictionary = {}
+
 # Level-ups each demon has banked, which is what its growth triggers off.
 var demon_levels_gained: Dictionary = {}
 
@@ -157,6 +162,8 @@ func bound_demon(demon_name: String) -> Enemy:
 		e._mp_bonus = int(bonus.get("mp", 0))
 		e.compute_max_hp()
 		e.compute_max_mp()
+	if demon_element.has(demon_name):
+		Abyss.apply_variant(e, demon_element[demon_name] as String)
 	return e
 
 
@@ -417,6 +424,7 @@ func release_demon(demon_name: String) -> void:
 	demon_bonus.erase(demon_name)
 	demon_skills.erase(demon_name)
 	demon_levels_gained.erase(demon_name)
+	demon_element.erase(demon_name)
 
 
 # How many demons can answer to him at once, summoned and benched together.
@@ -431,11 +439,19 @@ func can_bind(demon_name: String) -> bool:
 
 # Newly bound demons take a free slot on their own, so a first recruit is
 # usable without a trip to the menu. A full roster turns the demon away.
-func remember_recruit(demon_name: String, lv: int = 1) -> void:
+func remember_recruit(demon_name: String, lv: int = 1, element: String = "") -> void:
 	if not can_bind(demon_name):
 		return
 	if demon_name not in recruited:
 		recruited.append(demon_name)
+		# A new arrival comes as what it was met as: in its element, with
+		# its lines in that element, or plain. Lines a lost one of its kind
+		# left behind go, so they cannot carry the old element over.
+		if element != "":
+			demon_element[demon_name] = element
+			demon_skills.erase(demon_name)
+		else:
+			demon_element.erase(demon_name)
 	# Kept even when the demon is later sold or falls. An orb can only call back
 	# something that answered to you once — meeting a thing in a corridor is not
 	# an introduction it would honour.
@@ -446,6 +462,26 @@ func remember_recruit(demon_name: String, lv: int = 1) -> void:
 	bound_level[demon_name] = maxi(int(bound_level.get(demon_name, 0)), maxi(1, lv))
 	seed_demon_skills(demon_name)
 	activate_demon(demon_name)
+
+
+# An element demon's lines are its element's: every elemental line it was
+# seeded with becomes that element (physical ones stay), the duplicates
+# folded into the highest rung.
+static func elemental_lines(list: Array, element: String) -> Array:
+	var out: Array = []
+	var best: Dictionary = {}
+	for sk: Variant in list:
+		var skill: Dictionary = (sk as Dictionary).duplicate()
+		if skill.get("kind", "") == "element" and skill.get("element", "") != Affinity.PHYS:
+			skill["element"] = element
+			if best.is_empty():
+				best = skill
+				out.append(best)
+			elif int(skill.get("rung", 1)) > int(best.get("rung", 1)):
+				best["rung"] = skill["rung"]
+			continue
+		out.append(skill)
+	return out
 
 
 # What a demon knows the moment it is bound: every line it throws, on the first
@@ -466,6 +502,8 @@ func seed_demon_skills(demon_name: String) -> void:
 		if list.size() < DEMON_SKILL_CAP:
 			list.append({kind = "unique", id = id})
 	e.free()
+	if demon_element.has(demon_name):
+		list = elemental_lines(list, demon_element[demon_name] as String)
 	demon_skills[demon_name] = list
 
 

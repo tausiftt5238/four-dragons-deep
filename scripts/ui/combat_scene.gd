@@ -746,7 +746,7 @@ func _prompt_beg() -> void:
 			return
 		_lock_submenu()
 		var who: String = enemy.enemy_name
-		_remember_recruit(who, enemy.lv)
+		_remember_recruit(who, enemy.lv, enemy.abyss_element)
 		_log("[color=lime]%s is recruited. It walks in behind you.[/color]" % who)
 		await _beg_resolved())
 	_submenu_add(take)
@@ -1249,8 +1249,8 @@ func _available_summons() -> Array[String]:
 	return out
 
 
-func _remember_recruit(demon_name: String, lv: int = 1) -> void:
-	player.remember_recruit(demon_name, lv)
+func _remember_recruit(demon_name: String, lv: int = 1, element: String = "") -> void:
+	player.remember_recruit(demon_name, lv, element)
 
 
 func _open_summon_menu() -> void:
@@ -2764,6 +2764,8 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 		_player_portrait = icon
 	else:
 		var demon: Enemy = member as Enemy
+		if demon.abyss_element != "":
+			icon.material = Abyss.palette_material(demon.abyss_element)
 		if demon.sprite_id != "":
 			icon.load_sprite_id(demon.sprite_id)
 		elif demon.sprite_path != "":

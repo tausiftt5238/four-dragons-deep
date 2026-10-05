@@ -311,4 +311,10 @@ How deep you get is the score; the title remembers your deepest.
 - **New gear every five floors.** Each band of five has its own shelf of
   reforged pieces, stronger than the last, with a twist on each: a weapon that
   takes up an element, or armour and trinkets that turn one.
-- A demon talked into joining comes as its own kind, without the element.
+- **Recruit them as they are.** A demon talked round (or one that begs, or a
+  Gacha win) joins in its element: a Frost Orc stays a Frost Orc, painted,
+  charted and casting ice. It is still one of each kind: with an Orc already
+  on the roster, any other Orc pays you off instead, so to change element,
+  sell the one you have at an orb first.
+- The bestiary is closed in the Abyss; each fight still shows the charts you
+  have learned.
