@@ -1750,6 +1750,12 @@ func _enemy_phase() -> void:
 	# Minotaur may lose its temper here, in time for the icon to count.
 	_warden_raised = false
 	for f: Enemy in _living_foes():
+		if f.is_dragon() and not f.attack_elements.is_empty() and f.mp < f.max_mp:
+			var was_dry: bool = f.mp < f.skill_cost()
+			f.mp = mini(f.max_mp, f.mp + f.skill_cost() * Enemy.DRAGON_BREATH_PER_PHASE)
+			if was_dry:
+				f.announced_dry = false
+				_log("[color=#ff9a6a]%s draws a fresh breath.[/color]" % f.display_name())
 		if f.is_necromancer():
 			_necro_begin_phase(f)
 		elif f.warden_trick() == "enrage" and not f.enraged and f.hp * 2 < f.max_hp:
