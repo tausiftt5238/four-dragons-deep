@@ -159,10 +159,27 @@ func _ready() -> void:
 	player_char = PlayerCharacter.new()
 	add_child(player_char)
 
-	# Load Map 1 as the starting level. _sync_player is called inside here.
-	_load_level("res://scenes/map.tscn", true)
+	# An Abyss descent: the hero who beat the game, whole again, at Abyss 1.
+	var abyss_intent: String = GameBoot.pending_abyss
+	GameBoot.pending_abyss = ""
+	Abyss.active = abyss_intent != ""
+	if abyss_intent == "new":
+		_apply_player_data(Abyss.cleared_hero())
+		player_char.hp = player_char.max_hp
+		player_char.mp = player_char.max_mp
+		player_char.active_statuses.clear()
+		floor_num = Abyss.floor_for_depth(1)
 
-	if GameBoot.pending_slot > 0:
+	# Load the starting level. _sync_player is called inside here.
+	_load_level("res://scenes/map.tscn", true)
+	floor_label.text = Abyss.floor_title(floor_num)
+
+	if abyss_intent == "continue":
+		call_deferred("_do_load", SaveSystem.ABYSS_SLOT, false)
+	elif abyss_intent == "new":
+		Abyss.note_depth(1)
+		call_deferred("_autosave")
+	elif GameBoot.pending_slot > 0:
 		var slot: int = GameBoot.pending_slot
 		GameBoot.pending_slot = 0
 		call_deferred("_do_load", slot, false)
@@ -526,10 +543,12 @@ func _descend() -> void:
 	# built while nothing can be seen.
 	_fading = true
 	Sfx.play("descend")
-	var fade: ScreenFade = ScreenFade.cover(get_tree(), "Floor %d" % (floor_num + 1))
+	var fade: ScreenFade = ScreenFade.cover(get_tree(), Abyss.floor_title(floor_num + 1))
 	await fade.covered
 	floor_num += 1
-	floor_label.text = "Floor %d" % floor_num
+	floor_label.text = Abyss.floor_title(floor_num)
+	if Abyss.active:
+		Abyss.note_depth(Abyss.depth_of(floor_num))
 	# Cleared per floor. It used to be raised when a dragon fell and never put
 	# back down, so beating the Ice Dragon on floor five left every later boss
 	# corridor already counted as beaten — floors ten, fifteen and twenty were
@@ -1070,7 +1089,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		# Killing a thing teaches you what it was made of — wardens and bosses
 		# too. Analyze is the only thing they refuse.
 		if not foe.is_alive():
-			player_char.record_analysis(foe.enemy_name)
+			player_char.record_analysis(foe.lore_name() if foe.abyss_element != "" else foe.enemy_name)
 		if not foe.is_alive() and item_drop.is_empty() and not _in_gauntlet:
 			item_drop = foe.roll_drop()
 			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
@@ -1264,6 +1283,8 @@ func _resume_from_overlay() -> void:
 func _show_congratulations() -> void:
 	in_combat = true
 	_fading = true
+	# The Abyss opens, and this hero is the one who goes down into it.
+	Abyss.unlock(_gather_save_data()["player"] as Dictionary)
 	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
 	await fade.covered
 	hud_layer.visible = false
@@ -1309,7 +1330,11 @@ func _show_level_up(before: Dictionary, after: Dictionary,
 
 func _show_game_over() -> void:
 	Sfx.play("game_over")
+	# The Abyss has one life: the run is over, and so is its save.
+	if Abyss.active:
+		Abyss.wipe_run()
 	var ui: GameOverUI = GameOverUI.new()
+	ui.abyss_depth = Abyss.depth_of(floor_num) if Abyss.active else 0
 	ui.load_game.connect(func():
 		ui.queue_free()
 		in_combat = false
@@ -1724,7 +1749,8 @@ func _autosave() -> void:
 		return
 	if in_combat or _fading or _in_gauntlet or chest_open or not player_char.is_alive():
 		return
-	SaveSystem.write(SaveSystem.AUTO_SLOT, _gather_save_data())
+	SaveSystem.write(SaveSystem.ABYSS_SLOT if Abyss.active else SaveSystem.AUTO_SLOT,
+			_gather_save_data())
 
 
 func _do_save(slot: int) -> void:
@@ -1760,6 +1786,7 @@ func _gather_save_data() -> Dictionary:
 
 	return {
 		timestamp   = Time.get_datetime_string_from_system(),
+		abyss       = Abyss.active,
 		floor_num   = floor_num,
 		play_time   = play_time,
 		player_pos  = [player_pos.x, player_pos.y],
@@ -1827,7 +1854,8 @@ func _restore_save(data: Dictionary) -> void:
 
 	floor_num = int(data["floor_num"])
 	play_time = float(data.get("play_time", 0.0))
-	floor_label.text = "Floor %d" % floor_num
+	Abyss.active = bool(data.get("abyss", false))
+	floor_label.text = Abyss.floor_title(floor_num)
 	Music.play(Music.dungeon_track(floor_num))
 
 	if is_instance_valid(dungeon):

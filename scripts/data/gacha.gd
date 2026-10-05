@@ -95,6 +95,10 @@ static func item_prize(supplies: Array[Dictionary], floor_num: int, jackpot: boo
 			if not it.has("mirror"):
 				pool.append(it)
 		return pool[randi() % pool.size()].duplicate()
+	# In the Abyss, the jackpot is a piece off the next band's shelf.
+	if Abyss.active and floor_num > Level.FLOOR_COUNT:
+		var next: Array[Dictionary] = Abyss.gear_for_depth(Abyss.depth_of(floor_num) + 5)
+		return next[randi() % next.size()].duplicate()
 	var tier: int = mini(4, Enemy.tier_for_floor(floor_num) + 1)
 	var gear: Array[Dictionary] = []
 	for shelf: Array[Dictionary] in [Weapon.all(), Armor.all(), Accessory.all()]:

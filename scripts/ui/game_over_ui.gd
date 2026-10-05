@@ -6,6 +6,10 @@ class_name GameOverUI extends Control
 signal load_game
 signal main_menu
 
+# Set for a death in the Abyss: how deep the run got. Its save is already gone,
+# so there is nothing to load.
+var abyss_depth: int = 0
+
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -47,7 +51,8 @@ func _build() -> void:
 	vbox.add_child(title)
 
 	var sub: Label = Label.new()
-	sub.text = "You fall into darkness..."
+	sub.text = "You fall into darkness..." if abyss_depth <= 0 \
+			else "The Abyss keeps you at depth %d.\nDeepest ever: %d" % [abyss_depth, Abyss.best_depth()]
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_color_override("font_color", Color(0.60, 0.45, 0.45))
 	vbox.add_child(sub)
@@ -72,7 +77,10 @@ func _build() -> void:
 	load_btn.custom_minimum_size = Vector2(160, 38)
 	load_btn.disabled = not any_save
 	load_btn.pressed.connect(func(): load_game.emit())
-	btn_row.add_child(load_btn)
+	if abyss_depth <= 0:
+		btn_row.add_child(load_btn)
+	else:
+		load_btn.free()
 
 	var main_menu_btn: Button = Button.new()
 	main_menu_btn.text = "Main Menu"

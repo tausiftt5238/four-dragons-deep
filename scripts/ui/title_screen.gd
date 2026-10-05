@@ -20,6 +20,9 @@ func _notification(what: int) -> void:
 		return
 	for i: int in range(get_child_count() - 1, -1, -1):
 		var c: Node = get_child(i)
+		if c.name == "AbyssMenu":
+			c.queue_free()
+			return
 		if c is SaveSlotUI:
 			(c as SaveSlotUI).cancelled.emit()
 			return
@@ -79,6 +82,13 @@ func _build() -> void:
 	new_btn.pressed.connect(_on_new_game)
 	vbox.add_child(new_btn)
 
+	# The endless mode, once the game has been beaten (Abyss).
+	if Abyss.available():
+		var abyss_btn: Button = _make_btn("ABYSS", Vector2(220, 46))
+		abyss_btn.add_theme_color_override("font_color", Color(0.78, 0.60, 1.0))
+		abyss_btn.pressed.connect(_on_abyss)
+		vbox.add_child(abyss_btn)
+
 	var any_save: bool = SaveSystem.any_save()
 
 	var load_btn: Button = _make_btn("LOAD GAME", Vector2(220, 46))
@@ -98,6 +108,7 @@ func _build() -> void:
 # A new run opens on the captain's briefing; loading a save skips it.
 func _on_new_game() -> void:
 	GameBoot.pending_slot = 0
+	GameBoot.pending_abyss = ""
 	var fade: ScreenFade = ScreenFade.cover(get_tree())
 	await fade.covered
 	var intro: IntroUI = IntroUI.new()
@@ -112,6 +123,58 @@ func _descend_into_game() -> void:
 	await fade.covered
 	LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
 	fade.reveal()
+
+
+# Continue the run there is, or start a new descent with the hero who beat
+# the game. Starting anew ends the run in progress: there is only ever one.
+func _on_abyss() -> void:
+	var panel: Control = Control.new()
+	panel.name = "AbyssMenu"
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(panel)
+	var veil: ColorRect = ColorRect.new()
+	veil.color = Color(0.03, 0.01, 0.06, 0.94)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(veil)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(center)
+	var col: VBoxContainer = VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 16)
+	center.add_child(col)
+
+	var head: Label = _make_lbl("THE ABYSS", 40, Color(0.78, 0.60, 1.0))
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(head)
+	var note: Label = _make_lbl("No bottom. One life. Orbs do not save.\nDeepest so far: %s" % (
+			"Abyss %d" % Abyss.best_depth() if Abyss.best_depth() > 0 else "none yet"),
+			16, Color(0.75, 0.72, 0.85))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(note)
+
+	var run: Dictionary = SaveSystem.read(SaveSystem.ABYSS_SLOT)
+	if not run.is_empty():
+		var cont: Button = _make_btn("CONTINUE  (ABYSS %d)" % Abyss.depth_of(int(run.get("floor_num", 26))),
+				Vector2(300, 46))
+		cont.pressed.connect(func() -> void: _start_abyss("continue"))
+		col.add_child(cont)
+	if not Abyss.cleared_hero().is_empty():
+		var fresh: Button = _make_btn("NEW DESCENT" if run.is_empty() else "NEW DESCENT (ENDS THIS RUN)",
+				Vector2(300, 46))
+		fresh.pressed.connect(func() -> void: _start_abyss("new"))
+		col.add_child(fresh)
+	var back: Button = _make_btn("BACK", Vector2(300, 46))
+	back.pressed.connect(func() -> void: panel.queue_free())
+	col.add_child(back)
+
+
+func _start_abyss(how: String) -> void:
+	if how == "new":
+		Abyss.wipe_run()
+	GameBoot.pending_slot = 0
+	GameBoot.pending_abyss = how
+	_descend_into_game()
 
 
 func _on_tutorial() -> void:
@@ -130,6 +193,7 @@ func _on_load_game() -> void:
 	var picker: SaveSlotUI = SaveSlotUI.new()
 	picker.mode = "load"
 	picker.slot_chosen.connect(func(slot: int) -> void:
+		GameBoot.pending_abyss = ""
 		GameBoot.pending_slot = slot
 		_descend_into_game()
 	)

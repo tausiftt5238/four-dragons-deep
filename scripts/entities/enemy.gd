@@ -129,6 +129,11 @@ var ailment_chance: int = 12
 # without anybody drawing a second Bat.
 var tint: Color = Color.WHITE
 
+# In the Abyss every monster comes up in one element (Abyss.apply_variant):
+# its colours, what it casts, and its chart all follow from it. Empty for the
+# main game's monsters, and for one recruited, which joins as its own kind.
+var abyss_element: String = ""
+
 
 # Cool and pale at the top of a tier, hot and bright at the bottom of it.
 static func tint_for_floor(floor_num: int) -> Color:
@@ -138,9 +143,12 @@ static func tint_for_floor(floor_num: int) -> Color:
 
 # Name as it should appear in the battle log and on the enemy row.
 func display_name() -> String:
+	var n: String = enemy_name
+	if abyss_element != "":
+		n = "%s %s" % [Abyss.EPITHET.get(abyss_element, ""), enemy_name]
 	if battle_tag == "":
-		return enemy_name
-	return "%s %s" % [enemy_name, battle_tag]
+		return n
+	return "%s %s" % [n, battle_tag]
 
 
 func static_portrait() -> Texture2D:
@@ -585,6 +593,8 @@ static func _pick_from_tier(tier: int) -> Dictionary:
 # band it comes from, so an old face met deep is a deep monster — its lower base
 # stats make it the lighter hitter in the pack, not a pushover.
 static func make_group(floor_num: int) -> Array[Enemy]:
+	if Abyss.active and floor_num > Level.FLOOR_COUNT:
+		return Abyss.make_group(floor_num)
 	var count: int = 1 + randi() % clampi(floor_num, 1, 4)
 	# The Abyss keeps no roster of its own: every demon of every band comes
 	# up out of it, each slot from any tier, all built at this depth.
@@ -688,6 +698,9 @@ func is_boss_class() -> bool:
 func lore_name() -> String:
 	if is_necromancer() and form != "":
 		return "%s:%s" % [enemy_name, form]
+	# A Frost Orc's chart is not an Orc's: learned and remembered on its own.
+	if abyss_element != "":
+		return "%s:%s" % [enemy_name, abyss_element]
 	return enemy_name
 
 
@@ -766,9 +779,11 @@ static func make_minion(master: Enemy) -> Enemy:
 
 # One boss per run of FLOOR_COUNT floors. The old index went negative on a
 # short run and quietly handed back the LAST boss — the hardest one.
-static func make_boss(floor_num: int) -> Enemy:
+# `which` picks the dragon outright (the Abyss's roaming ones); otherwise the
+# floor says.
+static func make_boss(floor_num: int, which: int = -1) -> Enemy:
 	var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
-			0, BOSS_TEMPLATES.size() - 1)
+			0, BOSS_TEMPLATES.size() - 1) if which < 0 else clampi(which, 0, BOSS_TEMPLATES.size() - 1)
 	var t: Dictionary = BOSS_TEMPLATES[idx]
 	var e: Enemy = Enemy.new()
 	e.spawn_floor     = maxi(1, floor_num)
@@ -848,12 +863,13 @@ static func make_at_level(enemy_name: String, lv: int) -> Enemy:
 # The warden for a given maze floor. Floors past the written ones fall back to
 # the last warden rather than to a random demon, so the key always has a keeper.
 # It is built at the floor's own level like anything else down there.
-static func make_warden(floor_num: int) -> Enemy:
+static func make_warden(floor_num: int, which: int = -1) -> Enemy:
 	# One warden per band, standing in the middle of it, so the four of them map
 	# one to one onto the four tiers. No rotation and no modulus to get wrong:
 	# the floor says which band it is in and the band says which warden.
+	# `which` picks one outright, for the Abyss, where they roam.
 	var idx: int = clampi(tier_for_floor(floor_num) - 1,
-			0, WARDEN_TEMPLATES.size() - 1)
+			0, WARDEN_TEMPLATES.size() - 1) if which < 0 else clampi(which, 0, WARDEN_TEMPLATES.size() - 1)
 	var t: Dictionary = WARDEN_TEMPLATES[idx]
 	var e: Enemy = _build(t, floor_num)
 	# Its own colours, like a boss. The depth tint exists so the same sprite read

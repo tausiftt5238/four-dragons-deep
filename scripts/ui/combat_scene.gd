@@ -1563,6 +1563,8 @@ func _build_foe_card(foe: Enemy) -> Control:
 	# self_modulate, not modulate: the tint is the monster's colour, and the
 	# ailment marks drawn over it should keep their own.
 	icon.self_modulate = foe.tint
+	if foe.abyss_element != "":
+		icon.material = Abyss.palette_material(foe.abyss_element)
 	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
@@ -3600,7 +3602,7 @@ func _resolve_analyze() -> Dictionary:
 		return {msg = "[color=#9aa0aa]%s gives you nothing.[/color]"
 				% enemy.display_name(), cost = PressTurn.COST_FULL}
 	var already: bool = player.has_analyzed(enemy.enemy_name)
-	player.record_analysis(enemy.enemy_name)
+	player.record_analysis(enemy.lore_name() if enemy.abyss_element != "" else enemy.enemy_name)
 	var chart: String = _affinity_line(enemy)
 	var lead: String = "You read %s again." if already else "You read %s."
 	# A scan reads temperament as well as chart. Without this the match bonus in
