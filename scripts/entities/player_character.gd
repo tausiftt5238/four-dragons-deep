@@ -444,6 +444,7 @@ func remember_recruit(demon_name: String, lv: int = 1, element: String = "") -> 
 		return
 	if demon_name not in recruited:
 		recruited.append(demon_name)
+		Records.add("demons_recruited")
 		# A new arrival comes as what it was met as: in its element, with
 		# its lines in that element, or plain. Lines a lost one of its kind
 		# left behind go, so they cannot carry the old element over.

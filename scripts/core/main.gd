@@ -124,6 +124,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST \
 			or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		_autosave()
+		Records.flush()
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if not in_combat:
 			if save_open:
@@ -138,6 +139,7 @@ func _notification(what: int) -> void:
 
 func _process(delta: float) -> void:
 	play_time += delta
+	Records.tick(delta)
 
 
 func _ready() -> void:
@@ -177,9 +179,12 @@ func _ready() -> void:
 	if abyss_intent == "continue":
 		call_deferred("_do_load", SaveSystem.ABYSS_SLOT, false)
 	elif abyss_intent == "new":
+		Records.add("abyss_runs")
 		Abyss.note_depth(1)
 		call_deferred("_autosave")
-	elif GameBoot.pending_slot > 0:
+	elif GameBoot.pending_slot <= 0:
+		Records.add("runs_started")
+	if abyss_intent == "" and GameBoot.pending_slot > 0:
 		var slot: int = GameBoot.pending_slot
 		GameBoot.pending_slot = 0
 		call_deferred("_do_load", slot, false)
@@ -549,6 +554,8 @@ func _descend() -> void:
 	floor_label.text = Abyss.floor_title(floor_num)
 	if Abyss.active:
 		Abyss.note_depth(Abyss.depth_of(floor_num))
+	else:
+		Records.set_max("deepest_floor", floor_num)
 	# Cleared per floor. It used to be raised when a dragon fell and never put
 	# back down, so beating the Ice Dragon on floor five left every later boss
 	# corridor already counted as beaten — floors ten, fifteen and twenty were
@@ -1090,6 +1097,12 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		# too. Analyze is the only thing they refuse.
 		if not foe.is_alive():
 			player_char.record_analysis(foe.lore_name() if foe.abyss_element != "" else foe.enemy_name)
+			if result != "lose" and not foe.summoned:
+				Records.add("monsters_defeated")
+				if foe.is_dragon():
+					Records.add("dragons_slain")
+				elif foe.is_warden():
+					Records.add("wardens_defeated")
 		if not foe.is_alive() and item_drop.is_empty() and not _in_gauntlet:
 			item_drop = foe.roll_drop()
 			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
@@ -1160,6 +1173,8 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 
 	match result:
 		"win", "talk":
+			Records.add("fights_won")
+			Records.add("gold_earned", gold_reward)
 			player_char.gold += gold_reward
 			if result == "win" and not item_drop.is_empty():
 				player_char.add_item(item_drop)
@@ -1285,6 +1300,8 @@ func _show_congratulations() -> void:
 	_fading = true
 	# The Abyss opens, and this hero is the one who goes down into it.
 	Abyss.unlock(_gather_save_data()["player"] as Dictionary)
+	Records.add("runs_won")
+	Records.set_min("fastest_clear", play_time)
 	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
 	await fade.covered
 	hud_layer.visible = false
@@ -1330,6 +1347,7 @@ func _show_level_up(before: Dictionary, after: Dictionary,
 
 func _show_game_over() -> void:
 	Sfx.play("game_over")
+	Records.add("deaths")
 	# The Abyss has one life: the run is over, and so is its save. The captain
 	# hauls the hero back up first, and the depth reached comes after.
 	if Abyss.active:
