@@ -58,8 +58,10 @@ its version and icons in step with the "Android" preset when you change them.
 2. If you own the real art and music packs, put them in place first
    (`tools/real_art.sh on <dir>`, and `resources/music/`). The repo alone
    exports placeholders and silence.
-3. Project › Export › Android › **Export Project** with *Export With Debug* off.
-   The file lands at `../builds/four-dragons-deep.aab`.
+3. Build it: `tools/export_android_release.sh` (it asks for the upload key's
+   password, or reads `FDD_KEYSTORE_PASS`). It refuses to build without the
+   real art and the music in place, and checks the result is not debug-signed.
+   The file lands at `build/android/four-dragons-deep.aab`.
 4. Upload it in Play Console to the track you are on.
 
 ## Play Console, the first time

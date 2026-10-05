@@ -31,11 +31,17 @@ up beside you and learns new spells. Build a team that covers each other's
 weaknesses, and dismiss or sell the ones you outgrow.
 
 FOUR DRAGONS, AND WHAT LIES BELOW THEM
-Every fifth floor a dragon guards the corridor down: fire, ice, thunder and
+Every fifth floor a dragon guards the corridor down: ice, thunder, fire and
 void. Each band of the dungeon has its own hazards, from ice that slides you
 along to charged plates, lava and teleporters. A warden holds the key on the
 floor before each dragon. And below the twentieth floor lies the Abyss, with
 something waiting at its bottom.
+
+ABYSS MODE
+Beat the game and an endless descent opens for the hero who did it. No
+bottom and one life: every monster rises in an element of its own, wardens
+and dragons roam among them, new gear waits every five floors, and how deep
+you get is the score.
 
 - Six elements (physical, fire, ice, thunder, light and dark) and a chart to
   learn for every creature
@@ -43,6 +49,7 @@ something waiting at its bottom.
 - Save orbs to rest, shop, recruit and save
 - Chests, gear, spell scrolls, a monster gauntlet and a slot machine
 - Autosave, so a phone call never costs you a run
+- Lifetime records: play time, deepest floor, dragons slain and more
 - No ads, no in-app purchases, no account, and it plays offline
 
 ## Category and tags
