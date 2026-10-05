@@ -20,7 +20,7 @@ func _notification(what: int) -> void:
 		return
 	for i: int in range(get_child_count() - 1, -1, -1):
 		var c: Node = get_child(i)
-		if c.name == "AbyssMenu":
+		if c.name == "AbyssMenu" or c.name == "RecordsPanel":
 			c.queue_free()
 			return
 		if c is SaveSlotUI:
@@ -164,6 +164,46 @@ func _on_abyss() -> void:
 				Vector2(300, 46))
 		fresh.pressed.connect(func() -> void: _start_abyss("new"))
 		col.add_child(fresh)
+	var rec: Button = _make_btn("RECORDS", Vector2(300, 46))
+	rec.pressed.connect(_show_records)
+	col.add_child(rec)
+	var back: Button = _make_btn("BACK", Vector2(300, 46))
+	back.pressed.connect(func() -> void: panel.queue_free())
+	col.add_child(back)
+
+
+# Lifetime numbers for this device (Records), over the Abyss menu.
+func _show_records() -> void:
+	var panel: Control = Control.new()
+	panel.name = "RecordsPanel"
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(panel)
+	var veil: ColorRect = ColorRect.new()
+	veil.color = Color(0.03, 0.02, 0.06, 1.0)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(veil)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(center)
+	var col: VBoxContainer = VBoxContainer.new()
+	col.custom_minimum_size = Vector2(460, 0)
+	col.add_theme_constant_override("separation", 14)
+	center.add_child(col)
+	var head: Label = _make_lbl("RECORDS", 40, Color(0.90, 0.75, 0.30))
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(head)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 10)
+	col.add_child(grid)
+	for row: Array in Records.rows():
+		var k: Label = _make_lbl(row[0] as String, 17, Color(0.72, 0.70, 0.82))
+		k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(k)
+		var v: Label = _make_lbl(row[1] as String, 17, Color(0.95, 0.93, 1.0))
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(v)
 	var back: Button = _make_btn("BACK", Vector2(300, 46))
 	back.pressed.connect(func() -> void: panel.queue_free())
 	col.add_child(back)
