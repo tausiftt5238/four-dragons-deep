@@ -69,7 +69,7 @@ def feature() -> None:
         y = _text_center(d, cx, y, line, title, GOLD, outline=3) + 14
     y = _text_center(d, cx, y + 12, "A dungeon crawler for your phone", tag, PALE) + 34
 
-    names = ("Fire", "Ice", "Thunder", "Void")
+    names = ("Ice", "Thunder", "Fire", "Void")   # in the order they are met
     dragons = [_dragon(n, 96) for n in names]
     gap = 22
     total = sum(dr.width for dr in dragons) + gap * (len(dragons) - 1)
