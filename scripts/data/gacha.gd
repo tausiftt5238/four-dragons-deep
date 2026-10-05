@@ -133,4 +133,7 @@ static func monster_prize(p: PlayerCharacter, floor_num: int, jackpot: bool) -> 
 	var e: Enemy = Enemy.make_from_name(picked, floor_num)
 	var lv: int = mini(e.lv, p.lv)
 	e.free()
-	return {name = picked, lv = lv}
+	# In the Abyss it comes in an element, like everything down there.
+	var element: String = Abyss.random_element() \
+			if Abyss.active and floor_num > Level.FLOOR_COUNT else ""
+	return {name = picked, lv = lv, element = element}

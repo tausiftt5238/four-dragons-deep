@@ -50,7 +50,7 @@ func _resolve(approach: String) -> void:
 	if _talk_trust >= Negotiation.needed(_s.enemy):
 		_s._show_main_actions()
 		_s._set_buttons(false)
-		_s.player.remember_recruit(_s.enemy.enemy_name, _s.enemy.lv)
+		_s.player.remember_recruit(_s.enemy.enemy_name, _s.enemy.lv, _s.enemy.abyss_element)
 		_s._log("[color=yellow]%s agrees to join you![/color]" % _s.enemy.enemy_name)
 		await _s.get_tree().create_timer(1.5).timeout
 		if is_instance_valid(_s):

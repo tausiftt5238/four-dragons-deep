@@ -86,6 +86,10 @@ func _build_shell() -> void:
 		btn.custom_minimum_size     = Vector2(0, 36)
 		btn.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(_switch_tab.bind(tab_id))
+		# Off in the Abyss: every kind in five elements is a list nobody
+		# would read. Fights still show each one's chart as it is learned.
+		if tab_id == "bestiary" and Abyss.active:
+			btn.disabled = true
 		grid.add_child(btn)
 		_tab_btns[tab_id] = btn
 

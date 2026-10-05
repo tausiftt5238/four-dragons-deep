@@ -373,8 +373,11 @@ func _pay_out(reels: Array[String]) -> String:
 				player.gold += g
 				return "%s%s Won %d gold instead." % [head,
 						"Roster full." if full else "Nobody new to meet.", g]
-			player.remember_recruit(mon["name"] as String, int(mon["lv"]))
-			return "%s%s (LV %d) joins you!" % [head, mon["name"], int(mon["lv"])]
+			var el: String = mon.get("element", "") as String
+			player.remember_recruit(mon["name"] as String, int(mon["lv"]), el)
+			var shown: String = mon["name"] as String if el == "" \
+					else "%s %s" % [Abyss.EPITHET.get(el, ""), mon["name"]]
+			return "%s%s (LV %d) joins you!" % [head, shown, int(mon["lv"])]
 		_:
 			var xp: int = Gacha.exp_prize(floor_num, jackpot)
 			gacha_exp_won.emit(xp)
