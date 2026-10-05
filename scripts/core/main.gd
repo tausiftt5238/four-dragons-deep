@@ -1310,9 +1310,17 @@ func _show_congratulations() -> void:
 	await fade.covered
 	hud_layer.visible = false
 	var ui: EndingUI = EndingUI.new()
+	# Whoever is still walking with the hero walks home with him.
+	for demon_name: String in player_char.active_demons:
+		var d: Enemy = player_char.bound_demon(demon_name)
+		if d.sprite_id != "":
+			ui.team.append(d.sprite_id)
+		d.free()
 	ui.finished.connect(func() -> void:
 		if ask:
 			await _ask_replace_abyss_hero(cleared)
+		else:
+			await _tell_abyss_unlocked()
 		var out: ScreenFade = ScreenFade.cover(get_tree())
 		await out.covered
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
@@ -1325,6 +1333,45 @@ func _show_congratulations() -> void:
 # After a second (or later) clear: keep the Abyss hero there is, or put this
 # one in its place. Both are shown by level, so the choice is an informed one.
 signal _abyss_hero_chosen
+
+
+# The first clear: say so, or nobody would know the mode is there.
+func _tell_abyss_unlocked() -> void:
+	var panel: Control = Control.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var veil: ColorRect = ColorRect.new()
+	veil.color = Color(0.03, 0.02, 0.06, 1.0)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(veil)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(center)
+	var col: VBoxContainer = VBoxContainer.new()
+	col.custom_minimum_size = Vector2(440, 0)
+	col.add_theme_constant_override("separation", 18)
+	center.add_child(col)
+	for row: Array in [["CONGRATULATIONS!", 26, Color(0.90, 0.75, 0.30)],
+			["You have unlocked\nABYSS MODE", 28, Color(0.78, 0.60, 1.0)],
+			["An endless descent for the hero who beat the Necromancer. Find it on the title screen, below Load Game.",
+				18, Color(0.85, 0.83, 0.92)]]:
+		var l: Label = Label.new()
+		l.text = row[0] as String
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_font_override("font", _UI_FONT)
+		l.add_theme_font_size_override("font_size", int(row[1]))
+		l.add_theme_color_override("font_color", row[2] as Color)
+		col.add_child(l)
+	var b: Button = Button.new()
+	b.text = "CONTINUE"
+	b.custom_minimum_size = Vector2(0, 50)
+	b.add_theme_font_override("font", _UI_FONT)
+	b.pressed.connect(func() -> void: _abyss_hero_chosen.emit())
+	col.add_child(b)
+	Sfx.play("recruit")
+	_get_overlay_layer().add_child(panel)
+	await _abyss_hero_chosen
+	panel.queue_free()
 
 
 func _ask_replace_abyss_hero(cleared: Dictionary) -> void:

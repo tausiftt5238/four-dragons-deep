@@ -1,11 +1,11 @@
 # EndingUI
-# What follows the Necromancer: the knight climbing back up out of the Tower,
-# the Hellbat at his shoulder, while the tale is told underneath; then thanks
-# and credits, and back to the title.
+# What follows the Necromancer: the knight on the road home with the demons
+# still walking with him, while the tale is told underneath; then thanks and
+# credits, and back to the title.
 #
-# The stair is drawn rather than drawn from a sheet: steps sliding down past a
-# knight who walks on the spot, coloured band by band from the Abyss's bone
-# white back up to the cyan of the first floor, with daylight growing above.
+# The road is drawn rather than drawn from a sheet: flagstones sliding by under
+# walkers who walk on the spot, coloured band by band from the Abyss's bone
+# white back to the cyan of the first floor, with daylight growing ahead.
 class_name EndingUI extends Control
 
 signal finished
@@ -14,12 +14,12 @@ const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as F
 
 const LINES: Array[String] = [
 	"The Necromancer falls, and with it the dark that held the Tower open.",
-	"Floor by floor, the brave knight climbs back toward the light, past the cold halls where four dragons once kept their watch.",
+	"Floor by floor, the brave knight and those still at his side make their way back toward the light, past the cold halls where four dragons once kept their watch.",
 	"At the mouth of the Tower, the old seal knits itself whole. Nothing more will crawl up out of the deep.",
 	"And so the brave knight returns to the surface, the Necromancer defeated once and for all, and peace comes home to the kingdom at last.",
 ]
 const LINE_TIME: float = 5.5
-# How long the climb lasts, so the stair's colour reaches the first floor's as
+# How long the walk lasts, so the road's colour reaches the first floor's as
 # the last line is read.
 const CLIMB_TIME: float = LINE_TIME * 4.0
 
@@ -29,7 +29,10 @@ const CREDITS: Array = [
 	["Game", "Tausif\nwith help from Claude"],
 ]
 
-var _stairs: _Stairs
+# The sprite ids of the demons still with the hero, front to back (Main).
+var team: Array[String] = []
+
+var _walk: _Walk
 var _text: Label
 var _line: int = -1
 var _line_tween: Tween
@@ -53,12 +56,13 @@ func _build_climb() -> void:
 	bg.gui_input.connect(_on_input)
 	add_child(bg)
 
-	_stairs = _Stairs.new()
-	# Full height, so the stair runs on down under the tale rather than
-	# stopping at an edge; the knight's place on it is set by the upper pane.
-	_stairs.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_stairs.climb_time = CLIMB_TIME
-	add_child(_stairs)
+	_walk = _Walk.new()
+	_walk.team = team
+	# Full height, so the road runs on down under the tale rather than
+	# stopping at an edge; the walkers' place on it is set by the upper pane.
+	_walk.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_walk.climb_time = CLIMB_TIME
+	add_child(_walk)
 
 	_text = Label.new()
 	_text.anchor_right = 1.0
@@ -189,28 +193,33 @@ func _label(text: String, size: int, color: Color) -> Label:
 	return lbl
 
 
-# The endless stair. Steps slide down and to the left past the knight, who
-# walks on the spot with his feet kept on whichever tread is under him, so he
-# steps up each riser as it reaches him.
-class _Stairs extends Control:
-	const STEP_W: float = 64.0
-	const STEP_H: float = 26.0
-	# Steps a second; matched by eye to the walk cycle.
-	const PACE: float = 1.1
-	const BOX: float = 300.0
+# The road home. The knight walks on the spot at the head of whoever is still
+# with him, the demons he walks with filing along behind, while the ground
+# slides by underneath and the light grows ahead, coloured band by band from
+# the Abyss's bone white back to the first floor's cyan.
+class _Walk extends Control:
+	const BOX: float = 230.0
 	const ZOOM: float = 2.2
+	const GAP: float = 112.0      # between one walker and the next
+	const SPEED: float = 70.0     # how fast the ground goes by, px a second
 
 	var climb_time: float = 20.0
+	var team: Array[String] = []  # the demons' sprite ids, front to back
 	var _t: float = 0.0
 	var _knight: AnimatedPortrait
-	var _bat: AnimatedPortrait
+	var _followers: Array[AnimatedPortrait] = []
+	var _flies: Array[bool] = []
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		clip_contents = true
 		_knight = _actor(PlayerCharacter.SPRITE_KNIGHT)
 		_knight.play("walk")
-		_bat = _actor(PlayerCharacter.STARTING_DEMON)
+		for id: String in team:
+			var a: AnimatedPortrait = _actor(id)
+			a.play("walk")
+			_followers.append(a)
+			_flies.append(a._anims.has("flying") and not a._anims.has("walk"))
 
 	func _actor(id: String) -> AnimatedPortrait:
 		var a: AnimatedPortrait = AnimatedPortrait.new()
@@ -224,27 +233,29 @@ class _Stairs extends Control:
 	func _process(delta: float) -> void:
 		_t += delta
 		queue_redraw()
-		# Where his feet go: the tread under the middle of the screen.
-		var foot: Vector2 = _anchor()
-		var f: float = fposmod(_t * PACE, 1.0)
-		# Past halfway the riser has gone by under him and he is on the next.
-		var tread_y: float = foot.y + (f if f < 0.5 else f - 1.0) * STEP_H
+		var ground: float = _ground_y()
 		var crop: float = 100.0 / ZOOM
 		var feet_in_box: float = (56.0 - (100.0 - crop) / 2.0) / crop * BOX
-		_knight.position = Vector2(foot.x - BOX / 2.0, tread_y - feet_in_box)
-		# The bat keeps a little behind and above, bobbing as it flies.
-		_bat.position = _knight.position + Vector2(-120.0, -110.0 + sin(_t * 3.0) * 8.0)
+		# The party is centred on the screen, the knight at its head.
+		var span: float = GAP * float(_followers.size())
+		var head_x: float = size.x / 2.0 + span / 2.0
+		_knight.position = Vector2(head_x - BOX / 2.0, ground - feet_in_box)
+		for i: int in _followers.size():
+			var x: float = head_x - GAP * float(i + 1)
+			var y: float = ground - feet_in_box
+			if _flies[i]:
+				y += -70.0 + sin(_t * 3.0 + float(i)) * 8.0
+			_followers[i].position = Vector2(x - BOX / 2.0, y)
 
-	# The point the knight climbs through: a little left of centre, low down.
-	func _anchor() -> Vector2:
-		return Vector2(size.x * 0.45, Main.MAP_PANE_H * 0.80)
+	func _ground_y() -> float:
+		return Main.MAP_PANE_H * 0.80
 
-	# How far up the Tower he has come, 0 at the Necromancer, 1 at the top.
+	# How far along the road home, 0 at the Necromancer, 1 at the surface.
 	func _progress() -> float:
 		return clampf(_t / climb_time, 0.0, 1.0)
 
 	# The band he is passing through: the Abyss's colour first, the first
-	# floor's last, blended as he climbs from one into the next.
+	# floor's last, blended as he goes.
 	func _band_color() -> Color:
 		var bands: Array[Color] = Level.TIER_WIRE.duplicate()
 		bands.reverse()
@@ -256,28 +267,21 @@ class _Stairs extends Control:
 		var w: float = size.x
 		var h: float = size.y
 		var p: float = _progress()
-
-		# Daylight from above, growing as the surface nears.
+		# Daylight ahead and above, growing as the surface nears.
 		var sky: Color = Color(0.95, 0.80, 0.45)
 		var glow_h: float = Main.MAP_PANE_H
 		for i: int in 64:
 			var y0: float = glow_h * float(i) / 64.0
 			var a: float = p * 0.22 * (1.0 - float(i) / 64.0)
 			draw_rect(Rect2(0, y0, w, glow_h / 64.0 + 1.0), Color(sky, a))
-
+		# The road: a floor in the band's colour, its flagstones sliding by.
 		var col: Color = _band_color()
-		var fill: Color = Color(col.r * 0.10, col.g * 0.10, col.b * 0.13)
-		var foot: Vector2 = _anchor()
-		var shift: float = fposmod(_t * PACE, 1.0)
-		var origin: Vector2 = foot + Vector2(-shift * STEP_W, shift * STEP_H)
-		var edge: PackedVector2Array = [origin + Vector2(-10.5 * STEP_W, 10.0 * STEP_H)]
-		for k: int in range(-10, 12):
-			var x1: float = origin.x + k * STEP_W + STEP_W / 2.0
-			var y: float = origin.y - k * STEP_H
-			edge.append(Vector2(x1, y))
-			edge.append(Vector2(x1, y - STEP_H))
-		var body: PackedVector2Array = edge.duplicate()
-		body.append(Vector2(edge[edge.size() - 1].x, h + 400.0))
-		body.append(Vector2(edge[0].x, h + 400.0))
-		draw_colored_polygon(body, fill)
-		draw_polyline(edge, col, 2.0)
+		var gy: float = _ground_y()
+		draw_rect(Rect2(0, gy, w, h - gy), Color(col.r * 0.10, col.g * 0.10, col.b * 0.13))
+		draw_line(Vector2(0, gy), Vector2(w, gy), col, 2.0)
+		var tile: float = 64.0
+		var off: float = fposmod(_t * SPEED, tile)
+		var x: float = -off
+		while x < w + tile:
+			draw_line(Vector2(x, gy), Vector2(x - 26.0, gy + 30.0), Color(col, 0.45), 2.0)
+			x += tile
