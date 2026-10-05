@@ -41,7 +41,7 @@ var cam: Camera3D
 # you cannot see a side opening until you are standing in it. The screen splits
 # instead — the floor map above, the dungeon below — which gives the 3D a pane
 # nearer 4:3 and puts the part you swipe within reach of a thumb.
-const MAP_PANE_H: int = 520
+const MAP_PANE_H: int = Layout.MAP_PANE_H
 
 var world: SubViewport
 var _world_box: SubViewportContainer
@@ -270,7 +270,11 @@ func _setup_world_pane() -> void:
 	_world_box.anchor_right  = 1.0
 	_world_box.anchor_top    = 0.0
 	_world_box.anchor_bottom = 1.0
-	_world_box.offset_top    = MAP_PANE_H
+	# Landscape: the dungeon fills the left, the map column has the right.
+	if Layout.landscape():
+		_world_box.offset_right = -Layout.MAP_PANE_W
+	else:
+		_world_box.offset_top    = MAP_PANE_H
 	_world_box.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_world_box)
 
@@ -305,6 +309,18 @@ func _setup_minimap() -> void:
 	add_child(hud_layer)
 	var layer: CanvasLayer = hud_layer
 
+	# Landscape: the map column gets the game's own dark behind it, not the
+	# engine's grey.
+	if Layout.landscape():
+		var column: ColorRect = ColorRect.new()
+		column.color = Color(0.04, 0.03, 0.07)
+		column.anchor_left = 1.0
+		column.anchor_right = 1.0
+		column.anchor_bottom = 1.0
+		column.offset_left = -float(Layout.MAP_PANE_W)
+		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(column)
+
 	minimap_ctrl = Minimap.new()
 	minimap_ctrl.visited = visited  # Shared reference — no copy needed
 	minimap_ctrl.whole_floor = true
@@ -312,8 +328,10 @@ func _setup_minimap() -> void:
 
 	floor_label = Label.new()
 	floor_label.text = "Floor 1"
-	floor_label.anchor_left   = 0.0
+	floor_label.anchor_left   = 1.0 if Layout.landscape() else 0.0
 	floor_label.anchor_right  = 1.0
+	if Layout.landscape():
+		floor_label.offset_left = -Layout.MAP_PANE_W
 	floor_label.anchor_top    = 0.0
 	floor_label.anchor_bottom = 0.0
 	floor_label.offset_top    = 10.0
@@ -332,8 +350,10 @@ func _setup_minimap() -> void:
 	_hud_popup.anchor_bottom = 0.0
 	_hud_popup.offset_left   = 12.0
 	_hud_popup.offset_right  = -12.0
-	_hud_popup.offset_top    = MAP_PANE_H + 12.0
-	_hud_popup.offset_bottom = MAP_PANE_H + 52.0
+	_hud_popup.offset_top    = Layout.lower_top() + 12.0
+	_hud_popup.offset_bottom = Layout.lower_top() + 52.0
+	if Layout.landscape():
+		_hud_popup.offset_right = -Layout.MAP_PANE_W - 12.0
 	_hud_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud_popup.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	_hud_popup.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
@@ -404,10 +424,11 @@ func _setup_minimap() -> void:
 	_key_icon.anchor_right  = 1.0
 	_key_icon.anchor_top    = 0.0
 	_key_icon.anchor_bottom = 0.0
-	_key_icon.offset_left   = -62.0
-	_key_icon.offset_right  = -14.0
-	_key_icon.offset_top    = float(MAP_PANE_H) + 12.0
-	_key_icon.offset_bottom = float(MAP_PANE_H) + 60.0
+	var key_x: float = -float(Layout.MAP_PANE_W) if Layout.landscape() else 0.0
+	_key_icon.offset_left   = key_x - 62.0
+	_key_icon.offset_right  = key_x - 14.0
+	_key_icon.offset_top    = Layout.lower_top() + (60.0 if Layout.landscape() else 12.0)
+	_key_icon.offset_bottom = _key_icon.offset_top + 48.0
 	_key_icon.visible       = false
 	layer.add_child(_key_icon)
 
@@ -433,6 +454,18 @@ func _sync_minimap_palette() -> void:
 # label down to where the dungeon view begins.
 func _resize_minimap() -> void:
 	const TOP: float = 40.0
+	if Layout.landscape():
+		# The column down the right, under the floor label, clear of the
+		# Menu and Orb buttons at its foot.
+		minimap_ctrl.anchor_left   = 1.0
+		minimap_ctrl.anchor_right  = 1.0
+		minimap_ctrl.anchor_top    = 0.0
+		minimap_ctrl.anchor_bottom = 1.0
+		minimap_ctrl.offset_left   = -float(Layout.MAP_PANE_W)
+		minimap_ctrl.offset_right  = 0.0
+		minimap_ctrl.offset_top    = TOP
+		minimap_ctrl.offset_bottom = -90.0
+		return
 	minimap_ctrl.anchor_left   = 0.0
 	minimap_ctrl.anchor_right  = 1.0
 	minimap_ctrl.anchor_top    = 0.0
