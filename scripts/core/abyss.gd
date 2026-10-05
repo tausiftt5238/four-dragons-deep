@@ -61,15 +61,22 @@ static func note_depth(depth: int) -> void:
 		cfg.save(STATE_PATH)
 
 
-# Beating the Necromancer: the mode opens, and the hero who did it is kept as
-# the one every new descent starts with.
-static func unlock(player_data: Dictionary) -> void:
+# Beating the Necromancer opens the mode. `keep_hero`: the hero who did it
+# becomes the one every new descent starts with (the first clear always; a
+# later one only if the player says so, Main._show_congratulations).
+static func unlock(player_data: Dictionary, keep_hero: bool = true) -> void:
 	var cfg: ConfigFile = _cfg()
 	cfg.set_value("abyss", "unlocked", true)
 	cfg.save(STATE_PATH)
+	if not keep_hero:
+		return
 	var f: FileAccess = FileAccess.open(HERO_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(player_data, "\t"))
+
+
+static func has_hero() -> bool:
+	return not cleared_hero().is_empty()
 
 
 # The hero a new descent starts with: the one who cleared the game.

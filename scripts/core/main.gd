@@ -1298,8 +1298,12 @@ func _resume_from_overlay() -> void:
 func _show_congratulations() -> void:
 	in_combat = true
 	_fading = true
-	# The Abyss opens, and this hero is the one who goes down into it.
-	Abyss.unlock(_gather_save_data()["player"] as Dictionary)
+	# The Abyss opens. The first hero to clear it is the one who goes down into
+	# it; after that the player is asked, once the credits are done, whether
+	# this one should take the old one's place.
+	var cleared: Dictionary = _gather_save_data()["player"] as Dictionary
+	var ask: bool = Abyss.has_hero()
+	Abyss.unlock(cleared, not ask)
 	Records.add("runs_won")
 	Records.set_min("fastest_clear", play_time)
 	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
@@ -1307,6 +1311,8 @@ func _show_congratulations() -> void:
 	hud_layer.visible = false
 	var ui: EndingUI = EndingUI.new()
 	ui.finished.connect(func() -> void:
+		if ask:
+			await _ask_replace_abyss_hero(cleared)
 		var out: ScreenFade = ScreenFade.cover(get_tree())
 		await out.covered
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
@@ -1314,6 +1320,58 @@ func _show_congratulations() -> void:
 	)
 	_get_overlay_layer().add_child(ui)
 	fade.reveal(0.8)
+
+
+# After a second (or later) clear: keep the Abyss hero there is, or put this
+# one in its place. Both are shown by level, so the choice is an informed one.
+signal _abyss_hero_chosen
+
+
+func _ask_replace_abyss_hero(cleared: Dictionary) -> void:
+	var old_lv: int = int(Abyss.cleared_hero().get("lv", 1))
+	var new_lv: int = int(cleared.get("lv", 1))
+	var panel: Control = Control.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var veil: ColorRect = ColorRect.new()
+	veil.color = Color(0.03, 0.02, 0.06, 1.0)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(veil)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(center)
+	var col: VBoxContainer = VBoxContainer.new()
+	col.custom_minimum_size = Vector2(440, 0)
+	col.add_theme_constant_override("separation", 16)
+	center.add_child(col)
+	var head: Label = Label.new()
+	head.text = "THE ABYSS"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_override("font", _UI_FONT)
+	head.add_theme_font_size_override("font_size", 36)
+	head.add_theme_color_override("font_color", Color(0.78, 0.60, 1.0))
+	col.add_child(head)
+	var q: Label = Label.new()
+	q.text = "Which hero goes down into the Abyss?\n\nThe one waiting there now is level %d.\nThe one who just won is level %d." % [old_lv, new_lv]
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q.add_theme_font_override("font", _UI_FONT)
+	q.add_theme_font_size_override("font_size", 18)
+	col.add_child(q)
+	for pair: Array in [["KEEP THE ONE THERE (LV %d)" % old_lv, false],
+			["SEND THIS HERO (LV %d)" % new_lv, true]]:
+		var b: Button = Button.new()
+		b.text = pair[0] as String
+		b.custom_minimum_size = Vector2(0, 50)
+		b.add_theme_font_override("font", _UI_FONT)
+		var replace: bool = pair[1]
+		b.pressed.connect(func() -> void:
+			if replace:
+				Abyss.unlock(cleared, true)
+			_abyss_hero_chosen.emit())
+		col.add_child(b)
+	_get_overlay_layer().add_child(panel)
+	await _abyss_hero_chosen
+	panel.queue_free()
 
 
 func _player_snapshot() -> Dictionary:
