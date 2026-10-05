@@ -51,9 +51,10 @@ def eyes(size: int, color, glow: bool) -> Image.Image:
     for side in (-1, 1):
         ex = cx + side * gap
         # A slit that tips down toward the nose: the look of something angry.
+        # The inner corner sits low, the outer one high.
         pts = [
-            (ex - w, cy - h * (0.2 if side < 0 else 1.6)),
-            (ex + w, cy - h * (1.6 if side < 0 else 0.2)),
+            (ex - w, cy - h * (1.6 if side < 0 else 0.2)),
+            (ex + w, cy - h * (0.2 if side < 0 else 1.6)),
             (ex + w * 0.7, cy + h),
             (ex - w * 0.7, cy + h),
         ]
