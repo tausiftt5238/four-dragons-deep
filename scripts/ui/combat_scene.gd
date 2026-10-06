@@ -60,13 +60,42 @@ var _player_portrait: TextureRect
 
 var _icon_pips:     UIGlyph   # player-side press-turn icons, drawn
 var _foe_icon_pips: UIGlyph   # enemy-side press-turn icons, drawn
-var _enemy_side: VBoxContainer
-var _party_box:  VBoxContainer
+var _enemy_side: Control
+var _party_box:  Control
 var _party_slots: Array[Dictionary] = []
 
 const STEP_DISTANCE: float = 60.0
 const STEP_DURATION: float = 0.25
 var _stepped_node: Control = null
+
+# The wide-screen layout: strips, the field, the formations, the cards.
+const TOP_STRIP_H: float = 30.0
+const BOTTOM_STRIP_H: float = 162.0
+const CARD_W: float = 170.0
+const CARD_H: float = 230.0
+const PORTRAIT: float = 120.0
+const PORTRAIT_ZOOM: float = 2.6
+const PORTRAIT_TOP: float = 24.0
+# Where the feet sit in a zoomed portrait, as a share of its height.
+const FEET: float = 0.74
+const RING_RX: float = 140.0
+const RING_RY: float = 76.0
+const RING_TILT: float = 0.0
+const FLY_LIFT: float = 26.0
+const LIST_ROW_H: float = 26.0
+var _field: Control
+var _top_row: HBoxContainer
+var _turn_lbl: Label
+var _party_rows: VBoxContainer
+var _buttons_on: bool = false
+var _actions_locked: bool = false
+# The command tabs across the top of the menu window, Digital Devil Saga
+# fashion: left and right walk the tabs, up and down walk the open tab's list.
+const TABS: Array[String] = ["Skills", "Item", "Defend", "Talk", "Summon", "Flee"]
+var _tab: String = "Skills"
+# True while the list shows a tab's own entries; false a step deeper (a target,
+# who to heal, the talk), where left and right no longer change the tab.
+var _at_top: bool = false
 
 
 # The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
@@ -124,20 +153,16 @@ func _ready() -> void:
 # ── UI construction ───────────────────────────────────────────────────────────
 
 func _build_ui() -> void:
-	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.04, 0.02, 0.08, 0.78)
+	# The Steam build's battle screen, laid out for a wide screen in the
+	# Final Fantasy way: the fight across the middle, a strip along the top
+	# for whose phase it is and the log, and three windows along the bottom.
+	var bg: _Backdrop = _Backdrop.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	var root: VBoxContainer = VBoxContainer.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
-	add_child(root)
-
-	_build_log_strip(root)
-	_build_battlefield(root)
-	_build_menu_panel(root)
-	# Added to the scene rather than the column so it floats over the corner.
+	_build_log_strip(self)
+	_build_battlefield(self)
+	_build_menu_panel(self)
 	_build_icon_overlay()
 
 
@@ -152,26 +177,29 @@ const LOG_PAD:    int = 8
 
 
 func _build_log_strip(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, LOG_LINES * LOG_LINE_H + LOG_PAD * 2)
-	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	parent.add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	for s: String in ["margin_left", "margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(s, LOG_PAD)
-	# Wide enough that a long log line never runs under the press-turn corner.
-	m.add_theme_constant_override("margin_right", 196)
-	panel.add_child(m)
-
+	var strip: PanelContainer = PanelContainer.new()
+	strip.anchor_right = 1.0
+	strip.offset_bottom = TOP_STRIP_H
+	strip.add_theme_stylebox_override("panel", _flat(Color(0.024, 0.02, 0.047, 0.92), Color(0, 0, 0, 0)))
+	# Over the field: a card's draw order is its depth, and a flier at the top
+	# of its oval must not paint over the strip.
+	strip.z_index = 1000
+	parent.add_child(strip)
+	_top_row = HBoxContainer.new()
+	_top_row.add_theme_constant_override("separation", 10)
+	strip.add_child(_top_row)
+	# The press-turn side and its icons go first (_build_icon_overlay), the log
+	# takes the rest, its newest line to the right.
 	_log_label = RichTextLabel.new()
 	_log_label.bbcode_enabled   = true
-	_log_label.scroll_active    = true
+	_log_label.scroll_active    = false
 	_log_label.scroll_following = true
-	_log_label.mouse_filter     = Control.MOUSE_FILTER_STOP
+	_log_label.fit_content      = false
+	_log_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_log_label.custom_minimum_size = Vector2(0, TOP_STRIP_H - 4)
+	_log_label.mouse_filter     = Control.MOUSE_FILTER_IGNORE
+	_log_label.add_theme_font_size_override("normal_font_size", 13)
 	_log_label.add_theme_color_override("default_color", Color(0.88, 0.84, 0.74))
-	_log_label.gui_input.connect(_on_log_input)
-	m.add_child(_log_label)
 
 
 # Drag the log to read back through the phase. A RichTextLabel scrolls to the
@@ -269,28 +297,20 @@ func _play_anim(node: TextureRect, anim_name: String) -> void:
 		(node as AnimatedPortrait).play_once(anim_name)
 
 
-func _step_forward(card: Control, is_enemy: bool) -> void:
+# Nobody leaves the formation: whoever's turn it is walks on the spot until it
+# is someone else's.
+func _step_forward(card: Control, _is_enemy: bool) -> void:
 	_step_back_immediate()
 	_stepped_node = card
-	var dir: float = STEP_DISTANCE if is_enemy else -STEP_DISTANCE
 	var portrait: TextureRect = _card_portrait(card)
-	if portrait != null:
-		_play_anim(portrait, "walk")
-	# Bound to the card, not the scene: a revive or a summon rebuilds the party
-	# row mid-step, and a tween owned by the scene would then call back into a
-	# portrait that no longer exists.
-	var tween: Tween = card.create_tween()
-	tween.tween_property(card, "position:x", dir, STEP_DURATION) \
-			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	if portrait is AnimatedPortrait:
-		tween.tween_callback((portrait as AnimatedPortrait).play.bind("idle"))
+		(portrait as AnimatedPortrait).play("walk")
 
 
 func _step_back_immediate() -> void:
 	if _stepped_node != null and is_instance_valid(_stepped_node):
-		_stepped_node.position.x = 0.0
 		var portrait: TextureRect = _card_portrait(_stepped_node)
-		if portrait != null and portrait is AnimatedPortrait:
+		if portrait is AnimatedPortrait and (portrait as AnimatedPortrait)._current_anim == "walk":
 			(portrait as AnimatedPortrait).play("idle")
 	_stepped_node = null
 
@@ -322,8 +342,149 @@ func _format_statuses(statuses: Array[String]) -> String:
 
 
 func _set_buttons(enabled: bool) -> void:
+	_buttons_on = enabled
+	_apply_buttons()
+	if enabled:
+		_open_tab()
+	else:
+		_at_top = false
+		_right_back_btn.hide()
+		_right_title.text = ""
+		_submenu_clear()
+
+
+func _apply_buttons() -> void:
 	for btn: Button in _buttons.values():
-		btn.disabled = not enabled
+		btn.disabled = not _buttons_on or _actions_locked
+	if _buttons_on and not _actions_locked:
+		_refresh_button_states()
+	_paint_tabs()
+
+
+# Keyboard and pad: the arrows move through whichever window has the turn,
+# Enter chooses, Escape goes back.
+func _focus_commands() -> void:
+	_focus_list()
+
+
+func _focus_list() -> void:
+	for slot: MarginContainer in _sub_slots:
+		for c: Node in slot.get_children():
+			if c is Button and not (c as Button).disabled:
+				(c as Button).grab_focus()
+				return
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and _right_back_btn != null \
+			and _right_back_btn.visible:
+		_on_back_pressed()
+		get_viewport().set_input_as_handled()
+
+
+# Left and right are taken before the focused list entry can turn them into a
+# sideways focus hop: on the top of a tab they change the tab.
+func _input(event: InputEvent) -> void:
+	if not (_at_top and _buttons_on and not _actions_locked):
+		return
+	var step: int = 0
+	if event.is_action_pressed("ui_left", true):
+		step = -1
+	elif event.is_action_pressed("ui_right", true):
+		step = 1
+	if step == 0:
+		return
+	get_viewport().set_input_as_handled()
+	var open: Array[String] = _open_tabs()
+	if open.is_empty():
+		return
+	var i: int = open.find(_tab)
+	_tab = open[posmod((i if i >= 0 else 0) + step, open.size())]
+	_open_tab()
+
+
+# The tabs this actor can use now: hidden ones (the hero's alone, on a demon's
+# turn) and greyed ones (Defend while braced) are stepped over.
+func _open_tabs() -> Array[String]:
+	var out: Array[String] = []
+	for key: String in TABS:
+		var btn: Button = _buttons[key] as Button
+		if btn.visible and not btn.disabled:
+			out.append(key)
+	return out
+
+
+# Shows the current tab's list in the list window, ready for up and down.
+func _open_tab() -> void:
+	_actions_locked = false
+	_apply_buttons()
+	var open: Array[String] = _open_tabs()
+	if not _tab in open:
+		_tab = "Skills" if "Skills" in open else (open[0] if not open.is_empty() else "Skills")
+	match _tab:
+		"Skills":
+			_show_skills_submenu()
+		"Item":
+			_show_item_submenu()
+		"Summon":
+			_show_summon_submenu()
+		_:
+			_show_command_entry(_tab)
+	# The submenu took the tabs out of reach as though it were a step deeper;
+	# this is the top, so give them back.
+	_actions_locked = false
+	_apply_buttons()
+	_right_back_btn.hide()
+	_at_top = true
+	_focus_list.call_deferred()
+
+
+# Defend, Talk and Flee have nothing to list, so their tab holds the one
+# command, said plainly, to confirm with Enter.
+func _show_command_entry(key: String) -> void:
+	_hide_actions()
+	_right_title.text = key
+	_right_title.add_theme_color_override("font_color", Color(0.80, 0.84, 0.95))
+	_submenu_clear()
+	var note: String = {
+		"Defend": "brace until your next turn",
+		"Talk": "reason, bribe, threaten, recruit",
+		"Flee": "run from the fight",
+	}.get(key, "") as String
+	var btn: Button = _big_button(key, note, false)
+	btn.pressed.connect(_on_action.bind(key))
+	_submenu_add(btn)
+
+
+func _select_tab(key: String) -> void:
+	if not (_buttons_on and not _actions_locked):
+		return
+	_tab = key
+	_open_tab()
+
+
+# The open tab is lit; the rest sit dim, and a tab out of reach dimmer still.
+func _paint_tabs() -> void:
+	for key: String in _buttons:
+		var btn: Button = _buttons[key] as Button
+		var lit: bool = key == _tab and _buttons_on
+		var c: Color = Color(1.0, 0.86, 0.42) if lit else Color(0.70, 0.73, 0.85)
+		btn.add_theme_color_override("font_color", c)
+		btn.add_theme_color_override("font_disabled_color",
+				Color(c, 0.75) if lit else Color(0.70, 0.73, 0.85, 0.30))
+		btn.add_theme_stylebox_override("normal", _tab_box(lit))
+		btn.add_theme_stylebox_override("disabled", _tab_box(lit))
+		btn.add_theme_stylebox_override("hover", _tab_box(lit))
+		btn.add_theme_stylebox_override("pressed", _tab_box(lit))
+
+
+func _tab_box(lit: bool) -> StyleBoxFlat:
+	var st: StyleBoxFlat = _flat(Color(0.20, 0.24, 0.48) if lit else Color(0, 0, 0, 0),
+			Color(1.0, 0.86, 0.42))
+	st.border_width_bottom = 2 if lit else 0
+	st.set_corner_radius_all(3)
+	st.set_content_margin_all(3)
+	return st
 
 
 
@@ -331,6 +492,7 @@ func _set_buttons(enabled: bool) -> void:
 
 func _set_back(cb: Callable) -> void:
 	_back_target = cb
+	_at_top = false
 	_right_back_btn.show()
 
 
@@ -951,7 +1113,7 @@ static func _restorative(item: Dictionary) -> bool:
 
 func _on_use_item(item: Dictionary) -> void:
 	if item.has("revive"):
-		_pick_ally(true, "Revive who?", _show_item_submenu,
+		_pick_ally(true, "Revive who?", _show_main_actions,
 				func() -> void: await _commit_item(item))
 		return
 	# A cauldron or a fountain is for everyone standing: nobody to pick.
@@ -959,7 +1121,7 @@ func _on_use_item(item: Dictionary) -> void:
 		await _commit_item(item)
 		return
 	if _restorative(item):
-		_pick_ally(false, "Use %s on?" % item["name"], _show_item_submenu,
+		_pick_ally(false, "Use %s on?" % item["name"], _show_main_actions,
 				func() -> void: await _commit_item(item))
 		return
 	var offensive: bool = item.has("inflicts_status") \
@@ -1317,7 +1479,7 @@ func _entry_button(e: Dictionary) -> Button:
 # battle ended, taken early.
 func _show_swap_submenu(incoming: String) -> void:
 	_hide_actions()
-	_set_back(_show_summon_submenu)
+	_set_back(_show_main_actions)
 	_right_title.text = "Who steps back?"
 	_right_title.add_theme_color_override("font_color", Color(1.0, 0.80, 0.40))
 	_submenu_clear()
@@ -1511,43 +1673,33 @@ const CARD_PORTRAIT:  int = 140
 
 
 func _build_battlefield(parent: Control) -> void:
-	var field: HBoxContainer = HBoxContainer.new()
-	field.size_flags_vertical      = Control.SIZE_EXPAND_FILL
-	field.size_flags_stretch_ratio = 1.0
-	field.add_theme_constant_override("separation", 0)
-	parent.add_child(field)
-
-	_enemy_side = VBoxContainer.new()
-	_enemy_side.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
-	_enemy_side.size_flags_vertical      = Control.SIZE_EXPAND_FILL
-	_enemy_side.size_flags_stretch_ratio = 2.0
-	_enemy_side.alignment = BoxContainer.ALIGNMENT_CENTER
-	_enemy_side.add_theme_constant_override("separation", CARD_SEP)
-	field.add_child(_enemy_side)
-
-	var spacer: Control = Control.new()
-	spacer.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
-	spacer.size_flags_stretch_ratio = 1.0
-	spacer.mouse_filter             = Control.MOUSE_FILTER_IGNORE
-	field.add_child(spacer)
-
-	_party_box = VBoxContainer.new()
-	_party_box.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
-	_party_box.size_flags_vertical      = Control.SIZE_EXPAND_FILL
-	_party_box.size_flags_stretch_ratio = 2.0
-	_party_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_party_box.add_theme_constant_override("separation", CARD_SEP)
-	field.add_child(_party_box)
-
+	_field = Control.new()
+	_field.anchor_right = 1.0
+	_field.offset_top = TOP_STRIP_H
+	_field.anchor_bottom = 1.0
+	_field.offset_bottom = -BOTTOM_STRIP_H
+	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(_field)
+	_enemy_side = Control.new()
+	_enemy_side.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_enemy_side.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_enemy_side)
+	_party_box = Control.new()
+	_party_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_party_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_party_box)
 	for f: Enemy in foes:
 		_enemy_side.add_child(_build_foe_card(f))
+	_field.resized.connect(_fit_columns)
 
 
+# A monster on the field: its name and HP over it, the target caret above
+# that, its chart and its buffs under its feet. Laid out by hand, around the
+# point its feet stand on (_fit_columns places that).
 func _build_foe_card(foe: Enemy) -> Control:
-	var card: VBoxContainer = VBoxContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.add_theme_constant_override("separation", 1)
+	var card: Control = Control.new()
+	card.size = Vector2(CARD_W, CARD_H)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var icon: AnimatedPortrait = AnimatedPortrait.new()
 	if foe.sprite_id != "":
@@ -1557,52 +1709,61 @@ func _build_foe_card(foe: Enemy) -> Control:
 	else:
 		icon.load_static(load("res://icon.svg") as Texture2D)
 		icon.modulate = Color(0.95, 0.28, 0.28)
-	icon.custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
-	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	icon.set_zoom(3.0)
-	# self_modulate, not modulate: the tint is the monster's colour, and the
-	# ailment marks drawn over it should keep their own.
+	icon.position = Vector2((CARD_W - PORTRAIT) / 2.0, PORTRAIT_TOP)
+	icon.size = Vector2(PORTRAIT, PORTRAIT)
+	icon.set_zoom(PORTRAIT_ZOOM)
 	icon.self_modulate = foe.tint
 	if foe.abyss_element != "":
 		icon.material = Abyss.palette_material(foe.abyss_element)
 	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
-	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
-	card.add_child(marker)
-
-	var name_lbl: Label = FitLabel.new(9, 5)
+	var name_lbl: Label = Label.new()
 	name_lbl.text = foe.display_name()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 11)
+	# Under its feet: name, HP, then its chart and its buffs.
+	var under: float = PORTRAIT_TOP + PORTRAIT * FEET + 2.0
+	name_lbl.position = Vector2(0, under)
+	name_lbl.size = Vector2(CARD_W, 14)
 	card.add_child(name_lbl)
 
+	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
+	marker.position = Vector2(CARD_W / 2.0 - 8, PORTRAIT_TOP - 16)
+	marker.size = Vector2(16, 14)
+	card.add_child(marker)
+
 	var bar: ProgressBar = _make_bar(foe.max_hp)
-	bar.custom_minimum_size = Vector2(0, 5)
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.custom_minimum_size = Vector2(80, 5)
+	bar.position = Vector2(CARD_W / 2.0 - 40, under + 17)
+	bar.size = Vector2(80, 5)
 	card.add_child(bar)
 
-	var hp_lbl: Label = FitLabel.new(8, 5)
-	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_lbl.add_theme_color_override("font_color", Color(0.90, 0.60, 0.60))
+	# Kept for _refresh_foe_rows, which writes to it; the field shows no
+	# numbers for a monster, only its bar.
+	var hp_lbl: Label = Label.new()
+	hp_lbl.visible = false
 	card.add_child(hp_lbl)
-
-	var stages: StageArrows = StageArrows.new()
-	stages.member = foe
-	card.add_child(stages)
 
 	var chart: AffinityChart = AffinityChart.new()
 	chart.foe = foe
 	chart.knows = func(element: String) -> bool:
 		return player.knows_affinity(foe.lore_name(), element)
-	# Fill, not shrink: the chart is drawn, so it has no width of its own to
-	# shrink to, and centred it came out zero pixels wide.
-	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chart.position = Vector2(CARD_W / 2.0 - 52, under + 26)
+	chart.size = Vector2(104, 24)
 	card.add_child(chart)
+
+	var stages: StageArrows = StageArrows.new()
+	stages.member = foe
+	stages.position = Vector2(CARD_W / 2.0 - 34, under + 52)
+	stages.size = Vector2(68, 16)
+	card.add_child(stages)
 
 	_watch_hp(foe)
 	_foe_rows.append({foe = foe, portrait = icon, name_lbl = name_lbl,
 			bar = bar, hp_lbl = hp_lbl, stages = stages, marker = marker,
 			chart = chart, card = card})
+	_fit_columns.call_deferred()
 	return card
 
 
@@ -2016,41 +2177,22 @@ func _refresh_hp() -> void:
 
 # Both sides' icons live in the top-right corner, out of the fight rather than
 # wedged between the two line-ups.
+# Only the side whose phase it is: "YOU" and the party's icons now, "FOE" and
+# theirs when the monsters' phase comes round.
 func _build_icon_overlay() -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.anchor_left   = 1.0
-	panel.anchor_right  = 1.0
-	panel.anchor_top    = 0.0
-	panel.anchor_bottom = 0.0
-	panel.offset_left   = -186.0
-	panel.offset_right  = -10.0
-	panel.offset_top    = 8.0
-	panel.offset_bottom = 66.0
-	panel.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-	add_child(panel)
-
-	var m: MarginContainer = MarginContainer.new()
-	for side: String in ["margin_left", "margin_right"]:
-		m.add_theme_constant_override(side, 10)
-	for side2: String in ["margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(side2, 5)
-	panel.add_child(m)
-
-	var col: VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
-	m.add_child(col)
-
+	_turn_lbl = Label.new()
+	_turn_lbl.add_theme_font_size_override("font_size", 13)
+	_top_row.add_child(_turn_lbl)
 	_icon_pips = UIGlyph.pips(Color(0.55, 0.95, 1.0))
-	col.add_child(_side_row("You", Color(0.55, 0.95, 1.0), _icon_pips))
-
+	_top_row.add_child(_icon_pips)
 	_foe_icon_pips = UIGlyph.pips(Color(1.0, 0.45, 0.45))
-	col.add_child(_side_row("Foe", Color(1.0, 0.45, 0.45), _foe_icon_pips))
+	_top_row.add_child(_foe_icon_pips)
+	_top_row.add_child(_log_label)
 
 
 # "You" or "Foe" and that side's icons, side by side.
 func _side_row(who: String, color: Color, pips: UIGlyph) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
 	var lbl: Label = Label.new()
 	lbl.text = who
 	lbl.add_theme_color_override("font_color", color)
@@ -2062,6 +2204,12 @@ func _side_row(who: String, color: Color, pips: UIGlyph) -> HBoxContainer:
 func _refresh_icons() -> void:
 	if _press == null or _foe_press == null:
 		return
+	var ours: bool = _press.has_turns() or not _foe_press.has_turns()
+	_turn_lbl.text = "YOU" if ours else "FOE"
+	_turn_lbl.add_theme_color_override("font_color",
+			Color(0.55, 0.95, 1.0) if ours else Color(1.0, 0.45, 0.45))
+	_icon_pips.visible = ours
+	_foe_icon_pips.visible = not ours
 	_icon_pips.set_pips(_press.full if _press.has_turns() else 0,
 			_press.blink if _press.has_turns() else 0)
 	_foe_icon_pips.set_pips(_foe_press.full if _foe_press.has_turns() else 0,
@@ -2599,6 +2747,8 @@ func _make_skill_button(action: String, label: String, element: String,
 func _rebuild_party_slots() -> void:
 	for child: Node in _party_box.get_children():
 		child.queue_free()
+	for child: Node in _party_rows.get_children():
+		child.queue_free()
 	_party_slots.clear()
 	for i: int in range(party.size()):
 		_party_box.add_child(_build_party_slot(party[i]))
@@ -2714,50 +2864,75 @@ const CARD_PORTRAIT_MIN: int = 56
 # the screen — the second row of actions, Talk, Summon and Flee, with it. So a
 # column that would overflow shrinks its own portraits until it fits; three or
 # fewer a side never needed to and keep the full size.
+# Stands each side on its own oval: its first member at the front, the side
+# facing the other, the rest going round from there, the party counter-
+# clockwise and the monsters clockwise, so the two mirror. One alone stands in
+# the middle of its oval. Called whenever a side changes or the field resizes.
 func _fit_columns() -> void:
-	if not is_inside_tree():
+	if not is_inside_tree() or _field == null:
 		return
-	var avail: float = size.y - float(LOG_LINES * LOG_LINE_H + LOG_PAD * 2) \
-			- float(MENU_STRIP_H)
-	var foe_cards: Array = []
+	var h: float = _field.size.y
+	var w: float = _field.size.x
+	# Low enough that the top of the oval (a flier, name and all) clears the
+	# strip above, high enough that the bottom's chart clears the windows.
+	var cy: float = h * 0.58
+	var foe_cards: Array[Control] = []
 	for r: Dictionary in _foe_rows:
-		foe_cards.append([r["card"], r["portrait"]])
-	var party_cards: Array = []
+		if is_instance_valid(r["card"]):
+			foe_cards.append(r["card"] as Control)
+	var party_cards: Array[Control] = []
 	for slot: Dictionary in _party_slots:
-		party_cards.append([slot["card"], slot["portrait"]])
-	for column: Array in [foe_cards, party_cards]:
-		_fit_column(column, avail)
+		if is_instance_valid(slot["card"]):
+			party_cards.append(slot["card"] as Control)
+	_ring(foe_cards, Vector2(w * 0.24, cy), 0.0, true, -1.0)
+	_ring(party_cards, Vector2(w * 0.76, cy), 180.0, false, 1.0)
 
 
-func _fit_column(cards: Array, avail: float) -> void:
-	if cards.is_empty():
-		return
-	# Measured at full size, so a column that has since lost a card grows back.
-	for pair: Array in cards:
-		(pair[1] as Control).custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
-	var need: float = float(CARD_SEP * (cards.size() - 1))
-	for pair: Array in cards:
-		need += (pair[0] as Control).get_combined_minimum_size().y
-	if need <= avail:
-		return
-	var cut: int = ceili((need - avail) / float(cards.size()))
-	var side: int = maxi(CARD_PORTRAIT_MIN, CARD_PORTRAIT - cut)
-	for pair: Array in cards:
-		(pair[1] as Control).custom_minimum_size = Vector2(side, side)
+# `back`: which way is away from the other side (-1 left, +1 right). The oval
+# leans that way at the top, so the one standing at the top is not straight
+# above the one at the bottom, with its chart over the other's name.
+func _ring(cards: Array[Control], centre: Vector2, front_deg: float, clockwise: bool,
+		back: float) -> void:
+	var n: int = cards.size()
+	var spots: Array[Vector2] = []
+	for i: int in n:
+		if n == 1:
+			spots.append(centre)
+			continue
+		var step: float = 360.0 / float(n) * float(i)
+		var a: float = deg_to_rad(front_deg + (step if clockwise else -step))
+		spots.append(centre + Vector2(cos(a) * RING_RX - sin(a) * RING_TILT * back,
+				sin(a) * RING_RY))
+	for i: int in n:
+		var card: Control = cards[i]
+		var feet: Vector2 = spots[i]
+		var portrait: TextureRect = _card_portrait(card)
+		var lift: float = 0.0
+		if portrait is AnimatedPortrait and (portrait as AnimatedPortrait)._anims.has("flying") \
+				and not (portrait as AnimatedPortrait)._anims.has("walk"):
+			lift = FLY_LIFT
+		card.position = feet - Vector2(CARD_W / 2.0, PORTRAIT_TOP + PORTRAIT * FEET + lift)
+		# Further back is further up the screen, and is drawn behind.
+		card.z_index = int(feet.y)
 
 
+func _fit_column(_cards: Array, _avail: float) -> void:
+	pass
+
+
+# One of the party: a figure on the field (flipped to face the monsters, its
+# ailments drawn on it, a caret over it on its turn), and a row in the party
+# window with its name, HP over MP, its buffs as chevrons and its ailments.
 func _build_party_slot(member: CharacterSheet) -> Control:
-	var card: VBoxContainer = VBoxContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.add_theme_constant_override("separation", 1)
+	var card: Control = Control.new()
+	card.size = Vector2(CARD_W, CARD_H)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var is_hero: bool = (member == player)
-
 	var icon: AnimatedPortrait = AnimatedPortrait.new()
-	icon.custom_minimum_size   = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
-	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	icon.set_zoom(3.0)
+	icon.position = Vector2((CARD_W - PORTRAIT) / 2.0, PORTRAIT_TOP)
+	icon.size = Vector2(PORTRAIT, PORTRAIT)
+	icon.set_zoom(PORTRAIT_ZOOM)
 	icon.flip_h = true
 	if is_hero:
 		icon.load_sprite_id(player.hero_sprite_id())
@@ -2776,40 +2951,71 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	icon.add_child(StatusOverlay.new(member))
 	card.add_child(icon)
 
-	var marker: UIGlyph = UIGlyph.caret(false, Color(1.0, 0.92, 0.45))
+	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
+	marker.position = Vector2(CARD_W / 2.0 - 8, PORTRAIT_TOP - 16)
+	marker.size = Vector2(16, 14)
 	card.add_child(marker)
 
-	var name_lbl: Label = FitLabel.new(9, 5)
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(name_lbl)
+	# Its row in the party window.
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.custom_minimum_size = Vector2(0, 34)
+	_party_rows.add_child(row)
 
+	var name_lbl: Label = Label.new()
+	name_lbl.custom_minimum_size = Vector2(118, 0)
+	name_lbl.clip_text = true
+	name_lbl.add_theme_font_size_override("font_size", 15)
+	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(name_lbl)
+
+	var bars: VBoxContainer = VBoxContainer.new()
+	bars.add_theme_constant_override("separation", 2)
+	bars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(bars)
+	var hp_line: HBoxContainer = HBoxContainer.new()
+	hp_line.add_theme_constant_override("separation", 6)
+	bars.add_child(hp_line)
 	var hp_bar: ProgressBar = _make_bar(member.max_hp)
-	hp_bar.custom_minimum_size   = Vector2(0, 5)
-	hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_child(hp_bar)
-
+	hp_bar.custom_minimum_size = Vector2(104, 6)
+	hp_bar.size = Vector2(104, 6)
+	hp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hp_line.add_child(hp_bar)
+	var val_lbl: Label = Label.new()
+	val_lbl.custom_minimum_size = Vector2(62, 0)
+	val_lbl.add_theme_font_size_override("font_size", 11)
+	hp_line.add_child(val_lbl)
+	var mp_line: HBoxContainer = HBoxContainer.new()
+	mp_line.add_theme_constant_override("separation", 6)
+	bars.add_child(mp_line)
 	var mp_bar: ProgressBar = _make_bar(maxi(1, member.max_mp))
-	mp_bar.custom_minimum_size   = Vector2(0, 3)
-	mp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mp_bar.custom_minimum_size = Vector2(104, 6)
+	mp_bar.size = Vector2(104, 6)
+	mp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mp_bar.add_theme_stylebox_override("fill", _bar_fill(Color(0.32, 0.46, 0.95)))
-	card.add_child(mp_bar)
-
-	var val_lbl: Label = FitLabel.new(8, 5)
-	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val_lbl.add_theme_color_override("font_color", Color(0.62, 0.82, 0.68))
-	card.add_child(val_lbl)
-
-	var sts_lbl: RichTextLabel = FitRichText.new(8, 5, 1)
-	sts_lbl.add_theme_color_override("default_color", Color(0.90, 0.78, 0.30))
-	card.add_child(sts_lbl)
+	mp_line.add_child(mp_bar)
+	var mp_lbl: Label = Label.new()
+	mp_lbl.custom_minimum_size = Vector2(62, 0)
+	mp_lbl.add_theme_font_size_override("font_size", 11)
+	mp_lbl.add_theme_color_override("font_color", Color(0.59, 0.73, 1.0))
+	mp_line.add_child(mp_lbl)
 
 	var stages: StageArrows = StageArrows.new()
 	stages.member = member
-	card.add_child(stages)
+	stages.custom_minimum_size = Vector2(72, 24)
+	stages.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(stages)
+
+	var ails: _AilmentIcons = _AilmentIcons.new()
+	ails.member = member
+	ails.custom_minimum_size = Vector2(100, 22)
+	ails.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(ails)
 
 	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
-			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl,
-			sts_lbl = sts_lbl, stages = stages, marker = marker, card = card})
+			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl, mp_lbl = mp_lbl,
+			sts_lbl = null, stages = stages, ails = ails, marker = marker,
+			card = card, row = row})
 	return card
 
 
@@ -2820,7 +3026,6 @@ func _refresh_party_slots() -> void:
 		if member == null:
 			continue
 		var alive: bool    = member.is_alive()
-		var is_hero: bool  = (member == player)
 		var is_actor: bool = (member == acting) and alive
 
 		(slot["marker"] as UIGlyph).visible = is_actor
@@ -2830,131 +3035,131 @@ func _refresh_party_slots() -> void:
 			slot["_death_played"] = true
 
 		var name_lbl: Label = slot["name_lbl"] as Label
-		name_lbl.text = _member_name(member)
-		if is_hero:
-			name_lbl.text += "  LV%d" % member.lv
+		name_lbl.text = ("> " if is_actor else "  ") + _member_name(member)
 		if not alive:
 			name_lbl.add_theme_color_override("font_color", Color(0.40, 0.32, 0.32))
 		elif is_actor:
 			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
-		elif is_hero:
-			name_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 1.0))
 		else:
-			name_lbl.add_theme_color_override("font_color", Color(0.62, 0.92, 0.74))
+			name_lbl.add_theme_color_override("font_color", Color(0.85, 0.86, 0.93))
 
 		var hp_bar: ProgressBar = slot["hp_bar"] as ProgressBar
 		hp_bar.max_value = member.max_hp
 		hp_bar.value     = member.hp
 		_apply_hp_bar(hp_bar, member.hp, member.max_hp)
-		hp_bar.visible = alive
-
 		var val_lbl: Label = slot["val_lbl"] as Label
-		if not alive:
-			val_lbl.text = "Down"
-			val_lbl.add_theme_color_override("font_color", Color(0.55, 0.38, 0.38))
-		else:
-			val_lbl.add_theme_color_override("font_color", hp_tint(member.hp, member.max_hp))
-			var mp_bar: ProgressBar = slot["mp_bar"] as ProgressBar
-			mp_bar.max_value = maxi(1, member.max_mp)
-			mp_bar.value     = member.mp
-			mp_bar.visible = alive
-			val_lbl.text = "%d/%d   %d MP" % [member.hp, member.max_hp, member.mp]
+		val_lbl.text = "%d/%d" % [member.hp, member.max_hp] if alive else "Down"
+		val_lbl.add_theme_color_override("font_color",
+				hp_tint(member.hp, member.max_hp) if alive else Color(0.55, 0.38, 0.38))
+		var mp_bar: ProgressBar = slot["mp_bar"] as ProgressBar
+		mp_bar.max_value = maxi(1, member.max_mp)
+		mp_bar.value     = member.mp
+		(slot["mp_lbl"] as Label).text = "%d/%d" % [member.mp, member.max_mp]
 
-		var ail: String = _format_statuses(member.active_statuses)
-		(slot["sts_lbl"] as RichTextLabel).text = \
-				"[color=#e6c74d]%s[/color]" % ail if ail != "" else ""
 		var stages: StageArrows = slot["stages"] as StageArrows
 		stages.visible = alive
 		stages.queue_redraw()
+		(slot["ails"] as Control).queue_redraw()
 
 
 # ── The menu strip ────────────────────────────────────────────────────────────
 
+# The three windows along the bottom: the commands, the list a command opens
+# (skills, items, targets, the talk), and the party.
 func _build_menu_panel(parent: Control) -> void:
-	var panel: PanelContainer = PanelContainer.new()
-	panel.size_flags_vertical = Control.SIZE_SHRINK_END
-	panel.custom_minimum_size = Vector2(0, MENU_STRIP_H)
-	parent.add_child(panel)
+	var strip: HBoxContainer = HBoxContainer.new()
+	strip.anchor_top = 1.0
+	strip.anchor_right = 1.0
+	strip.anchor_bottom = 1.0
+	strip.offset_top = -BOTTOM_STRIP_H + 4
+	strip.offset_left = 8
+	strip.offset_right = -8
+	strip.offset_bottom = -8
+	strip.add_theme_constant_override("separation", 8)
+	strip.z_index = 1000
+	parent.add_child(strip)
 
-	var m: MarginContainer = MarginContainer.new()
-	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(side, 8)
-	panel.add_child(m)
-
-	var col: VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
-	m.add_child(col)
-
+	# The commands as tabs along the top, and under them the open tab's list,
+	# its title and a way back. Attack is the first entry of Skills.
+	var list_win: PanelContainer = _window()
+	list_win.custom_minimum_size = Vector2(464, 0)
+	strip.add_child(list_win)
+	var list_col: VBoxContainer = VBoxContainer.new()
+	list_col.add_theme_constant_override("separation", 2)
+	list_win.add_child(list_col)
+	_action_bar = GridContainer.new()
+	_action_bar.columns = TABS.size()
+	_action_bar.add_theme_constant_override("h_separation", 2)
+	list_col.add_child(_action_bar)
+	for action: String in TABS:
+		var btn: Button = Button.new()
+		btn.text = action
+		btn.flat = false
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(_select_tab.bind(action))
+		_action_bar.add_child(btn)
+		# After add_child: Main sets every new Button's font as it enters.
+		btn.add_theme_font_size_override("font_size", 14)
+		_buttons[action] = btn
+	_paint_tabs()
+	var rule: ColorRect = ColorRect.new()
+	rule.color = Color(0.78, 0.80, 0.90, 0.35)
+	rule.custom_minimum_size = Vector2(0, 1)
+	list_col.add_child(rule)
 	var header: HBoxContainer = HBoxContainer.new()
-	header.add_theme_constant_override("separation", 10)
-	header.custom_minimum_size = Vector2(0, MENU_HEADER_H)
-	col.add_child(header)
-
+	header.add_theme_constant_override("separation", 6)
+	list_col.add_child(header)
 	_right_back_btn = Button.new()
-	_right_back_btn.text = "< Back"
-	_right_back_btn.custom_minimum_size = Vector2(72, 26)
+	_right_back_btn.text = "<"
+	_right_back_btn.flat = true
+	_right_back_btn.focus_mode = Control.FOCUS_NONE
+	_right_back_btn.custom_minimum_size = Vector2(26, 0)
 	_right_back_btn.pressed.connect(_on_back_pressed)
 	_right_back_btn.hide()
 	header.add_child(_right_back_btn)
-
-	# No "X's turn" banner: whoever is acting already steps forward with the
-	# caret over them, and a long name ("Skeleton Archer's turn") next to a long
-	# title pushed the header, and the whole battle with it, off the right edge.
-	# The title takes the rest of the row and trims itself instead of growing.
 	_right_title = Label.new()
-	_right_title.text = "\u2014"
-	_right_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_right_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right_title.text = ""
 	_right_title.clip_text = true
-	_right_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
+	_right_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right_title.add_theme_font_size_override("font_size", 11)
 	header.add_child(_right_title)
-
-	col.add_child(HSeparator.new())
-
-	var body: MarginContainer = MarginContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(body)
-
-	# Both rows live in the same cell, one visible at a time, and both divide
-	# the width into the same MENU_SLOTS columns.
-	_action_bar = _make_slot_row()
-	body.add_child(_action_bar)
-
-	for action: String in ["Skills", "Item", "Defend", "Talk", "Summon", "Flee"]:
-		var btn: Button = Button.new()
-		btn.icon                    = _action_icon(action)
-		btn.text                    = action
-		btn.icon_alignment          = HORIZONTAL_ALIGNMENT_CENTER
-		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		btn.add_theme_font_size_override("font_size", 11)
-		btn.add_theme_constant_override("h_separation", 0)
-		# Without this a Button's minimum width grows to fit its label, so
-		# SUMMON would claim a wider column than TALK and the six slots would
-		# stop being six equal slots.
-		btn.clip_text             = true
-		# No minimum of its own: Main's hook multiplies a Button's minimum
-		# height by 1.5, so any figure set here comes out half again taller
-		# than the submenu's slots and the bar grows when you back out of a
-		# submenu. It fills the body instead, exactly as a slot does.
-		btn.custom_minimum_size   = Vector2(0, 0)
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-		btn.pressed.connect(_on_action.bind(action))
-		_action_bar.add_child(btn)
-		_buttons[action] = btn
-
 	_sub_scroll = TouchScroll.new()
 	_sub_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sub_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	_sub_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_sub_scroll.hide()
-	body.add_child(_sub_scroll)
+	_sub_scroll.follow_focus = true
+	list_col.add_child(_sub_scroll)
 	_sub_bar = _make_slot_row()
 	_sub_scroll.add_child(_sub_bar)
-
 	for _i: int in range(MENU_SLOTS):
 		_add_sub_slot()
+
+	# The party, a row each.
+	var party_win: PanelContainer = _window()
+	party_win.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip.add_child(party_win)
+	_party_rows = VBoxContainer.new()
+	_party_rows.add_theme_constant_override("separation", 0)
+	_party_rows.alignment = BoxContainer.ALIGNMENT_CENTER
+	party_win.add_child(_party_rows)
+
+
+func _window() -> PanelContainer:
+	var w: PanelContainer = PanelContainer.new()
+	var st: StyleBoxFlat = _flat(Color(0.063, 0.07, 0.18), Color(0.78, 0.80, 0.90))
+	st.set_corner_radius_all(6)
+	st.set_border_width_all(2)
+	st.set_content_margin_all(8)
+	w.add_theme_stylebox_override("panel", st)
+	return w
+
+
+func _flat(bg: Color, edge: Color) -> StyleBoxFlat:
+	var st: StyleBoxFlat = StyleBoxFlat.new()
+	st.bg_color = bg
+	st.border_color = edge
+	return st
 
 
 # An empty slot still holds its ground, so a three-entry submenu is the same
@@ -2962,10 +3167,8 @@ func _build_menu_panel(parent: Control) -> void:
 # and dropped again on clear.
 func _add_sub_slot() -> MarginContainer:
 	var slot: MarginContainer = MarginContainer.new()
-	slot.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-	slot.size_flags_vertical     = Control.SIZE_EXPAND_FILL
-	slot.size_flags_stretch_ratio = 1.0
-	slot.custom_minimum_size = Vector2(0, MENU_SLOT_H)
+	slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slot.custom_minimum_size = Vector2(0, LIST_ROW_H)
 	_sub_bar.add_child(slot)
 	_sub_slots.append(slot)
 	return slot
@@ -2976,30 +3179,32 @@ func _add_sub_slot() -> MarginContainer:
 # than a landscape strip managed, and still one grid the eye reads in one go.
 func _make_slot_row() -> GridContainer:
 	var row: GridContainer = GridContainer.new()
-	row.columns = MENU_SLOTS / 2
+	row.columns = 1
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("h_separation", 6)
-	row.add_theme_constant_override("v_separation", 6)
+	row.add_theme_constant_override("v_separation", 2)
 	return row
 
 
+# The command window never goes away on a wide screen. "Hidden" means its
+# choices are out of reach while a list or a question has the turn.
 func _show_actions() -> void:
-	_action_bar.show()
-	_sub_scroll.hide()
+	_actions_locked = false
+	_apply_buttons()
 
 
 func _hide_actions() -> void:
-	_action_bar.hide()
-	_sub_scroll.show()
+	_actions_locked = true
+	_apply_buttons()
+	_focus_list.call_deferred()
 
 
 func _show_main_actions() -> void:
 	_show_actions()
 	_right_back_btn.hide()
-	_right_title.text = "\u2014"
-	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
+	_right_title.text = ""
 	_submenu_clear()
+	if _buttons_on:
+		_open_tab()
 
 
 # Detaches immediately rather than waiting on queue_free, so the very next
@@ -3049,72 +3254,45 @@ const ICON_PX: int = 16
 
 func _big_button(title: String, subtitle: String, disabled: bool,
 		icon: String = "", tint: Color = Color.TRANSPARENT) -> Button:
+	# One line in the list window: the element's picture, the name, and the
+	# detail (cost, reach, what it moves) to the right.
 	var btn: Button = Button.new()
-	btn.custom_minimum_size = Vector2(0, 0)
+	btn.flat = true
 	btn.disabled = disabled
-
-	var box: VBoxContainer = VBoxContainer.new()
-	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	box.alignment    = BoxContainer.ALIGNMENT_CENTER
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 1)
-	# Child labels do not inherit a Button's disabled tint, so dim them by hand.
-	box.modulate = Color(1, 1, 1, 0.38) if disabled else Color(1, 1, 1, 1)
-	btn.add_child(box)
-
+	var row: HBoxContainer = HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 4
+	row.offset_right = -4
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 6)
+	row.modulate = Color(1, 1, 1, 0.38) if disabled else Color(1, 1, 1, 1)
+	btn.add_child(row)
+	var path: String = ItemInfo.ICONS.get(icon, "") as String
+	if path != "":
+		var pic: TextureRect = TextureRect.new()
+		pic.texture = load(path) as Texture2D
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		pic.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(pic)
 	var title_lbl: Label = Label.new()
-	title_lbl.text                 = title
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
-	title_lbl.add_theme_font_size_override("font_size", 13)
-	title_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-	box.add_child(title_lbl)
-
-	if subtitle != "" or icon != "":
-		var sub_lbl: Label = Label.new()
-		sub_lbl.text                 = subtitle
-		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sub_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
-		sub_lbl.add_theme_font_size_override("font_size", 10)
-		sub_lbl.add_theme_color_override("font_color", Color(0.66, 0.68, 0.78))
-		sub_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-		var path: String = ItemInfo.ICONS.get(icon, "") as String
-		if tint.a > 0.0 and " " in subtitle:
-			# The stat it moves ("AGL-") in that stat's colour, the rest as usual.
-			var split: HBoxContainer = HBoxContainer.new()
-			split.alignment    = BoxContainer.ALIGNMENT_CENTER
-			split.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			split.add_theme_constant_override("separation", 0)
-			var head: Label = sub_lbl.duplicate() as Label
-			head.text          = subtitle.get_slice(" ", 0)
-			head.autowrap_mode = TextServer.AUTOWRAP_OFF
-			head.add_theme_color_override("font_color", tint)
-			sub_lbl.text          = subtitle.substr(head.text.length())
-			sub_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-			split.add_child(head)
-			split.add_child(sub_lbl)
-			box.add_child(split)
-		elif path == "":
-			box.add_child(sub_lbl)
-		else:
-			# The element's picture in front of the line, in place of its name.
-			var row: HBoxContainer = HBoxContainer.new()
-			row.alignment    = BoxContainer.ALIGNMENT_CENTER
-			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			row.add_theme_constant_override("separation", 4)
-			var pic: TextureRect = TextureRect.new()
-			pic.texture             = load(path) as Texture2D
-			pic.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-			pic.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			pic.texture_filter      = CanvasItem.TEXTURE_FILTER_NEAREST
-			pic.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
-			pic.mouse_filter        = Control.MOUSE_FILTER_IGNORE
-			row.add_child(pic)
-			sub_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-			if subtitle != "":
-				row.add_child(sub_lbl)
-			box.add_child(row)
-
+	title_lbl.text = title
+	title_lbl.clip_text = true
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	title_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(title_lbl)
+	if subtitle != "":
+		var sub: Label = Label.new()
+		sub.text = subtitle
+		sub.add_theme_font_size_override("font_size", 10)
+		sub.add_theme_color_override("font_color", tint if tint.a > 0.0 else Color(0.66, 0.70, 0.86))
+		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(sub)
 	return btn
 
 
@@ -3131,7 +3309,7 @@ func _on_skill_chosen(action: String) -> void:
 		# A single heal lands on one of the party, so it asks who; the All
 		# heals take everyone standing and ask nothing.
 		if kind == "heal" and not Spell.is_multi(spell_id):
-			_pick_ally(false, "Heal who?", _show_skills_submenu,
+			_pick_ally(false, "Heal who?", _show_main_actions,
 					func() -> void: await _commit_action(action))
 			return
 		if kind == "heal" or kind == "buff" or kind == "dispel" or Spell.is_multi(spell_id):
@@ -4224,3 +4402,73 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}
 
 
+
+
+# The backdrop behind the fight: the dungeon dimmed to a stage, a floor running
+# away to a horizon line in the first band's wire colour.
+class _Backdrop extends Control:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var w: float = size.x
+		var h: float = size.y
+		for i: int in 60:
+			var t: float = float(i) / 60.0
+			var a: float = 0.14 * (1.0 - t)
+			draw_rect(Rect2(0, h * t, w, h / 60.0 + 1.0),
+					Color(0.06 + a * 0.3, 0.05 + a * 0.25, 0.09 + a * 0.5))
+		var hz: float = h * 0.30
+		var floor_b: float = h - CombatScene.BOTTOM_STRIP_H
+		draw_rect(Rect2(0, hz, w, floor_b - hz), Color(0.067, 0.059, 0.094))
+		for k: int in range(1, 9):
+			var y: float = hz + (floor_b - hz) * pow(float(k) / 8.0, 1.6)
+			draw_line(Vector2(0, y), Vector2(w, y), Color(0.13, 0.125, 0.18), 1.0)
+		var x: float = -600.0
+		while x < w + 600.0:
+			draw_line(Vector2(w / 2.0 + (x - w / 2.0) * 0.25, hz), Vector2(x, floor_b),
+					Color(0.12, 0.12, 0.165), 1.0)
+			x += 70.0
+		draw_line(Vector2(0, hz), Vector2(w, hz), Color(0.24, 0.47, 0.55), 1.0)
+
+
+# A member's ailments, small, in its row of the party window: the same marks
+# its figure wears on the field (StatusOverlay), side by side.
+class _AilmentIcons extends Control:
+	var member: CharacterSheet
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		if member == null:
+			return
+		var x: float = 0.0
+		var y: float = (size.y - 18.0) / 2.0
+		for kind: String in [Status.POISON, Status.PARALYZED, Status.SILENCE, Status.BLIND]:
+			if not member.has_status(kind):
+				continue
+			_mark(kind, Vector2(x, y))
+			x += 24.0
+
+	func _mark(kind: String, o: Vector2) -> void:
+		match kind:
+			Status.POISON:
+				for b: Array in [[3, 12, 3.5], [9, 6, 2.8], [13, 13, 2.2]]:
+					var c: Vector2 = o + Vector2(float(b[0]), float(b[1]))
+					draw_circle(c, float(b[2]), StatusOverlay.POISON_FILL)
+					draw_arc(c, float(b[2]), 0.0, TAU, 12, StatusOverlay.POISON_EDGE, 1.0)
+			Status.PARALYZED:
+				draw_polyline(PackedVector2Array([o + Vector2(2, 1), o + Vector2(9, 7),
+						o + Vector2(4, 9), o + Vector2(13, 17)]), StatusOverlay.SPARK_GLOW, 2.0)
+			Status.SILENCE:
+				draw_rect(Rect2(o + Vector2(0, 2), Vector2(17, 11)), StatusOverlay.BUBBLE_FILL)
+				draw_rect(Rect2(o + Vector2(0, 2), Vector2(17, 11)), StatusOverlay.BUBBLE_EDGE, false, 1.0)
+				draw_colored_polygon(PackedVector2Array([o + Vector2(4, 13), o + Vector2(8, 13),
+						o + Vector2(3, 17)]), StatusOverlay.BUBBLE_FILL)
+				for k: int in 3:
+					draw_rect(Rect2(o + Vector2(4 + k * 4, 7), Vector2(2, 2)), StatusOverlay.BUBBLE_EDGE)
+			Status.BLIND:
+				draw_rect(Rect2(o + Vector2(0, 6), Vector2(7, 5)), StatusOverlay.SHADES)
+				draw_rect(Rect2(o + Vector2(9, 6), Vector2(7, 5)), StatusOverlay.SHADES)
+				draw_line(o + Vector2(7, 7), o + Vector2(9, 7), StatusOverlay.SHADES_SHINE, 1.0)
