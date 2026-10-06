@@ -1,3 +1,24 @@
+# The two builds
+
+One codebase makes two games (`scripts/core/build.gd`):
+
+- **Four Dragons Deep Portable**, the default: upright, for Android and the web.
+- **Four Dragons Deep** for Steam: on its side, for a mouse, keyboard or pad.
+  The Windows and Linux export presets carry the `steam` feature tag, which
+  switches `game/build/variant` and the canvas, window and name in
+  `project.godot`.
+
+To run either one without exporting:
+
+```
+tools/run.sh portable [godot args...]
+tools/run.sh steam    [godot args...]
+```
+
+Anything after the variant goes to Godot, so a test script or the playtester
+runs as `tools/run.sh steam --headless --script tools/playtester.gd`. For Steam
+it writes a temporary `override.cfg` (gitignored) and removes it afterwards.
+
 # Regenerating the bestiary
 
 `docs/bestiary.html` is generated, not hand-edited. Two steps, from the repo root:
