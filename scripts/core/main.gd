@@ -154,6 +154,7 @@ func _process(delta: float) -> void:
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
+	Controls.ensure()
 	Sfx.init()
 
 	# The world pane has to exist before anything three-dimensional, since
@@ -449,7 +450,6 @@ func _setup_minimap() -> void:
 		layer.add_child(_explore_hud)
 		layer.move_child(_explore_hud, 0)
 		_explore_hud.hold_map(minimap_ctrl)
-		_explore_hud.map_pressed.connect(_toggle_big_map)
 		_explore_hud.menu_pressed.connect(_on_menu_btn_pressed)
 		_explore_hud.act_pressed.connect(_act)
 		floor_label.visible = false
@@ -788,64 +788,34 @@ func _act() -> void:
 		_action_forward()
 
 
-func _toggle_big_map() -> void:
-	if _explore_hud == null or in_combat or menu_open or save_open or orb_open or chest_open:
-		return
-	_explore_hud.toggle_big_map()
-
-
-# A pad: the d-pad or the left stick walks and turns, A acts, Start is the
-# menu, Y the map, B backs out of the menu. Menus themselves run on the
-# engine's own ui_ actions, which already know a pad.
+# A pad's left stick walks and turns, one step per push. Every button, the
+# d-pad included, goes through the same actions as the keyboard (Controls),
+# so Options can rebind either.
 const STICK_DEAD: float = 0.6
 
 
-func _pad_input(event: InputEvent) -> void:
+func _stick_input(m: InputEventJoypadMotion) -> void:
+	if m.axis != JOY_AXIS_LEFT_X and m.axis != JOY_AXIS_LEFT_Y:
+		return
 	if _explore_hud != null:
 		_explore_hud.set_pad(true)
+	# The stick has to come back to the middle before it counts again, so
+	# holding it does not run you down a corridor.
+	var held: Vector2i = _stick_held
+	var v: int = 0
+	if m.axis_value > STICK_DEAD:
+		v = 1
+	elif m.axis_value < -STICK_DEAD:
+		v = -1
 	var dir: Vector2i = Vector2i.ZERO
-	if event is InputEventJoypadButton:
-		var b: InputEventJoypadButton = event as InputEventJoypadButton
-		if not b.pressed:
-			return
-		match b.button_index:
-			JOY_BUTTON_DPAD_UP: dir = Vector2i(0, -1)
-			JOY_BUTTON_DPAD_DOWN: dir = Vector2i(0, 1)
-			JOY_BUTTON_DPAD_LEFT: dir = Vector2i(-1, 0)
-			JOY_BUTTON_DPAD_RIGHT: dir = Vector2i(1, 0)
-			JOY_BUTTON_START:
-				_on_menu_btn_pressed()
-				return
-			JOY_BUTTON_B:
-				if menu_open and not in_combat:
-					_close_menu()
-				return
-			JOY_BUTTON_Y:
-				_toggle_big_map()
-				return
-			JOY_BUTTON_A:
-				_act()
-				return
-	elif event is InputEventJoypadMotion:
-		var m: InputEventJoypadMotion = event as InputEventJoypadMotion
-		if m.axis != JOY_AXIS_LEFT_X and m.axis != JOY_AXIS_LEFT_Y:
-			return
-		# One step per push: the stick has to come back to the middle before
-		# it counts again, so holding it does not run you down a corridor.
-		var held: Vector2i = _stick_held
-		var v: int = 0
-		if m.axis_value > STICK_DEAD:
-			v = 1
-		elif m.axis_value < -STICK_DEAD:
-			v = -1
-		if m.axis == JOY_AXIS_LEFT_X:
-			_stick_held.x = v
-			if v != 0 and held.x == 0:
-				dir = Vector2i(v, 0)
-		else:
-			_stick_held.y = v
-			if v != 0 and held.y == 0:
-				dir = Vector2i(0, v)
+	if m.axis == JOY_AXIS_LEFT_X:
+		_stick_held.x = v
+		if v != 0 and held.x == 0:
+			dir = Vector2i(v, 0)
+	else:
+		_stick_held.y = v
+		if v != 0 and held.y == 0:
+			dir = Vector2i(0, v)
 	if dir == Vector2i.ZERO or in_combat or menu_open or save_open or orb_open or chest_open:
 		return
 	if dir.y < 0:
@@ -872,18 +842,20 @@ func _input(event: InputEvent) -> void:
 			_swipe_active = false
 		return
 
-	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
-		if not _fading:
-			_pad_input(event)
+	if event is InputEventJoypadMotion:
+		_stick_input(event as InputEventJoypadMotion)
 		return
 
-	if not (event is InputEventKey and event.pressed):
+	var is_key: bool = event is InputEventKey and event.pressed
+	var is_pad: bool = event is InputEventJoypadButton and event.pressed
+	if not (is_key or is_pad):
 		return
 	if _explore_hud != null:
-		_explore_hud.set_pad(false)
+		_explore_hud.set_pad(is_pad)
+	var key: int = (event as InputEventKey).keycode if is_key else KEY_NONE
 
 	# Q and N are cheats for testing; a release build has neither.
-	if OS.is_debug_build() and event.keycode == KEY_Q and not in_combat:
+	if OS.is_debug_build() and key == KEY_Q and not in_combat:
 		_encounters_enabled = not _encounters_enabled
 		_update_encounter_debug_label()
 		return
@@ -891,7 +863,7 @@ func _input(event: InputEvent) -> void:
 	# N drops a floor where you stand. Debug, alongside Q and F9, and it goes
 	# through _descend so a skipped floor arrives in exactly the state a walked
 	# one does — key, boss flag, fog and minimap all reset the same way.
-	if OS.is_debug_build() and event.keycode == KEY_N and not in_combat and not save_open and not orb_open \
+	if OS.is_debug_build() and key == KEY_N and not in_combat and not save_open and not orb_open \
 			and not chest_open and not menu_open:
 		if floor_num >= Level.FLOOR_COUNT:
 			_show_hud_popup("[DEBUG] Floor %d is the last one." % floor_num,
@@ -902,53 +874,43 @@ func _input(event: InputEvent) -> void:
 					Color(0.55, 0.85, 1.0))
 		return
 
-	if event.keycode == KEY_F9 and not in_combat and not save_open and not orb_open \
+	if key == KEY_F9 and not in_combat and not save_open and not orb_open \
 			and not chest_open:
 		if menu_open:
 			_close_menu()
 		_open_load_menu()
 		return
 
-	# ESC: close save picker → close menu → open menu. Blocked during combat.
-	if event.keycode == KEY_ESCAPE:
+	# × (Escape is always one): close the save picker, then the menu; with
+	# nothing open, open the menu. The menu's and the orb's own windows take
+	# it first, a step at a time (SidePanel). Blocked during combat.
+	if event.is_action_pressed("no"):
 		if not in_combat:
 			if save_open:
 				_close_save_layer()
 			elif menu_open:
 				_close_menu()
-			else:
+			elif not (orb_open or chest_open):
 				_open_menu()
-		return
-
-	# Tab closes the menu it opened.
-	if _explore_hud != null and event.keycode == KEY_TAB and menu_open and not in_combat:
-		_close_menu()
 		return
 
 	if in_combat or menu_open or save_open:
 		return
 
-	if _explore_hud != null and not orb_open and not chest_open:
-		match event.keycode:
-			KEY_M:
-				_toggle_big_map()
-				return
-			KEY_TAB:
-				_on_menu_btn_pressed()
-				return
-			KEY_E, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
-				_act()
-				return
+	# ○: whatever is in front of you, or the orb underfoot.
+	if _explore_hud != null and not orb_open and not chest_open \
+			and event.is_action_pressed("yes"):
+		_act()
+		return
 
-	match event.keycode:
-		KEY_UP, KEY_W:
-			_action_forward()
-		KEY_DOWN, KEY_S:
-			_action_back()
-		KEY_LEFT, KEY_A:
-			_action_turn_left()
-		KEY_RIGHT, KEY_D:
-			_action_turn_right()
+	if event.is_action_pressed("up", true):
+		_action_forward()
+	elif event.is_action_pressed("down", true):
+		_action_back()
+	elif event.is_action_pressed("left", true):
+		_action_turn_left()
+	elif event.is_action_pressed("right", true):
+		_action_turn_right()
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────
@@ -1912,6 +1874,9 @@ func _open_menu() -> void:
 func _close_menu() -> void:
 	if is_instance_valid(menu_layer):
 		_side_close(menu_layer)
+	# Options may have rebound a key while the menu was up.
+	if _explore_hud != null:
+		_explore_hud.repaint_keys()
 	hud_layer.visible = true
 	menu_open = false
 
@@ -1938,11 +1903,8 @@ func _side_width() -> float:
 func _side_parent(layer: CanvasLayer) -> Node:
 	if _explore_hud == null:
 		return layer
-	# The map stays up, pushed aside rather than hidden with the rest, and at
-	# its column's size.
+	# The map stays up, pushed aside rather than hidden with the rest.
 	hud_layer.visible = true
-	if _explore_hud.is_map_big():
-		_explore_hud.toggle_big_map()
 	# A panel still sliding out goes now, so two never share the slide.
 	for old: Node in layer.get_children():
 		old.queue_free()

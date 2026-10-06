@@ -106,6 +106,8 @@ static func _ensure_loaded() -> void:
 
 static func _save() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
+	# Loaded first: the same file keeps the button mapping (Controls).
+	cfg.load(PATH)
 	cfg.set_value("controls", "invert_turn", _invert_turn)
 	cfg.set_value("controls", "invert_move", _invert_move)
 	cfg.set_value("audio", "music", _music_volume)

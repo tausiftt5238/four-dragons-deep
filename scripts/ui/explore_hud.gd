@@ -29,7 +29,6 @@ const MP_BLUE: Color = Color(0.27, 0.47, 0.92)
 const WIN_BG: Color = Color(0.063, 0.07, 0.18)
 const WIN_EDGE: Color = Color(0.78, 0.80, 0.90)
 
-signal map_pressed
 signal menu_pressed
 signal act_pressed
 
@@ -54,7 +53,6 @@ var _key_pic: KeyIcon
 var _map_holder: Control
 var _hint_btns: Dictionary = {}
 var _pad: bool = false
-var _map_big: bool = false
 # The map's column (its dark and its window) and everything over the view,
 # kept as two groups so the menu and the orb can push the one and fade the
 # other (push_map).
@@ -262,7 +260,7 @@ func _build_map() -> void:
 	var hints: HBoxContainer = HBoxContainer.new()
 	hints.add_theme_constant_override("separation", 6)
 	col.add_child(hints)
-	for h: Array in [["map", map_pressed], ["menu", menu_pressed], ["act", act_pressed]]:
+	for h: Array in [["yes", act_pressed], ["no", menu_pressed]]:
 		var b: Button = Button.new()
 		b.flat = true
 		b.focus_mode = Control.FOCUS_NONE
@@ -274,20 +272,13 @@ func _build_map() -> void:
 	_paint_hints()
 
 
-# The map's window: its column, or the whole screen while M holds it open.
+# The map's window, down its column.
 func _place_map() -> void:
-	_map_win.anchor_left = 0.0
-	_map_win.anchor_top = 0.0
 	_map_win.anchor_bottom = 1.0
 	_map_win.offset_left = 8
 	_map_win.offset_top = 8
 	_map_win.offset_bottom = -8
-	if _map_big:
-		_map_win.anchor_right = 1.0
-		_map_win.offset_right = -8
-	else:
-		_map_win.anchor_right = 0.0
-		_map_win.offset_right = map_w - 8
+	_map_win.offset_right = map_w - 8
 
 
 # The minimap moves in and fills the space between the title and the legend.
@@ -296,15 +287,6 @@ func hold_map(minimap: Control) -> void:
 		minimap.get_parent().remove_child(minimap)
 	_map_holder.add_child(minimap)
 	minimap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-
-func toggle_big_map() -> void:
-	_map_big = not _map_big
-	_place_map()
-
-
-func is_map_big() -> bool:
-	return _map_big
 
 
 # ── Keeping it current ───────────────────────────────────────────────────────
@@ -347,7 +329,7 @@ func _refresh_prompt() -> void:
 	_prompt.visible = what != ""
 	if what == "":
 		return
-	_prompt_lbl.text = "%s  %s" % [_key_name("act"), what]
+	_prompt_lbl.text = "%s  %s" % [_key_name("yes"), what]
 
 
 static func _thousands(n: int) -> String:
@@ -483,13 +465,19 @@ func _bar_row(col: VBoxContainer, color: Color) -> Array:
 
 # ── Key names: the keyboard's or the pad's, whichever was touched last ───────
 
-const _KEYS: Dictionary = {map = "M", menu = "Tab", act = "E"}
-const _PAD: Dictionary = {map = "Y", menu = "Start", act = "A"}
-const _WORDS: Dictionary = {map = "Map", menu = "Menu", act = "Act"}
+const _WORDS: Dictionary = {yes = "Act", no = "Menu"}
 
 
+# Whatever the action is bound to now (Controls), so a rebinding shows here.
 func _key_name(what: String) -> String:
-	return "[%s]" % ((_PAD if _pad else _KEYS)[what] as String)
+	return "[%s]" % (Controls.pad_name(Controls.pad_of(what)) if _pad
+			else Controls.key_name(Controls.key_of(what)))
+
+
+# Options can rebind while the HUD is up behind the menu.
+func repaint_keys() -> void:
+	_paint_hints()
+	_refresh_prompt()
 
 
 func _paint_hints() -> void:
