@@ -55,6 +55,11 @@ var _map_holder: Control
 var _hint_btns: Dictionary = {}
 var _pad: bool = false
 var _map_big: bool = false
+# The map's column (its dark and its window) and everything over the view,
+# kept as two groups so the menu and the orb can push the one and fade the
+# other (push_map).
+var _map_col: Control
+var _view_bits: Control
 
 
 func _init(owner_main: Main, column_w: float) -> void:
@@ -64,12 +69,14 @@ func _init(owner_main: Main, column_w: float) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# The map column's own dark, so the engine's grey never shows round the
 	# window.
+	_view_bits = _group()
+	_map_col = _group()
 	var column: ColorRect = ColorRect.new()
 	column.color = Color(0.04, 0.03, 0.07)
 	column.anchor_bottom = 1.0
 	column.offset_right = map_w
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(column)
+	_map_col.add_child(column)
 	_build_strip()
 	_build_party()
 	_build_prompt()
@@ -81,6 +88,22 @@ func _init(owner_main: Main, column_w: float) -> void:
 func _ready() -> void:
 	for b: Button in _hint_btns.values():
 		b.add_theme_font_size_override("font_size", SMALL)
+
+
+func _group() -> Control:
+	var g: Control = Control.new()
+	g.set_anchors_preset(Control.PRESET_FULL_RECT)
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(g)
+	return g
+
+
+# How far a side panel (the menu, the orb) has come in, 0 to 1: the map's
+# column is pushed right by `by` pixels at 1, staying against the panel's
+# edge, and the view's strip, party and prompt fade under it.
+func push_map(t: float, by: float) -> void:
+	_map_col.position.x = by * t
+	_view_bits.modulate.a = 1.0 - t
 
 
 func _exit_tree() -> void:
@@ -123,7 +146,7 @@ func _build_strip() -> void:
 	strip.offset_left = map_w
 	strip.offset_bottom = STRIP_H
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(strip)
+	_view_bits.add_child(strip)
 
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
@@ -167,7 +190,7 @@ func _build_party() -> void:
 	_party_box.offset_bottom = -8
 	_party_box.add_theme_constant_override("separation", int(GAP))
 	_party_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_party_box)
+	_view_bits.add_child(_party_box)
 
 
 func _build_prompt() -> void:
@@ -183,7 +206,7 @@ func _build_prompt() -> void:
 	_prompt.offset_top = _prompt.offset_bottom - 34
 	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_prompt.visible = false
-	add_child(_prompt)
+	_view_bits.add_child(_prompt)
 	_prompt_lbl = _label("", TEXT, PALE)
 	_prompt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_child(_prompt_lbl)
@@ -192,7 +215,7 @@ func _build_prompt() -> void:
 func _build_map() -> void:
 	_map_win = PanelContainer.new()
 	_map_win.add_theme_stylebox_override("panel", window_box())
-	add_child(_map_win)
+	_map_col.add_child(_map_win)
 	_place_map()
 	var col: VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)

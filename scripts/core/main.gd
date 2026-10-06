@@ -1906,18 +1906,83 @@ func _open_menu() -> void:
 	menu.title_requested.connect(func():
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
-	menu_layer.add_child(menu)
+	_side_parent(menu_layer).add_child(menu)
 
 
 func _close_menu() -> void:
 	if is_instance_valid(menu_layer):
-		for child: Node in menu_layer.get_children():
-			child.queue_free()
+		_side_close(menu_layer)
 	hud_layer.visible = true
 	menu_open = false
 
 
 
+
+
+# ── The side panel: the menu and the orb on a wide screen ────────────────────
+#
+# They come in from the left over the map's place and push the map ahead of
+# them to the right edge, the view fading under the two; closing runs it back.
+# On a phone they are the whole screen, as they always were.
+
+const SIDE_SLIDE: float = 0.32
+var _side_tween: Tween
+
+
+func _side_width() -> float:
+	return get_viewport().get_visible_rect().size.x - float(Layout.MAP_PANE_W)
+
+
+# What a panel is added to: the layer itself on a phone, or a holder that
+# slides in on a wide screen.
+func _side_parent(layer: CanvasLayer) -> Node:
+	if _explore_hud == null:
+		return layer
+	# The map stays up, pushed aside rather than hidden with the rest, and at
+	# its column's size.
+	hud_layer.visible = true
+	if _explore_hud.is_map_big():
+		_explore_hud.toggle_big_map()
+	# A panel still sliding out goes now, so two never share the slide.
+	for old: Node in layer.get_children():
+		old.queue_free()
+	var w: float = _side_width()
+	var holder: Control = Control.new()
+	holder.anchor_bottom = 1.0
+	holder.offset_right = w
+	holder.position.x = -w
+	layer.add_child(holder)
+	_slide_side(holder, 0.0, 1.0, false)
+	return holder
+
+
+func _side_close(layer: CanvasLayer, instant: bool = false) -> void:
+	for child: Node in layer.get_children():
+		if _explore_hud == null or instant or not (child is Control):
+			child.queue_free()
+			continue
+		# Out of reach the moment it starts to go, so a key pressed during
+		# the slide cannot land on it.
+		child.process_mode = Node.PROCESS_MODE_DISABLED
+		_slide_side(child as Control, 1.0, 0.0, true)
+	if instant and _explore_hud != null:
+		_explore_hud.push_map(0.0, _side_width())
+
+
+func _slide_side(holder: Control, from: float, to: float, free_after: bool) -> void:
+	if is_instance_valid(_side_tween):
+		_side_tween.kill()
+	var w: float = _side_width()
+	var step: Callable = func(t: float) -> void:
+		if is_instance_valid(holder):
+			holder.position.x = -w * (1.0 - t)
+		_explore_hud.push_map(t, w)
+	step.call(from)
+	_side_tween = create_tween()
+	_side_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT if to > from else Tween.EASE_IN_OUT)
+	_side_tween.tween_method(step, from, to, SIDE_SLIDE)
+	if free_after:
+		_side_tween.tween_callback(holder.queue_free)
 
 # ── Save orbs ────────────────────────────────────────────────────────────────
 
@@ -2006,7 +2071,7 @@ func _open_orb(tab: String = "rest") -> void:
 		_start_gauntlet(names)
 	)
 	ui.gacha_exp_won.connect(_gacha_exp.bind(ui))
-	orb_layer.add_child(ui)
+	_side_parent(orb_layer).add_child(ui)
 
 
 # Experience off the orb's slot machine, paid the way a fight pays it: the hero
@@ -2042,8 +2107,9 @@ func _gacha_exp(amount: int, orb: OrbUI) -> void:
 
 func _close_orb() -> void:
 	if is_instance_valid(orb_layer):
-		for child: Node in orb_layer.get_children():
-			child.queue_free()
+		# Closing only to come straight back (the slot machine's level-up
+		# screens) does not play the slide out.
+		_side_close(orb_layer, _reopen_orb_tab != "")
 	hud_layer.visible = true
 	orb_open = false
 	if _reopen_orb_tab == "":
