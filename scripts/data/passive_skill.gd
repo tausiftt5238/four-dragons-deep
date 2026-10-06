@@ -16,13 +16,3 @@ static func get_data(skill_id: String) -> Dictionary:
 	return DATA.get(skill_id, {name=skill_id, desc=""})
 
 
-static func random_pick(count: int, exclude: Array[String] = []) -> Array[String]:
-	var pool: Array[String] = []
-	for k: String in DATA.keys():
-		if k not in exclude:
-			pool.append(k)
-	pool.shuffle()
-	var result: Array[String] = []
-	for i: int in range(min(count, pool.size())):
-		result.append(pool[i])
-	return result

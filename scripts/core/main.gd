@@ -185,7 +185,7 @@ func _ready() -> void:
 
 	# Load the starting level. _sync_player is called inside here.
 	_load_level("res://scenes/map.tscn", true)
-	floor_label.text = Abyss.floor_title(floor_num)
+	_show_floor_title()
 
 	if abyss_intent == "continue":
 		call_deferred("_do_load", SaveSystem.ABYSS_SLOT, false)
@@ -312,8 +312,9 @@ func _setup_player_nodes() -> void:
 	cam_rig.add_child(cam)
 
 
-# Creates the CanvasLayer and Minimap control, anchored to the top-right corner.
-# The minimap size is recalculated whenever a new level is loaded via _resize_minimap().
+# The HUD over the dungeon: the map, the notice band and the debug line on
+# both builds, then the build's own pieces (_setup_phone_hud or ExploreHUD).
+# The map's size is set per level by _resize_minimap.
 func _setup_minimap() -> void:
 	hud_layer = CanvasLayer.new()
 	hud_layer.layer = 10  # Renders above all 3D content
@@ -325,70 +326,71 @@ func _setup_minimap() -> void:
 	minimap_ctrl.whole_floor = true
 	layer.add_child(minimap_ctrl)
 
-	floor_label = Label.new()
-	floor_label.text = "Floor 1"
-	floor_label.anchor_left   = 1.0 if Build.steam() else 0.0
-	floor_label.anchor_right  = 1.0
-	if Build.steam():
-		floor_label.offset_left = -Layout.MAP_PANE_W
-	floor_label.anchor_top    = 0.0
-	floor_label.anchor_bottom = 0.0
-	floor_label.offset_top    = 10.0
-	floor_label.offset_bottom = 40.0
-	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	layer.add_child(floor_label)
-
-	# The top of the 3D view, just under the map, on a dark band. Up there it
-	# lies over the ceiling: at the bottom it sat on the floor, where a hazard's
-	# glow made the text unreadable, and at the very top it covered the first
-	# rows of the map — and the player's own marker with them.
+	# A notice (a trap, the key, the door) on a dark band. On a phone it sits
+	# at the top of the 3D view, just under the map: at the bottom it sat on
+	# the floor, where a hazard's glow made it unreadable. On a wide screen it
+	# is a window under the top strip.
 	_hud_popup = Label.new()
-	_hud_popup.anchor_left   = 0.0
 	_hud_popup.anchor_right  = 1.0
-	_hud_popup.anchor_top    = 0.0
-	_hud_popup.anchor_bottom = 0.0
-	_hud_popup.offset_left   = 12.0
-	_hud_popup.offset_right  = -12.0
-	_hud_popup.offset_top    = (0.0 if Build.steam() else float(MAP_PANE_H)) + 12.0
-	_hud_popup.offset_bottom = (0.0 if Build.steam() else float(MAP_PANE_H)) + 52.0
-	if Build.steam():
-		_hud_popup.offset_right = -Layout.MAP_PANE_W - 12.0
 	_hud_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud_popup.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	_hud_popup.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
-	var band: StyleBoxFlat = StyleBoxFlat.new()
-	band.bg_color = Color(0.02, 0.02, 0.04, 0.88)
-	band.set_corner_radius_all(4)
-	band.content_margin_left  = 8.0
-	band.content_margin_right = 8.0
-	_hud_popup.add_theme_stylebox_override("normal", band)
 	_hud_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
 	_hud_popup.modulate.a = 0.0
 	if Build.steam():
-		# Under the top strip, in a window like the fight's.
 		_hud_popup.offset_left = Layout.MAP_PANE_W + 60.0
 		_hud_popup.offset_right = -60.0
 		_hud_popup.offset_top = ExploreHUD.STRIP_H + 8.0
 		_hud_popup.offset_bottom = ExploreHUD.STRIP_H + 44.0
 		_hud_popup.add_theme_stylebox_override("normal", ExploreHUD.window_box(0.92))
+	else:
+		_hud_popup.offset_left   = 12.0
+		_hud_popup.offset_right  = -12.0
+		_hud_popup.offset_top    = MAP_PANE_H + 12.0
+		_hud_popup.offset_bottom = MAP_PANE_H + 52.0
+		var band: StyleBoxFlat = StyleBoxFlat.new()
+		band.bg_color = Color(0.02, 0.02, 0.04, 0.88)
+		band.set_corner_radius_all(4)
+		band.content_margin_left  = 8.0
+		band.content_margin_right = 8.0
+		_hud_popup.add_theme_stylebox_override("normal", band)
 	layer.add_child(_hud_popup)
 
+	# Under the popup band.
 	_encounter_debug_lbl = Label.new()
-	_encounter_debug_lbl.anchor_left   = 0.0
-	_encounter_debug_lbl.anchor_right  = 0.0
-	_encounter_debug_lbl.anchor_top    = 0.0
-	_encounter_debug_lbl.anchor_bottom = 0.0
 	_encounter_debug_lbl.offset_left   = 10.0
 	_encounter_debug_lbl.offset_right  = 260.0
-	_encounter_debug_lbl.offset_top    = 10.0
-	_encounter_debug_lbl.offset_bottom = 34.0
+	_encounter_debug_lbl.offset_top    = 90.0
+	_encounter_debug_lbl.offset_bottom = 114.0
 	_encounter_debug_lbl.add_theme_font_size_override("font_size", 13)
 	_update_encounter_debug_label()
 	layer.add_child(_encounter_debug_lbl)
 
-	# Bottom right, over the dungeon view. It used to sit in the top-left
-	# corner, which the floor map now owns — and the bottom of an upright
-	# screen is where a thumb already is.
+	if Build.steam():
+		# The strip, the party and the map in windows, the fight's own.
+		_explore_hud = ExploreHUD.new(self, float(Layout.MAP_PANE_W))
+		layer.add_child(_explore_hud)
+		layer.move_child(_explore_hud, 0)
+		_explore_hud.hold_map(minimap_ctrl)
+		_explore_hud.menu_pressed.connect(_on_menu_btn_pressed)
+		_explore_hud.act_pressed.connect(_act)
+	else:
+		_setup_phone_hud(layer)
+
+
+# The phone's pieces: the floor's name over the map, Menu and Orb buttons
+# where a thumb is, and the key while it is carried.
+func _setup_phone_hud(layer: CanvasLayer) -> void:
+	floor_label = Label.new()
+	floor_label.text = "Floor 1"
+	floor_label.anchor_right  = 1.0
+	floor_label.offset_top    = 10.0
+	floor_label.offset_bottom = 40.0
+	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	layer.add_child(floor_label)
+
+	# Bottom right, over the dungeon view: the bottom of an upright screen is
+	# where a thumb already is.
 	var menu_btn: Button = Button.new()
 	menu_btn.text          = "Menu"
 	menu_btn.anchor_left   = 1.0
@@ -404,10 +406,10 @@ func _setup_minimap() -> void:
 
 	# Directly above Menu, and only while the player is standing on an orb.
 	# Stepping onto the tile opens the orb once; without this, leaving that
-	# panel meant walking off the tile and back on to reach it again.
+	# panel meant walking off the tile and back on to reach it again. "Orb",
+	# not "Save": the panel rests, shops, binds and sells, and saving is one
+	# row inside it.
 	_orb_btn = Button.new()
-	# "Orb", not "Save": the panel it opens rests, shops, binds and sells, and
-	# saving is one row inside it.
 	_orb_btn.text          = "Orb"
 	_orb_btn.anchor_left   = 1.0
 	_orb_btn.anchor_right  = 1.0
@@ -428,34 +430,19 @@ func _setup_minimap() -> void:
 	_key_icon = KeyIcon.new()
 	_key_icon.anchor_left   = 1.0
 	_key_icon.anchor_right  = 1.0
-	_key_icon.anchor_top    = 0.0
-	_key_icon.anchor_bottom = 0.0
-	var key_x: float = -float(Layout.MAP_PANE_W) if Build.steam() else 0.0
-	_key_icon.offset_left   = key_x - 62.0
-	_key_icon.offset_right  = key_x - 14.0
-	_key_icon.offset_top    = float(MAP_PANE_H) + 12.0
-	_key_icon.offset_bottom = _key_icon.offset_top + 48.0
+	_key_icon.offset_left   = -62.0
+	_key_icon.offset_right  = -14.0
+	_key_icon.offset_top    = MAP_PANE_H + 12.0
+	_key_icon.offset_bottom = MAP_PANE_H + 60.0
 	_key_icon.visible       = false
 	layer.add_child(_key_icon)
 
-	# Under the popup band, which now owns the top of the map.
-	_encounter_debug_lbl.offset_top    = 90.0
-	_encounter_debug_lbl.offset_bottom = 114.0
 
-	# A wide screen gets the HUD in windows instead: the strip, the party, the
-	# map in its own window. The phone's buttons and labels stay built (the
-	# rest of Main writes to them) and simply stay out of sight.
-	if Build.steam():
-		_explore_hud = ExploreHUD.new(self, float(Layout.MAP_PANE_W))
-		layer.add_child(_explore_hud)
-		layer.move_child(_explore_hud, 0)
-		_explore_hud.hold_map(minimap_ctrl)
-		_explore_hud.menu_pressed.connect(_on_menu_btn_pressed)
-		_explore_hud.act_pressed.connect(_act)
-		floor_label.visible = false
-		menu_btn.visible = false
-		_orb_btn.visible = false
-		_key_icon.visible = false
+# The floor's name, where this build shows it (the HUD reads it itself on a
+# wide screen).
+func _show_floor_title() -> void:
+	if floor_label != null:
+		floor_label.text = Abyss.floor_title(floor_num)
 
 
 # The map is drawn in the dungeon's own colours: wall faces lifted enough to
@@ -469,33 +456,13 @@ func _sync_minimap_palette() -> void:
 	minimap_ctrl.border_color = current_level.wire_color
 
 
-# Updates the minimap Control's anchors and offsets to fit the current maze size.
-# Called after every level load because maps can differ in dimensions.
-# The map owns the upper pane outright: full width, from under the floor
-# label down to where the dungeon view begins.
+# The phone's map owns the band across the top, under the floor's name, down
+# to where the dungeon view begins. On a wide screen the HUD holds it.
 func _resize_minimap() -> void:
-	const TOP: float = 40.0
 	if _explore_hud != null:
 		return
-	if Build.steam():
-		# The column down the right, under the floor label, clear of the
-		# Menu and Orb buttons at its foot.
-		minimap_ctrl.anchor_left   = 1.0
-		minimap_ctrl.anchor_right  = 1.0
-		minimap_ctrl.anchor_top    = 0.0
-		minimap_ctrl.anchor_bottom = 1.0
-		minimap_ctrl.offset_left   = -float(Layout.MAP_PANE_W)
-		minimap_ctrl.offset_right  = 0.0
-		minimap_ctrl.offset_top    = TOP
-		minimap_ctrl.offset_bottom = -90.0
-		return
-	minimap_ctrl.anchor_left   = 0.0
 	minimap_ctrl.anchor_right  = 1.0
-	minimap_ctrl.anchor_top    = 0.0
-	minimap_ctrl.anchor_bottom = 0.0
-	minimap_ctrl.offset_left   = 0.0
-	minimap_ctrl.offset_right  = 0.0
-	minimap_ctrl.offset_top    = TOP
+	minimap_ctrl.offset_top    = 40.0
 	minimap_ctrl.offset_bottom = float(MAP_PANE_H)
 
 
@@ -527,17 +494,17 @@ func _sync_player() -> void:
 	minimap_ctrl.player_pos    = player_pos
 	minimap_ctrl.player_facing = player_facing
 	minimap_ctrl.queue_redraw()
-	_refresh_orb_btn()
+	_refresh_hud()
 
 
-# The orb shortcut follows the player's feet, so every move re-asks.
-func _refresh_orb_btn() -> void:
-	if not is_instance_valid(_orb_btn):
-		return
-	_orb_btn.visible = _explore_hud == null and is_instance_valid(current_level) \
-			and player_pos in current_level.orb_cells
+# Every move re-asks: the wide HUD (the prompt, the facing) and the phone's Orb
+# shortcut both follow the player's feet.
+func _refresh_hud() -> void:
 	if _explore_hud != null:
 		_explore_hud.refresh()
+	elif is_instance_valid(_orb_btn):
+		_orb_btn.visible = is_instance_valid(current_level) \
+				and player_pos in current_level.orb_cells
 
 
 # Snaps camera rotation to the current facing with no animation. Used on level load.
@@ -609,7 +576,7 @@ func _descend() -> void:
 	var fade: ScreenFade = ScreenFade.cover(get_tree(), Abyss.floor_title(floor_num + 1))
 	await fade.covered
 	floor_num += 1
-	floor_label.text = Abyss.floor_title(floor_num)
+	_show_floor_title()
 	if Abyss.active:
 		Abyss.note_depth(Abyss.depth_of(floor_num))
 	else:
@@ -960,7 +927,7 @@ func _sync_door() -> void:
 	if is_instance_valid(dungeon):
 		dungeon.set_locked(not _door_open)
 	if _key_icon != null:
-		_key_icon.visible = _has_key and not _door_open and _explore_hud == null
+		_key_icon.visible = _has_key and not _door_open
 
 
 # Walking onto the loose key takes it. No prompt: there is one thing to do with
@@ -1166,10 +1133,6 @@ func _engage_roamer_here() -> bool:
 
 	_launch_combat(Enemy.make_group(floor_num))
 	return true
-
-
-func _start_combat() -> void:
-	_launch_combat(Enemy.make_group(floor_num))
 
 
 # A practice fight bought at an orb. Built at this floor's level, and marked so
@@ -2235,7 +2198,7 @@ func _restore_save(data: Dictionary) -> void:
 	floor_num = int(data["floor_num"])
 	play_time = float(data.get("play_time", 0.0))
 	Abyss.active = bool(data.get("abyss", false))
-	floor_label.text = Abyss.floor_title(floor_num)
+	_show_floor_title()
 	Music.play(Music.dungeon_track(floor_num))
 
 	if is_instance_valid(dungeon):

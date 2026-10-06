@@ -899,16 +899,6 @@ static func make_warden(floor_num: int, which: int = -1) -> Enemy:
 	return e
 
 
-# Everything still waiting on a sprite, so the art queue can be read off the
-# data rather than kept in somebody's head.
-static func needing_art() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for t: Dictionary in all_templates():
-		if bool(t.get("needs_art", false)):
-			out.append(t)
-	return out
-
-
 # Where a template is actually met, worked out from the same rules that place
 # it rather than from its min_floor/max_floor, which nothing spawns from any
 # more: the pack draws by tier, and wardens and bosses stand on fixed floors.

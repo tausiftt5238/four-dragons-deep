@@ -115,19 +115,6 @@ static func delta_markup(item: Dictionary, player: PlayerCharacter) -> String:
 	return "  ".join(parts)
 
 
-static func bonus_string(item: Dictionary) -> String:
-	var parts: Array[String] = []
-	if item.get("str_bonus", 0) != 0: parts.append("STR%+d" % item["str_bonus"])
-	if item.get("def_bonus", 0) != 0: parts.append("DEF%+d" % item["def_bonus"])
-	if item.get("mag_bonus", 0) != 0: parts.append("MAG%+d" % item["mag_bonus"])
-	if item.get("agl_bonus", 0) != 0: parts.append("AGL%+d" % item["agl_bonus"])
-	if item.get("agl_pen",   0) != 0: parts.append("AGL%+d" % item["agl_pen"])
-	if item.get("luk_bonus", 0) != 0: parts.append("LUK%+d" % item["luk_bonus"])
-	var el: String = item.get("attack_element", "") as String
-	if el != "": parts.append(Affinity.element_name(el).to_upper())
-	return "  " + " ".join(parts) if not parts.is_empty() else ""
-
-
 # The ailments a ward trinket keeps off, named; "" for anything else.
 static func wards_text(item: Dictionary) -> String:
 	var w: Array = item.get("wards", []) as Array

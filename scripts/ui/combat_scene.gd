@@ -2378,12 +2378,6 @@ static func _reach_count(reach: String) -> String:
 	return "x %s" % ("1" if reach == "one" else reach)
 
 
-func _make_skill_button(action: String, label: String, element: String,
-		cost: String, disabled: bool) -> Button:
-	var btn: Button = _big_button(label, "%s   %s" % [element, cost], disabled)
-	btn.pressed.connect(func() -> void: await _on_skill_chosen(action))
-	return btn
-
 func _rebuild_party_slots() -> void:
 	pass
 

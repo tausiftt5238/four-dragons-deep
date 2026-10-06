@@ -128,12 +128,6 @@ func _apply_buttons() -> void:
 	_paint_tabs()
 
 
-# Keyboard and pad: the arrows move through whichever window has the turn,
-# Enter chooses, Escape goes back.
-func _focus_commands() -> void:
-	_focus_list()
-
-
 func _focus_list() -> void:
 	for slot: MarginContainer in _sub_slots:
 		for c: Node in slot.get_children():

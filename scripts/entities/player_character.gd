@@ -375,16 +375,6 @@ func _roll_demon_gain(demon_name: String) -> void:
 	demon_gains[demon_name] = gains
 
 
-# What a demon has rolled, as "STR+2 AGL+1", for the party and result screens.
-func demon_gain_string(demon_name: String) -> String:
-	var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
-	var parts: Array[String] = []
-	for stat: String in ["str", "def", "mag", "agl"]:
-		var n: int = int(gains.get(stat, 0))
-		if n > 0:
-			parts.append("%s+%d" % [stat.to_upper(), n])
-	return " ".join(parts)
-
 # The ones he actually walks in with, in slot order. Chosen in the menu before
 # a fight rather than assembled mid-battle — CombatScene.MAX_PARTY - 1 of them,
 # since the hero takes the first slot himself.

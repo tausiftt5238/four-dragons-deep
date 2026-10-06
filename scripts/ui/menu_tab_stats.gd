@@ -285,14 +285,6 @@ func _make_bar_row(label: String, current: int, maximum: int, color: Color) -> H
 	return row
 
 
-func _make_header(text: String) -> Label:
-	var lbl: Label = Label.new()
-	lbl.text = text
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_color_override("font_color", Color(0.95, 0.88, 0.60))
-	return lbl
-
-
 func _make_section_label(text: String) -> Label:
 	var lbl: Label = Label.new()
 	lbl.text = text

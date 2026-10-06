@@ -100,10 +100,6 @@ static func available() -> bool:
 	return in_build() and unlocked() and not cleared_hero().is_empty()
 
 
-static func has_run() -> bool:
-	return not SaveSystem.read(SaveSystem.ABYSS_SLOT).is_empty()
-
-
 # A death down here is the end of that run.
 static func wipe_run() -> void:
 	var p: String = SaveSystem.slot_path(SaveSystem.ABYSS_SLOT)

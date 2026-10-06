@@ -1079,17 +1079,6 @@ func _add_box_child(parent: Node3D, pos: Vector3, size: Vector3,
 	parent.add_child(mi)
 
 
-# Creates a single MeshInstance3D box and adds it as a child of this node.
-func _add_box(pos: Vector3, size: Vector3, mat: StandardMaterial3D) -> void:
-	var mi: MeshInstance3D = MeshInstance3D.new()
-	var mesh: BoxMesh = BoxMesh.new()
-	mesh.size = size
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	add_child(mi)
-
-
 # Sets up the WorldEnvironment with a dark background and warm ambient light.
 # Called fresh on every level load since the old environment is freed with
 # the previous Dungeon node.
