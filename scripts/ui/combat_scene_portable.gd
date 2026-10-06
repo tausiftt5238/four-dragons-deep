@@ -5,7 +5,6 @@
 class_name CombatScenePortable extends CombatScene
 
 
-
 # ── UI construction ───────────────────────────────────────────────────────────
 
 func _build_ui() -> void:
@@ -174,7 +173,6 @@ func _build_foe_card(foe: Enemy) -> Control:
 			bar = bar, hp_lbl = hp_lbl, stages = stages, marker = marker,
 			chart = chart, card = card})
 	return card
-
 
 
 # ── Press-turn corner ─────────────────────────────────────────────────────────

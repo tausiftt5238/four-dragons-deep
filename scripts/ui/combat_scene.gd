@@ -98,7 +98,6 @@ var _right_back_btn: Button
 var _back_target:    Callable
 
 
-
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if foes.is_empty() and enemy != null:
@@ -123,9 +122,6 @@ func _ready() -> void:
 		return
 	_begin_player_phase()
 
-func _build_ui() -> void:
-	pass
-
 
 # The press-turn readout. Both sides are always visible so the player can see a
 # phase about to snowball against them, not just their own banked halves.
@@ -135,9 +131,6 @@ func _build_ui() -> void:
 const LOG_LINES:  int = 3
 const LOG_LINE_H: int = 24    # the pixel font at 16, ascent and descent
 const LOG_PAD:    int = 8
-
-func _build_log_strip(parent: Control) -> void:
-	pass
 
 
 # Drag the log to read back through the phase. A RichTextLabel scrolls to the
@@ -163,15 +156,6 @@ func _on_log_input(event: InputEvent) -> void:
 	bar.value -= dy
 	_log_label.scroll_following = bar.value >= bar.max_value - bar.page - 1.0
 	_log_label.accept_event()
-
-
-
-
-
-
-# ── Party roster ──────────────────────────────────────────────────────────────
-
-# One compact row per bound demon, rebuilt whenever the party changes.
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -234,12 +218,6 @@ func _play_anim(node: TextureRect, anim_name: String) -> void:
 	if node is AnimatedPortrait:
 		(node as AnimatedPortrait).play_once(anim_name)
 
-func _step_forward(card: Control, is_enemy: bool) -> void:
-	pass
-
-func _step_back_immediate() -> void:
-	pass
-
 
 func _card_portrait(card: Control) -> TextureRect:
 	for r: Dictionary in _foe_rows:
@@ -266,10 +244,6 @@ func _format_statuses(statuses: Array[String]) -> String:
 		names.append(Status.get_data(s).get("name", s))
 	return "  ".join(names)
 
-func _set_buttons(enabled: bool) -> void:
-	pass
-
-
 
 # ── Submenus ──────────────────────────────────────────────────────────────────
 
@@ -282,9 +256,6 @@ func _set_back(cb: Callable) -> void:
 func _on_back_pressed() -> void:
 	if _back_target.is_valid():
 		_back_target.call()
-
-
-
 
 
 func _show_item_submenu() -> void:
@@ -347,7 +318,6 @@ func _show_talk_submenu() -> void:
 		_submenu_add(btn)
 
 
-
 # Back out of the Talk menu one step: to the demon you picked it on, when there
 # was a choice to make, and only otherwise all the way out.
 func _talk_back() -> void:
@@ -368,17 +338,6 @@ func _dim_label(text: String) -> Label:
 	return lbl
 
 
-# ── Action handler ────────────────────────────────────────────────────────────
-
-
-
-
-# ── Round resolution ──────────────────────────────────────────────────────────
-
-
-
-
-
 # ── Damage helpers ────────────────────────────────────────────────────────────
 
 func _apply_variance(dmg: int) -> int:
@@ -389,7 +348,6 @@ func _roll_crit() -> bool:
 
 
 # ── Individual action logic ───────────────────────────────────────────────────
-
 
 
 # Returns { msg, cost }. A thrown flask is scored against the chart like any
@@ -477,7 +435,6 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 	return {msg = "[color=gray]Item not found.[/color]", cost = PressTurn.COST_FULL}
 
 
-
 func _check_counter() -> String:
 	if "counter" not in player.passive_skills or not player.is_alive() or randi() % 4 != 0:
 		return ""
@@ -490,7 +447,6 @@ func _check_counter() -> String:
 	enemy.take_damage(dmg)
 	var crit_tag: String = " [CRITICAL!]" if crit else ""
 	return "\n[color=orange]Counter! You strike back for %d damage!%s[/color]" % [dmg, crit_tag]
-
 
 
 # A bound demon that goes down is struck off here — off the roster, not just
@@ -842,7 +798,6 @@ func _do_end_of_round() -> void:
 		_begin_player_phase()
 
 
-
 # ── Player-side actions ───────────────────────────────────────────────────────
 
 
@@ -883,8 +838,6 @@ func _actor_portrait() -> TextureRect:
 	if a is Enemy:
 		return _foe_portrait(a as Enemy)
 	return _member_portrait(a)
-
-
 
 
 # A potion, an ether or a cure: anything that mends rather than hurts or
@@ -952,7 +905,6 @@ func _resolve_action(action: String) -> Dictionary:
 	return {msg = "", cost = PressTurn.COST_FULL}
 
 
-
 func _land_hit(res: Dictionary, element: String, prefix: String,
 		melee: bool = false, rung: float = Spell.POWER_I) -> Dictionary:
 	_reveal(enemy, element)
@@ -1002,7 +954,6 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 			prefix, CombatMath.outcome_tag(outcome, crit, muted), enemy.display_name(),
 			dmg, extra, after],
 			cost = CombatMath.cost_for(outcome, crit, muted)}
-
 
 
 # ── Enemy side ────────────────────────────────────────────────────────────────
@@ -1158,7 +1109,6 @@ const REVIVE_HP_SHARE: float = 0.5
 # and all — rather than rebuilt, so stepping one out and back in is a way to
 # save it, not a way to heal it.
 var bench: Array[Enemy] = []
-
 
 
 # Demons on the field with no HP left. A body keeps its slot, so reviving it or
@@ -1378,12 +1328,6 @@ func _on_revive(demon: Enemy) -> void:
 	await _after_action(PressTurn.COST_FULL)
 
 
-# ── Fleeing ───────────────────────────────────────────────────────────────────
-
-
-# ── Button state ──────────────────────────────────────────────────────────────
-
-
 # ── The party ─────────────────────────────────────────────────────────────────
 
 # His bound demons are already on the field when the battle opens — they are
@@ -1453,12 +1397,6 @@ func _ensure_target() -> void:
 
 const CARD_SEP:       int = 2
 const CARD_PORTRAIT:  int = 140
-
-func _build_battlefield(parent: Control) -> void:
-	pass
-
-func _build_foe_card(foe: Enemy) -> Control:
-	return null
 
 
 func _foe_portrait(foe: Enemy) -> TextureRect:
@@ -1717,9 +1655,6 @@ func _do_poison_ticks() -> String:
 	return "\n".join(msgs)
 
 
-# ── Enemy actions ─────────────────────────────────────────────────────────────
-
-
 # ── Fleeing ───────────────────────────────────────────────────────────────────
 
 func _do_flee() -> void:
@@ -1758,9 +1693,6 @@ func _foe_departs(reason: String) -> void:
 	await _after_action(PressTurn.COST_FULL)
 
 
-# ── Button state ──────────────────────────────────────────────────────────────
-
-
 # ── Actions ───────────────────────────────────────────────────────────────────
 
 func _on_action(action: String) -> void:
@@ -1794,7 +1726,6 @@ func _on_action(action: String) -> void:
 # spells; for a bound demon it is its own element.
 
 
-
 # ── Button state ──────────────────────────────────────────────────────────────
 
 # Talk, Item, Summon and Flee are the hero's alone. On a demon's turn they
@@ -1819,23 +1750,11 @@ func _refresh_button_states() -> void:
 	_buttons["Flee"].disabled   = not is_p
 
 
-
-
-
-
 func _member_portrait(member: CharacterSheet) -> TextureRect:
 	for slot: Dictionary in _party_slots:
 		if slot["member"] == member:
 			return slot["portrait"] as TextureRect
 	return null
-
-
-# ── The menu ──────────────────────────────────────────────────────────────────
-
-# Actions and submenus share one column: a submenu replaces the action list
-# instead of sitting beside it, which is most of the width back on a phone.
-
-
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
@@ -1847,15 +1766,6 @@ func _refresh_hp() -> void:
 	_refresh_party_slots()
 	_refresh_foe_rows()
 	_refresh_icons()
-
-func _build_icon_overlay() -> void:
-	pass
-
-func _side_row(who: String, color: Color, pips: UIGlyph) -> HBoxContainer:
-	return null
-
-func _refresh_icons() -> void:
-	pass
 
 
 # ── Skills ────────────────────────────────────────────────────────────────────
@@ -2233,17 +2143,6 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 	return {msg = " ".join(lines), cost = cost}
 
 
-# ── Enemy actions ─────────────────────────────────────────────────────────────
-
-
-# ── The menu ──────────────────────────────────────────────────────────────────
-
-# Top-level actions run across the bottom as an icon bar — six thumb targets in
-# a row rather than a stack where Flee sits on the screen edge. Submenus are
-# lists of variable-length text, so those stay vertical and replace the bar.
-
-
-
 # ── Action icons ──────────────────────────────────────────────────────────────
 
 # Small flat glyphs drawn in code — six shapes is less weight than six PNGs,
@@ -2378,10 +2277,6 @@ static func _reach_count(reach: String) -> String:
 	return "x %s" % ("1" if reach == "one" else reach)
 
 
-func _rebuild_party_slots() -> void:
-	pass
-
-
 # ── Damage numbers ────────────────────────────────────────────────────────────
 #
 # Every hit and every heal floats its number over whoever took it: red for HP
@@ -2484,36 +2379,6 @@ func _show_float(who: CharacterSheet, text: String, color: Color) -> void:
 # The smallest a portrait is allowed to get while making a column fit.
 const CARD_PORTRAIT_MIN: int = 56
 
-func _fit_columns() -> void:
-	pass
-
-func _fit_column(cards: Array, avail: float) -> void:
-	pass
-
-func _build_party_slot(member: CharacterSheet) -> Control:
-	return null
-
-func _refresh_party_slots() -> void:
-	pass
-
-func _build_menu_panel(parent: Control) -> void:
-	pass
-
-func _add_sub_slot() -> MarginContainer:
-	return null
-
-func _make_slot_row() -> GridContainer:
-	return null
-
-func _show_actions() -> void:
-	pass
-
-func _hide_actions() -> void:
-	pass
-
-func _show_main_actions() -> void:
-	pass
-
 
 # Detaches immediately rather than waiting on queue_free, so the very next
 # _submenu_add sees the slots as empty.
@@ -2558,10 +2423,6 @@ func _submenu_add(control: Control) -> void:
 # underneath. Built from child Labels because a Button's own text is one line.
 # The element icon on a submenu button's detail line.
 const ICON_PX: int = 16
-
-func _big_button(title: String, subtitle: String, disabled: bool,
-		icon: String = "", tint: Color = Color.TRANSPARENT) -> Button:
-	return null
 
 
 # ── Casting ───────────────────────────────────────────────────────────────────
@@ -3668,6 +3529,64 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	return {msg = dry + "[color=red]%s calls the %s — %s takes %d.[/color]%s" % [
 			ename, word, tname, hurt, tag],
 			cost = PressTurn.COST_HALF if res["outcome"] == "weak" else PressTurn.COST_FULL}
+
+# ── Layout ────────────────────────────────────────────────────────────────────
+#
+# Drawn by the build's layout, CombatScenePortable or CombatSceneSteam: the
+# field, the panels, the menus. The rules above call these and leave the
+# looks to them.
+
+func _build_ui() -> void:
+	pass
+
+
+func _step_forward(_card: Control, _is_enemy: bool) -> void:
+	pass
+
+
+func _step_back_immediate() -> void:
+	pass
+
+
+func _set_buttons(_enabled: bool) -> void:
+	pass
+
+
+func _build_foe_card(_foe: Enemy) -> Control:
+	return null
+
+
+func _refresh_icons() -> void:
+	pass
+
+
+func _rebuild_party_slots() -> void:
+	pass
+
+
+func _fit_columns() -> void:
+	pass
+
+
+func _refresh_party_slots() -> void:
+	pass
+
+
+func _add_sub_slot() -> MarginContainer:
+	return null
+
+
+func _hide_actions() -> void:
+	pass
+
+
+func _show_main_actions() -> void:
+	pass
+
+
+func _big_button(_title: String, _subtitle: String, _disabled: bool,
+		_icon: String = "", _tint: Color = Color.TRANSPARENT) -> Button:
+	return null
 
 
 # ── Layout hooks ──────────────────────────────────────────────────────────────

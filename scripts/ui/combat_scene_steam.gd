@@ -375,7 +375,6 @@ func _build_foe_card(foe: Enemy) -> Control:
 	return card
 
 
-
 # ── Press-turn corner ─────────────────────────────────────────────────────────
 
 # Both sides' icons live in the top-right corner, out of the fight rather than
@@ -391,17 +390,6 @@ func _build_icon_overlay() -> void:
 	_foe_icon_pips = UIGlyph.pips(Color(1.0, 0.45, 0.45))
 	_top_row.add_child(_foe_icon_pips)
 	_top_row.add_child(_log_label)
-
-
-# "You" or "Foe" and that side's icons, side by side.
-func _side_row(who: String, color: Color, pips: UIGlyph) -> HBoxContainer:
-	var row: HBoxContainer = HBoxContainer.new()
-	var lbl: Label = Label.new()
-	lbl.text = who
-	lbl.add_theme_color_override("font_color", color)
-	row.add_child(lbl)
-	row.add_child(pips)
-	return row
 
 
 func _refresh_icons() -> void:
@@ -487,10 +475,6 @@ func _ring(cards: Array[Control], centre: Vector2, front_deg: float, clockwise: 
 		card.position = feet - Vector2(CARD_W / 2.0, PORTRAIT_TOP + PORTRAIT * FEET + lift)
 		# Further back is further up the screen, and is drawn behind.
 		card.z_index = int(feet.y)
-
-
-func _fit_column(_cards: Array, _avail: float) -> void:
-	pass
 
 
 # One of the party: a figure on the field (flipped to face the monsters, its
@@ -897,8 +881,6 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 		sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(sub)
 	return btn
-
-
 
 
 # The backdrop behind the fight: the dungeon dimmed to a stage, a floor running

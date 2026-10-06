@@ -1344,7 +1344,6 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			_resume_from_overlay()
 
 
-
 # Stats of one bound demon as it would walk into a fight right now.
 func _demon_snapshot(demon_name: String) -> Dictionary:
 	var e: Enemy = player_char.bound_demon(demon_name)
@@ -1619,8 +1618,6 @@ func _show_game_over() -> void:
 	_get_overlay_layer().add_child(ui)
 
 
-
-
 func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> void:
 	_hud_popup.text = text
 	_hud_popup.add_theme_color_override("font_color", color)
@@ -1806,16 +1803,6 @@ func _teleport(here: String) -> void:
 	_sync_player()
 
 
-
-
-
-
-
-
-
-
-
-
 # ── Menu ─────────────────────────────────────────────────────────────────────
 
 func _open_menu() -> void:
@@ -1848,9 +1835,6 @@ func _close_menu() -> void:
 		_explore_hud.repaint_keys()
 	hud_layer.visible = true
 	menu_open = false
-
-
-
 
 
 # ── The side panel: the menu and the orb on a wide screen ────────────────────
@@ -1914,8 +1898,6 @@ func _slide_side(holder: Control, from: float, to: float, free_after: bool) -> v
 	_side_tween.tween_method(step, from, to, SIDE_SLIDE)
 	if free_after:
 		_side_tween.tween_callback(holder.queue_free)
-
-# ── Save orbs ────────────────────────────────────────────────────────────────
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 
