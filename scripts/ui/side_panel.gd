@@ -194,19 +194,27 @@ static func _focusables(n: Node, out: Array[Control] = []) -> Array[Control]:
 	for c: Node in n.get_children():
 		if c.is_queued_for_deletion():
 			continue
-		if c is BaseButton and not (c as BaseButton).disabled \
-				and (c as Control).focus_mode != Control.FOCUS_NONE:
+		if _stops_cursor(c):
 			out.append(c as Control)
 		_focusables(c, out)
 	return out
+
+
+# A button the cursor can land on, or a page's own stop (a Stats card, which
+# marks itself with the "card" meta).
+static func _stops_cursor(c: Node) -> bool:
+	if not (c is Control) or (c as Control).focus_mode == Control.FOCUS_NONE:
+		return false
+	if c is BaseButton:
+		return not (c as BaseButton).disabled
+	return c.has_meta("card")
 
 
 static func _first_focusable(n: Node) -> Control:
 	for c: Node in n.get_children():
 		if c is Control and not (c as Control).is_visible_in_tree():
 			continue
-		if c is BaseButton and not (c as BaseButton).disabled \
-				and (c as Control).focus_mode != Control.FOCUS_NONE:
+		if _stops_cursor(c):
 			return c as Control
 		var deeper: Control = _first_focusable(c)
 		if deeper != null:
