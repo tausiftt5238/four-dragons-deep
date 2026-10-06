@@ -12,7 +12,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-$HOME/apps/Godot_v4.6.2-stable_linux.x86_64}"
-OUT=build/android/four-dragons-deep.apk
+OUT=build/android/four-dragons-deep_portable.apk
 
 mkdir -p "$(dirname "$OUT")"
 rm -f "$OUT" "$OUT.idsig"   # so a failed export can't leave the old APK looking fresh
