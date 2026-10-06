@@ -94,6 +94,9 @@ var orb_layer:     CanvasLayer
 var chest_layer:   CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
+var _explore_hud: ExploreHUD  # the wide-screen exploring HUD; null on a phone
+var _hud_tick: float = 0.0
+var _stick_held: Vector2i = Vector2i.ZERO
 var _orb_btn:         Button  # "Orb", shown only while standing on an orb
 var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
 var _hud_popup_tween: Tween
@@ -140,6 +143,12 @@ func _notification(what: int) -> void:
 func _process(delta: float) -> void:
 	play_time += delta
 	Records.tick(delta)
+	# A few times a second is plenty for numbers that change on a step.
+	if _explore_hud != null and hud_layer.visible:
+		_hud_tick -= delta
+		if _hud_tick <= 0.0:
+			_hud_tick = 0.15
+			_explore_hud.refresh()
 
 
 func _ready() -> void:
@@ -270,9 +279,9 @@ func _setup_world_pane() -> void:
 	_world_box.anchor_right  = 1.0
 	_world_box.anchor_top    = 0.0
 	_world_box.anchor_bottom = 1.0
-	# Landscape: the dungeon fills the left, the map column has the right.
+	# Landscape: the map column down the left, the dungeon on the right.
 	if Layout.landscape():
-		_world_box.offset_right = -Layout.MAP_PANE_W
+		_world_box.offset_left = Layout.MAP_PANE_W
 	else:
 		_world_box.offset_top    = MAP_PANE_H
 	_world_box.mouse_filter  = Control.MOUSE_FILTER_IGNORE
@@ -308,18 +317,6 @@ func _setup_minimap() -> void:
 	hud_layer.layer = 10  # Renders above all 3D content
 	add_child(hud_layer)
 	var layer: CanvasLayer = hud_layer
-
-	# Landscape: the map column gets the game's own dark behind it, not the
-	# engine's grey.
-	if Layout.landscape():
-		var column: ColorRect = ColorRect.new()
-		column.color = Color(0.04, 0.03, 0.07)
-		column.anchor_left = 1.0
-		column.anchor_right = 1.0
-		column.anchor_bottom = 1.0
-		column.offset_left = -float(Layout.MAP_PANE_W)
-		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(column)
 
 	minimap_ctrl = Minimap.new()
 	minimap_ctrl.visited = visited  # Shared reference — no copy needed
@@ -365,6 +362,13 @@ func _setup_minimap() -> void:
 	_hud_popup.add_theme_stylebox_override("normal", band)
 	_hud_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
 	_hud_popup.modulate.a = 0.0
+	if Layout.landscape():
+		# Under the top strip, in a window like the fight's.
+		_hud_popup.offset_left = Layout.MAP_PANE_W + 60.0
+		_hud_popup.offset_right = -60.0
+		_hud_popup.offset_top = ExploreHUD.STRIP_H + 8.0
+		_hud_popup.offset_bottom = ExploreHUD.STRIP_H + 44.0
+		_hud_popup.add_theme_stylebox_override("normal", ExploreHUD.window_box(0.92))
 	layer.add_child(_hud_popup)
 
 	_encounter_debug_lbl = Label.new()
@@ -436,6 +440,22 @@ func _setup_minimap() -> void:
 	_encounter_debug_lbl.offset_top    = 90.0
 	_encounter_debug_lbl.offset_bottom = 114.0
 
+	# A wide screen gets the HUD in windows instead: the strip, the party, the
+	# map in its own window. The phone's buttons and labels stay built (the
+	# rest of Main writes to them) and simply stay out of sight.
+	if Layout.landscape():
+		_explore_hud = ExploreHUD.new(self, float(Layout.MAP_PANE_W))
+		layer.add_child(_explore_hud)
+		layer.move_child(_explore_hud, 0)
+		_explore_hud.hold_map(minimap_ctrl)
+		_explore_hud.map_pressed.connect(_toggle_big_map)
+		_explore_hud.menu_pressed.connect(_on_menu_btn_pressed)
+		_explore_hud.act_pressed.connect(_act)
+		floor_label.visible = false
+		menu_btn.visible = false
+		_orb_btn.visible = false
+		_key_icon.visible = false
+
 
 # The map is drawn in the dungeon's own colours: wall faces lifted enough to
 # read at 10 px a cell, floor the same void the walls stand in.
@@ -454,6 +474,8 @@ func _sync_minimap_palette() -> void:
 # label down to where the dungeon view begins.
 func _resize_minimap() -> void:
 	const TOP: float = 40.0
+	if _explore_hud != null:
+		return
 	if Layout.landscape():
 		# The column down the right, under the floor label, clear of the
 		# Menu and Orb buttons at its foot.
@@ -511,8 +533,10 @@ func _sync_player() -> void:
 func _refresh_orb_btn() -> void:
 	if not is_instance_valid(_orb_btn):
 		return
-	_orb_btn.visible = is_instance_valid(current_level) \
+	_orb_btn.visible = _explore_hud == null and is_instance_valid(current_level) \
 			and player_pos in current_level.orb_cells
+	if _explore_hud != null:
+		_explore_hud.refresh()
 
 
 # Snaps camera rotation to the current facing with no animation. Used on level load.
@@ -725,6 +749,114 @@ func _on_menu_btn_pressed() -> void:
 		_open_menu()
 
 
+# ── The wide-screen HUD's questions and buttons ──────────────────────────────
+
+func has_floor_key() -> bool:
+	return _has_key
+
+
+# What Act would do here, said for the prompt over the party; "" when there is
+# nothing in front of you to use.
+func facing_prompt() -> String:
+	if current_level == null or in_combat:
+		return ""
+	if player_pos in current_level.orb_cells:
+		return "Use the orb"
+	var ahead: Vector2i = player_pos + DIR_OFFSET[player_facing]
+	if ahead == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
+		if Level.is_boss_floor(floor_num) and not _boss_beaten:
+			return "Go on"
+		if not _has_key:
+			return "The door is locked"
+		return "Go through" if _door_open else "Open the door"
+	if current_level.chest_cells.get(ahead, Vector2i(-1, -1)) == player_pos \
+			and not current_level.looted.has(ahead):
+		return "Open the chest"
+	return ""
+
+
+# Act: the orb underfoot, or whatever is in front (a chest, the door) — which
+# is what walking into it already does.
+func _act() -> void:
+	if in_combat or menu_open or save_open or orb_open or chest_open or _fading:
+		return
+	if current_level != null and player_pos in current_level.orb_cells:
+		_open_orb("save")
+		return
+	if facing_prompt() != "":
+		_action_forward()
+
+
+func _toggle_big_map() -> void:
+	if _explore_hud == null or in_combat or menu_open or save_open or orb_open or chest_open:
+		return
+	_explore_hud.toggle_big_map()
+
+
+# A pad: the d-pad or the left stick walks and turns, A acts, Start is the
+# menu, Y the map, B backs out of the menu. Menus themselves run on the
+# engine's own ui_ actions, which already know a pad.
+const STICK_DEAD: float = 0.6
+
+
+func _pad_input(event: InputEvent) -> void:
+	if _explore_hud != null:
+		_explore_hud.set_pad(true)
+	var dir: Vector2i = Vector2i.ZERO
+	if event is InputEventJoypadButton:
+		var b: InputEventJoypadButton = event as InputEventJoypadButton
+		if not b.pressed:
+			return
+		match b.button_index:
+			JOY_BUTTON_DPAD_UP: dir = Vector2i(0, -1)
+			JOY_BUTTON_DPAD_DOWN: dir = Vector2i(0, 1)
+			JOY_BUTTON_DPAD_LEFT: dir = Vector2i(-1, 0)
+			JOY_BUTTON_DPAD_RIGHT: dir = Vector2i(1, 0)
+			JOY_BUTTON_START:
+				_on_menu_btn_pressed()
+				return
+			JOY_BUTTON_B:
+				if menu_open and not in_combat:
+					_close_menu()
+				return
+			JOY_BUTTON_Y:
+				_toggle_big_map()
+				return
+			JOY_BUTTON_A:
+				_act()
+				return
+	elif event is InputEventJoypadMotion:
+		var m: InputEventJoypadMotion = event as InputEventJoypadMotion
+		if m.axis != JOY_AXIS_LEFT_X and m.axis != JOY_AXIS_LEFT_Y:
+			return
+		# One step per push: the stick has to come back to the middle before
+		# it counts again, so holding it does not run you down a corridor.
+		var held: Vector2i = _stick_held
+		var v: int = 0
+		if m.axis_value > STICK_DEAD:
+			v = 1
+		elif m.axis_value < -STICK_DEAD:
+			v = -1
+		if m.axis == JOY_AXIS_LEFT_X:
+			_stick_held.x = v
+			if v != 0 and held.x == 0:
+				dir = Vector2i(v, 0)
+		else:
+			_stick_held.y = v
+			if v != 0 and held.y == 0:
+				dir = Vector2i(0, v)
+	if dir == Vector2i.ZERO or in_combat or menu_open or save_open or orb_open or chest_open:
+		return
+	if dir.y < 0:
+		_action_forward()
+	elif dir.y > 0:
+		_action_back()
+	elif dir.x < 0:
+		_action_turn_left()
+	else:
+		_action_turn_right()
+
+
 func _input(event: InputEvent) -> void:
 	# The screen is black and the floor is changing under it.
 	if _fading:
@@ -739,8 +871,15 @@ func _input(event: InputEvent) -> void:
 			_swipe_active = false
 		return
 
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		if not _fading:
+			_pad_input(event)
+		return
+
 	if not (event is InputEventKey and event.pressed):
 		return
+	if _explore_hud != null:
+		_explore_hud.set_pad(false)
 
 	# Q and N are cheats for testing; a release build has neither.
 	if OS.is_debug_build() and event.keycode == KEY_Q and not in_combat:
@@ -780,8 +919,25 @@ func _input(event: InputEvent) -> void:
 				_open_menu()
 		return
 
+	# Tab closes the menu it opened.
+	if _explore_hud != null and event.keycode == KEY_TAB and menu_open and not in_combat:
+		_close_menu()
+		return
+
 	if in_combat or menu_open or save_open:
 		return
+
+	if _explore_hud != null and not orb_open and not chest_open:
+		match event.keycode:
+			KEY_M:
+				_toggle_big_map()
+				return
+			KEY_TAB:
+				_on_menu_btn_pressed()
+				return
+			KEY_E, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+				_act()
+				return
 
 	match event.keycode:
 		KEY_UP, KEY_W:
@@ -841,7 +997,7 @@ func _sync_door() -> void:
 	if is_instance_valid(dungeon):
 		dungeon.set_locked(not _door_open)
 	if _key_icon != null:
-		_key_icon.visible = _has_key and not _door_open
+		_key_icon.visible = _has_key and not _door_open and _explore_hud == null
 
 
 # Walking onto the loose key takes it. No prompt: there is one thing to do with
