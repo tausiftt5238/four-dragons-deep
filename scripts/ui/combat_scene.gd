@@ -102,6 +102,8 @@ var _at_top: bool = false
 var _main_list: Dictionary = {}
 var _stack_list: Dictionary = {}
 var _stack_win: PanelContainer
+const MENU_WIN_W: float = 464.0
+const STACK_STEP: float = 10.0
 
 
 # The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
@@ -3106,7 +3108,7 @@ func _build_menu_panel(parent: Control) -> void:
 	# The commands as tabs along the top, and under them the open tab's list,
 	# its title and a way back. Attack is the first entry of Skills.
 	var list_win: PanelContainer = _window()
-	list_win.custom_minimum_size = Vector2(464, 0)
+	list_win.custom_minimum_size = Vector2(MENU_WIN_W, 0)
 	strip.add_child(list_win)
 	var list_col: VBoxContainer = VBoxContainer.new()
 	list_col.add_theme_constant_override("separation", 2)
@@ -3143,15 +3145,15 @@ func _build_menu_panel(parent: Control) -> void:
 	_party_rows.alignment = BoxContainer.ALIGNMENT_CENTER
 	party_win.add_child(_party_rows)
 
-	# The talk window: over the left of the menu, its bottom edge sitting on
-	# the tabs so the menu's top line still shows what was chosen.
+	# The talk window: the menu window's own size, laid over it a step up and
+	# to the right, the way one window stacks on another.
 	_stack_win = _window()
 	_stack_win.anchor_top = 1.0
 	_stack_win.anchor_bottom = 1.0
-	_stack_win.offset_left = 40
-	_stack_win.offset_right = 40 + 400
-	_stack_win.offset_bottom = -BOTTOM_STRIP_H + 40
-	_stack_win.offset_top = -BOTTOM_STRIP_H + 40 - 176
+	_stack_win.offset_left = 8 + STACK_STEP
+	_stack_win.offset_right = 8 + MENU_WIN_W + STACK_STEP
+	_stack_win.offset_top = -BOTTOM_STRIP_H + 4 - STACK_STEP
+	_stack_win.offset_bottom = -8 - STACK_STEP
 	_stack_win.z_index = 1001
 	_stack_win.hide()
 	parent.add_child(_stack_win)
