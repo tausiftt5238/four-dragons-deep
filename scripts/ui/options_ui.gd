@@ -64,6 +64,10 @@ func _build() -> void:
 	col.add_child(_label("Options", _sz(30, 14), Color(0.90, 0.75, 0.30)))
 	col.add_child(HSeparator.new())
 	if _wide:
+		col.add_child(_label("Display", 11, Color(0.55, 0.50, 0.62)))
+		_add_toggle(col, "Fullscreen", "F11 or Alt+Enter switches it too.",
+				Settings.fullscreen(), Settings.set_fullscreen)
+		col.add_child(HSeparator.new())
 		_add_mapping(col)
 		col.add_child(HSeparator.new())
 	col.add_child(_label("Swipes" if _wide else "Controls", _sz(18, 11), Color(0.55, 0.50, 0.62)))

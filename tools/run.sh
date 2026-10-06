@@ -30,8 +30,6 @@ config/name="Four Dragons Deep"
 [display]
 window/size/viewport_width=960
 window/size/viewport_height=540
-window/size/window_width_override=1920
-window/size/window_height_override=1080
 window/stretch/aspect="expand"
 
 [game]

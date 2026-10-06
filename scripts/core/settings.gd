@@ -11,6 +11,8 @@ static var _invert_move: bool = false
 # Percent, 0 to 100. Each drives its own audio bus, made here on first use.
 static var _music_volume: int = 80
 static var _sfx_volume: int = 80
+# The PC build: fullscreen, or a window that fits the screen (apply_window).
+static var _fullscreen: bool = true
 static var _loaded: bool = false
 
 
@@ -68,6 +70,35 @@ static func set_sfx_volume(pct: int, keep: bool = true) -> void:
 		_save()
 
 
+static func fullscreen() -> bool:
+	_ensure_loaded()
+	return _fullscreen
+
+
+static func set_fullscreen(on: bool) -> void:
+	_ensure_loaded()
+	_fullscreen = on
+	apply_window()
+	_save()
+
+
+# Fullscreen, or the largest 16:9 window that fits nine tenths of the screen
+# the game is on, in the middle of it.
+static func apply_window() -> void:
+	_ensure_loaded()
+	if _fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		return
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	var screen: int = DisplayServer.window_get_current_screen()
+	var room: Rect2i = DisplayServer.screen_get_usable_rect(screen)
+	var w: int = mini(1920, int(room.size.x * 0.9))
+	var h: int = mini(int(w * 9.0 / 16.0), int(room.size.y * 0.9))
+	w = int(h * 16.0 / 9.0)
+	DisplayServer.window_set_size(Vector2i(w, h))
+	DisplayServer.window_set_position(room.position + (room.size - Vector2i(w, h)) / 2)
+
+
 const MUSIC_BUS: String = "Music"
 const SFX_BUS: String = "SFX"
 
@@ -102,6 +133,7 @@ static func _ensure_loaded() -> void:
 	_invert_move = bool(cfg.get_value("controls", "invert_move", false))
 	_music_volume = int(cfg.get_value("audio", "music", 80))
 	_sfx_volume = int(cfg.get_value("audio", "sfx", 80))
+	_fullscreen = bool(cfg.get_value("display", "fullscreen", true))
 
 
 static func _save() -> void:
@@ -112,4 +144,5 @@ static func _save() -> void:
 	cfg.set_value("controls", "invert_move", _invert_move)
 	cfg.set_value("audio", "music", _music_volume)
 	cfg.set_value("audio", "sfx", _sfx_volume)
+	cfg.set_value("display", "fullscreen", _fullscreen)
 	cfg.save(PATH)

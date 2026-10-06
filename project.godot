@@ -17,6 +17,10 @@ config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.png"
 
+[autoload]
+
+Boot="*res://scripts/core/boot.gd"
+
 [audio]
 
 driver/output_latency.web=100
@@ -27,8 +31,6 @@ window/size/viewport_width=540
 window/size/viewport_height=1170
 window/size/viewport_width.steam=960
 window/size/viewport_height.steam=540
-window/size/window_width_override.steam=1920
-window/size/window_height_override.steam=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect.steam="expand"
 window/handheld/orientation=1
