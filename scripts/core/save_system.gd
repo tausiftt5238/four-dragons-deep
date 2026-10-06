@@ -69,16 +69,32 @@ static func key_vec2i(s: String) -> Vector2i:
 	var parts: PackedStringArray = s.split(",")
 	return Vector2i(int(parts[0]), int(parts[1]))
 
-static func pack_visited(d: Dictionary) -> Array:
+# A set of cells (a Dictionary's keys or an Array) as "x,y" strings.
+static func pack_cells(cells: Variant) -> Array:
 	var out: Array = []
-	for k: Variant in d.keys():
+	for k: Variant in (cells as Dictionary).keys() if cells is Dictionary else cells:
 		out.append(vec2i_key(k as Vector2i))
 	return out
 
-static func unpack_visited(a: Array) -> Dictionary:
+static func unpack_cells(a: Array) -> Dictionary:
 	var out: Dictionary = {}
 	for s: Variant in a:
 		out[key_vec2i(s as String)] = true
+	return out
+
+# A map of cell to value, keyed "x,y". A value that is a cell itself is
+# packed too; `cell_values` unpacks it back.
+static func pack_cell_map(cells: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for k: Variant in cells.keys():
+		var v: Variant = cells[k]
+		out[vec2i_key(k as Vector2i)] = vec2i_key(v as Vector2i) if v is Vector2i else v
+	return out
+
+static func unpack_cell_map(data: Dictionary, cell_values: bool = false) -> Dictionary:
+	var out: Dictionary = {}
+	for k: Variant in data.keys():
+		out[key_vec2i(k as String)] = key_vec2i(data[k] as String) if cell_values else data[k]
 	return out
 
 

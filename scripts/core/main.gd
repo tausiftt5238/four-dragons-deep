@@ -2106,7 +2106,7 @@ func _gather_save_data() -> Dictionary:
 	var p: PlayerCharacter = player_char
 	var visited_serial: Dictionary = {}
 	for sp: Variant in visited_by_map.keys():
-		visited_serial[sp as String] = SaveSystem.pack_visited(visited_by_map[sp] as Dictionary)
+		visited_serial[sp as String] = SaveSystem.pack_cells(visited_by_map[sp] as Dictionary)
 
 	return {
 		timestamp   = Time.get_datetime_string_from_system(),
@@ -2121,15 +2121,15 @@ func _gather_save_data() -> Dictionary:
 			maze        = current_level.maze,
 			exit_wall   = [current_level.exit_wall_pos.x,   current_level.exit_wall_pos.y],
 			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
-			trap_cells  = _pack_trap_cells(current_level.trap_cells),
-			roamers     = _pack_roamers(),
-			orbs        = _pack_orbs(),
-			chests      = _pack_chests(),
-			looted      = _pack_cell_set(current_level.looted),
+			trap_cells  = SaveSystem.pack_cell_map(current_level.trap_cells),
+			roamers     = SaveSystem.pack_cells(_roamer_cells()),
+			orbs        = SaveSystem.pack_cells(current_level.orb_cells),
+			chests      = SaveSystem.pack_cell_map(current_level.chest_cells),
+			looted      = SaveSystem.pack_cells(current_level.looted),
 			warden      = SaveSystem.vec2i_key(current_level.warden_pos),
 			key_pos     = SaveSystem.vec2i_key(current_level.key_pos),
 			key_taken   = current_level.key_taken,
-			found_traps = _pack_trap_cells(current_level.found_traps),
+			found_traps = SaveSystem.pack_cell_map(current_level.found_traps),
 			has_key     = _has_key,
 			door_open   = _door_open,
 		},
@@ -2184,27 +2184,23 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
 	current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
 	current_level.next_scene      = scene_path
-	current_level.trap_cells      = _unpack_trap_cells(map_data.get("trap_cells", {}) as Dictionary)
+	current_level.trap_cells      = SaveSystem.unpack_cell_map(map_data.get("trap_cells", {}) as Dictionary)
 	_pending_roamers              = map_data.get("roamers", []) as Array
-	current_level.orb_cells.clear()
-	for key: Variant in (map_data.get("orbs", []) as Array):
-		current_level.orb_cells.append(SaveSystem.key_vec2i(key as String))
+	current_level.orb_cells.assign(
+			SaveSystem.unpack_cells(map_data.get("orbs", []) as Array).keys())
 	# Caches are saved, so a load does not re-roll where they were and whether
 	# they were empty. An older save's "mimics" list is simply ignored.
 	var saved_chests: Dictionary = map_data.get("chests", {}) as Dictionary
 	if not saved_chests.is_empty():
-		current_level.chest_cells.clear()
-		for key: Variant in saved_chests.keys():
-			current_level.chest_cells[SaveSystem.key_vec2i(key as String)] = \
-					SaveSystem.key_vec2i(saved_chests[key] as String)
-		current_level.looted = _unpack_cell_set(
+		current_level.chest_cells = SaveSystem.unpack_cell_map(saved_chests, true)
+		current_level.looted = SaveSystem.unpack_cells(
 				map_data.get("looted", []) as Array)
 	current_level.warden_pos      = SaveSystem.key_vec2i(
 			map_data.get("warden", "-1,-1") as String)
 	current_level.key_pos         = SaveSystem.key_vec2i(
 			map_data.get("key_pos", "-1,-1") as String)
 	current_level.key_taken       = bool(map_data.get("key_taken", false))
-	current_level.found_traps     = _unpack_trap_cells(
+	current_level.found_traps     = SaveSystem.unpack_cell_map(
 			map_data.get("found_traps", {}) as Dictionary)
 	_pending_has_key              = bool(map_data.get("has_key", true))
 	# Saves from before the door needed turning: holding the key meant open.
@@ -2221,7 +2217,7 @@ func _restore_save(data: Dictionary) -> void:
 	var raw_visited: Dictionary = data["visited"] as Dictionary
 	visited_by_map = {}
 	for sp: Variant in raw_visited.keys():
-		visited_by_map[sp as String] = SaveSystem.unpack_visited(raw_visited[sp as String] as Array)
+		visited_by_map[sp as String] = SaveSystem.unpack_cells(raw_visited[sp as String] as Array)
 	visited = visited_by_map.get(scene_path, {})
 
 	_point_minimap_at_level()
@@ -2244,29 +2240,6 @@ func _restore_save(data: Dictionary) -> void:
 var _pending_roamers: Array = []
 
 
-# Which wall each cache opens through, and which of them are lying.
-func _pack_chests() -> Dictionary:
-	var out: Dictionary = {}
-	for wall: Vector2i in current_level.chest_cells:
-		out[SaveSystem.vec2i_key(wall)] = SaveSystem.vec2i_key(
-				current_level.chest_cells[wall] as Vector2i)
-	return out
-
-
-func _pack_cell_set(cells: Dictionary) -> Array:
-	var out: Array = []
-	for c: Vector2i in cells:
-		out.append(SaveSystem.vec2i_key(c))
-	return out
-
-
-func _unpack_cell_set(keys: Array) -> Dictionary:
-	var out: Dictionary = {}
-	for key: Variant in keys:
-		out[SaveSystem.key_vec2i(key as String)] = true
-	return out
-
-
 # Every one of these is a reference INTO the level, and both the walk-in and the
 # load-a-save path build a brand new Level — so all of them have to be repointed
 # or the map is still describing the floor before this one.
@@ -2284,18 +2257,12 @@ func _point_minimap_at_level() -> void:
 	minimap_ctrl.found_traps = current_level.found_traps
 
 
-func _pack_orbs() -> Array:
-	var out: Array = []
-	for c: Vector2i in current_level.orb_cells:
-		out.append(SaveSystem.vec2i_key(c))
-	return out
-
-
-func _pack_roamers() -> Array:
-	var out: Array = []
+# Where the roamers stand, for the save.
+func _roamer_cells() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
 	for r: Roamer in roamers:
 		if is_instance_valid(r):
-			out.append(SaveSystem.vec2i_key(r.cell))
+			out.append(r.cell)
 	return out
 
 
@@ -2337,22 +2304,6 @@ func _restore_roamers() -> void:
 	# A loaded run arrives here with the geometry already built, so the door is
 	# hung once _has_key is known rather than during the build.
 	_sync_door()
-
-
-func _pack_trap_cells(cells: Dictionary) -> Dictionary:
-	var result: Dictionary = {}
-	for k: Variant in cells.keys():
-		var v: Vector2i = k as Vector2i
-		result["%d,%d" % [v.x, v.y]] = cells[k]
-	return result
-
-
-func _unpack_trap_cells(data: Dictionary) -> Dictionary:
-	var result: Dictionary = {}
-	for k: Variant in data.keys():
-		var parts: Array = (k as String).split(",")
-		result[Vector2i(int(parts[0]), int(parts[1]))] = data[k]
-	return result
 
 
 func _on_node_added(node: Node) -> void:
