@@ -921,4 +921,173 @@ func sort_inventory(mode: String = "type") -> void:
 		return (a["name"] as String) < (b["name"] as String)
 	)
 
+# ── Saving ────────────────────────────────────────────────────────────────────
 
+# Everything about the hero a save keeps, as plain data (Main writes it with
+# the floor; the Abyss keeps one as its waiting hero).
+func to_save() -> Dictionary:
+	return {
+		lv = lv, str = str, def = def, mag = mag, agl = agl, luk = luk,
+		exp = exp, exp_to_next = exp_to_next,
+		hp = hp, max_hp = max_hp, mp = mp, max_mp = max_mp,
+		hp_bonus = _hp_bonus, mp_bonus = _mp_bonus,
+		gold = gold,
+		known_spells        = known_spells,
+		equipped_spells     = equipped_spells,
+		recruited           = recruited,
+		ever_bound          = ever_bound,
+		bound_level         = bound_level,
+		demon_exp           = demon_exp,
+		demon_gains         = demon_gains,
+		demon_bonus         = demon_bonus,
+		demon_skills        = demon_skills,
+		demon_levels_gained = demon_levels_gained,
+		demon_element       = demon_element,
+		active_demons       = active_demons,
+		encountered_enemies = encountered_enemies,
+		analyzed            = analyzed,
+		hazards_seen        = hazards_seen,
+		learned_affinities  = learned_affinities,
+		passive_skills      = passive_skills,
+		active_statuses     = active_statuses,
+		inventory       = inventory,
+		equipped_weapon      = equipped_weapon,
+		equipped_armor       = equipped_armor,
+		equipped_accessories = equipped_accessories,
+	}
+
+
+func load_save(pdata: Dictionary) -> void:
+	lv          = int(pdata["lv"])
+	str         = int(pdata["str"])
+	def         = int(pdata["def"])
+	mag         = int(pdata["mag"])
+	agl         = int(pdata["agl"])
+	luk         = int(pdata.get("luk", 3))
+	exp         = int(pdata["exp"])
+	exp_to_next = int(pdata["exp_to_next"])
+	hp          = int(pdata["hp"])
+	max_hp      = int(pdata["max_hp"])
+	mp          = int(pdata["mp"])
+	max_mp      = int(pdata["max_mp"])
+	_hp_bonus   = int(pdata.get("hp_bonus", 0))
+	_mp_bonus   = int(pdata.get("mp_bonus", 0))
+	gold        = int(pdata["gold"])
+
+	known_spells.clear()
+	known_spells.assign(pdata["known_spells"] as Array)
+	# Analyze used to be a button welded into the battle menu rather than a
+	# spell, so a save written then does not know it. Without this the skill
+	# simply vanishes from an older run.
+	if "analyze" not in known_spells:
+		known_spells.insert(0, "analyze")
+	# Saves written before loadouts existed carry no equipped list; fall back to
+	# the first few known spells so those saves still have something to cast.
+	# equipped_items, the old belt, is ignored: every consumable reaches a
+	# fight now.
+
+	equipped_spells.clear()
+	if pdata.has("equipped_spells"):
+		equipped_spells.assign(pdata["equipped_spells"] as Array)
+	else:
+		for spell_id: String in known_spells:
+			if not equip_spell(spell_id):
+				break
+
+	recruited.clear()
+	recruited.assign(pdata.get("recruited", []) as Array)
+	ever_bound.clear()
+	# A save written before this existed knows only who is bound right now, so
+	# that is what it gets back — better than an empty orb on an old run.
+	ever_bound.assign(
+			pdata.get("ever_bound", pdata.get("recruited", [])) as Array)
+	bound_level.clear()
+	for k: Variant in (pdata.get("bound_level", {}) as Dictionary):
+		bound_level[k] = int((pdata["bound_level"] as Dictionary)[k])
+	# A save written before demons remembered their level: assume the shallow
+	# end rather than leaving them at zero.
+	for demon_name: String in recruited:
+		if not bound_level.has(demon_name):
+			bound_level[demon_name] = 2
+		# A save written before demons carried a skill list: give it the one it
+		# would have been bound with, so an old run is not mute in the menu.
+		seed_demon_skills(demon_name)
+
+	demon_exp.clear()
+	for k: Variant in (pdata.get("demon_exp", {}) as Dictionary):
+		demon_exp[k] = int((pdata["demon_exp"] as Dictionary)[k])
+	demon_gains.clear()
+	for k: Variant in (pdata.get("demon_gains", {}) as Dictionary):
+		var raw: Dictionary = (pdata["demon_gains"] as Dictionary)[k] as Dictionary
+		var one: Dictionary = {}
+		for stat: String in ["str", "def", "mag", "agl"]:
+			one[stat] = int(raw.get(stat, 0))
+		demon_gains[k] = one
+	demon_bonus.clear()
+	for k: Variant in (pdata.get("demon_bonus", {}) as Dictionary):
+		var rawb: Dictionary = (pdata["demon_bonus"] as Dictionary)[k] as Dictionary
+		demon_bonus[k] = {hp = int(rawb.get("hp", 0)), mp = int(rawb.get("mp", 0))}
+
+	demon_element.clear()
+	for k: Variant in (pdata.get("demon_element", {}) as Dictionary):
+		demon_element[k] = (pdata["demon_element"] as Dictionary)[k] as String
+	demon_levels_gained.clear()
+	for k: Variant in (pdata.get("demon_levels_gained", {}) as Dictionary):
+		demon_levels_gained[k] = int(
+				(pdata["demon_levels_gained"] as Dictionary)[k])
+	demon_skills.clear()
+	for k: Variant in (pdata.get("demon_skills", {}) as Dictionary):
+		var raw: Array = (pdata["demon_skills"] as Dictionary)[k] as Array
+		var list: Array = []
+		for entry: Variant in raw:
+			var e: Dictionary = entry as Dictionary
+			if e.get("kind", "") in ["support", "unique"]:
+				list.append({kind = e["kind"] as String, id = e.get("id", "") as String})
+			else:
+				list.append({kind = "element",
+						element = e.get("element", "") as String,
+						rung = int(e.get("rung", 1)),
+						shape = e.get("shape", Spell.SHAPE_ONE) as String})
+		demon_skills[k] = list
+	top_up_unique_skills()
+
+	active_demons.clear()
+	if pdata.has("active_demons"):
+		active_demons.assign(pdata["active_demons"] as Array)
+	else:
+		# Saves from before the party screen existed: walk in with the first few.
+		for demon_name: String in recruited:
+			if not activate_demon(demon_name):
+				break
+
+	encountered_enemies.clear()
+	encountered_enemies.assign(pdata.get("encountered_enemies", []) as Array)
+
+	analyzed.clear()
+	analyzed.assign(pdata.get("analyzed", []) as Array)
+	hazards_seen.assign(pdata.get("hazards_seen", []) as Array)
+	learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
+	# A monster that has since been taken out of the game (the Mimic) drops out
+	# of the bestiary rather than showing up as a random stand-in.
+	encountered_enemies.assign(encountered_enemies.filter(Enemy.is_known))
+	analyzed.assign(analyzed.filter(Enemy.is_known))
+	for gone: Variant in learned_affinities.keys():
+		if not Enemy.is_known(gone as String):
+			learned_affinities.erase(gone)
+
+	# Passive skills are off while they are reworked, so a save that picked some
+	# comes back without them rather than keeping powers a new run cannot get.
+	passive_skills.clear()
+
+	active_statuses.clear()
+	active_statuses.assign(pdata["active_statuses"] as Array)
+
+	inventory.clear()
+	inventory.assign(pdata["inventory"] as Array)
+
+	equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
+	equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
+	var accs: Array = pdata.get("equipped_accessories", []) as Array
+	equipped_accessories.clear()
+	for a: Variant in accs:
+		equipped_accessories.append(a as Dictionary)

@@ -177,7 +177,7 @@ func _ready() -> void:
 	GameBoot.pending_abyss = ""
 	Abyss.active = abyss_intent != ""
 	if abyss_intent == "new":
-		_apply_player_data(Abyss.cleared_hero())
+		player_char.load_save(Abyss.cleared_hero())
 		player_char.hp = player_char.max_hp
 		player_char.mp = player_char.max_mp
 		player_char.active_statuses.clear()
@@ -2115,35 +2115,7 @@ func _gather_save_data() -> Dictionary:
 		play_time   = play_time,
 		player_pos  = [player_pos.x, player_pos.y],
 		player_facing = player_facing,
-		player = {
-			lv = p.lv, str = p.str, def = p.def, mag = p.mag, agl = p.agl, luk = p.luk,
-			exp = p.exp, exp_to_next = p.exp_to_next,
-			hp = p.hp, max_hp = p.max_hp, mp = p.mp, max_mp = p.max_mp,
-			hp_bonus = p._hp_bonus, mp_bonus = p._mp_bonus,
-			gold = p.gold,
-			known_spells        = p.known_spells,
-			equipped_spells     = p.equipped_spells,
-			recruited           = p.recruited,
-			ever_bound          = p.ever_bound,
-			bound_level         = p.bound_level,
-			demon_exp           = p.demon_exp,
-			demon_gains         = p.demon_gains,
-			demon_bonus         = p.demon_bonus,
-			demon_skills        = p.demon_skills,
-			demon_levels_gained = p.demon_levels_gained,
-			demon_element       = p.demon_element,
-			active_demons       = p.active_demons,
-			encountered_enemies = p.encountered_enemies,
-			analyzed            = p.analyzed,
-			hazards_seen        = p.hazards_seen,
-			learned_affinities  = p.learned_affinities,
-			passive_skills      = p.passive_skills,
-			active_statuses     = p.active_statuses,
-			inventory       = p.inventory,
-			equipped_weapon      = p.equipped_weapon,
-			equipped_armor       = p.equipped_armor,
-			equipped_accessories = p.equipped_accessories,
-		},
+		player = p.to_save(),
 		map = {
 			scene       = "res://scenes/map.tscn",
 			maze        = current_level.maze,
@@ -2175,7 +2147,7 @@ func _restore_save(data: Dictionary) -> void:
 		for c: Node in menu_layer.get_children():
 			c.queue_free()
 
-	_apply_player_data(data["player"] as Dictionary)
+	player_char.load_save(data["player"] as Dictionary)
 
 	floor_num = int(data["floor_num"])
 	play_time = float(data.get("play_time", 0.0))
@@ -2266,142 +2238,6 @@ func _restore_save(data: Dictionary) -> void:
 	# save actually left them.
 	_restore_roamers()
 	hud_layer.visible = true
-
-
-func _apply_player_data(pdata: Dictionary) -> void:
-	player_char.lv          = int(pdata["lv"])
-	player_char.str         = int(pdata["str"])
-	player_char.def         = int(pdata["def"])
-	player_char.mag         = int(pdata["mag"])
-	player_char.agl         = int(pdata["agl"])
-	player_char.luk         = int(pdata.get("luk", 3))
-	player_char.exp         = int(pdata["exp"])
-	player_char.exp_to_next = int(pdata["exp_to_next"])
-	player_char.hp          = int(pdata["hp"])
-	player_char.max_hp      = int(pdata["max_hp"])
-	player_char.mp          = int(pdata["mp"])
-	player_char.max_mp      = int(pdata["max_mp"])
-	player_char._hp_bonus   = int(pdata.get("hp_bonus", 0))
-	player_char._mp_bonus   = int(pdata.get("mp_bonus", 0))
-	player_char.gold        = int(pdata["gold"])
-
-	player_char.known_spells.clear()
-	player_char.known_spells.assign(pdata["known_spells"] as Array)
-	# Analyze used to be a button welded into the battle menu rather than a
-	# spell, so a save written then does not know it. Without this the skill
-	# simply vanishes from an older run.
-	if "analyze" not in player_char.known_spells:
-		player_char.known_spells.insert(0, "analyze")
-	# Saves written before loadouts existed carry no equipped list; fall back to
-	# the first few known spells so those saves still have something to cast.
-	# equipped_items, the old belt, is ignored: every consumable reaches a
-	# fight now.
-
-	player_char.equipped_spells.clear()
-	if pdata.has("equipped_spells"):
-		player_char.equipped_spells.assign(pdata["equipped_spells"] as Array)
-	else:
-		for spell_id: String in player_char.known_spells:
-			if not player_char.equip_spell(spell_id):
-				break
-
-	player_char.recruited.clear()
-	player_char.recruited.assign(pdata.get("recruited", []) as Array)
-	player_char.ever_bound.clear()
-	# A save written before this existed knows only who is bound right now, so
-	# that is what it gets back — better than an empty orb on an old run.
-	player_char.ever_bound.assign(
-			pdata.get("ever_bound", pdata.get("recruited", [])) as Array)
-	player_char.bound_level.clear()
-	for k: Variant in (pdata.get("bound_level", {}) as Dictionary):
-		player_char.bound_level[k] = int((pdata["bound_level"] as Dictionary)[k])
-	# A save written before demons remembered their level: assume the shallow
-	# end rather than leaving them at zero.
-	for demon_name: String in player_char.recruited:
-		if not player_char.bound_level.has(demon_name):
-			player_char.bound_level[demon_name] = 2
-		# A save written before demons carried a skill list: give it the one it
-		# would have been bound with, so an old run is not mute in the menu.
-		player_char.seed_demon_skills(demon_name)
-
-	player_char.demon_exp.clear()
-	for k: Variant in (pdata.get("demon_exp", {}) as Dictionary):
-		player_char.demon_exp[k] = int((pdata["demon_exp"] as Dictionary)[k])
-	player_char.demon_gains.clear()
-	for k: Variant in (pdata.get("demon_gains", {}) as Dictionary):
-		var raw: Dictionary = (pdata["demon_gains"] as Dictionary)[k] as Dictionary
-		var one: Dictionary = {}
-		for stat: String in ["str", "def", "mag", "agl"]:
-			one[stat] = int(raw.get(stat, 0))
-		player_char.demon_gains[k] = one
-	player_char.demon_bonus.clear()
-	for k: Variant in (pdata.get("demon_bonus", {}) as Dictionary):
-		var rawb: Dictionary = (pdata["demon_bonus"] as Dictionary)[k] as Dictionary
-		player_char.demon_bonus[k] = {hp = int(rawb.get("hp", 0)), mp = int(rawb.get("mp", 0))}
-
-	player_char.demon_element.clear()
-	for k: Variant in (pdata.get("demon_element", {}) as Dictionary):
-		player_char.demon_element[k] = (pdata["demon_element"] as Dictionary)[k] as String
-	player_char.demon_levels_gained.clear()
-	for k: Variant in (pdata.get("demon_levels_gained", {}) as Dictionary):
-		player_char.demon_levels_gained[k] = int(
-				(pdata["demon_levels_gained"] as Dictionary)[k])
-	player_char.demon_skills.clear()
-	for k: Variant in (pdata.get("demon_skills", {}) as Dictionary):
-		var raw: Array = (pdata["demon_skills"] as Dictionary)[k] as Array
-		var list: Array = []
-		for entry: Variant in raw:
-			var e: Dictionary = entry as Dictionary
-			if e.get("kind", "") in ["support", "unique"]:
-				list.append({kind = e["kind"] as String, id = e.get("id", "") as String})
-			else:
-				list.append({kind = "element",
-						element = e.get("element", "") as String,
-						rung = int(e.get("rung", 1)),
-						shape = e.get("shape", Spell.SHAPE_ONE) as String})
-		player_char.demon_skills[k] = list
-	player_char.top_up_unique_skills()
-
-	player_char.active_demons.clear()
-	if pdata.has("active_demons"):
-		player_char.active_demons.assign(pdata["active_demons"] as Array)
-	else:
-		# Saves from before the party screen existed: walk in with the first few.
-		for demon_name: String in player_char.recruited:
-			if not player_char.activate_demon(demon_name):
-				break
-
-	player_char.encountered_enemies.clear()
-	player_char.encountered_enemies.assign(pdata.get("encountered_enemies", []) as Array)
-
-	player_char.analyzed.clear()
-	player_char.analyzed.assign(pdata.get("analyzed", []) as Array)
-	player_char.hazards_seen.assign(pdata.get("hazards_seen", []) as Array)
-	player_char.learned_affinities = (pdata.get("learned_affinities", {}) as Dictionary).duplicate(true)
-	# A monster that has since been taken out of the game (the Mimic) drops out
-	# of the bestiary rather than showing up as a random stand-in.
-	player_char.encountered_enemies.assign(player_char.encountered_enemies.filter(Enemy.is_known))
-	player_char.analyzed.assign(player_char.analyzed.filter(Enemy.is_known))
-	for gone: Variant in player_char.learned_affinities.keys():
-		if not Enemy.is_known(gone as String):
-			player_char.learned_affinities.erase(gone)
-
-	# Passive skills are off while they are reworked, so a save that picked some
-	# comes back without them rather than keeping powers a new run cannot get.
-	player_char.passive_skills.clear()
-
-	player_char.active_statuses.clear()
-	player_char.active_statuses.assign(pdata["active_statuses"] as Array)
-
-	player_char.inventory.clear()
-	player_char.inventory.assign(pdata["inventory"] as Array)
-
-	player_char.equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
-	player_char.equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary
-	var accs: Array = pdata.get("equipped_accessories", []) as Array
-	player_char.equipped_accessories.clear()
-	for a: Variant in accs:
-		player_char.equipped_accessories.append(a as Dictionary)
 
 
 # Roamer positions are saved so a reload does not shuffle the floor's threats.
