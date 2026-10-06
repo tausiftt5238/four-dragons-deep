@@ -27,6 +27,9 @@ func _ready() -> void:
 	# no such hook, so the picker carries the font itself and its buttons get
 	# the size and height the hook would have given them.
 	_bare = not get_tree().current_scene is Main
+	# The title has no layer to do this for it.
+	if _bare:
+		Layout.focus_first.call_deferred(self)
 	if _bare:
 		theme = Theme.new()
 		theme.default_font = _FONT

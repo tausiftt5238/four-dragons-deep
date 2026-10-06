@@ -25,3 +25,21 @@ static func lower_pane(c: Control) -> void:
 static func dress(panel: Control) -> void:
 	if Build.steam():
 		panel.add_theme_stylebox_override("panel", ExploreHUD.window_box())
+
+
+# On a wide screen, played on a keyboard or a pad, a screen that comes up gives
+# its first button the focus, so yes presses it without a mouse. A layer calls
+# this for each screen it is handed (Main.overlay_layer and the like).
+static func focus_first(screen: Node) -> void:
+	if not Build.steam() or not is_instance_valid(screen):
+		return
+	var first: Control = SidePanel._first_focusable(screen)
+	if first != null:
+		first.grab_focus()
+
+
+# Makes `layer` focus each screen as it arrives (focus_first), a frame after,
+# once the screen has built itself.
+static func focus_arrivals(layer: CanvasLayer) -> void:
+	if Build.steam():
+		layer.child_entered_tree.connect(func(n: Node) -> void: focus_first.call_deferred(n))

@@ -1569,6 +1569,7 @@ func _get_overlay_layer() -> CanvasLayer:
 		overlay_layer = CanvasLayer.new()
 		overlay_layer.layer = 25
 		add_child(overlay_layer)
+		Layout.focus_arrivals(overlay_layer)
 	return overlay_layer
 
 
@@ -1908,6 +1909,7 @@ func _open_chest(wall: Vector2i) -> void:
 		chest_layer = CanvasLayer.new()
 		chest_layer.layer = 15
 		add_child(chest_layer)
+		Layout.focus_arrivals(chest_layer)
 	var ui: ChestUI = ChestUI.new()
 	ui.closed.connect(func() -> void: _close_chest())
 	ui.opened.connect(func() -> void:
@@ -2036,6 +2038,7 @@ func _open_save_menu() -> void:
 		save_layer = CanvasLayer.new()
 		save_layer.layer = 16
 		add_child(save_layer)
+		Layout.focus_arrivals(save_layer)
 	var ui: SaveSlotUI = SaveSlotUI.new()
 	ui.mode = "save"
 	ui.slot_chosen.connect(_do_save)
@@ -2050,6 +2053,7 @@ func _open_load_menu() -> void:
 		save_layer = CanvasLayer.new()
 		save_layer.layer = 16
 		add_child(save_layer)
+		Layout.focus_arrivals(save_layer)
 	var ui: SaveSlotUI = SaveSlotUI.new()
 	ui.mode = "load"
 	ui.slot_chosen.connect(_do_load)

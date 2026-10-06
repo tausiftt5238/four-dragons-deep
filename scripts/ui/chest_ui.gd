@@ -125,3 +125,5 @@ func show_found(gold: int, items: Array) -> void:
 	done.custom_minimum_size = Vector2(0, 38)
 	done.pressed.connect(func() -> void: closed.emit())
 	_col.add_child(done)
+	# The buttons it was opened with are gone; the keyboard gets this one.
+	Layout.focus_first.call_deferred(self)
