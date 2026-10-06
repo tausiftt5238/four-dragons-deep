@@ -3186,7 +3186,7 @@ func _list_column(col: VBoxContainer, with_back: bool = true) -> Dictionary:
 	var title: Label = Label.new()
 	title.clip_text = true
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_size_override("font_size", 11)
+	title.add_theme_font_size_override("font_size", 14)
 	header.add_child(title)
 	var scroll: TouchScroll = TouchScroll.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3390,7 +3390,7 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 	if subtitle != "":
 		var sub: Label = Label.new()
 		sub.text = subtitle
-		sub.add_theme_font_size_override("font_size", 10)
+		sub.add_theme_font_size_override("font_size", 14)
 		sub.add_theme_color_override("font_color", tint if tint.a > 0.0 else Color(0.66, 0.70, 0.86))
 		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
