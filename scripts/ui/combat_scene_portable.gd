@@ -5,6 +5,15 @@
 class_name CombatScenePortable extends CombatScene
 
 
+func player_to_act() -> bool:
+	if not _action_bar.visible:
+		return false
+	for b: Node in _action_bar.find_children("*", "Button", true, false):
+		if (b as Button).visible and not (b as Button).disabled:
+			return true
+	return false
+
+
 # ── UI construction ───────────────────────────────────────────────────────────
 
 func _build_ui() -> void:

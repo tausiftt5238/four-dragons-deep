@@ -31,7 +31,7 @@ extends SceneTree
 #       --write-movie out/run.avi --script tools/playtester.gd
 #
 # The machine's own saves are copied aside at the start and put back at the
-# end, so a playtest never costs you a run.
+# end, so a playtest never costs you a run (see BACKUP_DIR).
 
 const FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
 
@@ -133,10 +133,14 @@ func _initialize() -> void:
 
 
 # Kept on disk as well as in memory, so a playtest killed partway still leaves
-# the machine's saves recoverable: .godot/playtest_saves_backup/. If that folder
-# is already there, an earlier run never finished, and what is in it (not what
-# is in the save folder now) is the real thing.
-const BACKUP_DIR: String = "res://.godot/playtest_saves_backup"
+# the machine's saves recoverable: playtest_saves_backup/ in the build's own
+# save folder. If that folder is already there, an earlier run never finished,
+# and what is in it (not what is in the save folder now) is the real thing.
+#
+# In the save folder, not the project: Portable and Steam save to different
+# folders, and a backup one build left in a shared place was once "restored"
+# into the other's, deleting a save it had never seen.
+const BACKUP_DIR: String = "user://playtest_saves_backup"
 
 
 func _backup_saves(loading: int) -> void:
@@ -1319,34 +1323,35 @@ func _combat_tick(sc: CombatScene) -> void:
 	if _boss_fight:
 		_mirror_log(sc)
 	# Our move: the action bar is up and live.
-	if sc._action_bar.visible and _any_enabled(sc._action_bar):
+	if sc.player_to_act():
 		_fight_turns += 1
 		_measure_hits(sc)
 		await _wait(0.35)
-		if not is_instance_valid(sc) or not sc._action_bar.visible:
+		if not is_instance_valid(sc) or not sc.player_to_act():
 			return
 		await _act(sc)
 		await _wait(0.2)
 		return
-	# A question in the side panel: a plea, a pay-off, a line of talk.
-	if sc._sub_scroll.visible and not sc._action_bar.visible:
-		if _button(sc._sub_bar, "Recruit it") != null:
+	# A question: a plea, a pay-off, a line of talk. Wherever the layout puts
+	# it, it is a button in the fight with that word on it.
+	if not sc.player_to_act():
+		if _button(sc, "Recruit it") != null:
 			await _wait(0.6)
 			if main.player_char.recruited.size() < PlayerCharacter.ROSTER_SIZE:
-				_press(sc._sub_bar, "Recruit it")
+				_press(sc, "Recruit it")
 				recruits.append(sc.enemy.enemy_name + " (begged)")
 			else:
-				_press(sc._sub_bar, "Refuse it")
+				_press(sc, "Refuse it")
 			return
-		if _button(sc._sub_bar, "Take it") != null:
+		if _button(sc, "Take it") != null:
 			await _wait(0.6)
-			_press(sc._sub_bar, "Take it")
+			_press(sc, "Take it")
 			return
 		for line: String in ["Flatter", "Pride", "Safety"]:
-			if _button(sc._sub_bar, line) != null:
+			if _button(sc, line) != null:
 				await _wait(0.6)
 				var pick: String = _talk_line(sc.enemy)
-				_press(sc._sub_bar, pick)
+				_press(sc, pick)
 				return
 
 
@@ -1409,14 +1414,6 @@ func _mirror_log(sc: CombatScene) -> void:
 	for line: String in text.substr(_log_seen).split("\n", false):
 		_event("  | " + line.strip_edges())
 	_log_seen = text.length()
-
-
-func _any_enabled(bar: Control) -> bool:
-	for n: Node in bar.find_children("*", "Button", true, false):
-		var b: Button = n as Button
-		if b.is_visible_in_tree() and not b.disabled:
-			return true
-	return false
 
 
 func _fight_began(sc: CombatScene) -> void:

@@ -8,6 +8,12 @@
 class_name CombatSceneSteam extends CombatScene
 
 
+# Live and at the top of a tab: a step deeper (a target, the talk window) is
+# already an answer under way.
+func player_to_act() -> bool:
+	return _buttons_on and not _actions_locked and _at_top
+
+
 # The wide-screen layout: strips, the field, the formations, the cards.
 const TOP_STRIP_H: float = 30.0
 const BOTTOM_STRIP_H: float = 162.0

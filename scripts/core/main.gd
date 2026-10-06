@@ -1310,32 +1310,26 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	player_char.active_statuses.clear()
 
 	match result:
-		"win", "talk":
-			Records.add("fights_won")
-			Records.add("gold_earned", gold_reward)
-			player_char.gold += gold_reward
-			if result == "win" and not item_drop.is_empty():
-				player_char.add_item(item_drop)
+		"win", "talk", "bribe":
+			# Every way out but running pays the experience. A bribe pays no
+			# gold (you were the one paying), and only a kill drops anything.
+			var paid: int = 0 if result == "bribe" else gold_reward
+			var drop: Dictionary = item_drop if result == "win" else {}
+			if result != "bribe":
+				Records.add("fights_won")
+				Records.add("gold_earned", paid)
+			player_char.gold += paid
+			if not drop.is_empty():
+				player_char.add_item(drop)
 			var before: Dictionary = _player_snapshot()
 			player_char.gain_exp(exp_reward)
 			var after: Dictionary = _player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
 			var demons_before: Dictionary = _demon_snapshots()
 			var grew: Dictionary = player_char.award_demon_exp(exp_reward)
-			var shown_drop: Dictionary = item_drop if result == "win" else {}
-			_show_combat_result(exp_reward, gold_reward, shown_drop,
+			_show_combat_result(exp_reward, paid, drop,
 				before if leveled else {}, after if leveled else {},
 				_demon_level_ups(grew, demons_before))
-		"bribe":
-			var before: Dictionary = _player_snapshot()
-			player_char.gain_exp(exp_reward)
-			var after: Dictionary = _player_snapshot()
-			var leveled: bool = after["lv"] > before["lv"]
-			var demons_before_b: Dictionary = _demon_snapshots()
-			var grew_b: Dictionary = player_char.award_demon_exp(exp_reward)
-			_show_combat_result(exp_reward, 0, {},
-				before if leveled else {}, after if leveled else {},
-				_demon_level_ups(grew_b, demons_before_b))
 		"lose":
 			_pending_congratulations = false
 			_show_game_over()

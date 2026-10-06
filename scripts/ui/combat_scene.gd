@@ -3589,6 +3589,12 @@ func _big_button(_title: String, _subtitle: String, _disabled: bool,
 	return null
 
 
+# Whether the fight is waiting on the player to pick what to do: the
+# commands are up and live. For a tool driving the fight (tools/playtester.gd).
+func player_to_act() -> bool:
+	return false
+
+
 # ── Layout hooks ──────────────────────────────────────────────────────────────
 #
 # The few places where what happens next is the layout's to say. The phone's
