@@ -17,6 +17,10 @@ var _scroll: ScrollContainer
 var _content:     VBoxContainer
 var _status_line: Label
 var _tabs:        MenuTabs
+var _side: SidePanel   # the wide screen's frame; null on a phone
+
+const _PAGE_NAMES: Dictionary = {stats = "Stats", party = "Party", items = "Items",
+		equipment = "Equip", magic = "Magic", bestiary = "Bestiary", system = "System"}
 
 
 func _ready() -> void:
@@ -29,6 +33,9 @@ func _ready() -> void:
 # ── Shell (chrome that never changes) ────────────────────────────────────────
 
 func _build_shell() -> void:
+	if Build.steam():
+		_build_side()
+		return
 	var bg: ColorRect = ColorRect.new()
 	bg.color = Color(0.03, 0.03, 0.05, 0.93)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -117,6 +124,38 @@ func _build_shell() -> void:
 	foot.add_child(close_btn)
 
 
+# A wide screen: the command window and the page window (SidePanel), beside
+# the map Main has pushed to the right.
+func _build_side() -> void:
+	var bg: ColorRect = ColorRect.new()
+	bg.color = Color(0.04, 0.03, 0.07)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var cmds: Array = []
+	for id: String in ["stats", "party", "items", "equipment", "magic", "bestiary"]:
+		cmds.append([id, _PAGE_NAMES[id]])
+	cmds.append_array([["", ""], ["system", "System"], ["close", "Close"]])
+	_side = SidePanel.new("Menu", cmds, ["close"] as Array[String])
+	_side.offset_left = 8
+	_side.offset_top = 8
+	_side.offset_bottom = -8
+	add_child(_side)
+	_side.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
+	_side.picked.connect(func(id: String) -> void:
+		if id == "close":
+			menu_closed.emit()
+		else:
+			_switch_tab(id))
+	_side.back_out.connect(func() -> void: menu_closed.emit())
+	_content = _side.content
+	_scroll = _side.scroll
+	_status_line = _side.status
+	_tab_btns = _side.buttons
+	if Abyss.active:
+		(_tab_btns["bestiary"] as Button).disabled = true
+	_side.focus_commands.call_deferred()
+
+
 # ── System page ───────────────────────────────────────────────────────────────
 
 func _build_system() -> void:
@@ -174,8 +213,11 @@ func _switch_tab(tab_id: String) -> void:
 	_active_tab      = tab_id
 	_scroll.scroll_vertical = 0
 	_status_line.text = ""
-	for id: String in _tab_btns:
-		_tab_btns[id].button_pressed = (id == tab_id)
+	if _side != null:
+		_side.set_page(tab_id, _PAGE_NAMES.get(tab_id, "") as String)
+	else:
+		for id: String in _tab_btns:
+			_tab_btns[id].button_pressed = (id == tab_id)
 	for child: Node in _content.get_children():
 		child.queue_free()
 	match tab_id:
@@ -192,6 +234,7 @@ func _switch_tab(tab_id: String) -> void:
 # player back to the top of a list they had scrolled down.
 func _refresh() -> void:
 	var at: int = _scroll.scroll_vertical
+	var cursor: int = _side.page_focus_index() if _side != null else -1
 	# The action that asked for the refresh has just said what it did; the
 	# rebuild clears the line, so put it back.
 	var said: String = _status_line.text
@@ -201,6 +244,8 @@ func _refresh() -> void:
 	await get_tree().process_frame
 	if is_instance_valid(_scroll):
 		_scroll.scroll_vertical = at
+	if _side != null and is_instance_valid(_side):
+		_side.focus_page_at(cursor)
 
 
 func _set_status(msg: String) -> void:

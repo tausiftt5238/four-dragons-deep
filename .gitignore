@@ -11,3 +11,4 @@ art-private/
 # Commercial music pack, kept out of the repo. The game plays silence
 # without it; see scripts/core/music.gd.
 resources/music/
+override.cfg

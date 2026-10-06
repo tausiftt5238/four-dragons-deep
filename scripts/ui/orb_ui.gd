@@ -28,6 +28,10 @@ var _tab_btns: Dictionary = {}
 # Which page each of the long lists is showing.
 var _page: Dictionary = {}
 var _scroll: ScrollContainer
+var _side: SidePanel   # the wide screen's frame; null on a phone
+
+const _PAGE_NAMES: Dictionary = {rest = "Rest", bind = "Recruit", sell = "Sell", buy = "Supplies",
+		gear = "Gear", scrolls = "Scrolls", gacha = "Gacha", gauntlet = "Gauntlet", save = "Save"}
 
 
 func _ready() -> void:
@@ -38,6 +42,9 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	if Build.steam():
+		_build_side()
+		return
 	var bg: ColorRect = ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.08, 0.97)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -117,6 +124,43 @@ func _build() -> void:
 	col.add_child(close_btn)
 
 
+# A wide screen: the command window and the page window (SidePanel), beside
+# the map Main has pushed to the right.
+func _build_side() -> void:
+	var bg: ColorRect = ColorRect.new()
+	bg.color = Color(0.04, 0.03, 0.07)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var cmds: Array = []
+	for id: String in ["rest", "bind", "sell", "buy", "gear", "scrolls", "gacha", "gauntlet"]:
+		cmds.append([id, _PAGE_NAMES[id]])
+	# The Abyss keeps no saves but its own autosave: no Save down there.
+	if not Abyss.active:
+		cmds.append(["save", "Save"])
+	cmds.append_array([["", ""], ["leave", "Leave"]])
+	_side = SidePanel.new("Orb", cmds, ["leave"] as Array[String])
+	add_child(_side)
+	_side.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
+	_side.picked.connect(func(id: String) -> void:
+		if id == "leave":
+			closed.emit()
+		else:
+			_switch(id))
+	_side.back_out.connect(func() -> void: closed.emit())
+	_content = _side.content
+	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll = _side.scroll
+	_status = _side.status
+	_gold_lbl = _side.corner
+	_tab_btns = _side.buttons
+	_side.focus_commands.call_deferred()
+
+
+func _show_gold() -> void:
+	_gold_lbl.text = ("%s G" % ExploreHUD._thousands(player.gold)) if _side != null \
+			else "Gold:  %d" % player.gold
+
+
 func _tab_btn(id: String, label: String) -> Button:
 	var btn: Button = Button.new()
 	btn.text = label
@@ -132,11 +176,14 @@ func _switch(tab: String) -> void:
 	_tab = tab
 	Music.play(Music.CASINO if tab == "gacha" else Music.ORB)
 	_scroll.scroll_vertical = 0
-	for id: String in _tab_btns:
-		(_tab_btns[id] as Button).button_pressed = (id == tab)
+	if _side != null:
+		_side.set_page(tab, _PAGE_NAMES.get(tab, "") as String)
+	else:
+		for id: String in _tab_btns:
+			(_tab_btns[id] as Button).button_pressed = (id == tab)
 	for child: Node in _content.get_children():
 		child.queue_free()
-	_gold_lbl.text = "Gold:  %d" % player.gold
+	_show_gold()
 	match tab:
 		"rest": _build_rest()
 		"bind": _build_bind()
@@ -152,11 +199,14 @@ func _switch(tab: String) -> void:
 # Rebuilds the tab after a purchase or a sale, keeping the scroll where it was.
 func _refresh() -> void:
 	var at: int = _scroll.scroll_vertical
+	var cursor: int = _side.page_focus_index() if _side != null else -1
 	_switch(_tab)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if is_instance_valid(_scroll):
 		_scroll.scroll_vertical = at
+	if _side != null and is_instance_valid(_side):
+		_side.focus_page_at(cursor)
 
 
 func _set_status(msg: String) -> void:
@@ -305,7 +355,7 @@ func _spin() -> void:
 		return
 	_spinning = true
 	player.gold -= cost
-	_gold_lbl.text = "Gold:  %d" % player.gold
+	_show_gold()
 	_spin_btn.disabled = true
 	_gacha_result.text = "..."
 	for b: PanelContainer in _reel_boxes:
@@ -343,7 +393,7 @@ func _spin() -> void:
 		for i: int in 3:
 			if reels[i] == won["face"]:
 				_reel_boxes[i].add_theme_stylebox_override("panel", _reel_style(glow))
-	_gold_lbl.text = "Gold:  %d" % player.gold
+	_show_gold()
 	_spin_btn.disabled = _gacha_locked or player.gold < cost
 
 
@@ -820,7 +870,7 @@ func _build_buy() -> void:
 		{title = "Recovery", entries = mend},
 		{title = "Throwables", entries = throw},
 		{title = "Mirrors", entries = mirrors},
-	], _buy_offer)
+	], _buy_offer.bind(true))
 
 
 func _build_gear() -> void:
@@ -895,7 +945,12 @@ static func scroll_groups(scrolls: Array) -> Array:
 	return out
 
 
-func _buy_offer(list: SlotList, item: Variant) -> void:
+# `in_bulk` is for supplies: one, five or ten at a time, so stocking up on
+# potions is three presses rather than ten. Gear comes one at a time.
+const BULK: Array[int] = [1, 5, 10]
+
+
+func _buy_offer(list: SlotList, item: Variant, in_bulk: bool = false) -> void:
 	var entry: Dictionary = item as Dictionary
 	var price: int = item_price(entry)
 	# What it would change, above its own description: a shop that only names a
@@ -916,21 +971,33 @@ func _buy_offer(list: SlotList, item: Variant) -> void:
 	# so a third would simply push it out of the row.
 	var detail: String = ItemInfo.item(entry, deltas)
 	if held != "":
-		detail = "[font_size=%d][color=#9ee8b8]%s[/color][/font_size]\n%s" % [
-				ItemInfo.FONT_SIZE - 3, held, detail]
+		# A wide screen's row is one line of detail: the count goes beside it.
+		detail = "[font_size=%d][color=#9ee8b8]%s[/color][/font_size]%s%s" % [
+				ItemInfo.FONT_SIZE - 3, held, "  " if Build.steam() else "\n", detail]
 
+	if in_bulk:
+		var actions: Array[Dictionary] = []
+		for n: int in BULK:
+			actions.append({text = "x%d" % n, disabled = player.gold < price * n,
+					press = _buy.bind(entry, price, n)})
+		list.add_entry(entry["name"] as String, title_color, detail,
+				"%d g" % price, Color(1.0, 0.85, 0.35), actions)
+		return
 	list.add(entry["name"] as String, title_color,
 			detail,
 			"%d g" % price, Color(1.0, 0.85, 0.35),
-			"Buy", player.gold < price,
-			func() -> void:
-				if player.gold < price:
-					_set_status("Not enough gold.")
-				else:
-					player.gold -= price
-					player.add_item(entry.duplicate(), 1)
-					_set_status("Bought %s." % entry["name"])
-				_refresh())
+			"Buy", player.gold < price, _buy.bind(entry, price, 1))
+
+
+func _buy(entry: Dictionary, price: int, n: int) -> void:
+	if player.gold < price * n:
+		_set_status("Not enough gold.")
+	else:
+		player.gold -= price * n
+		player.add_item(entry.duplicate(), n)
+		_set_status("Bought %s." % entry["name"] if n == 1 else
+				"Bought %d %s." % [n, entry["name"]])
+	_refresh()
 
 
 # ── Saving ────────────────────────────────────────────────────────────────────

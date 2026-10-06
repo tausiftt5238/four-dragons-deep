@@ -28,6 +28,7 @@ func build(level: Level) -> void:
 	if level.key_pos.x >= 0 and not level.key_taken:
 		_add_key(level.key_pos)
 	_setup_environment()
+	_build_arena()
 
 
 # Accumulators for the two meshes the maze is drawn with. Members rather than
@@ -1112,3 +1113,97 @@ func _setup_environment() -> void:
 	var we: WorldEnvironment = WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+
+
+# ── The battle room ───────────────────────────────────────────────────────────
+#
+# A wide room in this floor's stone, out past the edge of the maze where no
+# corridor can see it, for a fight to stand in on a wide screen: the maze's
+# corridors are one cell across, and a party and a line of monsters spread over
+# the whole screen would stand on its walls. Main makes arena_camera current
+# for the fight and hands the player's camera back after.
+
+const ARENA_AT: Vector3 = Vector3(-400.0, 0.0, -400.0)
+const ARENA_W: float = 16.0      # across, side wall to side wall
+const ARENA_D: float = 12.0      # from the camera's end to the back wall
+const ARENA_H: float = 4.0
+
+var arena_camera: Camera3D
+
+
+func _build_arena() -> void:
+	var root: Node3D = Node3D.new()
+	root.position = ARENA_AT
+	add_child(root)
+	var hw: float = ARENA_W / 2.0
+	var back: float = -ARENA_D
+	var front: float = 4.0
+	# Floor, back wall, and the two side walls running back to it.
+	var floor_v: PackedVector3Array = _quad(Vector3(-hw, 0, back), Vector3(hw, 0, back),
+			Vector3(hw, 0, front), Vector3(-hw, 0, front))
+	var wall_v: PackedVector3Array = PackedVector3Array()
+	wall_v.append_array(_quad(Vector3(-hw, 0, back), Vector3(hw, 0, back),
+			Vector3(hw, ARENA_H, back), Vector3(-hw, ARENA_H, back)))
+	wall_v.append_array(_quad(Vector3(-hw, 0, front), Vector3(-hw, 0, back),
+			Vector3(-hw, ARENA_H, back), Vector3(-hw, ARENA_H, front)))
+	wall_v.append_array(_quad(Vector3(hw, 0, back), Vector3(hw, 0, front),
+			Vector3(hw, ARENA_H, front), Vector3(hw, ARENA_H, back)))
+	var cam_at: Vector3 = ARENA_AT + Vector3(0.0, 3.4, 3.6)
+	# Its own light: the fighters' torch where the camera is, and a torch
+	# each side of the back wall.
+	var torches: PackedVector3Array = PackedVector3Array()
+	torches.resize(_TORCH_SENT)
+	torches[0] = ARENA_AT + Vector3(-hw * 0.55, _TORCH_HEIGHT + 0.6, back + 0.4)
+	torches[1] = ARENA_AT + Vector3(hw * 0.55, _TORCH_HEIGHT + 0.6, back + 0.4)
+	for part: Array in [[floor_v, 1, Vector3.UP], [wall_v, 0, Vector3.ZERO]]:
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		var verts: PackedVector3Array = part[0] as PackedVector3Array
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		var normals: PackedVector3Array = PackedVector3Array()
+		for i: int in range(0, verts.size(), 3):
+			var n: Vector3 = part[2] as Vector3
+			if n == Vector3.ZERO:
+				n = (verts[i + 1] - verts[i]).cross(verts[i + 2] - verts[i]).normalized()
+			normals.append_array([n, n, n])
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		var mesh: ArrayMesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi: MeshInstance3D = MeshInstance3D.new()
+		mi.mesh = mesh
+		# Not one of _stone_mats: the maze's lighting follows the player, and
+		# this room keeps its own.
+		var mat: ShaderMaterial = ShaderMaterial.new()
+		mat.shader = _STONE_SHADER
+		mat.set_shader_parameter("surface", int(part[1]))
+		mat.set_shader_parameter("tint", _tint)
+		mat.set_shader_parameter("viewer", cam_at)
+		mat.set_shader_parameter("viewer_range", 11.0)
+		mat.set_shader_parameter("torches", torches)
+		mat.set_shader_parameter("torch_count", 2)
+		mat.set_shader_parameter("torch_range", 6.0)
+		mat.set_shader_parameter("ambient", Color(0.22, 0.20, 0.22))
+		mi.material_override = mat
+		add_child(mi)
+		mi.position = ARENA_AT
+	root.queue_free()
+
+	arena_camera = Camera3D.new()
+	arena_camera.fov = 60.0
+	# No depth fog in here: it is there to hide the far maze, and in a room
+	# this size it would hide the back wall.
+	var env: Environment = Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.02, 0.02, 0.04)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.12, 0.10, 0.07)
+	arena_camera.environment = env
+	add_child(arena_camera)
+	arena_camera.position = cam_at
+	arena_camera.look_at(ARENA_AT + Vector3(0.0, 0.0, -3.4), Vector3.UP)
+
+
+# Two triangles over four corners, wound the way the corners are given.
+func _quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> PackedVector3Array:
+	return PackedVector3Array([a, b, c, a, c, d])
+

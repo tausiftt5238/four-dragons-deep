@@ -41,7 +41,7 @@ var cam: Camera3D
 # you cannot see a side opening until you are standing in it. The screen splits
 # instead — the floor map above, the dungeon below — which gives the 3D a pane
 # nearer 4:3 and puts the part you swipe within reach of a thumb.
-const MAP_PANE_H: int = 520
+const MAP_PANE_H: int = Layout.MAP_PANE_H
 
 var world: SubViewport
 var _world_box: SubViewportContainer
@@ -94,6 +94,9 @@ var orb_layer:     CanvasLayer
 var chest_layer:   CanvasLayer
 var overlay_layer: CanvasLayer  # Layer 25 — level-up and game-over screens
 
+var _explore_hud: ExploreHUD  # the wide-screen exploring HUD; null on a phone
+var _hud_tick: float = 0.0
+var _stick_held: Vector2i = Vector2i.ZERO
 var _orb_btn:         Button  # "Orb", shown only while standing on an orb
 var _hud_popup:       Label   # brief centred notice in the HUD (traps, poison)
 var _hud_popup_tween: Tween
@@ -140,10 +143,18 @@ func _notification(what: int) -> void:
 func _process(delta: float) -> void:
 	play_time += delta
 	Records.tick(delta)
+	# A few times a second is plenty for numbers that change on a step.
+	_sync_view_width()
+	if _explore_hud != null and hud_layer.visible:
+		_hud_tick -= delta
+		if _hud_tick <= 0.0:
+			_hud_tick = 0.15
+			_explore_hud.refresh()
 
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
+	Controls.ensure()
 	Sfx.init()
 
 	# The world pane has to exist before anything three-dimensional, since
@@ -270,7 +281,11 @@ func _setup_world_pane() -> void:
 	_world_box.anchor_right  = 1.0
 	_world_box.anchor_top    = 0.0
 	_world_box.anchor_bottom = 1.0
-	_world_box.offset_top    = MAP_PANE_H
+	# Landscape: the map column down the left, the dungeon on the right.
+	if Build.steam():
+		_world_box.offset_left = Layout.MAP_PANE_W
+	else:
+		_world_box.offset_top    = MAP_PANE_H
 	_world_box.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_world_box)
 
@@ -312,8 +327,10 @@ func _setup_minimap() -> void:
 
 	floor_label = Label.new()
 	floor_label.text = "Floor 1"
-	floor_label.anchor_left   = 0.0
+	floor_label.anchor_left   = 1.0 if Build.steam() else 0.0
 	floor_label.anchor_right  = 1.0
+	if Build.steam():
+		floor_label.offset_left = -Layout.MAP_PANE_W
 	floor_label.anchor_top    = 0.0
 	floor_label.anchor_bottom = 0.0
 	floor_label.offset_top    = 10.0
@@ -332,8 +349,10 @@ func _setup_minimap() -> void:
 	_hud_popup.anchor_bottom = 0.0
 	_hud_popup.offset_left   = 12.0
 	_hud_popup.offset_right  = -12.0
-	_hud_popup.offset_top    = MAP_PANE_H + 12.0
-	_hud_popup.offset_bottom = MAP_PANE_H + 52.0
+	_hud_popup.offset_top    = (0.0 if Build.steam() else float(MAP_PANE_H)) + 12.0
+	_hud_popup.offset_bottom = (0.0 if Build.steam() else float(MAP_PANE_H)) + 52.0
+	if Build.steam():
+		_hud_popup.offset_right = -Layout.MAP_PANE_W - 12.0
 	_hud_popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud_popup.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	_hud_popup.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
@@ -345,6 +364,13 @@ func _setup_minimap() -> void:
 	_hud_popup.add_theme_stylebox_override("normal", band)
 	_hud_popup.add_theme_color_override("font_color", Color(1.0, 0.88, 0.28))
 	_hud_popup.modulate.a = 0.0
+	if Build.steam():
+		# Under the top strip, in a window like the fight's.
+		_hud_popup.offset_left = Layout.MAP_PANE_W + 60.0
+		_hud_popup.offset_right = -60.0
+		_hud_popup.offset_top = ExploreHUD.STRIP_H + 8.0
+		_hud_popup.offset_bottom = ExploreHUD.STRIP_H + 44.0
+		_hud_popup.add_theme_stylebox_override("normal", ExploreHUD.window_box(0.92))
 	layer.add_child(_hud_popup)
 
 	_encounter_debug_lbl = Label.new()
@@ -404,16 +430,32 @@ func _setup_minimap() -> void:
 	_key_icon.anchor_right  = 1.0
 	_key_icon.anchor_top    = 0.0
 	_key_icon.anchor_bottom = 0.0
-	_key_icon.offset_left   = -62.0
-	_key_icon.offset_right  = -14.0
+	var key_x: float = -float(Layout.MAP_PANE_W) if Build.steam() else 0.0
+	_key_icon.offset_left   = key_x - 62.0
+	_key_icon.offset_right  = key_x - 14.0
 	_key_icon.offset_top    = float(MAP_PANE_H) + 12.0
-	_key_icon.offset_bottom = float(MAP_PANE_H) + 60.0
+	_key_icon.offset_bottom = _key_icon.offset_top + 48.0
 	_key_icon.visible       = false
 	layer.add_child(_key_icon)
 
 	# Under the popup band, which now owns the top of the map.
 	_encounter_debug_lbl.offset_top    = 90.0
 	_encounter_debug_lbl.offset_bottom = 114.0
+
+	# A wide screen gets the HUD in windows instead: the strip, the party, the
+	# map in its own window. The phone's buttons and labels stay built (the
+	# rest of Main writes to them) and simply stay out of sight.
+	if Build.steam():
+		_explore_hud = ExploreHUD.new(self, float(Layout.MAP_PANE_W))
+		layer.add_child(_explore_hud)
+		layer.move_child(_explore_hud, 0)
+		_explore_hud.hold_map(minimap_ctrl)
+		_explore_hud.menu_pressed.connect(_on_menu_btn_pressed)
+		_explore_hud.act_pressed.connect(_act)
+		floor_label.visible = false
+		menu_btn.visible = false
+		_orb_btn.visible = false
+		_key_icon.visible = false
 
 
 # The map is drawn in the dungeon's own colours: wall faces lifted enough to
@@ -433,6 +475,20 @@ func _sync_minimap_palette() -> void:
 # label down to where the dungeon view begins.
 func _resize_minimap() -> void:
 	const TOP: float = 40.0
+	if _explore_hud != null:
+		return
+	if Build.steam():
+		# The column down the right, under the floor label, clear of the
+		# Menu and Orb buttons at its foot.
+		minimap_ctrl.anchor_left   = 1.0
+		minimap_ctrl.anchor_right  = 1.0
+		minimap_ctrl.anchor_top    = 0.0
+		minimap_ctrl.anchor_bottom = 1.0
+		minimap_ctrl.offset_left   = -float(Layout.MAP_PANE_W)
+		minimap_ctrl.offset_right  = 0.0
+		minimap_ctrl.offset_top    = TOP
+		minimap_ctrl.offset_bottom = -90.0
+		return
 	minimap_ctrl.anchor_left   = 0.0
 	minimap_ctrl.anchor_right  = 1.0
 	minimap_ctrl.anchor_top    = 0.0
@@ -478,8 +534,10 @@ func _sync_player() -> void:
 func _refresh_orb_btn() -> void:
 	if not is_instance_valid(_orb_btn):
 		return
-	_orb_btn.visible = is_instance_valid(current_level) \
+	_orb_btn.visible = _explore_hud == null and is_instance_valid(current_level) \
 			and player_pos in current_level.orb_cells
+	if _explore_hud != null:
+		_explore_hud.refresh()
 
 
 # Snaps camera rotation to the current facing with no animation. Used on level load.
@@ -692,6 +750,84 @@ func _on_menu_btn_pressed() -> void:
 		_open_menu()
 
 
+# ── The wide-screen HUD's questions and buttons ──────────────────────────────
+
+func has_floor_key() -> bool:
+	return _has_key
+
+
+# What Act would do here, said for the prompt over the party; "" when there is
+# nothing in front of you to use.
+func facing_prompt() -> String:
+	if current_level == null or in_combat:
+		return ""
+	if player_pos in current_level.orb_cells:
+		return "Use the orb"
+	var ahead: Vector2i = player_pos + DIR_OFFSET[player_facing]
+	if ahead == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
+		if Level.is_boss_floor(floor_num) and not _boss_beaten:
+			return "Go on"
+		if not _has_key:
+			return "The door is locked"
+		return "Go through" if _door_open else "Open the door"
+	if current_level.chest_cells.get(ahead, Vector2i(-1, -1)) == player_pos \
+			and not current_level.looted.has(ahead):
+		return "Open the chest"
+	return ""
+
+
+# Act: the orb underfoot, or whatever is in front (a chest, the door) — which
+# is what walking into it already does.
+func _act() -> void:
+	if in_combat or menu_open or save_open or orb_open or chest_open or _fading:
+		return
+	if current_level != null and player_pos in current_level.orb_cells:
+		_open_orb("save")
+		return
+	if facing_prompt() != "":
+		_action_forward()
+
+
+# A pad's left stick walks and turns, one step per push. Every button, the
+# d-pad included, goes through the same actions as the keyboard (Controls),
+# so Options can rebind either.
+const STICK_DEAD: float = 0.6
+
+
+func _stick_input(m: InputEventJoypadMotion) -> void:
+	if m.axis != JOY_AXIS_LEFT_X and m.axis != JOY_AXIS_LEFT_Y:
+		return
+	if _explore_hud != null:
+		_explore_hud.set_pad(true)
+	# The stick has to come back to the middle before it counts again, so
+	# holding it does not run you down a corridor.
+	var held: Vector2i = _stick_held
+	var v: int = 0
+	if m.axis_value > STICK_DEAD:
+		v = 1
+	elif m.axis_value < -STICK_DEAD:
+		v = -1
+	var dir: Vector2i = Vector2i.ZERO
+	if m.axis == JOY_AXIS_LEFT_X:
+		_stick_held.x = v
+		if v != 0 and held.x == 0:
+			dir = Vector2i(v, 0)
+	else:
+		_stick_held.y = v
+		if v != 0 and held.y == 0:
+			dir = Vector2i(0, v)
+	if dir == Vector2i.ZERO or in_combat or menu_open or save_open or orb_open or chest_open:
+		return
+	if dir.y < 0:
+		_action_forward()
+	elif dir.y > 0:
+		_action_back()
+	elif dir.x < 0:
+		_action_turn_left()
+	else:
+		_action_turn_right()
+
+
 func _input(event: InputEvent) -> void:
 	# The screen is black and the floor is changing under it.
 	if _fading:
@@ -706,11 +842,20 @@ func _input(event: InputEvent) -> void:
 			_swipe_active = false
 		return
 
-	if not (event is InputEventKey and event.pressed):
+	if event is InputEventJoypadMotion:
+		_stick_input(event as InputEventJoypadMotion)
 		return
 
+	var is_key: bool = event is InputEventKey and event.pressed
+	var is_pad: bool = event is InputEventJoypadButton and event.pressed
+	if not (is_key or is_pad):
+		return
+	if _explore_hud != null:
+		_explore_hud.set_pad(is_pad)
+	var key: int = (event as InputEventKey).keycode if is_key else KEY_NONE
+
 	# Q and N are cheats for testing; a release build has neither.
-	if OS.is_debug_build() and event.keycode == KEY_Q and not in_combat:
+	if OS.is_debug_build() and key == KEY_Q and not in_combat:
 		_encounters_enabled = not _encounters_enabled
 		_update_encounter_debug_label()
 		return
@@ -718,7 +863,7 @@ func _input(event: InputEvent) -> void:
 	# N drops a floor where you stand. Debug, alongside Q and F9, and it goes
 	# through _descend so a skipped floor arrives in exactly the state a walked
 	# one does — key, boss flag, fog and minimap all reset the same way.
-	if OS.is_debug_build() and event.keycode == KEY_N and not in_combat and not save_open and not orb_open \
+	if OS.is_debug_build() and key == KEY_N and not in_combat and not save_open and not orb_open \
 			and not chest_open and not menu_open:
 		if floor_num >= Level.FLOOR_COUNT:
 			_show_hud_popup("[DEBUG] Floor %d is the last one." % floor_num,
@@ -729,36 +874,43 @@ func _input(event: InputEvent) -> void:
 					Color(0.55, 0.85, 1.0))
 		return
 
-	if event.keycode == KEY_F9 and not in_combat and not save_open and not orb_open \
+	if key == KEY_F9 and not in_combat and not save_open and not orb_open \
 			and not chest_open:
 		if menu_open:
 			_close_menu()
 		_open_load_menu()
 		return
 
-	# ESC: close save picker → close menu → open menu. Blocked during combat.
-	if event.keycode == KEY_ESCAPE:
+	# × (Escape is always one): close the save picker, then the menu; with
+	# nothing open, open the menu. The menu's and the orb's own windows take
+	# it first, a step at a time (SidePanel). Blocked during combat.
+	if event.is_action_pressed("no"):
 		if not in_combat:
 			if save_open:
 				_close_save_layer()
 			elif menu_open:
 				_close_menu()
-			else:
+			elif not (orb_open or chest_open):
 				_open_menu()
 		return
 
 	if in_combat or menu_open or save_open:
 		return
 
-	match event.keycode:
-		KEY_UP, KEY_W:
-			_action_forward()
-		KEY_DOWN, KEY_S:
-			_action_back()
-		KEY_LEFT, KEY_A:
-			_action_turn_left()
-		KEY_RIGHT, KEY_D:
-			_action_turn_right()
+	# ○: whatever is in front of you, or the orb underfoot.
+	if _explore_hud != null and not orb_open and not chest_open \
+			and event.is_action_pressed("yes"):
+		_act()
+		return
+
+	if event.is_action_pressed("up", true):
+		_action_forward()
+	elif event.is_action_pressed("down", true):
+		_action_back()
+	elif event.is_action_pressed("left", true):
+		_action_turn_left()
+	elif event.is_action_pressed("right", true):
+		_action_turn_right()
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────
@@ -808,7 +960,7 @@ func _sync_door() -> void:
 	if is_instance_valid(dungeon):
 		dungeon.set_locked(not _door_open)
 	if _key_icon != null:
-		_key_icon.visible = _has_key and not _door_open
+		_key_icon.visible = _has_key and not _door_open and _explore_hud == null
 
 
 # Walking onto the loose key takes it. No prompt: there is one thing to do with
@@ -1062,8 +1214,10 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	var combat_layer: CanvasLayer = CanvasLayer.new()
 	combat_layer.layer = 20
 	add_child(combat_layer)
-	var packed: PackedScene = load("res://scenes/combat.tscn") as PackedScene
-	var scene: CombatScene = packed.instantiate() as CombatScene
+	# The fight's layout is the build's: upright on a phone, Final Fantasy
+	# fashion on a wide screen. The rules are the same in both (CombatScene).
+	var scene: CombatScene = CombatSceneSteam.new() if Build.steam() else CombatScenePortable.new()
+	scene.name = "CombatScene"
 	scene.player = player_char
 	# The scene removes negotiated demons from its own list, so hand it a copy
 	# and keep the full roster here for the reward tally.
@@ -1073,8 +1227,29 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	scene.can_ambush = not warden and not _in_gauntlet and not player_char.never_ambushed() \
 			and not group.any(
 			func(f: Enemy) -> bool: return f.is_dragon() or f.is_necromancer() or f.is_warden())
+	# Wide screen: the fight stands on this floor's own stone, in its battle
+	# room (Dungeon._build_arena), seen across the full width; the scene only
+	# shades it (see _sync_view_width).
+	scene.see_through = _explore_hud != null
+	_sync_view_width()
 	scene.combat_ended.connect(_on_combat_ended.bind(group, combat_layer))
 	combat_layer.add_child(scene)
+
+
+# The dungeon view takes the whole width while a fight is drawn over it, and
+# gives the map its column back after.
+func _sync_view_width() -> void:
+	if _explore_hud == null:
+		return
+	var left: float = 0.0 if in_combat else float(Layout.MAP_PANE_W)
+	if _world_box.offset_left != left:
+		_world_box.offset_left = left
+		# The fight stands in the floor's battle room, not in the corridor.
+		if is_instance_valid(dungeon) and dungeon.arena_camera != null:
+			if in_combat:
+				dungeon.arena_camera.make_current()
+			else:
+				cam.make_current()
 
 
 # Rewards are summed over the whole encounter: anything killed pays experience,
@@ -1699,18 +1874,83 @@ func _open_menu() -> void:
 	menu.title_requested.connect(func():
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
-	menu_layer.add_child(menu)
+	_side_parent(menu_layer).add_child(menu)
 
 
 func _close_menu() -> void:
 	if is_instance_valid(menu_layer):
-		for child: Node in menu_layer.get_children():
-			child.queue_free()
+		_side_close(menu_layer)
+	# Options may have rebound a key while the menu was up.
+	if _explore_hud != null:
+		_explore_hud.repaint_keys()
 	hud_layer.visible = true
 	menu_open = false
 
 
 
+
+
+# ── The side panel: the menu and the orb on a wide screen ────────────────────
+#
+# They come in from the left over the map's place and push the map ahead of
+# them to the right edge, the view fading under the two; closing runs it back.
+# On a phone they are the whole screen, as they always were.
+
+const SIDE_SLIDE: float = 0.32
+var _side_tween: Tween
+
+
+func _side_width() -> float:
+	return get_viewport().get_visible_rect().size.x - float(Layout.MAP_PANE_W)
+
+
+# What a panel is added to: the layer itself on a phone, or a holder that
+# slides in on a wide screen.
+func _side_parent(layer: CanvasLayer) -> Node:
+	if _explore_hud == null:
+		return layer
+	# The map stays up, pushed aside rather than hidden with the rest.
+	hud_layer.visible = true
+	# A panel still sliding out goes now, so two never share the slide.
+	for old: Node in layer.get_children():
+		old.queue_free()
+	var w: float = _side_width()
+	var holder: Control = Control.new()
+	holder.anchor_bottom = 1.0
+	holder.offset_right = w
+	holder.position.x = -w
+	layer.add_child(holder)
+	_slide_side(holder, 0.0, 1.0, false)
+	return holder
+
+
+func _side_close(layer: CanvasLayer, instant: bool = false) -> void:
+	for child: Node in layer.get_children():
+		if _explore_hud == null or instant or not (child is Control):
+			child.queue_free()
+			continue
+		# Out of reach the moment it starts to go, so a key pressed during
+		# the slide cannot land on it.
+		child.process_mode = Node.PROCESS_MODE_DISABLED
+		_slide_side(child as Control, 1.0, 0.0, true)
+	if instant and _explore_hud != null:
+		_explore_hud.push_map(0.0, _side_width())
+
+
+func _slide_side(holder: Control, from: float, to: float, free_after: bool) -> void:
+	if is_instance_valid(_side_tween):
+		_side_tween.kill()
+	var w: float = _side_width()
+	var step: Callable = func(t: float) -> void:
+		if is_instance_valid(holder):
+			holder.position.x = -w * (1.0 - t)
+		_explore_hud.push_map(t, w)
+	step.call(from)
+	_side_tween = create_tween()
+	_side_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT if to > from else Tween.EASE_IN_OUT)
+	_side_tween.tween_method(step, from, to, SIDE_SLIDE)
+	if free_after:
+		_side_tween.tween_callback(holder.queue_free)
 
 # ── Save orbs ────────────────────────────────────────────────────────────────
 
@@ -1799,7 +2039,7 @@ func _open_orb(tab: String = "rest") -> void:
 		_start_gauntlet(names)
 	)
 	ui.gacha_exp_won.connect(_gacha_exp.bind(ui))
-	orb_layer.add_child(ui)
+	_side_parent(orb_layer).add_child(ui)
 
 
 # Experience off the orb's slot machine, paid the way a fight pays it: the hero
@@ -1835,8 +2075,9 @@ func _gacha_exp(amount: int, orb: OrbUI) -> void:
 
 func _close_orb() -> void:
 	if is_instance_valid(orb_layer):
-		for child: Node in orb_layer.get_children():
-			child.queue_free()
+		# Closing only to come straight back (the slot machine's level-up
+		# screens) does not play the slide out.
+		_side_close(orb_layer, _reopen_orb_tab != "")
 	hud_layer.visible = true
 	orb_open = false
 	if _reopen_orb_tab == "":
@@ -2341,9 +2582,14 @@ func _on_node_added(node: Node) -> void:
 	elif node is Button:
 		var btn := node as Button
 		btn.add_theme_font_override("font", _UI_FONT)
-		btn.add_theme_font_size_override("font_size", 20)
-		var cur: Vector2 = btn.custom_minimum_size
-		if cur.y > 0:
-			btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))
+		# Thumb-sized on a phone; on a wide screen, under a mouse or a pad, the
+		# size the fight's windows use.
+		if Build.steam():
+			btn.add_theme_font_size_override("font_size", SidePanel.TEXT)
+		else:
+			btn.add_theme_font_size_override("font_size", 20)
+			var cur: Vector2 = btn.custom_minimum_size
+			if cur.y > 0:
+				btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))
 	elif node is Control:
 		(node as Control).add_theme_font_override("font", _UI_FONT)

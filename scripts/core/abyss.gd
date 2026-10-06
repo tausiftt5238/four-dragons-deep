@@ -92,7 +92,7 @@ static func cleared_hero() -> Dictionary:
 # beating the Necromancer there ends the run with the credits, and nothing
 # unlocks.
 static func in_build() -> bool:
-	return not OS.has_feature("web")
+	return not Build.web()
 
 
 # Whether the title offers the mode at all: only once the game has been beaten.
