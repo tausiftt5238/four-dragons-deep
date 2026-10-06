@@ -96,6 +96,12 @@ var _tab: String = "Skills"
 # True while the list shows a tab's own entries; false a step deeper (a target,
 # who to heal, the talk), where left and right no longer change the tab.
 var _at_top: bool = false
+# Talk opens a smaller window stacked over the menu, and the whole conversation
+# runs in it. The list functions write to whichever list is current, so the
+# window swaps its own title, back button and slots in while it is up.
+var _main_list: Dictionary = {}
+var _stack_list: Dictionary = {}
+var _stack_win: PanelContainer
 
 
 # The menu strip is a fixed row of MENU_SLOTS cells. The action bar fills all
@@ -343,6 +349,7 @@ func _format_statuses(statuses: Array[String]) -> String:
 
 func _set_buttons(enabled: bool) -> void:
 	_buttons_on = enabled
+	_close_stack()
 	_apply_buttons()
 	if enabled:
 		_open_tab()
@@ -416,6 +423,7 @@ func _open_tabs() -> Array[String]:
 
 # Shows the current tab's list in the list window, ready for up and down.
 func _open_tab() -> void:
+	_close_stack()
 	_actions_locked = false
 	_apply_buttons()
 	var open: Array[String] = _open_tabs()
@@ -428,6 +436,8 @@ func _open_tab() -> void:
 			_show_item_submenu()
 		"Summon":
 			_show_summon_submenu()
+		"Talk":
+			_show_talk_targets()
 		_:
 			_show_command_entry(_tab)
 	# The submenu took the tabs out of reach as though it were a step deeper;
@@ -439,7 +449,7 @@ func _open_tab() -> void:
 	_focus_list.call_deferred()
 
 
-# Defend, Talk and Flee have nothing to list, so their tab holds the one
+# Defend and Flee have nothing to list, so their tab holds the one
 # command, said plainly, to confirm with Enter.
 func _show_command_entry(key: String) -> void:
 	_hide_actions()
@@ -448,7 +458,6 @@ func _show_command_entry(key: String) -> void:
 	_submenu_clear()
 	var note: String = {
 		"Defend": "brace until your next turn",
-		"Talk": "reason, bribe, threaten, recruit",
 		"Flee": "run from the fight",
 	}.get(key, "") as String
 	var btn: Button = _big_button(key, note, false)
@@ -531,9 +540,40 @@ func _show_item_submenu() -> void:
 	_fill_submenu(entries)
 
 
+# The Talk tab: everyone standing on their side, the ones that will not talk
+# greyed with the reason. Choosing one opens the talk over the menu.
+func _show_talk_targets() -> void:
+	_hide_actions()
+	_right_title.text = "Talk to"
+	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
+	_submenu_clear()
+	for foe: Enemy in _living_foes():
+		var note: String = "" if foe.negotiable else "won't listen"
+		if foe.negotiable and foe.enemy_name in player.recruited:
+			note = "already with you"
+		var btn: Button = _big_button(foe.display_name(), note, not foe.negotiable)
+		btn.pressed.connect(_talk_to.bind(foe))
+		_submenu_add(btn)
+
+
+func _talk_to(foe: Enemy) -> void:
+	enemy = foe
+	_refresh_hp()
+	# It looks past you at its own face standing in your line. There is
+	# nothing left to negotiate about — you already have one, and it knows
+	# what that means. It pays its way out instead.
+	if enemy.enemy_name in player.recruited:
+		_log("[color=#ffd479]%s looks past you — and sees its own face already standing with you.[/color]"
+				% enemy.display_name())
+		_prompt_tribute(false)
+		return
+	_show_talk_submenu()
+
+
 func _show_talk_submenu() -> void:
 	_hide_actions()
-	_set_back(_talk_back)
+	_open_stack()
+	_set_back(_show_main_actions)
 	_right_title.text = "Talk to %s" % enemy.display_name()
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
 	_submenu_clear()
@@ -569,10 +609,7 @@ func _show_talk_submenu() -> void:
 # Back out of the Talk menu one step: to the demon you picked it on, when there
 # was a choice to make, and only otherwise all the way out.
 func _talk_back() -> void:
-	if _living_foes().size() > 1:
-		_on_action("Talk")
-	else:
-		_show_main_actions()
+	_show_main_actions()
 
 
 func _on_talk(approach: String) -> void:
@@ -940,6 +977,8 @@ func _prompt_beg() -> void:
 func _prompt_tribute(from_beg: bool = true) -> void:
 	_set_buttons(false)
 	_hide_actions()
+	if not from_beg:
+		_open_stack()
 	_back_target = Callable()
 	_right_back_btn.visible = false
 	_right_title.text = "It is paying you off"
@@ -2078,24 +2117,9 @@ func _on_action(action: String) -> void:
 			_show_item_submenu()
 			return
 		"Talk":
-			_with_target(func() -> void:
-				if not enemy.negotiable:
-					_log("[color=gray]%s won't listen.[/color]" % enemy.display_name())
-					_prompt_actor()
-					return
-				# It looks past you at its own face standing in your line. There
-				# is nothing left to negotiate about — you already have one, and
-				# it knows what that means. It pays its way out instead.
-				if enemy.enemy_name in player.recruited:
-					_log("[color=#ffd479]%s looks past you — and sees its own face already standing with you.[/color]"
-							% enemy.display_name())
-					_prompt_tribute(false)
-					return
-				# A full roster used to skip the talk and hand over a payoff here,
-				# which made every negotiable monster a one-action win with no
-				# roll and no level check. It talks normally now; only Recruit
-				# is closed, in the submenu.
-				_show_talk_submenu())
+			# Talk is a tab of its own: who to talk to, then the talk over it.
+			_tab = "Talk"
+			_open_tab()
 			return
 		"Summon":
 			_open_summon_menu()
@@ -3107,33 +3131,8 @@ func _build_menu_panel(parent: Control) -> void:
 	rule.color = Color(0.78, 0.80, 0.90, 0.35)
 	rule.custom_minimum_size = Vector2(0, 1)
 	list_col.add_child(rule)
-	var header: HBoxContainer = HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
-	list_col.add_child(header)
-	_right_back_btn = Button.new()
-	_right_back_btn.text = "<"
-	_right_back_btn.flat = true
-	_right_back_btn.focus_mode = Control.FOCUS_NONE
-	_right_back_btn.custom_minimum_size = Vector2(26, 0)
-	_right_back_btn.pressed.connect(_on_back_pressed)
-	_right_back_btn.hide()
-	header.add_child(_right_back_btn)
-	_right_title = Label.new()
-	_right_title.text = ""
-	_right_title.clip_text = true
-	_right_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_right_title.add_theme_font_size_override("font_size", 11)
-	header.add_child(_right_title)
-	_sub_scroll = TouchScroll.new()
-	_sub_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_sub_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-	_sub_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_sub_scroll.follow_focus = true
-	list_col.add_child(_sub_scroll)
-	_sub_bar = _make_slot_row()
-	_sub_scroll.add_child(_sub_bar)
-	for _i: int in range(MENU_SLOTS):
-		_add_sub_slot()
+	_main_list = _list_column(list_col)
+	_use_list(_main_list)
 
 	# The party, a row each.
 	var party_win: PanelContainer = _window()
@@ -3143,6 +3142,93 @@ func _build_menu_panel(parent: Control) -> void:
 	_party_rows.add_theme_constant_override("separation", 0)
 	_party_rows.alignment = BoxContainer.ALIGNMENT_CENTER
 	party_win.add_child(_party_rows)
+
+	# The talk window: over the left of the menu, its bottom edge sitting on
+	# the tabs so the menu's top line still shows what was chosen.
+	_stack_win = _window()
+	_stack_win.anchor_top = 1.0
+	_stack_win.anchor_bottom = 1.0
+	_stack_win.offset_left = 40
+	_stack_win.offset_right = 40 + 400
+	_stack_win.offset_bottom = -BOTTOM_STRIP_H + 40
+	_stack_win.offset_top = -BOTTOM_STRIP_H + 40 - 176
+	_stack_win.z_index = 1001
+	_stack_win.hide()
+	parent.add_child(_stack_win)
+	var stack_col: VBoxContainer = VBoxContainer.new()
+	stack_col.add_theme_constant_override("separation", 2)
+	_stack_win.add_child(stack_col)
+	_stack_list = _list_column(stack_col)
+
+
+# A list's title row (a way back and the title) and its scrolling slots, built
+# into `col`. Returned as the refs _use_list points the list functions at.
+func _list_column(col: VBoxContainer) -> Dictionary:
+	var header: HBoxContainer = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	col.add_child(header)
+	var back: Button = Button.new()
+	back.text = "<"
+	back.flat = true
+	back.focus_mode = Control.FOCUS_NONE
+	back.custom_minimum_size = Vector2(26, 0)
+	back.pressed.connect(_on_back_pressed)
+	back.hide()
+	header.add_child(back)
+	var title: Label = Label.new()
+	title.clip_text = true
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 11)
+	header.add_child(title)
+	var scroll: TouchScroll = TouchScroll.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	col.add_child(scroll)
+	var bar: GridContainer = _make_slot_row()
+	scroll.add_child(bar)
+	var refs: Dictionary = {title = title, back = back, scroll = scroll, bar = bar,
+			slots = [] as Array[MarginContainer]}
+	var was: Dictionary = {bar = _sub_bar, slots = _sub_slots}
+	_sub_bar = bar
+	_sub_slots = refs["slots"]
+	for _i: int in range(MENU_SLOTS):
+		_add_sub_slot()
+	_sub_bar = was["bar"]
+	_sub_slots = was["slots"]
+	return refs
+
+
+func _use_list(refs: Dictionary) -> void:
+	_right_title = refs["title"]
+	_right_back_btn = refs["back"]
+	_sub_scroll = refs["scroll"]
+	_sub_bar = refs["bar"]
+	_sub_slots = refs["slots"]
+
+
+# Puts the talk window up and sends the lists to it. What the menu was showing
+# stays under it, greyed, so the arrows cannot wander back down there.
+func _open_stack() -> void:
+	if _stack_win.visible:
+		return
+	_lock_submenu()
+	_main_list["bar"].modulate = Color(1, 1, 1, 0.45)
+	_main_list["back"].hide()
+	_use_list(_stack_list)
+	_submenu_clear()
+	_stack_win.show()
+
+
+func _close_stack() -> void:
+	if _stack_win == null or not _stack_win.visible:
+		return
+	_submenu_clear()
+	_right_back_btn.hide()
+	_stack_win.hide()
+	_use_list(_main_list)
+	_sub_bar.modulate = Color.WHITE
 
 
 func _window() -> PanelContainer:
@@ -3199,6 +3285,7 @@ func _hide_actions() -> void:
 
 
 func _show_main_actions() -> void:
+	_close_stack()
 	_show_actions()
 	_right_back_btn.hide()
 	_right_title.text = ""
