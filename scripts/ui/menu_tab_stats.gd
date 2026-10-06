@@ -129,9 +129,9 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 		# Rebuilt whole for every fight, so its bars read full.
 		hp = [demon.max_hp, demon.max_hp]
 		mp = [demon.max_mp, demon.max_mp]
-		# A demon stops banking exp at the hero's level.
+		# A demon stops banking exp at the hero's level: 0 / 0 until he climbs.
 		if demon.lv >= p.lv:
-			exp_row = _make_bar_row("EXP", 0, 0, Color(0.90, 0.70, 0.10), "at your level")
+			exp_row = _make_bar_row("EXP", 0, 0, Color(0.90, 0.70, 0.10))
 		else:
 			exp_row = _make_bar_row("EXP", int(p.demon_exp.get(demon_name, 0)),
 					PlayerCharacter.demon_exp_to_next(demon.lv), Color(0.90, 0.70, 0.10))
@@ -244,8 +244,7 @@ func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) 
 	grid.add_child(val_lbl)
 
 
-func _make_bar_row(label: String, current: int, maximum: int, color: Color,
-		note: String = "") -> HBoxContainer:
+func _make_bar_row(label: String, current: int, maximum: int, color: Color) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 
@@ -272,13 +271,13 @@ func _make_bar_row(label: String, current: int, maximum: int, color: Color,
 	row.add_child(bar)
 
 	var num_lbl: Label = Label.new()
-	num_lbl.text = note if note != "" else "%d / %d" % [current, maximum]
+	num_lbl.text = "%d / %d" % [current, maximum]
 	num_lbl.custom_minimum_size = Vector2(90, 0)
 	num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	if small:
 		num_lbl.add_theme_font_size_override("font_size", SidePanel.SMALL)
-		# One width for every number column, words included, so the bars
-		# all end in the same place.
+		# One width for every number column, so the bars all end in the
+		# same place.
 		num_lbl.custom_minimum_size = Vector2(100, 0)
 		num_lbl.clip_text = true
 	row.add_child(num_lbl)
