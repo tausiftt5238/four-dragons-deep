@@ -13,8 +13,9 @@
 class_name Build
 
 
+# With the override: a plain get_setting() would ignore the steam tag.
 static func variant() -> String:
-	return str(ProjectSettings.get_setting("game/build/variant", "portable"))
+	return str(ProjectSettings.get_setting_with_override("game/build/variant"))
 
 
 static func steam() -> bool:
