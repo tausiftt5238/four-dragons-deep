@@ -576,7 +576,8 @@ func _show_talk_submenu() -> void:
 	_hide_actions()
 	_open_stack()
 	_set_back(_show_main_actions)
-	_right_title.text = "Talk to %s" % enemy.display_name()
+	# No title: the marker over the monster already says who this is with.
+	_right_title.text = ""
 	_right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
 	_submenu_clear()
 
