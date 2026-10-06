@@ -99,8 +99,11 @@ func _init(title: String, commands: Array, actions: Array[String]) -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 6)
 	scroll.add_child(content)
+	# One line, always there: a message coming or going never moves the page.
 	status = _label("", SMALL, Color(0.65, 0.90, 0.70))
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status.custom_minimum_size = Vector2(0, 16)
+	status.clip_text = true
+	status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	col.add_child(status)
 
 
