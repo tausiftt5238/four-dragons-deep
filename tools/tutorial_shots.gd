@@ -5,6 +5,7 @@ extends SceneTree
 # nothing):
 #
 #   godot --path . --script tools/tutorial_shots.gd
+#   tools/run.sh steam --script tools/tutorial_shots.gd     the wide shots
 #
 # On a machine without one, xvfb-run works:
 #
@@ -14,13 +15,20 @@ extends SceneTree
 # Run it with the real art restored (tools/real_art.sh, restore_sprites.py) or
 # the shots show the silhouettes git stores.
 
-const OUT_DIR: String = "res://resources/tutorial/"
+# Each build shows its own screen: run it as tools/run.sh steam ... for the
+# wide shots, which go in a folder of their own (TutorialUI reads the build's).
+var OUT_DIR: String = "res://resources/tutorial/steam/" if Build.steam() else "res://resources/tutorial/"
 
 var main: Main
 
 
 func _initialize() -> void:
 	seed(20260927)
+	# The scripted run autosaves as it goes; this machine's autosave and
+	# records are put back afterwards, so taking the shots costs nothing.
+	var kept: Dictionary = {}
+	for path: String in [SaveSystem.slot_path(SaveSystem.AUTO_SLOT), Records.PATH]:
+		kept[path] = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else null
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	GameBoot.pending_slot = 0
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate() as Main
@@ -38,6 +46,12 @@ func _initialize() -> void:
 	await _shot_menu()
 	await _shot_combat()
 	await _shot_dragon()
+	Records.flush()
+	for path: String in kept:
+		if kept[path] == null:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		else:
+			FileAccess.open(path, FileAccess.WRITE).store_string(kept[path] as String)
 	quit()
 
 
@@ -196,7 +210,7 @@ func _clear_popup() -> void:
 func _reset_floor() -> void:
 	main.floor_num = 0
 	main._descend()
-	main.floor_label.text = "Floor 1"
+	main._show_floor_title()
 	for r: Roamer in main.roamers:
 		r.visible = false
 
@@ -205,7 +219,8 @@ func _shot_orb() -> void:
 	var orb: Vector2i = main.current_level.orb_cells[0]
 	_stand(orb, 0)
 	main._open_orb("rest")
-	await _frames(15)
+	# Past the wide screen's slide in, too.
+	await _frames(45)
 	await _save("orb.png")
 	main._close_orb()
 
@@ -216,9 +231,10 @@ func _shot_menu() -> void:
 	p.remember_recruit("Skeleton", 2)
 	main._open_menu()
 	await _frames(5)
-	var menu: MenuUI = main.menu_layer.get_child(main.menu_layer.get_child_count() - 1) as MenuUI
+	# Directly on the layer on a phone, inside the sliding holder on a wide screen.
+	var menu: MenuUI = main.menu_layer.find_children("*", "MenuUI", true, false).back() as MenuUI
 	menu._switch_tab("party")
-	await _frames(10)
+	await _frames(60)
 	await _save("party.png")
 	main._close_menu()
 
@@ -258,6 +274,10 @@ func _shot_combat() -> void:
 
 func _shot_dragon() -> void:
 	main.floor_num = 5
+	# The last fight may have left the hero on an orb, which opens it.
+	if main.orb_open:
+		main._close_orb()
+		await _frames(30)
 	main._start_boss_combat()
 	await _frames(90)
 	await _save("dragon.png")

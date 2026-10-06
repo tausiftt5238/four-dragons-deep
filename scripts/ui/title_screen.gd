@@ -42,6 +42,9 @@ func _build() -> void:
 	bg.color = Color(0.04, 0.03, 0.07, 1.0)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	if Build.steam():
+		_build_wide()
+		return
 
 	# The name in the upper pane, where the map sits in play, and every button
 	# in the lower one, where the thumb already is.
@@ -77,32 +80,73 @@ func _build() -> void:
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_theme_constant_override("separation", 18)
 	lower.add_child(vbox)
+	for btn: Button in _menu_buttons(Vector2(220, 46)):
+		vbox.add_child(btn)
 
-	var new_btn: Button = _make_btn("NEW GAME", Vector2(220, 46))
+
+# The wide title (Build.steam): the name on one line, the knight's march
+# across the whole screen under it, and the buttons in a row at the foot.
+func _build_wide() -> void:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_top = 40
+	col.offset_bottom = -40
+	col.add_theme_constant_override("separation", 10)
+	add_child(col)
+
+	var title: Label = _make_lbl("FOUR DRAGONS DEEP", 54, Color(0.90, 0.75, 0.30))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+
+	var march: TitleMarch = TitleMarch.new()
+	march.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(march)
+
+	var row: HBoxContainer = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	col.add_child(row)
+	var buttons: Array[Button] = _menu_buttons(Vector2(140, 40))
+	# A window on a desktop needs a way out that is not the corner's cross.
+	var quit_btn: Button = _make_btn("QUIT", Vector2(140, 40))
+	quit_btn.pressed.connect(func() -> void: get_tree().quit())
+	buttons.append(quit_btn)
+	for btn: Button in buttons:
+		row.add_child(btn)
+	# Ready for the keyboard or a pad without a click first.
+	for btn: Button in buttons:
+		if not btn.disabled:
+			btn.grab_focus.call_deferred()
+			break
+
+
+# New Game, Load Game, the Abyss once it is open, Tutorial and Options.
+func _menu_buttons(min_size: Vector2) -> Array[Button]:
+	var out: Array[Button] = []
+	var new_btn: Button = _make_btn("NEW GAME", min_size)
 	new_btn.pressed.connect(_on_new_game)
-	vbox.add_child(new_btn)
+	out.append(new_btn)
 
-	var any_save: bool = SaveSystem.any_save()
-
-	var load_btn: Button = _make_btn("LOAD GAME", Vector2(220, 46))
-	load_btn.disabled = not any_save
+	var load_btn: Button = _make_btn("LOAD GAME", min_size)
+	load_btn.disabled = not SaveSystem.any_save()
 	load_btn.pressed.connect(_on_load_game)
-	vbox.add_child(load_btn)
+	out.append(load_btn)
 
 	# The endless mode, once the game has been beaten (Abyss).
 	if Abyss.available():
-		var abyss_btn: Button = _make_btn("ABYSS", Vector2(220, 46))
+		var abyss_btn: Button = _make_btn("ABYSS", min_size)
 		abyss_btn.add_theme_color_override("font_color", Color(0.78, 0.60, 1.0))
 		abyss_btn.pressed.connect(_on_abyss)
-		vbox.add_child(abyss_btn)
+		out.append(abyss_btn)
 
-	var tut_btn: Button = _make_btn("TUTORIAL", Vector2(220, 46))
+	var tut_btn: Button = _make_btn("TUTORIAL", min_size)
 	tut_btn.pressed.connect(_on_tutorial)
-	vbox.add_child(tut_btn)
+	out.append(tut_btn)
 
-	var opt_btn: Button = _make_btn("OPTIONS", Vector2(220, 46))
+	var opt_btn: Button = _make_btn("OPTIONS", min_size)
 	opt_btn.pressed.connect(_on_options)
-	vbox.add_child(opt_btn)
+	out.append(opt_btn)
+	return out
 
 
 # A new run opens on the captain's briefing; loading a save skips it.
@@ -245,6 +289,7 @@ func _on_options() -> void:
 func _on_load_game() -> void:
 	var picker: SaveSlotUI = SaveSlotUI.new()
 	picker.mode = "load"
+	picker.beside_map = false
 	picker.slot_chosen.connect(func(slot: int) -> void:
 		GameBoot.pending_abyss = ""
 		GameBoot.pending_slot = slot

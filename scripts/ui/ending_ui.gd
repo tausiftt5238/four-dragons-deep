@@ -81,7 +81,7 @@ func _build_climb() -> void:
 	_text.modulate.a = 0.0
 	add_child(_text)
 
-	var hint: Label = _label("tap to continue", 13, Color(0.40, 0.37, 0.46))
+	var hint: Label = _label(Controls.continue_hint(), 13, Color(0.40, 0.37, 0.46))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
@@ -98,6 +98,13 @@ func _on_input(event: InputEvent) -> void:
 		return
 	accept_event()
 	if not _in_credits:
+		_next_line()
+
+
+# Yes on a keyboard or a pad does what a tap does.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_accept") and not _in_credits:
+		get_viewport().set_input_as_handled()
 		_next_line()
 
 

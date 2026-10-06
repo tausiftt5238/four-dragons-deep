@@ -162,3 +162,11 @@ static func _save() -> void:
 		cfg.set_value(SECTION_KEYS, id, _keys[id])
 		cfg.set_value(SECTION_PAD, id, _pads[id])
 	cfg.save(Settings.PATH)
+
+
+# What a screen that waits for a tap says: the tap on a phone, the yes button
+# on a wide screen.
+static func continue_hint() -> String:
+	if not Build.steam():
+		return "tap to continue"
+	return "%s to continue" % key_name(key_of("yes"))

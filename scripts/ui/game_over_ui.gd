@@ -26,8 +26,7 @@ func _build() -> void:
 	# Centred in the lower pane, under where the map sits — no panel border,
 	# just floating text.
 	var lower: Control = Control.new()
-	lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lower.offset_top = Main.MAP_PANE_H
+	Layout.lower_pane(lower)
 	lower.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lower)
 

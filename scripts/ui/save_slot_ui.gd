@@ -15,6 +15,9 @@ const SLOT_COUNT: int = 3
 const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
 
 var mode: String = "save"  # "save" or "load"
+# Beside the map in the game; the title has no map, so it centres on the
+# whole screen there.
+var beside_map: bool = true
 var _bare: bool = false
 
 
@@ -37,8 +40,10 @@ func _build() -> void:
 	add_child(bg)
 
 	var outer: MarginContainer = MarginContainer.new()
-	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	outer.offset_top = Main.MAP_PANE_H
+	if beside_map:
+		Layout.lower_pane(outer)
+	else:
+		outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		outer.add_theme_constant_override(side, 16)
 	add_child(outer)
@@ -51,6 +56,7 @@ func _build() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	centre.add_child(panel)
+	Layout.dress(panel)
 
 	var pad: MarginContainer = MarginContainer.new()
 	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:

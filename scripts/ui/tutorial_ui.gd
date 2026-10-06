@@ -54,6 +54,21 @@ const PAGES: Array[Dictionary] = [
 			+ "Good luck. Four dragons deep is further than it sounds."},
 ]
 
+# The PC's words for the pages that speak of swipes and taps (Build.steam).
+const STEAM_TEXT: Dictionary = {
+	"Moving": "Up and down step forward and back; left and right turn. Arrow keys, "
+		+ "WASD or a pad's d-pad or stick, and you can change them in Options.\n\n"
+		+ "The map down the left fills in as you walk. Wear a Wellspring Charm (sold at "
+		+ "orbs) and walking brings your MP back too.",
+	"Save orbs": "Orbs are the only place to save. Stand on one and press yes (Z, or O "
+		+ "on a pad) to rest, shop, sell, buy back monsters and save.\n\n"
+		+ "Save often. Death ends the run.\n\n"
+		+ "Every dragon's corridor has an orb just inside it.",
+	"Talking": "You don't have to fight everything. Choose Talk, then the monster, to "
+		+ "Negotiate, Bribe or Threaten your way out, or Recruit it to your side.\n\n"
+		+ "Analyze shows its temper, so you can pick the approach it answers to.",
+}
+
 var _page: int = 0
 var _title: Label
 var _shot: TextureRect
@@ -106,19 +121,32 @@ func _build() -> void:
 	box.set_content_margin_all(2)
 	frame.add_theme_stylebox_override("panel", box)
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	col.add_child(frame)
+	# A wide screen puts the picture and the words side by side; a phone
+	# stacks them.
+	var wide: bool = Build.steam()
+	var body: BoxContainer = HBoxContainer.new() if wide else VBoxContainer.new()
+	body.add_theme_constant_override("separation", 18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(body)
+	if wide:
+		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	body.add_child(frame)
 
 	_shot = TextureRect.new()
-	_shot.custom_minimum_size = Vector2(250, 540)
+	# The phone's shots stand upright; the wide build's lie on their side.
+	_shot.custom_minimum_size = Vector2(540, 284) if wide else Vector2(250, 540)
 	_shot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_shot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	frame.add_child(_shot)
 
-	_text = _label("", 19, Color(0.86, 0.84, 0.90))
+	_text = _label("", SidePanel.TEXT if wide else 19, Color(0.86, 0.84, 0.90))
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.add_theme_constant_override("line_spacing", 6)
-	col.add_child(_text)
+	if wide:
+		_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	body.add_child(_text)
 
 	var nav: HBoxContainer = HBoxContainer.new()
 	nav.add_theme_constant_override("separation", 10)
@@ -148,8 +176,11 @@ func _show(page: int) -> void:
 	_page = clampi(page, 0, PAGES.size() - 1)
 	var p: Dictionary = PAGES[_page]
 	_title.text = p["title"] as String
-	_text.text  = p["text"] as String
+	_text.text  = STEAM_TEXT.get(p["title"], p["text"]) as String if Build.steam() \
+			else p["text"] as String
 	var path: String = _DIR + (p["shot"] as String)
+	if Build.steam() and ResourceLoader.exists(_DIR + "steam/" + (p["shot"] as String)):
+		path = _DIR + "steam/" + (p["shot"] as String)
 	_shot.texture = load(path) as Texture2D if ResourceLoader.exists(path) else null
 	_count.text = "%d / %d" % [_page + 1, PAGES.size()]
 	_back_btn.disabled = _page == 0
@@ -168,7 +199,7 @@ func _label(text: String, size: int, color: Color) -> Label:
 func _button(text: String) -> Button:
 	var btn: Button = Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(0, 52)
+	btn.custom_minimum_size = Vector2(0, 0 if Build.steam() else 52)
 	btn.add_theme_font_override("font", _FONT)
-	btn.add_theme_font_size_override("font_size", 20)
+	btn.add_theme_font_size_override("font_size", SidePanel.TEXT if Build.steam() else 20)
 	return btn

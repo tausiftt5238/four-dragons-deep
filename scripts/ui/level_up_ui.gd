@@ -37,8 +37,7 @@ func _build() -> void:
 
 	# Everything tappable lives in the lower pane, under where the map sits.
 	var lower: Control = Control.new()
-	lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lower.offset_top = Main.MAP_PANE_H
+	Layout.lower_pane(lower)
 	lower.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lower)
 
@@ -46,8 +45,11 @@ func _build() -> void:
 	panel.anchor_left   = 0.5;  panel.anchor_right  = 0.5
 	panel.anchor_top    = 0.5;  panel.anchor_bottom = 0.5
 	panel.offset_left   = -210; panel.offset_right  = 210
-	panel.offset_top    = -280; panel.offset_bottom = 280
+	# A wide screen is 540 tall: the panel fits inside it with room to spare.
+	var half_h: float = 250.0 if Build.steam() else 280.0
+	panel.offset_top    = -half_h; panel.offset_bottom = half_h
 	lower.add_child(panel)
+	Layout.dress(panel)
 
 	var margin: MarginContainer = MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

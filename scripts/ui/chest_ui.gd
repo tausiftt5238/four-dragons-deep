@@ -22,13 +22,13 @@ func _ready() -> void:
 
 	# Centred in the lower pane, under where the map sits.
 	var centre: CenterContainer = CenterContainer.new()
-	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	centre.offset_top = Main.MAP_PANE_H
+	Layout.lower_pane(centre)
 	add_child(centre)
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(440, 0)
 	centre.add_child(panel)
+	Layout.dress(panel)
 
 	var m: MarginContainer = MarginContainer.new()
 	for side: String in ["margin_left", "margin_right"]:

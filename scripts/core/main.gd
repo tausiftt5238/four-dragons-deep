@@ -1839,6 +1839,7 @@ func _close_menu() -> void:
 
 const SIDE_SLIDE: float = 0.32
 var _side_tween: Tween
+var _side_leaving: Control
 
 
 func _side_width() -> float:
@@ -1881,6 +1882,11 @@ func _side_close(layer: CanvasLayer, instant: bool = false) -> void:
 func _slide_side(holder: Control, from: float, to: float, free_after: bool) -> void:
 	if is_instance_valid(_side_tween):
 		_side_tween.kill()
+	# A panel still on its way out when the next slide starts (the menu opened
+	# just as the orb closed) would lose the tween that frees it.
+	if is_instance_valid(_side_leaving):
+		_side_leaving.queue_free()
+	_side_leaving = holder if free_after else null
 	var w: float = _side_width()
 	var step: Callable = func(t: float) -> void:
 		if is_instance_valid(holder):

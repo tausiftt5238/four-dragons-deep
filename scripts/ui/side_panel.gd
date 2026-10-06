@@ -92,7 +92,9 @@ func _init(title: String, commands: Array, actions: Array[String]) -> void:
 	col.add_child(_rule())
 	scroll = TouchScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Never wider than its window: a row that asks for more is cut at the edge
+	# rather than pushing the window over the map.
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroll.follow_focus = true
 	col.add_child(scroll)
 	content = VBoxContainer.new()

@@ -151,7 +151,13 @@ func _build() -> void:
 	box.offset_left = 18.0
 	box.offset_right = -18.0
 	box.offset_top = _feet_y() + 50.0
-	box.offset_bottom = _feet_y() + 330.0
+	box.offset_bottom = _feet_y() + (220.0 if Build.steam() else 330.0)
+	if Build.steam():
+		# A reading width, not the whole screen.
+		box.anchor_left = 0.5
+		box.anchor_right = 0.5
+		box.offset_left = -340.0
+		box.offset_right = 340.0
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(box)
 
@@ -176,13 +182,14 @@ func _build() -> void:
 	blink.tween_property(_arrow, "modulate:a", 0.2, 0.45)
 	blink.tween_property(_arrow, "modulate:a", 1.0, 0.45)
 
-	var hint: Label = _label("tap to continue", 13, Color(0.40, 0.37, 0.46))
+	var hint: Label = _label(Controls.continue_hint(), 13, Color(0.40, 0.37, 0.46))
 	_hint = hint
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.anchor_left = 0.0
 	hint.anchor_right = 1.0
-	hint.offset_top = _feet_y() + 340.0
-	hint.offset_bottom = _feet_y() + 370.0
+	var below: float = _feet_y() + (226.0 if Build.steam() else 340.0)
+	hint.offset_top = below
+	hint.offset_bottom = below + 30.0
 	add_child(hint)
 
 	var skip: Button = Button.new()
@@ -199,9 +206,10 @@ func _build() -> void:
 	add_child(skip)
 
 
-# The floor the captain stands on, just above the dialogue box.
+# The floor the captain stands on, just above the dialogue box: under the
+# phone's map band, or in the upper half of a wide screen.
 func _feet_y() -> float:
-	return Main.MAP_PANE_H + 160.0
+	return 250.0 if Build.steam() else Main.MAP_PANE_H + 160.0
 
 
 func _actor(sprite_id: String) -> AnimatedPortrait:
@@ -225,6 +233,18 @@ func _on_input(event: InputEvent) -> void:
 	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
 		return
 	accept_event()
+	_advance()
+
+
+# Yes on a keyboard or a pad does what a tap does.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_accept"):
+		get_viewport().set_input_as_handled()
+		_advance()
+
+
+# A tap or a yes: finish the line being typed, or go on to the next.
+func _advance() -> void:
 	if _typing:
 		_shown = float(_text.text.length())
 		_text.visible_characters = -1
