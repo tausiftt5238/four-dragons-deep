@@ -3161,12 +3161,12 @@ func _build_menu_panel(parent: Control) -> void:
 	var stack_col: VBoxContainer = VBoxContainer.new()
 	stack_col.add_theme_constant_override("separation", 2)
 	_stack_win.add_child(stack_col)
-	_stack_list = _list_column(stack_col)
+	_stack_list = _list_column(stack_col, false)
 
 
 # A list's title row (a way back and the title) and its scrolling slots, built
 # into `col`. Returned as the refs _use_list points the list functions at.
-func _list_column(col: VBoxContainer) -> Dictionary:
+func _list_column(col: VBoxContainer, with_back: bool = true) -> Dictionary:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 6)
 	col.add_child(header)
@@ -3177,7 +3177,12 @@ func _list_column(col: VBoxContainer) -> Dictionary:
 	back.custom_minimum_size = Vector2(26, 0)
 	back.pressed.connect(_on_back_pressed)
 	back.hide()
-	header.add_child(back)
+	# The talk window keeps its back button out of sight: Escape still works
+	# (it reads the button's visibility), and the window's corner stays clean.
+	if with_back:
+		header.add_child(back)
+	else:
+		col.tree_exiting.connect(back.queue_free)
 	var title: Label = Label.new()
 	title.clip_text = true
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3191,7 +3196,7 @@ func _list_column(col: VBoxContainer) -> Dictionary:
 	col.add_child(scroll)
 	var bar: GridContainer = _make_slot_row()
 	scroll.add_child(bar)
-	var refs: Dictionary = {title = title, back = back, scroll = scroll, bar = bar,
+	var refs: Dictionary = {title = title, back = back, scroll = scroll, bar = bar, header = header,
 			slots = [] as Array[MarginContainer]}
 	var was: Dictionary = {bar = _sub_bar, slots = _sub_slots}
 	_sub_bar = bar
@@ -3222,6 +3227,13 @@ func _open_stack() -> void:
 	_use_list(_stack_list)
 	_submenu_clear()
 	_stack_win.show()
+
+
+# The talk window's title row only takes room while a talk has a title for
+# it (a round count); the approaches themselves need none.
+func _process(_delta: float) -> void:
+	if _stack_win != null and _stack_win.visible:
+		(_stack_list["header"] as Control).visible = (_stack_list["title"] as Label).text != ""
 
 
 func _close_stack() -> void:
