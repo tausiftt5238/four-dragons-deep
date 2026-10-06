@@ -89,6 +89,9 @@ var _turn_lbl: Label
 var _party_rows: VBoxContainer
 var _buttons_on: bool = false
 var _actions_locked: bool = false
+# Set by Main before the scene enters: the dungeon view is showing behind the
+# fight, so the backdrop only darkens it instead of painting its own floor.
+var see_through: bool = false
 # The command tabs across the top of the menu window, Digital Devil Saga
 # fashion: left and right walk the tabs, up and down walk the open tab's list.
 const TABS: Array[String] = ["Skills", "Item", "Defend", "Talk", "Summon", "Flee"]
@@ -165,6 +168,7 @@ func _build_ui() -> void:
 	# Final Fantasy way: the fight across the middle, a strip along the top
 	# for whose phase it is and the log, and three windows along the bottom.
 	var bg: _Backdrop = _Backdrop.new()
+	bg.see_through = see_through
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -4509,12 +4513,23 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 # The backdrop behind the fight: the dungeon dimmed to a stage, a floor running
 # away to a horizon line in the first band's wire colour.
 class _Backdrop extends Control:
+	var see_through: bool = false
+
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
 		var w: float = size.x
 		var h: float = size.y
+		# Over the dungeon view: only a shade, darker at the top and bottom,
+		# so the fighters and their names read against the walls.
+		if see_through:
+			for i: int in 40:
+				var t: float = float(i) / 40.0
+				var edge: float = absf(t - 0.55) * 2.0
+				draw_rect(Rect2(0, h * t, w, h / 40.0 + 1.0),
+						Color(0.03, 0.03, 0.07, 0.45 + 0.35 * edge))
+			return
 		for i: int in 60:
 			var t: float = float(i) / 60.0
 			var a: float = 0.14 * (1.0 - t)

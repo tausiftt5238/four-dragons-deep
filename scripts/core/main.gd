@@ -144,6 +144,7 @@ func _process(delta: float) -> void:
 	play_time += delta
 	Records.tick(delta)
 	# A few times a second is plenty for numbers that change on a step.
+	_sync_view_width()
 	if _explore_hud != null and hud_layer.visible:
 		_hud_tick -= delta
 		if _hud_tick <= 0.0:
@@ -1262,8 +1263,23 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	scene.can_ambush = not warden and not _in_gauntlet and not player_char.never_ambushed() \
 			and not group.any(
 			func(f: Enemy) -> bool: return f.is_dragon() or f.is_necromancer() or f.is_warden())
+	# Wide screen: the fight happens where you stand. The corridor you were
+	# facing stays up behind it, opened out to the full width, and the scene
+	# only darkens it (see _sync_view_width).
+	scene.see_through = _explore_hud != null
+	_sync_view_width()
 	scene.combat_ended.connect(_on_combat_ended.bind(group, combat_layer))
 	combat_layer.add_child(scene)
+
+
+# The dungeon view takes the whole width while a fight is drawn over it, and
+# gives the map its column back after.
+func _sync_view_width() -> void:
+	if _explore_hud == null:
+		return
+	var left: float = 0.0 if in_combat else float(Layout.MAP_PANE_W)
+	if _world_box.offset_left != left:
+		_world_box.offset_left = left
 
 
 # Rewards are summed over the whole encounter: anything killed pays experience,
