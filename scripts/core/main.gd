@@ -2614,9 +2614,14 @@ func _on_node_added(node: Node) -> void:
 	elif node is Button:
 		var btn := node as Button
 		btn.add_theme_font_override("font", _UI_FONT)
-		btn.add_theme_font_size_override("font_size", 20)
-		var cur: Vector2 = btn.custom_minimum_size
-		if cur.y > 0:
-			btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))
+		# Thumb-sized on a phone; on a wide screen, under a mouse or a pad, the
+		# size the fight's windows use.
+		if Layout.landscape():
+			btn.add_theme_font_size_override("font_size", SidePanel.TEXT)
+		else:
+			btn.add_theme_font_size_override("font_size", 20)
+			var cur: Vector2 = btn.custom_minimum_size
+			if cur.y > 0:
+				btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))
 	elif node is Control:
 		(node as Control).add_theme_font_override("font", _UI_FONT)

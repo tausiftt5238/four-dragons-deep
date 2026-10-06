@@ -39,7 +39,16 @@ func build() -> void:
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 5)
-	_m._content.add_child(grid)
+	# A wide screen has the room to say what he is wearing beside the numbers
+	# it moves; a phone leaves that to the Equipment tab.
+	if Layout.landscape():
+		var side: HBoxContainer = HBoxContainer.new()
+		side.add_theme_constant_override("separation", 40)
+		_m._content.add_child(side)
+		side.add_child(grid)
+		side.add_child(_worn(p))
+	else:
+		_m._content.add_child(grid)
 
 	_add_stat_row(grid, "STR", p.str, p.effective_str())
 	_add_stat_row(grid, "DEF", p.def, p.effective_def())
@@ -128,6 +137,26 @@ func _add_demon(p: PlayerCharacter, demon_name: String) -> void:
 
 	_m._content.add_child(AffinityChart.snapshot(demon))
 	demon.free()
+
+
+# Weapon, armour and trinkets, named under small headings.
+func _worn(p: PlayerCharacter) -> VBoxContainer:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var trinkets: Array[String] = []
+	for acc: Dictionary in p.equipped_accessories:
+		trinkets.append(acc.get("name", "") as String)
+	for part: Array in [["Weapon", [p.equipped_weapon.get("name", "-")]],
+			["Armour", [p.equipped_armor.get("name", "-")]],
+			["Trinkets", trinkets if not trinkets.is_empty() else ["-"]]]:
+		col.add_child(_make_section_label(part[0] as String))
+		for n: Variant in part[1]:
+			var l: Label = Label.new()
+			l.text = str(n)
+			l.clip_text = true
+			col.add_child(l)
+	return col
 
 
 func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) -> void:

@@ -34,6 +34,15 @@ var _filled: int = 0
 
 var _count: int = SLOT_COUNT
 
+# A wide screen is read under a mouse or a pad, not tapped with a thumb: rows
+# half the height, buttons narrower, the same shape.
+static func slot_h() -> int:
+	return 58 if Layout.landscape() else SLOT_H
+
+
+static func btn_w() -> int:
+	return 96 if Layout.landscape() else BTN_W
+
 
 # `count` is SLOT_COUNT for a page; a section sizes itself to what it holds and
 # leaves the scrolling to the page.
@@ -45,7 +54,7 @@ func _init(parent: Control, count: int = SLOT_COUNT) -> void:
 	parent.add_child(_host)
 	for i: int in _count:
 		var slot: MarginContainer = MarginContainer.new()
-		slot.custom_minimum_size = Vector2(0, SLOT_H)
+		slot.custom_minimum_size = Vector2(0, slot_h())
 		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_host.add_child(slot)
 		_slots.append(slot)
@@ -79,7 +88,7 @@ func add_entry(title: String, title_color: Color, detail: String,
 	# A row that carries an extra line (an affinity chart) is taller by exactly
 	# that line, so the description keeps the room it always had.
 	if extra != null:
-		slot.custom_minimum_size.y = SLOT_H + EXTRA_H
+		slot.custom_minimum_size.y = slot_h() + EXTRA_H
 
 	var outer: HBoxContainer = HBoxContainer.new()
 	outer.add_theme_constant_override("separation", 8)
@@ -89,7 +98,7 @@ func add_entry(title: String, title_color: Color, detail: String,
 		var pic: TextureRect = TextureRect.new()
 		pic.texture = icon
 		pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		pic.custom_minimum_size = Vector2(72, 72)
+		pic.custom_minimum_size = Vector2(40, 40) if Layout.landscape() else Vector2(72, 72)
 		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -124,11 +133,11 @@ func add_entry(title: String, title_color: Color, detail: String,
 		head.add_child(value_lbl)
 
 	# One action gets a comfortable button; three share the same total width.
-	var each: int = BTN_W
+	var each: int = btn_w()
 	if actions.size() == 2:
-		each = 108
+		each = 72 if Layout.landscape() else 108
 	elif actions.size() >= 3:
-		each = 92
+		each = 52 if Layout.landscape() else 92
 	for act: Dictionary in actions:
 		var btn: Button = Button.new()
 		btn.text = act.get("text", "") as String
