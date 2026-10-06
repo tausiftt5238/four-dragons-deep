@@ -19,6 +19,21 @@ Anything after the variant goes to Godot, so a test script or the playtester
 runs as `tools/run.sh steam --headless --script tools/playtester.gd`. For Steam
 it writes a temporary `override.cfg` (gitignored) and removes it afterwards.
 
+To export the PC game for Steam, Linux and Windows:
+
+```
+tools/export_steam.sh            # both, into build/steam/linux/ and build/steam/windows/
+tools/export_steam.sh linux      # or one of them
+```
+
+It refuses to build without the real art and the music in place. Each folder
+is what a Steam depot takes: the binary and its `.pck`. `tools/` and `docs/`
+are left out of every export.
+
+`tools/screen_survey.gd` screenshots every screen outside the dungeon (title,
+tutorial, intro, the overlays, ending, game over) in whichever build it runs
+under, for checking a layout at a glance.
+
 # Regenerating the bestiary
 
 `docs/bestiary.html` is generated, not hand-edited. Two steps, from the repo root:
