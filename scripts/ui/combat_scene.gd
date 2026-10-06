@@ -4521,14 +4521,12 @@ class _Backdrop extends Control:
 	func _draw() -> void:
 		var w: float = size.x
 		var h: float = size.y
-		# Over the dungeon view: only a shade, darker at the top and bottom,
-		# so the fighters and their names read against the walls.
+		# Over the battle room: only a shade toward the top, under the log.
 		if see_through:
-			for i: int in 40:
-				var t: float = float(i) / 40.0
-				var edge: float = absf(t - 0.55) * 2.0
-				draw_rect(Rect2(0, h * t, w, h / 40.0 + 1.0),
-						Color(0.03, 0.03, 0.07, 0.45 + 0.35 * edge))
+			for i: int in 20:
+				var t: float = float(i) / 20.0
+				draw_rect(Rect2(0, h * 0.3 * t, w, h * 0.3 / 20.0 + 1.0),
+						Color(0.02, 0.02, 0.05, 0.55 * (1.0 - t)))
 			return
 		for i: int in 60:
 			var t: float = float(i) / 60.0

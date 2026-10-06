@@ -1263,9 +1263,9 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	scene.can_ambush = not warden and not _in_gauntlet and not player_char.never_ambushed() \
 			and not group.any(
 			func(f: Enemy) -> bool: return f.is_dragon() or f.is_necromancer() or f.is_warden())
-	# Wide screen: the fight happens where you stand. The corridor you were
-	# facing stays up behind it, opened out to the full width, and the scene
-	# only darkens it (see _sync_view_width).
+	# Wide screen: the fight stands on this floor's own stone, in its battle
+	# room (Dungeon._build_arena), seen across the full width; the scene only
+	# shades it (see _sync_view_width).
 	scene.see_through = _explore_hud != null
 	_sync_view_width()
 	scene.combat_ended.connect(_on_combat_ended.bind(group, combat_layer))
@@ -1280,6 +1280,12 @@ func _sync_view_width() -> void:
 	var left: float = 0.0 if in_combat else float(Layout.MAP_PANE_W)
 	if _world_box.offset_left != left:
 		_world_box.offset_left = left
+		# The fight stands in the floor's battle room, not in the corridor.
+		if is_instance_valid(dungeon) and dungeon.arena_camera != null:
+			if in_combat:
+				dungeon.arena_camera.make_current()
+			else:
+				cam.make_current()
 
 
 # Rewards are summed over the whole encounter: anything killed pays experience,
