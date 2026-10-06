@@ -88,9 +88,16 @@ static func cleared_hero() -> Dictionary:
 	return {}
 
 
+# The web build is the free taste of the game and leaves the Abyss out:
+# beating the Necromancer there ends the run with the credits, and nothing
+# unlocks.
+static func in_build() -> bool:
+	return not OS.has_feature("web")
+
+
 # Whether the title offers the mode at all: only once the game has been beaten.
 static func available() -> bool:
-	return unlocked() and not cleared_hero().is_empty()
+	return in_build() and unlocked() and not cleared_hero().is_empty()
 
 
 static func has_run() -> bool:

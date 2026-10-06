@@ -1303,7 +1303,9 @@ func _show_congratulations() -> void:
 	# this one should take the old one's place.
 	var cleared: Dictionary = _gather_save_data()["player"] as Dictionary
 	var ask: bool = Abyss.has_hero()
-	Abyss.unlock(cleared, not ask)
+	var abyss: bool = Abyss.in_build()
+	if abyss:
+		Abyss.unlock(cleared, not ask)
 	Records.add("runs_won")
 	Records.set_min("fastest_clear", play_time)
 	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
@@ -1317,7 +1319,9 @@ func _show_congratulations() -> void:
 			ui.team.append(d.sprite_id)
 		d.free()
 	ui.finished.connect(func() -> void:
-		if ask:
+		if not abyss:
+			pass
+		elif ask:
 			await _ask_replace_abyss_hero(cleared)
 		else:
 			await _tell_abyss_unlocked()
