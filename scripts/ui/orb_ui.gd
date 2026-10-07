@@ -830,7 +830,8 @@ func _gear() -> Array[Dictionary]:
 	if Abyss.active and floor_num > Level.FLOOR_COUNT:
 		var deep: Array[Dictionary] = Abyss.gear_for_depth(Abyss.depth_of(floor_num))
 		for a: Dictionary in Accessory.all():
-			if (a.has("wards") or a.has("first_strike") or a.has("walk_mp")) \
+			if (a.has("wards") or a.has("first_strike") or a.has("walk_mp") \
+					or a.has("round_mp")) \
 					and not bool(a.get("found_only", false)):
 				deep.append(a)
 		return deep

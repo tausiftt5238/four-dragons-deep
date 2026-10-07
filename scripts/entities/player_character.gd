@@ -724,6 +724,14 @@ func recovers_mp_walking() -> bool:
 	return false
 
 
+# A Tide Stone worn: every round of a fight, the party gets MP back.
+func recovers_mp_each_round() -> bool:
+	for acc: Dictionary in equipped_accessories:
+		if acc.get("round_mp", false):
+			return true
+	return false
+
+
 # A Sentry's Whistle worn: no fight can open with an ambush.
 func never_ambushed() -> bool:
 	for acc: Dictionary in equipped_accessories:

@@ -56,6 +56,8 @@ static func build(item: Dictionary, player: PlayerCharacter) -> String:
 		lines.append("Never ambushed: every fight opens on your turn")
 	if item.get("walk_mp", false):
 		lines.append("Walking brings MP back (full in fifty steps)")
+	if item.get("round_mp", false):
+		lines.append("In a fight, you and your demons get 10% MP back each round")
 
 	return "
 ".join(lines)

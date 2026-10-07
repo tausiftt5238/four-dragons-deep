@@ -255,7 +255,7 @@ static func gear_for_depth(depth: int) -> Array[Dictionary]:
 		var bases: Array[Dictionary] = []
 		for g: Dictionary in kind[0] as Array:
 			if int(g.get("floor", 1)) >= 3 and not g.has("wards") and not g.has("first_strike") \
-					and not g.has("walk_mp"):
+					and not g.has("walk_mp") and not g.has("round_mp"):
 				bases.append(g)
 		# Drawn without putting back, so a shelf never shows the same piece twice.
 		for i: int in mini(GEAR_PER_KIND, bases.size()):

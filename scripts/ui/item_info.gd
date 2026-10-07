@@ -195,4 +195,6 @@ static func gear(it: Dictionary, deltas: String = "") -> String:
 		parts.append(_paint("Never ambushed", Color(0.55, 0.95, 0.60)))
 	if it.get("walk_mp", false):
 		parts.append(_paint("MP back as you walk", Color(0.55, 0.95, 0.60)))
+	if it.get("round_mp", false):
+		parts.append(_paint("Party MP back each round", Color(0.55, 0.95, 0.60)))
 	return SEP.join(parts)

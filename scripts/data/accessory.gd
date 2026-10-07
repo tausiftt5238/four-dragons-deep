@@ -100,6 +100,19 @@ static func wellspring_charm() -> Dictionary:
 	return d
 
 
+# At the end of every round in a fight, the hero and every demon standing with
+# him get a slice of their MP back (CombatScene._recover_mp_each_round): a
+# tenth of the pool, so a long fight pays for its own spells.
+const TIDE_PRICE: int = 300
+
+static func tide_stone() -> Dictionary:
+	var d: Dictionary = make("tide_stone", "Tide Stone",
+			"Smooth and cold, and it rises and falls in your hand. In a fight, all of you breathe with it.", 1)
+	d["round_mp"] = true
+	d["price"] = TIDE_PRICE
+	return d
+
+
 # ── The trinkets ──────────────────────────────────────────────────────────────
 
 static func cold_iron_ring() -> Dictionary:
@@ -188,7 +201,7 @@ static func all() -> Array[Dictionary]:
 			scrying_mirror(), serpents_tooth(),
 			ferrymans_coin(), kings_signet(), thiefs_lantern(),
 			star_pendant(), silver_specs(), echo_bangle(), grounding_cord(),
-			ribbon(), sentrys_whistle(), wellspring_charm()]
+			ribbon(), sentrys_whistle(), wellspring_charm(), tide_stone()]
 
 
 # What a floor could plausibly turn up: this tier and everything above it.

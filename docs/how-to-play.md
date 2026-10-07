@@ -45,7 +45,12 @@ Hazards you've set off stay marked on your map. Warden and dragon floors have no
 
 MP comes back at orbs (Rest) and from ethers. Wear a **Wellspring Charm**
 (100 g, sold from the first orb) and it also creeps back as you walk: empty to
-full in fifty steps.
+full in fifty steps. A **Tide Stone** (300 g, also on the first shelf) works in
+fights instead: at the end of every round, you and each demon standing with you
+get a tenth of your MP back.
+
+**Defend** doubles DEF until the next turn and costs half an icon. Each brace
+also gives back 5% of HP and MP, and you can brace as often as you like.
 
 ---
 

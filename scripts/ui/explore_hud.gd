@@ -322,6 +322,8 @@ func _refresh_charms(p: PlayerCharacter) -> void:
 		_charms.add_child(_label("Whistle", SMALL, Color(0.60, 0.90, 1.0)))
 	if p.recovers_mp_walking():
 		_charms.add_child(_label("Wellspring", SMALL, MP_BLUE.lightened(0.3)))
+	if p.recovers_mp_each_round():
+		_charms.add_child(_label("Tide", SMALL, MP_BLUE.lightened(0.3)))
 
 
 func _refresh_prompt() -> void:

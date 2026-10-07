@@ -793,12 +793,36 @@ func _do_end_of_round() -> void:
 		var mp_gain: int = min(2, player.max_mp - player.mp)
 		if mp_gain > 0:
 			player.mp += mp_gain
+	_recover_mp_each_round()
 	await get_tree().create_timer(0.7).timeout
 	if is_instance_valid(self):
 		_begin_player_phase()
 
 
+# A Tide Stone worn: everyone still standing on the hero's side gets a tenth
+# of their MP back as the round closes.
+const TIDE_MP_SHARE: float = 0.10
+
+
+func _recover_mp_each_round() -> void:
+	if not player.recovers_mp_each_round():
+		return
+	var any: bool = false
+	for member: CharacterSheet in _living_party():
+		if member.mp < member.max_mp:
+			member.restore_mp(maxi(1, roundi(float(member.max_mp) * TIDE_MP_SHARE)))
+			any = true
+	if any:
+		_log("[color=#7fb8ff]The Tide Stone rises. MP flows back to the party.[/color]")
+		_refresh_hp()
+
+
 # ── Player-side actions ───────────────────────────────────────────────────────
+
+
+# What one brace gives back, as a slice of the pool.
+const DEFEND_HP_SHARE: float = 0.05
+const DEFEND_MP_SHARE: float = 0.05
 
 
 func _commit_action(action: String) -> void:
@@ -899,9 +923,20 @@ func _resolve_action(action: String) -> Dictionary:
 			# thrown away — at half it buys the guard AND leaves most of the
 			# action behind, so covering a demon that is about to be hit where
 			# it is weak is a play rather than a forfeit.
+			# It also catches the breath: a little HP and MP back each time,
+			# so bracing again on the next turn is never wasted.
 			actor.defending = true
-			return {msg = "[color=cyan]%s braces. DEF doubled until struck.[/color]" % _actor_name(),
-					cost = PressTurn.COST_HALF}
+			var hp_back: int = mini(actor.max_hp - actor.hp,
+					maxi(1, roundi(float(actor.max_hp) * DEFEND_HP_SHARE)))
+			var mp_back: int = mini(actor.max_mp - actor.mp,
+					maxi(1, roundi(float(actor.max_mp) * DEFEND_MP_SHARE)))
+			actor.heal(hp_back)
+			actor.restore_mp(mp_back)
+			_refresh_hp()
+			var msg: String = "[color=cyan]%s braces. DEF doubled until struck.[/color]" % _actor_name()
+			if hp_back > 0 or mp_back > 0:
+				msg += "  [color=lime]+%d HP  +%d MP[/color]" % [hp_back, mp_back]
+			return {msg = msg, cost = PressTurn.COST_HALF}
 	return {msg = "", cost = PressTurn.COST_FULL}
 
 
@@ -1737,10 +1772,9 @@ func _refresh_button_states() -> void:
 		(_buttons[key] as Button).visible = is_p
 
 	_buttons["Skills"].disabled = false
-	# Bracing on top of a brace does nothing but spend the icon, and at half an
-	# icon it is cheap enough to do by accident. Attack is never taken away, so
-	# there is always something better to press.
-	_buttons["Defend"].disabled = _actor().defending
+	# Bracing again is allowed: the guard holds, and it still catches a little
+	# HP and MP back.
+	_buttons["Defend"].disabled = false
 	_buttons["Item"].disabled   = not is_p
 	_buttons["Talk"].disabled   = not is_p or _living_foes().is_empty()
 	# Live whenever there is anything to move: a body to raise, a demon waiting
