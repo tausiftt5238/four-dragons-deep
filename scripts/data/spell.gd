@@ -77,8 +77,8 @@ static var DATA: Dictionary = {
 		desc="Read a monster's chart and its temper. Wardens and bosses refuse."},
 
 	# ── Leeches ──────────────────────────────────────────────────────────────
-	# Only the bats and the blood things have these (Enemy `unique`), whether
-	# they are biting you or biting for you. Both are a bite, not a spell: they
+	# The bats and the blood things are born with these (Enemy `unique`), and
+	# any bound demon can learn one on a level-up (PlayerCharacter.DEMON_LEECHES). Both are a bite, not a spell: they
 	# roll to hit like a swing and scale off STR, times `power`. No element, so
 	# nothing resists them. HP Leech wounds and heals the biter by what it
 	# took; MP Leech wounds nothing and moves MP from the target to the biter.

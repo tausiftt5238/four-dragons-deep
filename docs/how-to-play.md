@@ -45,7 +45,7 @@ Hazards you've set off stay marked on your map. Warden and dragon floors have no
 
 MP comes back at orbs (Rest) and from ethers. Wear a **Wellspring Charm**
 (100 g, sold from the first orb) and it also creeps back as you walk: empty to
-full in fifty steps. A **Tide Stone** (300 g, also on the first shelf) works in
+full in fifty steps. A **Tide Stone** (500 g, also on the first shelf) works in
 fights instead: at the end of every round, you and each demon standing with you
 get a tenth of your MP back.
 
@@ -222,6 +222,10 @@ will answer to you at all.
   HP for a single icon.
 - A monster that falls and is not revived **before the last enemy drops is gone
   for good** — off the roster, not just out of the fight.
+- **Anyone can Flee**, not just you. If you fall while your monsters are still
+  standing, one of them can run and drag you out, and you wake on 1 HP.
+- When a monster levels up and is offered a new skill, **HP Leech** and **MP
+  Leech** can be on the list alongside the buffs and debuffs.
 
 **Casters never swing.** A monster built to cast will cast its element every turn
 it can pay for, until its MP runs out.

@@ -103,7 +103,7 @@ static func wellspring_charm() -> Dictionary:
 # At the end of every round in a fight, the hero and every demon standing with
 # him get a slice of their MP back (CombatScene._recover_mp_each_round): a
 # tenth of the pool, so a long fight pays for its own spells.
-const TIDE_PRICE: int = 300
+const TIDE_PRICE: int = 500
 
 static func tide_stone() -> Dictionary:
 	var d: Dictionary = make("tide_stone", "Tide Stone",

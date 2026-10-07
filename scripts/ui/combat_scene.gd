@@ -1692,14 +1692,25 @@ func _do_poison_ticks() -> String:
 
 # ── Fleeing ───────────────────────────────────────────────────────────────────
 
+# Anyone on the hero's side can call the retreat, a bound demon included, so
+# demons left standing over a fallen hero can still drag him out. The runner's
+# own agility is what counts.
 func _do_flee() -> void:
-	# Agility as it stands this fight, so a blind hero struggles to get away
-	# and a blind foe struggles to stop him.
+	# Agility as it stands this fight, so a blind runner struggles to get away
+	# and a blind foe struggles to stop it.
 	var fastest: float = 0.0
 	for f: Enemy in _living_foes():
 		fastest = maxf(fastest, f.agl * f.agility_mult())
-	if player.effective_agl() * player.agility_mult() >= fastest or randi() % 2 == 0:
-		_log("You slip away into the dark.")
+	var runner: CharacterSheet = _actor()
+	var speed: float = float(player.effective_agl() if runner == player else runner.agl) \
+			* runner.agility_mult()
+	if speed >= fastest or randi() % 2 == 0:
+		if runner == player:
+			_log("You slip away into the dark.")
+		elif player.is_alive():
+			_log("%s finds a gap, and the party slips away into the dark." % _actor_name())
+		else:
+			_log("%s hauls you up and drags you off into the dark." % _actor_name())
 		await get_tree().create_timer(0.9).timeout
 		if is_instance_valid(self):
 			_end_combat("flee")
@@ -1763,12 +1774,12 @@ func _on_action(action: String) -> void:
 
 # ── Button state ──────────────────────────────────────────────────────────────
 
-# Talk, Item, Summon and Flee are the hero's alone. On a demon's turn they
-# are hidden rather than greyed — there is not much room on a phone, and a row
+# Talk, Item and Summon are the hero's alone; anyone can Flee. On a demon's
+# turn the hero's buttons are hidden rather than greyed — there is not much room on a phone, and a row
 # of dead buttons reads as a bug.
 func _refresh_button_states() -> void:
 	var is_p: bool = _actor_is_player()
-	for key: String in ["Item", "Talk", "Summon", "Flee"]:
+	for key: String in ["Item", "Talk", "Summon"]:
 		(_buttons[key] as Button).visible = is_p
 
 	_buttons["Skills"].disabled = false
@@ -1781,7 +1792,7 @@ func _refresh_button_states() -> void:
 	# off the field, or one standing that would rather not be.
 	_buttons["Summon"].disabled = not is_p or (_fallen_party().is_empty() \
 			and _available_summons().is_empty() and _standing_party().is_empty())
-	_buttons["Flee"].disabled   = not is_p
+	_buttons["Flee"].disabled   = false
 
 
 func _member_portrait(member: CharacterSheet) -> TextureRect:

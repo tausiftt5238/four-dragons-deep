@@ -143,6 +143,11 @@ const DEMON_MAX_RUNG: int = 3
 const DEMON_SUPPORTS: Array[String] = ["whet", "ward", "quicken", "stoke",
 		"blunt", "sunder", "mire", "damp"]
 
+# The bites any demon can pick up on a level-up, offered beside the supports.
+# Stored as a "unique" entry marked `learned`, so top_up_unique_skills knows
+# it was earned and not handed out by the template.
+const DEMON_LEECHES: Array[String] = ["hp_leech", "mp_leech"]
+
 static func demon_exp_to_next(lv: int) -> int:
 	return maxi(1, Enemy.exp_for_level(lv) * DEMON_EXP_FACTOR)
 
@@ -263,7 +268,8 @@ func award_demon_exp(amount: int) -> Dictionary:
 
 # Every second level a demon picks something up, and a coin decides which kind:
 # one of its lines climbs a rung, or it is offered a skill it does not have — a
-# buff or debuff, or a physical line if it hits harder than it casts. A coin
+# buff or debuff, an HP or MP leech, or a physical line if it hits harder
+# than it casts. A coin
 # that lands on an impossible side takes the other.
 #
 # A climb is applied here and comes back as {raised = name}. A new skill is
@@ -284,11 +290,15 @@ func _roll_demon_skill(demon_name: String, pending: Array = []) -> Dictionary:
 				and int(skill.get("rung", 1)) < DEMON_MAX_RUNG:
 			upgradable.append(i)
 
-	var unlearned: Array[String] = []
+	var unlearned: Array[Dictionary] = []
 	for id: String in DEMON_SUPPORTS:
 		var entry: Dictionary = {kind = "support", id = id}
 		if not _has_skill(list, entry) and not _has_skill(pending, entry):
-			unlearned.append(id)
+			unlearned.append(entry)
+	for id: String in DEMON_LEECHES:
+		var entry: Dictionary = {kind = "unique", id = id, learned = true}
+		if not _has_skill(list, entry) and not _has_skill(pending, entry):
+			unlearned.append(entry)
 
 	# A demon that hits harder than it casts can pick up a physical line of
 	# its own, at the reach it already fights at. It is one new line like any
@@ -319,7 +329,7 @@ func _roll_demon_skill(demon_name: String, pending: Array = []) -> Dictionary:
 	if phys_reach != "" and (unlearned.is_empty() or randi() % 2 == 0):
 		return {offer = {kind = "element", element = Affinity.PHYS,
 				rung = 1, shape = phys_reach}}
-	return {offer = {kind = "support", id = unlearned[randi() % unlearned.size()]}}
+	return {offer = unlearned[randi() % unlearned.size()]}
 
 
 # Same support, or a line in the same element — a rung does not make it new.
@@ -512,7 +522,8 @@ func top_up_unique_skills() -> void:
 		var list: Array = demon_skills[demon_name] as Array
 		var e: Enemy = Enemy.make_at_level(demon_name, 1)
 		list = list.filter(func(sk: Dictionary) -> bool:
-				return sk.get("kind", "") != "unique" or sk.get("id", "") in e.unique_skills)
+				return sk.get("kind", "") != "unique" or bool(sk.get("learned", false)) \
+						or sk.get("id", "") in e.unique_skills)
 		demon_skills[demon_name] = list
 		for id: String in e.unique_skills:
 			var entry: Dictionary = {kind = "unique", id = id}
@@ -1050,7 +1061,10 @@ func load_save(pdata: Dictionary) -> void:
 		for entry: Variant in raw:
 			var e: Dictionary = entry as Dictionary
 			if e.get("kind", "") in ["support", "unique"]:
-				list.append({kind = e["kind"] as String, id = e.get("id", "") as String})
+				var sk: Dictionary = {kind = e["kind"] as String, id = e.get("id", "") as String}
+				if bool(e.get("learned", false)):
+					sk["learned"] = true
+				list.append(sk)
 			else:
 				list.append({kind = "element",
 						element = e.get("element", "") as String,

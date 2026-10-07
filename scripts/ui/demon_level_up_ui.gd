@@ -222,6 +222,10 @@ func _show_offer(offer: Dictionary) -> void:
 # What the skill does, in the words the magic tab uses for the same spell.
 static func _describe(skill: Dictionary) -> String:
 	var id: String = skill.get("id", "") as String
+	if skill.get("kind", "") == "unique":
+		var u: Dictionary = Spell.get_data(id)
+		return "Drain %s  one  —  %s" % [(u.get("drain", "hp") as String).to_upper(),
+				u.get("desc", "")]
 	if skill.get("kind", "") != "support":
 		id = Spell.elemental_id(skill.get("element", "") as String,
 				int(skill.get("rung", 1)), skill.get("shape", Spell.SHAPE_ONE) as String)
