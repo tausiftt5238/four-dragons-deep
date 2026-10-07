@@ -109,3 +109,24 @@ reads it. The game itself still builds monsters from `Enemy`'s tables for now.
 Gradle, arm64 only) into `build/android/`; `export_android.sh install` also
 puts it on a phone over adb. The "Android" preset is the Play Store AAB; see
 `docs/releasing-android.md`.
+
+# The Steam store
+
+`docs/steam-store.md` has the store page text, field by field. The images show
+the real art, so they go to gitignored `build/store/steam/`:
+
+```
+tools/run.sh steam --script tools/store_shots.gd    # nine 1920x1080 shots
+python3 tools/store_capsules.py                      # capsules and library art
+```
+
+`store_shots.gd` doubles the Steam build's 960x540 canvas to 1920x1080, whole
+pixels. It turns vsync off, because with the display asleep every frame waits
+about a second.
+
+`upload_steam.sh` sends `build/steam/windows` and `build/steam/linux` up as two
+depots with SteamPipe, using the IDs in `steam_ids.cfg`. Run it in your own
+terminal: steamcmd asks for the password and the Steam Guard code.
+
+The Windows exe needs no rcedit: Godot 4.6 writes the project icon and the
+version info into it on export.
