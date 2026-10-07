@@ -685,8 +685,15 @@ func _post_move() -> void:
 		_open_orb()
 
 
+# Whether the hero may take a step or turn: not while a fight (and the screens
+# after it), the menu, the orb, a chest or the save slots are up, nor while
+# the floor changes behind black. Every way of moving asks this.
+func _can_walk() -> bool:
+	return not (in_combat or menu_open or save_open or orb_open or chest_open or _fading)
+
+
 func _handle_swipe(delta: Vector2) -> void:
-	if in_combat or menu_open or save_open or orb_open or chest_open:
+	if not _can_walk():
 		return
 	if delta.length() < _SWIPE_MIN:
 		return
@@ -783,7 +790,7 @@ func _stick_input(m: InputEventJoypadMotion) -> void:
 		_stick_held.y = v
 		if v != 0 and held.y == 0:
 			dir = Vector2i(0, v)
-	if dir == Vector2i.ZERO or in_combat or menu_open or save_open or orb_open or chest_open:
+	if dir == Vector2i.ZERO or not _can_walk():
 		return
 	if dir.y < 0:
 		_action_forward()
@@ -861,12 +868,11 @@ func _input(event: InputEvent) -> void:
 				_open_menu()
 		return
 
-	if in_combat or menu_open or save_open:
+	if not _can_walk():
 		return
 
 	# ○: whatever is in front of you, or the orb underfoot.
-	if _explore_hud != null and not orb_open and not chest_open \
-			and event.is_action_pressed("yes"):
+	if _explore_hud != null and event.is_action_pressed("yes"):
 		_act()
 		return
 
