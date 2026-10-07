@@ -42,9 +42,11 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(0, HEIGHT)
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# The first band, in the order the tables give them.
+	# The first band, in the order the tables give them. The dragons are left
+	# out: their 16px frames fill the box edge to edge and would march giants.
 	for t: Dictionary in Enemy.TEMPLATES:
-		if int(t.get("tier", 0)) == 1 and str(t.get("sprite_id", "")) != "":
+		var sid: String = str(t.get("sprite_id", ""))
+		if int(t.get("tier", 0)) == 1 and sid != "" and not sid.ends_with("_Dragon"):
 			_roster.append(str(t["sprite_id"]))
 	_knight = _actor("Knight", false)
 	_knight.play("walk")

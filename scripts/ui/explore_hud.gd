@@ -414,7 +414,7 @@ func _party_card(m: CharacterSheet, is_hero: bool) -> PanelContainer:
 	else:
 		var d: Enemy = m as Enemy
 		if d.abyss_element != "":
-			pic.material = Abyss.palette_material(d.abyss_element)
+			pic.material = Abyss.palette_material(d.abyss_element, d.sprite_id)
 		if d.sprite_id != "":
 			pic.load_sprite_id(d.sprite_id)
 		elif d.sprite_path != "":

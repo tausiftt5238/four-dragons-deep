@@ -121,31 +121,90 @@ const EPITHET: Dictionary = {
 	"fire": "Ember", "ice": "Frost", "thunder": "Storm", "light": "Radiant", "dark": "Umbral",
 }
 
-# The palette each element repaints a sprite in, dark to light (see
-# resources/shaders/palette_swap.gdshader).
-const PALETTE: Dictionary = {
-	"fire":    [Color(0.22, 0.04, 0.02), Color(1.00, 0.78, 0.35)],
-	"ice":     [Color(0.03, 0.08, 0.22), Color(0.78, 0.94, 1.00)],
-	"thunder": [Color(0.16, 0.12, 0.02), Color(1.00, 0.96, 0.55)],
-	"light":   [Color(0.25, 0.22, 0.14), Color(1.00, 1.00, 0.92)],
-	"dark":    [Color(0.06, 0.02, 0.10), Color(0.72, 0.50, 0.95)],
+# What each element turns a sprite's main colour to: its hue, how saturated
+# against the original, and a nudge to brightness. Light is a pale gold and
+# thunder a strong one, so the two stay apart (resources/shaders/palette_swap.gdshader).
+const SWAP: Dictionary = {
+	"fire":    {hue = 0.01, sat = 1.0,  val =  0.0},
+	"ice":     {hue = 0.60, sat = 1.0,  val =  0.0},
+	"thunder": {hue = 0.14, sat = 1.1,  val =  0.06},
+	"light":   {hue = 0.13, sat = 0.35, val =  0.18},
+	"dark":    {hue = 0.77, sat = 0.9,  val = -0.04},
 }
 
 const PALETTE_SHADER: Shader = preload("res://resources/shaders/palette_swap.gdshader")
-static var _materials: Dictionary = {}
+static var _materials: Dictionary = {}     # "sprite|element" -> ShaderMaterial
+static var _main_colour: Dictionary = {}   # sprite -> [hue, half-width, coloured share]
 
 
-# One material per element, shared by every portrait painted in it.
-static func palette_material(element: String) -> ShaderMaterial:
-	if _materials.has(element):
-		return _materials[element] as ShaderMaterial
+# One material per sprite and element, shared by every portrait of it.
+static func palette_material(element: String, sprite_id: String) -> ShaderMaterial:
+	var key: String = sprite_id + "|" + element
+	if _materials.has(key):
+		return _materials[key] as ShaderMaterial
+	var main: Array = main_colour(sprite_id)
+	var to: Dictionary = SWAP.get(element, SWAP["fire"]) as Dictionary
 	var m: ShaderMaterial = ShaderMaterial.new()
 	m.shader = PALETTE_SHADER
-	var pal: Array = PALETTE.get(element, [Color.BLACK, Color.WHITE]) as Array
-	m.set_shader_parameter("dark_col", pal[0])
-	m.set_shader_parameter("light_col", pal[1])
-	_materials[element] = m
+	m.set_shader_parameter("src_hue", main[0])
+	m.set_shader_parameter("src_half", main[1])
+	m.set_shader_parameter("dst_hue", to["hue"])
+	m.set_shader_parameter("sat_scale", to["sat"])
+	m.set_shader_parameter("val_shift", to["val"])
+	# Mostly grey (a skeleton, a werebear): its greys take a wash as well.
+	m.set_shader_parameter("grey_amount", 1.0 - smoothstep(0.25, 0.5, float(main[2])))
+	_materials[key] = m
 	return m
+
+
+# A sprite's main colour, read off its first frame: the 120-degree slice of
+# the colour wheel that holds the most coloured pixels, as its mean hue and
+# how far its pixels spread from that, and what share of the figure is in it.
+static func main_colour(sprite_id: String) -> Array:
+	if _main_colour.has(sprite_id):
+		return _main_colour[sprite_id] as Array
+	var hues: Array[float] = []
+	var opaque: int = 0
+	var tex: AtlasTexture = AnimatedPortrait.first_frame_texture(sprite_id) as AtlasTexture
+	if tex != null:
+		var img: Image = tex.atlas.get_image()
+		if img.is_compressed():
+			img = img.duplicate() as Image
+			img.decompress()
+		var s: int = img.get_height()
+		for y: int in s:
+			for x: int in s:
+				var c: Color = img.get_pixel(x, y)
+				if c.a <= 0.0:
+					continue
+				opaque += 1
+				if c.s > 0.2 and c.v > 0.15:
+					hues.append(c.h)
+	var result: Array = [0.0, 0.055, 0.0]
+	if not hues.is_empty():
+		var best: Array[float] = []
+		var best_centre: float = 0.0
+		for k: int in 36:
+			var centre: float = (k + 0.5) / 36.0
+			var inside: Array[float] = []
+			for h: float in hues:
+				var off: float = fposmod(h - centre + 0.5, 1.0) - 0.5
+				if absf(off) <= 1.0 / 6.0:
+					inside.append(off)
+			if inside.size() > best.size():
+				best = inside
+				best_centre = centre
+		var mean: float = 0.0
+		for off: float in best:
+			mean += off
+		mean /= best.size()
+		var half: float = 0.0
+		for off: float in best:
+			half = maxf(half, absf(off - mean))
+		result = [fposmod(best_centre + mean, 1.0), clampf(half, 0.055, 0.17),
+				float(best.size()) / float(opaque)]
+	_main_colour[sprite_id] = result
+	return result
 
 
 # How the elements a variant is not made of fall out, apart from its one

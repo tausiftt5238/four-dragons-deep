@@ -68,6 +68,10 @@ clone to set up the clean filter (`silhouette_sprites.py`) and the hooks in
 gitignored `art-private/characterSprites/`, and `restore_sprites.py` puts it
 back whenever a checkout writes the silhouettes.
 
+The dragon packs have no hurt animation, so `make_dragon_hurt.py` draws a
+`_Hurt.png` for every `*_Dragon` from its first Idle frame: the outline goes
+red and the body warms, the same four frames the character packs use.
+
 # The tutorial screenshots
 
 The title screen's Tutorial shows pictures from `resources/tutorial/`, and

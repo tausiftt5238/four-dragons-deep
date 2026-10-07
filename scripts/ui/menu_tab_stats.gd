@@ -116,7 +116,7 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 	else:
 		var demon: Enemy = p.bound_demon(demon_name)
 		if demon.abyss_element != "":
-			portrait.material = Abyss.palette_material(demon.abyss_element)
+			portrait.material = Abyss.palette_material(demon.abyss_element, demon.sprite_id)
 		if demon.sprite_id != "":
 			portrait.load_sprite_id(demon.sprite_id)
 		else:

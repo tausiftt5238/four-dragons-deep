@@ -142,7 +142,7 @@ func _build_foe_card(foe: Enemy) -> Control:
 	# ailment marks drawn over it should keep their own.
 	icon.self_modulate = foe.tint
 	if foe.abyss_element != "":
-		icon.material = Abyss.palette_material(foe.abyss_element)
+		icon.material = Abyss.palette_material(foe.abyss_element, foe.sprite_id)
 	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
@@ -307,7 +307,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	else:
 		var demon: Enemy = member as Enemy
 		if demon.abyss_element != "":
-			icon.material = Abyss.palette_material(demon.abyss_element)
+			icon.material = Abyss.palette_material(demon.abyss_element, demon.sprite_id)
 		if demon.sprite_id != "":
 			icon.load_sprite_id(demon.sprite_id)
 		elif demon.sprite_path != "":
