@@ -14,17 +14,20 @@ var agl: int = 1
 var luk: int = 1
 var exp: int = 0
 
-# The first level used to cost 100, which nothing on the opening floors could
-# pay. A tier-one demon sits at level 2-3 and exp_for_level is 10 + lv*lv/2, so
-# floor one paid 12 a fight against a 100 bill -- nine fights for one level,
-# where floors three onward wanted two. The opening was the grind, in the one
-# place the player has no levels, no gear and one spell.
-#
-# 60 roughly halves that (floor one to five fights, floor two to one or two)
-# and leaves the rest of the run where it was: the cost compounds from here at
-# x1.15-1.25 a level, so by floor ten the difference has washed out -- measured
-# at 3.1 fights per level against 3.5, and floor twenty at 6.9 against 7.2.
-var exp_to_next: int = 60
+# What the next level costs: the same curve a monster's EXP rides
+# (Enemy.exp_for_level, 10 + lv*lv/2), ten times over, so a level is about ten
+# kills of a monster your own level from the first floor to the last. It used
+# to compound at x1.15-1.25 a level, which the squared payouts could not keep up
+# with: by level 35, under the Void Dragon, a level wanted 70-odd kills and the
+# Necromancer stood fifteen levels out of reach.
+const HERO_EXP_FACTOR: int = 10
+
+
+static func hero_exp_to_next(level: int) -> int:
+	return Enemy.exp_for_level(level) * HERO_EXP_FACTOR
+
+
+var exp_to_next: int = 100
 var hp:          int = 0
 var max_hp:      int = 0
 var mp:          int = 0
@@ -183,10 +186,7 @@ func _level_up() -> void:
 	var old_max_hp: int = max_hp
 	var old_max_mp: int = max_mp
 	lv += 1
-	# Gentler than it was. At x1.3-1.7 the player reached level 13 by floor
-	# twenty and stopped mattering; a boss set at twice the floor number needs
-	# a curve that keeps climbing all the way down.
-	exp_to_next = int(exp_to_next * randf_range(1.15, 1.25))
+	exp_to_next = hero_exp_to_next(lv)
 	_hp_bonus += roundi(10.0 * randf_range(0.8, 1.2)) - 10
 	_mp_bonus += roundi(4.0 * randf_range(0.8, 1.2)) - 4
 	compute_max_hp()

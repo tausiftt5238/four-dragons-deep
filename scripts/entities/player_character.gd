@@ -610,7 +610,7 @@ func _ready() -> void:
 	agl = 3
 	luk = 3
 	exp = 0
-	exp_to_next = 100
+	exp_to_next = hero_exp_to_next(1)
 	# The run opens holding one spell. On the bare formula that is 10 MP — a
 	# single cast of Ember and then nothing for the rest of the floor, which is
 	# not a loadout so much as a demonstration. Three casts is a start.
@@ -984,7 +984,13 @@ func load_save(pdata: Dictionary) -> void:
 	agl         = int(pdata["agl"])
 	luk         = int(pdata.get("luk", 3))
 	exp         = int(pdata["exp"])
-	exp_to_next = int(pdata["exp_to_next"])
+	# The cost of a level is worked out from the level, not trusted from the
+	# file: saves from the old compounding curve carry a bill tens of times
+	# too big. The way through the current level is kept, as a share.
+	exp_to_next = hero_exp_to_next(lv)
+	var saved_next: int = int(pdata["exp_to_next"])
+	if saved_next > 0 and saved_next != exp_to_next:
+		exp = mini(exp * exp_to_next / saved_next, exp_to_next - 1)
 	hp          = int(pdata["hp"])
 	max_hp      = int(pdata["max_hp"])
 	mp          = int(pdata["mp"])
