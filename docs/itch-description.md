@@ -52,8 +52,8 @@ score.
 - No ads, no account, no internet needed
 
 **Which version?**
-- **Play in the browser** for the main game, all twenty floors and what waits
-  under them. The Abyss is not in the web version.
+- **Play the demo in the browser:** the first five floors, up to and
+  including the Ice Dragon. The full game is coming to Steam.
 - **Download the APK** for the whole thing, Abyss included, on an Android phone.
 
 **Controls**

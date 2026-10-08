@@ -66,6 +66,11 @@ func _build() -> void:
 	var title: Label = _make_lbl("FOUR\nDRAGONS\nDEEP", 54, Color(0.90, 0.75, 0.30))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(title)
+	# The browser build is the demo (Build.demo), and says so up front.
+	if Build.demo():
+		var demo: Label = _make_lbl("DEMO", 24, Color(0.60, 0.85, 1.0))
+		demo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		head.add_child(demo)
 
 	head.add_child(TitleVignette.new())
 

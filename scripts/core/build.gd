@@ -29,3 +29,11 @@ static func portable() -> bool:
 # The browser build of Portable, which leaves the Abyss out (Abyss.in_build).
 static func web() -> bool:
 	return OS.has_feature("web")
+
+
+# The browser build is a demo: the first band, up to and including the Ice
+# Dragon, and then the captain thanks the hero and points at the full game
+# (Main._show_demo_end). `-- --demo` on the command line makes any build one,
+# for trying it without a browser.
+static func demo() -> bool:
+	return web() or "--demo" in OS.get_cmdline_user_args()

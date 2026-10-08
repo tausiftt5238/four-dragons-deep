@@ -83,6 +83,9 @@ var _key_icon: KeyIcon
 # Set once the boss at the end of the corridor is down.
 var _boss_beaten: bool = false
 var _pending_congratulations:  bool = false
+# The demo ends once its last boss is down (Build.demo, DEMO_LAST_FLOOR).
+var _pending_demo_end: bool = false
+const DEMO_LAST_FLOOR: int = Level.BOSS_EVERY
 
 var _swipe_start:  Vector2 = Vector2.ZERO
 var _swipe_active: bool    = false
@@ -568,6 +571,11 @@ func _check_portal() -> void:
 # arrived at by one path and not the other is a floor carrying stale state.
 func _descend() -> void:
 	if current_level == null or current_level.next_scene == "" or _fading:
+		return
+	# The demo goes no deeper than its last boss: a save from there that walks
+	# on to the stairs gets the demo's ending again, not the next band.
+	if Build.demo() and floor_num >= DEMO_LAST_FLOOR:
+		_show_demo_end()
 		return
 	# Down through the dark, the new floor's number on it, and the floor is
 	# built while nothing can be seen.
@@ -1162,6 +1170,7 @@ func _start_gauntlet(names: Array[String]) -> void:
 
 func _start_boss_combat() -> void:
 	_pending_congratulations = (floor_num >= Level.FLOOR_COUNT)
+	_pending_demo_end = Build.demo() and floor_num == DEMO_LAST_FLOOR
 	# Bosses come alone; their own icon count is what makes them a fight. The
 	# Necromancer comes alone too, and does not stay that way.
 	var solo: Array[Enemy] = [Enemy.make_necromancer(floor_num)
@@ -1338,9 +1347,11 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 				_demon_level_ups(grew, demons_before))
 		"lose":
 			_pending_congratulations = false
+			_pending_demo_end = false
 			_show_game_over()
 		"flee":
 			_pending_congratulations = false
+			_pending_demo_end = false
 			_resume_from_overlay()
 
 
@@ -1428,6 +1439,34 @@ func _resume_from_overlay() -> void:
 	if _pending_congratulations:
 		_pending_congratulations = false
 		_show_congratulations()
+	elif _pending_demo_end:
+		_pending_demo_end = false
+		_show_demo_end()
+
+
+# The demo's last boss is down: the captain thanks the hero and points at the
+# full game, and then it is back to the title. Saved first, so Continue comes
+# back to the dragon's corridor rather than before it.
+func _show_demo_end() -> void:
+	if _fading:
+		return
+	_autosave()
+	Records.flush()
+	in_combat = true
+	_fading = true
+	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
+	await fade.covered
+	hud_layer.visible = false
+	var ui: IntroUI = IntroUI.new()
+	ui.lines = IntroUI.DEMO_LINES
+	ui.closing_text = "Thank you for playing the demo."
+	_get_overlay_layer().add_child(ui)
+	fade.reveal()
+	await ui.finished
+	var out: ScreenFade = ScreenFade.cover(get_tree())
+	await out.covered
+	get_tree().change_scene_to_file("res://scenes/title.tscn")
+	out.reveal()
 
 
 # The Necromancer is down: through black into the climb home and the credits,

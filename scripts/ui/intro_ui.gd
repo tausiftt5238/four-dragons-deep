@@ -50,6 +50,16 @@ const ABYSS_LINES: Array[String] = [
 	"And when you can go no further, the Watch will be at the top of the rope. We will pull you back up.",
 ]
 
+# The demo's last scene (Build.demo): the Ice Dragon is down, and the captain
+# thanks the hero and says where the rest of the Tower is.
+const DEMO_LINES: Array[String] = [
+	"Hero! You came back up. And that is frost on your boots, unless I am much mistaken.",
+	"The Ice Dragon. The first of the four, fallen. The whole Watch felt the stair go quiet.",
+	"But the Tower goes deeper still. Three more dragons wait below it, and something worse beneath them.",
+	"This is as far as the road goes for now. Thank you, truly, for walking it with us.",
+	"If you want to see the bottom, the full game is coming to Steam as Four Dragons Deep. Wishlist it, and come finish what you started.",
+]
+
 # The Abyss mode's last scene: she hauls the fallen hero back up the rope.
 const RESCUE_LINES: Array[String] = [
 	"Hold on. Hold on, I have you.",
