@@ -20,6 +20,14 @@ var _zoom: float = 1.0
 var _stop_at: int = -1
 var _hold: float = 0.0
 var _sprite_id: String = ""
+# How much of the box the figure is drawn in, its feet kept on the box's floor
+# (Enemy.figure_scale). Done with the atlas's margin, so the box itself never
+# changes size and nothing laid out around it moves.
+var shrink: float = 1.0:
+	set(v):
+		shrink = clampf(v, 0.1, 1.0)
+		if _loaded:
+			_update_frame()
 
 signal anim_done(anim_name: String)
 
@@ -72,6 +80,7 @@ func load_static(tex: Texture2D) -> void:
 		return
 	_atlas.atlas = tex
 	_atlas.region = Rect2(Vector2.ZERO, tex.get_size())
+	_atlas.margin = Rect2()
 	_loaded = false
 	_playing = false
 
@@ -242,6 +251,16 @@ func set_zoom(z: float) -> void:
 func _update_frame() -> void:
 	var size: int = _atlas.atlas.get_height()
 	_atlas.region = _frame_region(size, _frame, _zoom)
+	var r: float = _atlas.region.size.x
+	var pad: float = r / shrink - r
+	_atlas.margin = Rect2(pad / 2.0, pad, pad, pad)
+
+
+# Whether the figure is drawn edge to edge in its frame (the dragons' 16px
+# sheets) rather than small in the middle of a 100px one, which zoom crops into.
+# An edge-to-edge figure's feet are on the bottom of its box, not partway up.
+func fills_frame() -> bool:
+	return _loaded and _atlas.atlas != null and _atlas.atlas.get_height() < FRAME_SIZE
 
 
 static func _frame_region(size: int, frame: int, zoom: float) -> Rect2:

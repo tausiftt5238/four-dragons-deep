@@ -310,6 +310,16 @@ func _build_battlefield(parent: Control) -> void:
 # A monster on the field: its name and HP over it, the target caret above
 # that, its chart and its buffs under its feet. Laid out by hand, around the
 # point its feet stand on (_fit_columns places that).
+# A figure drawn edge to edge (a dragon) has its feet on the bottom of its box,
+# not FEET of the way down like the zoomed 100px sheets, so its box goes up
+# until they meet the line the name hangs under. A young dragon is drawn its
+# age, smaller, on the same feet.
+func _stand_figure(icon: AnimatedPortrait, who: Enemy) -> void:
+	if icon.fills_frame():
+		icon.position.y = PORTRAIT_TOP + PORTRAIT * FEET - PORTRAIT
+	icon.shrink = who.figure_scale
+
+
 func _build_foe_card(foe: Enemy) -> Control:
 	var card: Control = Control.new()
 	card.size = Vector2(CARD_W, CARD_H)
@@ -329,6 +339,7 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.self_modulate = foe.tint
 	if foe.abyss_element != "":
 		icon.material = Abyss.palette_material(foe.abyss_element, foe.sprite_id)
+	_stand_figure(icon, foe)
 	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
@@ -511,6 +522,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 		else:
 			icon.load_static(load("res://icon.svg") as Texture2D)
 			icon.modulate = Color(0.55, 0.85, 0.65)
+		_stand_figure(icon, demon)
 	icon.add_child(StatusOverlay.new(member))
 	card.add_child(icon)
 

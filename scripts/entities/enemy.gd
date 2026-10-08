@@ -19,6 +19,10 @@ var talk_personality: String = "cowardly"
 var bribe_wants:      String = "any"
 var sprite_path:      String = ""
 var sprite_id:        String = ""
+# How much of its fight portrait the figure fills. The dragons' art fills its
+# frame at every age, so a hatchling would stand as tall as a boss; the young
+# ones carry a `size` in their template to be drawn their age.
+var figure_scale:     float  = 1.0
 # The first element it carries, which is the one the bestiary and Analyze name.
 # Everything that actually throws one reads attack_elements.
 var attack_element:   String = ""
@@ -178,7 +182,8 @@ var absorb_element:   String = ""
 #      spell; a demon carrying more than one element puts the list on its own
 #      line above the rest
 #   6  how it can be talked down
-#   7  its sprite
+#   7  its sprite, and `size` if the figure is drawn smaller than its box
+#      (the young dragons, by age; see figure_scale)
 #
 # A key that is absent means the default: no element, no support, no affinity
 # beyond the chart above. Lines 4-6 are the ones worth scanning down.
@@ -276,35 +281,35 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "ice",
 		attack_element = "fire", status_attack = "", ail = 5, support = "whet",
 		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "any",
-		sprite_id = "Baby_Brass_Dragon"},
+		size = 0.6, sprite_id = "Baby_Brass_Dragon"},
 	{name = "Baby Copper Dragon", lv =  3,
 		str =  3, def =  3, mag =  4, agl =  6,
 		exp =  28, gold =  12, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire",
 		attack_element = "thunder", status_attack = "", ail = 5, support = "quicken",
 		negotiable = true, talk_difficulty = 2, personality = "greedy", wants = "throwable",
-		sprite_id = "Baby_Copper_Dragon"},
+		size = 0.6, sprite_id = "Baby_Copper_Dragon"},
 	{name = "Baby Green Dragon", lv =  3,
 		str =  3, def =  3, mag =  4, agl =  4,
 		exp =  28, gold =   9, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire", light = "weak", dark = "resist",
 		attack_element = "dark", status_attack = "poison", ail = 5, support = "mire",
 		negotiable = true, talk_difficulty = 2, personality = "lonely", wants = "potion",
-		sprite_id = "Baby_Green_Dragon"},
+		size = 0.6, sprite_id = "Baby_Green_Dragon"},
 	{name = "Baby White Dragon", lv =  3,
 		str =  3, def =  3, mag =  4, agl =  5,
 		exp =  28, gold =   9, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "fire",
 		attack_element = "ice", status_attack = "blind", ail = 5, support = "damp",
 		negotiable = true, talk_difficulty = 2, personality = "cowardly", wants = "any",
-		sprite_id = "Baby_White_Dragon"},
+		size = 0.6, sprite_id = "Baby_White_Dragon"},
 	{name = "Baby Iron Dragon", lv =  3,
 		str =  5, def =  4, mag =  0, agl =  2,
 		exp =  30, gold =  10, tier = 1, rank = 0, min_floor = 1, max_floor =  3,
 		weakness = "thunder",
 		status_attack = "", ail = 5, support = "ward",
 		negotiable = true, talk_difficulty = 2, personality = "proud", wants = "throwable",
-		sprite_id = "Baby_Iron_Dragon"},
+		size = 0.6, sprite_id = "Baby_Iron_Dragon"},
 	# ── Tier 2 · Floors 2-4 ──────────────────────────────────────────────────
 	{name = "Armored Skeleton", lv =  5,
 		str =  5, def =  4, mag =  4, agl =  2,
@@ -385,28 +390,28 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "ice", nulls = ["fire"],
 		attack_element = "fire", reach = "few", status_attack = "", ail = 12, support = "stoke",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "any",
-		sprite_id = "Young_Red_Dragon"},
+		size = 0.75, sprite_id = "Young_Red_Dragon"},
 	{name = "Young Brass Dragon", lv =  6,
 		str =  5, def =  4, mag =  6, agl =  4,
 		exp =  38, gold =  15, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "ice", light = "resist",
 		attack_elements = ["fire", "light"], reach = "few", status_attack = "blind", ail = 12, support = "whet",
 		negotiable = true, talk_difficulty = 3, personality = "greedy", wants = "throwable",
-		sprite_id = "Young_Brass_Dragon"},
+		size = 0.75, sprite_id = "Young_Brass_Dragon"},
 	{name = "Young Copper Dragon", lv =  6,
 		str =  5, def =  3, mag =  5, agl =  7,
 		exp =  38, gold =  16, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", nulls = ["thunder"],
 		attack_element = "thunder", reach = "few", status_attack = "", ail = 12, support = "quicken",
 		negotiable = true, talk_difficulty = 3, personality = "greedy", wants = "any",
-		sprite_id = "Young_Copper_Dragon"},
+		size = 0.75, sprite_id = "Young_Copper_Dragon"},
 	{name = "Young Silver Dragon", lv =  6,
 		str =  5, def =  5, mag =  5, agl =  3,
 		exp =  40, gold =  14, tier = 2, rank = 0, min_floor = 2, max_floor =  4,
 		weakness = "fire", nulls = ["ice"], light = "resist",
 		attack_element = "ice", reach = "few", status_attack = "", ail = 12, support = "ward",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "potion",
-		sprite_id = "Young_Silver_Dragon"},
+		size = 0.75, sprite_id = "Young_Silver_Dragon"},
 	# ── Tier 3 · Floors 3+ ───────────────────────────────────────────────────
 	{name = "Elite Orc",        lv =  8,
 		str =  7, def =  5, mag =  5, agl =  3,
@@ -460,7 +465,7 @@ const TEMPLATES: Array[Dictionary] = [
 		weakness = "ice", absorb_element = "thunder", phys = "resist",
 		attack_element = "thunder", reach = "few", status_attack = "paralyzed", ail = 18, support = "whet",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "throwable",
-		sprite_id = "Juvenile_Bronze_Dragon"},
+		size = 0.9, sprite_id = "Juvenile_Bronze_Dragon"},
 	{name = "Juvenile Black Dragon", lv =  9,
 		str =  7, def =  4, mag =  6, agl =  5,
 		exp =  50, gold =  15, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
@@ -468,7 +473,7 @@ const TEMPLATES: Array[Dictionary] = [
 		attack_element = "dark", reach = "few", status_attack = "poison", ail = 18, support = "sunder",
 		negotiable = true, talk_difficulty = 3, personality = "proud", wants = "any",
 		unique = ["hp_leech"],
-		sprite_id = "Juvenile_Black_Dragon"},
+		size = 0.9, sprite_id = "Juvenile_Black_Dragon"},
 	{name = "Juvenile Mercury Dragon", lv =  9,
 		str =  4, def =  4, mag =  7, agl =  8,
 		exp =  50, gold =  17, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
@@ -476,14 +481,14 @@ const TEMPLATES: Array[Dictionary] = [
 		attack_elements = ["ice", "light"], reach = "all", caster = true,
 		status_attack = "silence", ail = 18, support = "quicken",
 		negotiable = true, talk_difficulty = 4, personality = "lonely", wants = "potion",
-		sprite_id = "Juvenile_Mercury_Dragon"},
+		size = 0.9, sprite_id = "Juvenile_Mercury_Dragon"},
 	{name = "Juvenile Multihued Dragon", lv =  9, icons = 2,
 		str =  6, def =  4, mag =  7, agl =  5,
 		exp =  58, gold =  18, tier = 3, rank = 0, min_floor = 3, max_floor = -1,
 		weakness = "dark", nulls = ["fire", "ice", "thunder"], phys = "weak",
 		attack_elements = ["fire", "ice", "thunder"], reach = "few", status_attack = "", ail = 18, support = "stoke",
 		negotiable = true, talk_difficulty = 4, personality = "proud", wants = "potion",
-		sprite_id = "Juvenile_Multihued_Dragon"},
+		size = 0.9, sprite_id = "Juvenile_Multihued_Dragon"},
 	# ── Tier 4 · Floors 4+ ───────────────────────────────────────────────────
 	{name = "Dark Demoness",    lv = 11, icons = 2,
 		str =  8, def =  5, mag =  7, agl =  5,
@@ -1153,6 +1158,7 @@ static func _build(t: Dictionary, floor_num: int) -> Enemy:
 	e.bribe_wants      = t.get("wants", "any")
 	e.sprite_path      = t.get("sprite", "")
 	e.sprite_id        = t.get("sprite_id", "")
+	e.figure_scale     = float(t.get("size", 1.0))
 	e.attack_elements = _elements_from(t)
 	e.attack_element  = e.attack_elements[0] if not e.attack_elements.is_empty() else ""
 	e.caster          = bool(t.get("caster", false))

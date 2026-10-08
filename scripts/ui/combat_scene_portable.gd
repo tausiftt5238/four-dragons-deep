@@ -143,6 +143,8 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.self_modulate = foe.tint
 	if foe.abyss_element != "":
 		icon.material = Abyss.palette_material(foe.abyss_element, foe.sprite_id)
+	# A young dragon is drawn its age, on the box's floor (Enemy.figure_scale).
+	icon.shrink = foe.figure_scale
 	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
@@ -315,6 +317,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 		else:
 			icon.load_static(load("res://icon.svg") as Texture2D)
 			icon.modulate = Color(0.55, 0.85, 0.65)
+		icon.shrink = demon.figure_scale
 	icon.add_child(StatusOverlay.new(member))
 	card.add_child(icon)
 
