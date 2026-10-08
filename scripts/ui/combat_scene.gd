@@ -790,9 +790,7 @@ func _do_end_of_round() -> void:
 			_end_combat("win")
 		return
 	if "meditate" in player.passive_skills:
-		var mp_gain: int = min(2, player.max_mp - player.mp)
-		if mp_gain > 0:
-			player.mp += mp_gain
+		player.restore_mp(2)
 	_recover_mp_each_round()
 	await get_tree().create_timer(0.7).timeout
 	if is_instance_valid(self):
@@ -2013,7 +2011,7 @@ func _leech(actor: Enemy, target: CharacterSheet, id: String) -> Dictionary:
 			return {msg = "[color=gray]%s — %s has no MP to drink.[/color]" % [lead, who],
 					cost = PressTurn.COST_FULL}
 		target.mp -= took
-		actor.mp = mini(actor.max_mp, actor.mp + took)
+		actor.restore_mp(took)
 		_bite_fx(target, LEECH_MP_TINT)
 		return {msg = "[color=#7fb0ff]%s! It drinks %d MP from %s.[/color]" % [lead, took, who],
 				cost = PressTurn.COST_FULL}
@@ -2335,6 +2333,9 @@ const FLOAT_RISE:  float = 36.0
 const FLOAT_HURT:  Color = Color(1.0, 0.30, 0.28)
 const FLOAT_HEAL:  Color = Color(0.40, 1.0, 0.50)
 const FLOAT_MISS:  Color = Color(0.85, 0.87, 0.92)
+# The MP bars' own blue (the party windows draw them in it).
+const FLOAT_MP:    Color = Color(0.32, 0.46, 0.95)
+const FLOAT_MP_DROP: float = 34.0
 
 # The number showing over each target right now, if any.
 var _float_of: Dictionary = {}
@@ -2349,6 +2350,9 @@ func _watch_hp(who: CharacterSheet) -> void:
 		who.hp_lost.connect(lost)
 	if not who.hp_gained.is_connected(gained):
 		who.hp_gained.connect(gained)
+	var mp_back: Callable = _on_mp_gained.bind(who)
+	if not who.mp_gained.is_connected(mp_back):
+		who.mp_gained.connect(mp_back)
 	var missed: Callable = _show_float.bind(who, "MISS", FLOAT_MISS)
 	if not who.evaded.is_connected(missed):
 		who.evaded.connect(missed)
@@ -2373,7 +2377,13 @@ func _on_hp_changed(amount: int, who: CharacterSheet, color: Color, prefix: Stri
 		Sfx.play("hurt")
 
 
-func _show_float(who: CharacterSheet, text: String, color: Color) -> void:
+func _on_mp_gained(amount: int, who: CharacterSheet) -> void:
+	_show_float(who, "+%d" % amount, FLOAT_MP, true)
+
+
+# `mp`: an MP number, which has a place of its own just under the HP one, so a
+# Defend that gives back both shows both.
+func _show_float(who: CharacterSheet, text: String, color: Color, mp: bool = false) -> void:
 	if not is_inside_tree():
 		return
 	# A bound demon is an Enemy too, but only foes have a row in _foe_rows.
@@ -2384,7 +2394,8 @@ func _show_float(who: CharacterSheet, text: String, color: Color) -> void:
 	# and a card can start hiding on the same frame.
 	if portrait == null:
 		return
-	var old: Variant = _float_of.get(who)
+	var key: Variant = [who, "mp"] if mp else who
+	var old: Variant = _float_of.get(key)
 	if old != null and is_instance_valid(old):
 		(old as Label).queue_free()
 	var rect: Rect2 = portrait.get_global_rect()
@@ -2401,10 +2412,10 @@ func _show_float(who: CharacterSheet, text: String, color: Color) -> void:
 	lbl.z_index = 50
 	lbl.size = Vector2(rect.size.x, 40)
 	var start: Vector2 = rect.position - get_global_rect().position \
-			+ Vector2(0.0, rect.size.y * 0.30)
+			+ Vector2(0.0, rect.size.y * 0.30 + (FLOAT_MP_DROP if mp else 0.0))
 	lbl.position = start
 	add_child(lbl)
-	_float_of[who] = lbl
+	_float_of[key] = lbl
 
 	# Tweens belong to the label, so replacing it takes its animation with it.
 	lbl.pivot_offset = lbl.size / 2.0

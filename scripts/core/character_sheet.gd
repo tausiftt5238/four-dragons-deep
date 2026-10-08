@@ -148,6 +148,8 @@ func compute_max_mp() -> void:
 # max HP reports what was left, and a heal at full reports nothing.
 signal hp_lost(amount: int)
 signal hp_gained(amount: int)
+# MP that actually came back (a full pool reports nothing), floated in blue.
+signal mp_gained(amount: int)
 # A swing or a cast aimed at this member missed. The battle screen floats MISS.
 signal evaded
 
@@ -168,7 +170,10 @@ func heal(amount: int) -> void:
 
 
 func restore_mp(amount: int) -> void:
+	var before: int = mp
 	mp = min(max_mp, mp + amount)
+	if mp > before:
+		mp_gained.emit(mp - before)
 
 
 func is_alive() -> bool:
