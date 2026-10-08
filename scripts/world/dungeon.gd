@@ -16,7 +16,7 @@ func build(level: Level) -> void:
 	# The Necromancer's corridor is the bottom: nothing goes on down from it,
 	# so it ends in plain wall where every other corridor has its stairwell.
 	# Walking into it still starts the fight (Main._check_portal).
-	_dead_end = Level.is_necro_floor(level.floor_num)
+	_dead_end = Level.is_necro_floor(level.floor_num) or Abyss.is_end_floor(level.floor_num)
 	_build_geometry(level)
 	_exit_wall = level.exit_wall_pos
 	_exit_cell = level.exit_pos

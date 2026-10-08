@@ -82,8 +82,10 @@ static func rows() -> Array:
 		["Fastest clear", clock(best_clear) if best_clear > 0.0 else "-"],
 		["Deaths", str(int(value("deaths")))],
 		["Deepest floor", "Floor %d" % int(value("deepest_floor")) if value("deepest_floor") > 0 else "-"],
-		["Deepest Abyss", "Abyss %d" % Abyss.best_depth() if Abyss.best_depth() > 0 else "-"],
-		["Abyss descents", str(int(value("abyss_runs")))],
+		["Deepest Abyss", ("Abyss %d, the end" if Abyss.best_depth() >= Abyss.END_DEPTH else "Abyss %d")
+				% Abyss.best_depth() if Abyss.best_depth() > 0 else "-"],
+		["Abyss descents", str(int(value("abyss_runs"))) + (
+				"  (%d cleared)" % int(value("abyss_cleared")) if value("abyss_cleared") > 0 else "")],
 		["Fights won", str(int(value("fights_won")))],
 		["Monsters defeated", str(int(value("monsters_defeated")))],
 		["Wardens defeated", str(int(value("wardens_defeated")))],

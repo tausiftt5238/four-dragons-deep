@@ -85,6 +85,8 @@ var _boss_beaten: bool = false
 var _pending_congratulations:  bool = false
 # The demo ends once its last boss is down (Build.demo, DEMO_LAST_FLOOR).
 var _pending_demo_end: bool = false
+# The Abyss's last boss is down (Abyss.END_DEPTH).
+var _pending_abyss_end: bool = false
 const DEMO_LAST_FLOOR: int = Level.BOSS_EVERY
 
 var _swipe_start:  Vector2 = Vector2.ZERO
@@ -548,6 +550,9 @@ func _check_portal() -> void:
 			return
 		if Level.is_necro_floor(floor_num):
 			_show_congratulations()
+			return
+		if Abyss.is_end_floor(floor_num):
+			_show_abyss_end()
 			return
 
 	if not _has_key:
@@ -1172,6 +1177,7 @@ func _start_gauntlet(names: Array[String]) -> void:
 func _start_boss_combat() -> void:
 	_pending_congratulations = Level.is_necro_floor(floor_num)
 	_pending_demo_end = Build.demo() and floor_num == DEMO_LAST_FLOOR
+	_pending_abyss_end = Abyss.is_end_floor(floor_num)
 	# Bosses come alone; their own icon count is what makes them a fight. The
 	# Necromancer comes alone too, and does not stay that way.
 	var solo: Array[Enemy] = []
@@ -1354,10 +1360,12 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		"lose":
 			_pending_congratulations = false
 			_pending_demo_end = false
+			_pending_abyss_end = false
 			_show_game_over()
 		"flee":
 			_pending_congratulations = false
 			_pending_demo_end = false
+			_pending_abyss_end = false
 			_resume_from_overlay()
 
 
@@ -1448,6 +1456,37 @@ func _resume_from_overlay() -> void:
 	elif _pending_demo_end:
 		_pending_demo_end = false
 		_show_demo_end()
+	elif _pending_abyss_end:
+		_pending_abyss_end = false
+		_show_abyss_end()
+
+
+# The Abyss's last boss is down: the descent is over. The captain comes down
+# for the hero, and it is back to the title; the run is done with, so its save
+# goes, and the hero who cleared the game waits for the next descent as before.
+func _show_abyss_end() -> void:
+	if _fading:
+		return
+	Records.add("abyss_cleared")
+	Abyss.note_depth(Abyss.END_DEPTH)
+	Abyss.wipe_run()
+	Records.flush()
+	in_combat = true
+	_fading = true
+	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
+	await fade.covered
+	hud_layer.visible = false
+	var ui: IntroUI = IntroUI.new()
+	ui.lines = IntroUI.ABYSS_END_LINES
+	ui.closing_text = "The end of the Abyss."
+	_get_overlay_layer().add_child(ui)
+	fade.reveal()
+	await ui.finished
+	var out: ScreenFade = ScreenFade.cover(get_tree())
+	await out.covered
+	Abyss.active = false
+	get_tree().change_scene_to_file("res://scenes/title.tscn")
+	out.reveal()
 
 
 # The demo's last boss is down: the captain thanks the hero and points at the
@@ -1747,6 +1786,10 @@ func _sync_boss_banner() -> void:
 	var from: Vector2i = current_level.exit_pos
 	var toward: Vector3 = Vector3(float(from.x - wall.x), 0.0, float(from.y - wall.y))
 	var inset: float = 0.35
+	# The Abyss's last corridor ends in wall, like the old bottom of the run:
+	# the dragon stands just in front of it.
+	if Abyss.is_end_floor(floor_num):
+		inset = 0.62
 	# In his hall he stands in the middle of the pier's tip, his own cell,
 	# looking out over the pit at where the player comes in.
 	if Level.is_necro_floor(floor_num):

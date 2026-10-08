@@ -671,8 +671,8 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 # dragons' (Abyss.boss_floor). The Abyss has one life and no saves, so they are
 # built like the monsters around them, at the floor's own level, and are a
 # boss only by being alone with ABYSS_BOSS_MULT times the HP and the rewards,
-# and two actions a turn. The six adults come first, the four ancients after
-# (Abyss.boss_for_depth). Each keeps its own chart: they are not rolled into
+# and two actions a turn. The six adults come first, the ancients after, and
+# the Multihued is the end of the Abyss (Abyss.boss_for_depth, END_DEPTH). Each keeps its own chart: they are not rolled into
 # an element the way the Abyss's ordinary monsters are.
 const ABYSS_BOSS_MULT: int = 3
 const ABYSS_BOSS_TEMPLATES: Array[Dictionary] = [
@@ -723,7 +723,8 @@ const ABYSS_BOSS_TEMPLATES: Array[Dictionary] = [
 		weakness = "dark", nulls = ["ice"], light = "drain",
 		attack_elements = ["light", "ice"], reach = "all", status_attack = "blind", ail = 25, support = "purge",
 		sprite_id = "Ancient_Silver_Dragon"},
-	{name = "Ancient Multihued Dragon", rank = 2, ancient = true,
+	# The end of the Abyss (Abyss.END_DEPTH): always last.
+	{name = "Ancient Multihued Dragon", rank = 2, ancient = true, final = true,
 		str =  9, def =  7, mag = 10, agl =  6,
 		weakness = "light", nulls = ["fire", "ice", "thunder"], dark = "resist",
 		attack_elements = ["fire", "ice", "thunder", "dark"], reach = "all", caster = true,

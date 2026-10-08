@@ -294,38 +294,43 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 static var run_seed: int = 0
 
 
+# The Abyss ends: the last of its bosses waits at END_DEPTH, the Ancient
+# Multihued Dragon (the template marked `final`), and beating it is the end of
+# the descent (Main._show_abyss_end).
+const END_DEPTH: int = 50
+
+
+static func is_end_floor(floor_num: int) -> bool:
+	return active and depth_of(floor_num) == END_DEPTH
+
+
 static func boss_floor(floor_num: int) -> bool:
 	return active and floor_num > Level.FLOOR_COUNT \
 			and depth_of(floor_num) % Level.BOSS_EVERY == 0
 
 
-# Which of Enemy.ABYSS_BOSS_TEMPLATES waits at this depth. They come in rounds,
-# none twice until all have been met: the first round is the adults in a
-# shuffled order and then the ancients, so the ancients are the deep ones;
-# later rounds shuffle all of them together.
+# Which of Enemy.ABYSS_BOSS_TEMPLATES waits at this depth. None twice: the
+# adults in a shuffled order, then the ancients, and the final one always last,
+# at END_DEPTH. The order is this run's own (run_seed).
 static func boss_for_depth(depth: int) -> int:
-	var n: int = maxi(0, depth / Level.BOSS_EVERY - 1)
-	var count: int = Enemy.ABYSS_BOSS_TEMPLATES.size()
-	var round_no: int = n / count
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = hash([run_seed, round_no])
-	var order: Array[int] = []
-	if round_no == 0:
-		var young: Array[int] = []
-		var old: Array[int] = []
-		for i: int in count:
-			if Enemy.ABYSS_BOSS_TEMPLATES[i].get("ancient", false):
-				old.append(i)
-			else:
-				young.append(i)
-		order.append_array(_shuffled(young, rng))
-		order.append_array(_shuffled(old, rng))
-	else:
-		var all: Array[int] = []
-		for i: int in count:
-			all.append(i)
-		order = _shuffled(all, rng)
-	return order[n % count]
+	rng.seed = hash([run_seed, 0])
+	var young: Array[int] = []
+	var old: Array[int] = []
+	var last: int = 0
+	for i: int in Enemy.ABYSS_BOSS_TEMPLATES.size():
+		var t: Dictionary = Enemy.ABYSS_BOSS_TEMPLATES[i]
+		if t.get("final", false):
+			last = i
+		elif t.get("ancient", false):
+			old.append(i)
+		else:
+			young.append(i)
+	var order: Array[int] = _shuffled(young, rng)
+	order.append_array(_shuffled(old, rng))
+	order.append(last)
+	var n: int = clampi(depth / Level.BOSS_EVERY - 1, 0, order.size() - 1)
+	return order[n]
 
 
 static func _shuffled(list: Array[int], rng: RandomNumberGenerator) -> Array[int]:

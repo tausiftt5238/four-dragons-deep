@@ -50,6 +50,16 @@ const ABYSS_LINES: Array[String] = [
 	"And when you can go no further, the Watch will be at the top of the rope. We will pull you back up.",
 ]
 
+# The end of the Abyss: the Ancient Multihued Dragon has fallen at its bottom.
+const ABYSS_END_LINES: Array[String] = [
+	"Hero? Hero! We felt the whole pit shake, and then... nothing. Just quiet.",
+	"You found it. The bottom of the Abyss. I did not believe there was one.",
+	"Every lantern we lowered, every rope we lost... and you walked all the way down and stood at the end of it.",
+	"Nothing has come up out of the dark since. Not one. The Watch does not know what to do with itself.",
+	"Perhaps, at last, this kingdom can have its peace. Thanks to you.",
+	"Come home, hero. You have earned the light.",
+]
+
 # The demo's last scene (Build.demo): the Ice Dragon is down, and the captain
 # thanks the hero and says where the rest of the Tower is.
 const DEMO_LINES: Array[String] = [
