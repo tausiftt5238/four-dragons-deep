@@ -61,6 +61,11 @@ func build() -> void:
 			func(list: SlotList, name: String) -> void: _add_demon(list, name))
 
 
+# Level, HP and MP on one line, and what it can call on under it, which wraps
+# once a demon has five skills with their stat tags.
+const DETAIL_LINES: int = 3
+
+
 func _add_demon(list: SlotList, demon_name: String) -> void:
 	var p: PlayerCharacter = _m.player
 	var active: bool = p.is_active(demon_name)
@@ -85,7 +90,7 @@ func _add_demon(list: SlotList, demon_name: String) -> void:
 					else:
 						_m._set_status("All %d slots are taken." % PlayerCharacter.ACTIVE_SLOTS)
 					_m._refresh()}] as Array[Dictionary],
-			null, chart)
+			null, chart, DETAIL_LINES)
 
 
 # ── Row pieces ───────────────────────────────────

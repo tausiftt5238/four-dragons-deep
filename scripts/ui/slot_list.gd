@@ -26,6 +26,8 @@ const SLOT_H:     int = 96
 const BTN_W:      int = 150
 const BTN_H:      int = 24     # becomes 36 after the restyle hook
 const EXTRA_H:    int = 34     # one AffinityChart row
+const DETAIL_SIZE: int = 11    # the detail line's font size
+const _DETAIL_FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
 
 var _host:   VBoxContainer
 var _slots:  Array[MarginContainer] = []
@@ -78,17 +80,24 @@ func add(title: String, title_color: Color, detail: String,
 # The same slot with however many actions a row needs. Items carry three —
 # belt, use and discard — and three buttons at font size 20 only fit because
 # they share the width the single-button case gives to one.
+# `detail_lines` is how many lines the detail can take: a row is built for one,
+# and each more makes it taller by one line of the detail's font. Fixed by the
+# caller, not measured from the text, so every row of a list is the same
+# height whatever its own detail says.
 func add_entry(title: String, title_color: Color, detail: String,
 		value: String, value_color: Color, actions: Array[Dictionary],
-		icon: Texture2D = null, extra: Control = null) -> bool:
+		icon: Texture2D = null, extra: Control = null, detail_lines: int = 1) -> bool:
 	if _filled >= _count:
 		return false
 	var slot: MarginContainer = _slots[_filled]
 	_filled += 1
 	# A row that carries an extra line (an affinity chart) is taller by exactly
 	# that line, so the description keeps the room it always had.
+	var h: float = slot_h()
 	if extra != null:
-		slot.custom_minimum_size.y = slot_h() + EXTRA_H
+		h += EXTRA_H
+	h += float(maxi(0, detail_lines - 1)) * ceilf(_DETAIL_FONT.get_height(DETAIL_SIZE))
+	slot.custom_minimum_size.y = h
 
 	var outer: HBoxContainer = HBoxContainer.new()
 	outer.add_theme_constant_override("separation", 8)
@@ -163,7 +172,7 @@ func add_entry(title: String, title_color: Color, detail: String,
 	detail_lbl.scroll_active = false
 	detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_lbl.add_theme_font_size_override("normal_font_size", 11)
+	detail_lbl.add_theme_font_size_override("normal_font_size", DETAIL_SIZE)
 	detail_lbl.add_theme_color_override("default_color", Color(0.60, 0.62, 0.70))
 	col.add_child(detail_lbl)
 	return true
