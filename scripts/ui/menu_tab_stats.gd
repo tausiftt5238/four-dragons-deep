@@ -175,15 +175,17 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 func _hero_detail(p: PlayerCharacter) -> void:
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 24)
-	grid.add_theme_constant_override("v_separation", 2)
+	grid.add_theme_constant_override("h_separation", 8)
+	# Five lines of stats is the tallest thing either kind of member shows:
+	# set close, so they and the chart fit the window's fixed height.
+	grid.add_theme_constant_override("v_separation", 0)
 	_add_stat_row(grid, "STR", p.str, p.effective_str())
 	_add_stat_row(grid, "DEF", p.def, p.effective_def())
 	_add_stat_row(grid, "MAG", p.mag, p.effective_mag())
 	_add_stat_row(grid, "AGL", p.agl, p.effective_agl())
 	_add_stat_row(grid, "LUK", p.luk, p.effective_luk())
 	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 40)
+	row.add_theme_constant_override("separation", 16)
 	_detail.add_child(row)
 	row.add_child(grid)
 	row.add_child(_worn(p))
@@ -206,23 +208,28 @@ func _demon_detail(p: PlayerCharacter, demon_name: String) -> void:
 	demon.free()
 
 
-# Weapon, armour and trinkets, named under small headings.
+# Weapon, armour and each trinket slot, one line apiece and always the same
+# four, under the five stats beside them: the window never grows past its
+# height and the page never needs a scroll (which took the bars' width when
+# it came). Names alone, no slot words: those left no room for the long ones,
+# and the names say what they are. An empty slot says which it is.
 func _worn(p: PlayerCharacter) -> VBoxContainer:
 	var col: VBoxContainer = VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var trinkets: Array[String] = []
-	for acc: Dictionary in p.equipped_accessories:
-		trinkets.append(acc.get("name", "") as String)
-	for part: Array in [["Weapon", [p.equipped_weapon.get("name", "-")]],
-			["Armour", [p.equipped_armor.get("name", "-")]],
-			["Trinkets", trinkets if not trinkets.is_empty() else ["-"]]]:
-		col.add_child(_make_section_label(part[0] as String))
-		for n: Variant in part[1]:
-			var l: Label = Label.new()
-			l.text = str(n)
-			l.clip_text = true
-			col.add_child(l)
+	var lines: Array[String] = [p.equipped_weapon.get("name", "No weapon") as String,
+			p.equipped_armor.get("name", "No armour") as String]
+	for i: int in PlayerCharacter.ACCESSORY_SLOTS:
+		lines.append(p.equipped_accessories[i].get("name", "") as String
+				if i < p.equipped_accessories.size() else "No trinket")
+	for text: String in lines:
+		var l: Label = Label.new()
+		l.text = text
+		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		if text.begins_with("No "):
+			l.add_theme_color_override("font_color", Color(0.55, 0.55, 0.62))
+		col.add_child(l)
 	return col
 
 
@@ -236,7 +243,9 @@ func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) 
 	var val_lbl: Label = Label.new()
 	var diff: int = eff - base
 	if diff != 0:
-		val_lbl.text = "%d  (%+d)" % [eff, diff]
+		# "8 +3", not "8  (+3)": the hero's names of what he wears share this
+		# window's width, and the longest needs every pixel of it.
+		val_lbl.text = "%d %+d" % [eff, diff]
 		val_lbl.add_theme_color_override("font_color",
 			Color(0.35, 0.90, 0.35) if diff > 0 else Color(0.90, 0.35, 0.35))
 	else:
