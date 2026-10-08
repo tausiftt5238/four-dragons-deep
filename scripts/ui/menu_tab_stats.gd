@@ -243,9 +243,8 @@ func _add_stat_row(grid: GridContainer, stat_name: String, base: int, eff: int) 
 	var val_lbl: Label = Label.new()
 	var diff: int = eff - base
 	if diff != 0:
-		# "8 +3", not "8  (+3)": the hero's names of what he wears share this
-		# window's width, and the longest needs every pixel of it.
-		val_lbl.text = "%d %+d" % [eff, diff]
+		# The total alone; its colour says gear raised it or lowered it.
+		val_lbl.text = str(eff)
 		val_lbl.add_theme_color_override("font_color",
 			Color(0.35, 0.90, 0.35) if diff > 0 else Color(0.90, 0.35, 0.35))
 	else:
