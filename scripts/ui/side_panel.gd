@@ -2,8 +2,11 @@
 # The menu's and the orb's frame on a wide screen, in the fight's windows: a
 # command window down the left naming the pages, and the page window beside
 # it. Up and down walk the commands and the page follows the cursor; Right or
-# Enter steps into the page, Escape steps back out and, from the commands,
-# closes. The phone keeps its own frame (MenuUI and OrbUI build it).
+# the confirm button steps into the page, and Left (from the page's left edge)
+# or cancel steps back out, to the command it belongs to; cancel from the
+# commands closes. Each page remembers where its cursor was, so stepping out
+# and back in lands where it left off. The phone keeps its own frame (MenuUI
+# and OrbUI build it).
 #
 # The host fills `content` the way it always has; the theme set here dresses
 # whatever it puts there in the same windows.
@@ -33,6 +36,9 @@ var _current: String = ""
 # Commands that act rather than show a page (Close, Leave): the cursor
 # passing over them does nothing; choosing one does.
 var _actions: Array[String] = []
+# Where the cursor was in each page when it last stepped out, as an index over
+# the page's stops (page_focus_index), so stepping back in finds it again.
+var _page_cursor: Dictionary = {}
 
 
 # `commands` is a list of [id, label], with "" for a gap; `actions` are the
@@ -134,13 +140,32 @@ func focus_commands() -> void:
 		b.grab_focus()
 
 
+# Into the page: where its cursor was when it last stepped out, or its first
+# stop the first time.
 func focus_page() -> void:
+	var at: int = int(_page_cursor.get(_current, -1))
+	if at >= 0 and at < _focusables(content).size():
+		focus_page_at(at)
+		return
 	var first: Control = _first_focusable(content)
 	if first != null:
 		first.grab_focus()
 
 
+# Out of the page, to its command, keeping the cursor's place.
+func leave_page() -> void:
+	var at: int = page_focus_index()
+	if at >= 0:
+		_page_cursor[_current] = at
+	focus_commands()
+
+
+# Choosing the command whose page is already up (the cursor put it there)
+# steps into it, as Right does, rather than building it afresh.
 func _on_pressed(id: String) -> void:
+	if id == _current and id not in _actions:
+		focus_page()
+		return
 	picked.emit(id)
 	if id not in _actions:
 		focus_page.call_deferred()
@@ -163,9 +188,18 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		if focus != null and not _in_commands(focus):
-			focus_commands()
+			leave_page()
 		else:
 			back_out.emit()
+		return
+	# Left inside the page moves left inside it (a row of x1 x5 x10); from its
+	# left edge it steps out, to this page's command and not whichever one
+	# happens to sit level with the cursor.
+	if focus != null and content.is_ancestor_of(focus) and event.is_action_pressed("ui_left"):
+		var next: Control = focus.find_valid_focus_neighbor(SIDE_LEFT)
+		if next == null or not content.is_ancestor_of(next):
+			get_viewport().set_input_as_handled()
+			leave_page()
 		return
 	if _in_commands(focus) and event.is_action_pressed("ui_right"):
 		get_viewport().set_input_as_handled()

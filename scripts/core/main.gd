@@ -1825,6 +1825,11 @@ func _open_menu() -> void:
 	menu.title_requested.connect(func():
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
+	menu.quit_requested.connect(func():
+		_autosave()
+		Records.flush()
+		get_tree().quit()
+	)
 	_side_parent(menu_layer).add_child(menu)
 
 

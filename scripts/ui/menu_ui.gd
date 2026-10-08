@@ -6,6 +6,7 @@ class_name MenuUI extends Control
 signal menu_closed
 signal load_requested
 signal title_requested
+signal quit_requested
 
 
 var player: PlayerCharacter
@@ -185,6 +186,18 @@ func _build_system() -> void:
 		else:
 			title_requested.emit())
 	col.add_child(title_btn)
+
+	# Out of the game altogether, as closing the window is: Main writes the
+	# autosave first. Not in a browser, where a page cannot close itself.
+	if not OS.has_feature("web"):
+		var exit_btn: Button = _system_button("Exit Game")
+		exit_btn.pressed.connect(func():
+			if exit_btn.text == "Exit Game":
+				exit_btn.text = "Sure? %s again" % ("Press" if Build.steam() else "Tap")
+				_set_status("The run is autosaved before the game closes.")
+			else:
+				quit_requested.emit())
+		col.add_child(exit_btn)
 
 
 func _system_button(text: String) -> Button:
