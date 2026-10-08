@@ -7,7 +7,7 @@ func _ready() -> void:
 	next_scene = "res://scenes/map.tscn"
 
 	# Every fifth floor is a boss corridor; everything else is a maze.
-	if Level.is_necro_floor(floor_num):
+	if Level.is_hall_floor(floor_num):
 		_setup_necro_floor()
 	elif Level.is_boss_floor(floor_num):
 		_setup_boss_floor()

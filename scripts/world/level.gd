@@ -194,7 +194,8 @@ var trap_cells: Dictionary = {}
 # The bottom of the run is not a corridor but a hole: a walkway round the edge
 # of a pit, under the ceiling, with one pier reaching out over it and the
 # Necromancer at its tip. The player comes in across the pit from him and
-# walks round to the pier. Rows of NECRO_HALL, read top down:
+# walks round to the pier. The Abyss's last floor is built the same way, with
+# its final dragon on the pier (is_hall_floor). Rows of NECRO_HALL, read top down:
 #   "#" wall, drawn      "=" walkway      " " the pit: no floor, no way across
 #   "N" where he stands (solid; the fight starts walking into him off the pier)
 #   "@" where the player arrives          "O" the orb
@@ -217,6 +218,12 @@ var pit_cells: Dictionary = {}
 
 static func is_necro_floor(floor_num: int) -> bool:
 	return floor_num == FLOOR_COUNT
+
+
+# Built as the hall over the pit (NECRO_HALL) rather than a corridor: the
+# Necromancer's floor, and the Abyss's last one, where its final dragon waits.
+static func is_hall_floor(floor_num: int) -> bool:
+	return is_necro_floor(floor_num) or Abyss.is_end_floor(floor_num)
 
 const HAZARD_ICE: String   = "ice"
 const HAZARD_LAVA: String  = "lava"

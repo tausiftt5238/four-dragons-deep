@@ -1786,13 +1786,9 @@ func _sync_boss_banner() -> void:
 	var from: Vector2i = current_level.exit_pos
 	var toward: Vector3 = Vector3(float(from.x - wall.x), 0.0, float(from.y - wall.y))
 	var inset: float = 0.35
-	# The Abyss's last corridor ends in wall, like the old bottom of the run:
-	# the dragon stands just in front of it.
-	if Abyss.is_end_floor(floor_num):
-		inset = 0.62
-	# In his hall he stands in the middle of the pier's tip, his own cell,
-	# looking out over the pit at where the player comes in.
-	if Level.is_necro_floor(floor_num):
+	# In a hall over the pit the boss stands in the middle of the pier's tip,
+	# its own cell, looking out over the pit at where the player comes in.
+	if Level.is_hall_floor(floor_num):
 		inset = 0.0
 		var arrive: Vector2i = current_level.player_start
 		toward = Vector3(float(arrive.x - wall.x), 0.0, float(arrive.y - wall.y)).normalized()
@@ -2287,7 +2283,7 @@ func _restore_save(data: Dictionary) -> void:
 	# Overwrite the freshly-generated maze with the saved layout. Not the
 	# Necromancer's hall: it is always built off Level.NECRO_HALL, so a save
 	# made in it, or in the corridor that stood there before, finds the hall.
-	var necro_hall: bool = Level.is_necro_floor(floor_num)
+	var necro_hall: bool = Level.is_hall_floor(floor_num)
 	if not necro_hall:
 		var raw_maze: Array = map_data["maze"] as Array
 		var saved_maze: Array[Array] = []
@@ -2346,7 +2342,7 @@ func _restore_save(data: Dictionary) -> void:
 	player_facing = int(data["player_facing"])
 	# A save from the corridor that used to be the bottom can stand somewhere
 	# the hall has no floor: back to where the hall is come into.
-	if Level.is_necro_floor(floor_num) and not _is_open(player_pos.x, player_pos.y):
+	if Level.is_hall_floor(floor_num) and not _is_open(player_pos.x, player_pos.y):
 		player_pos = current_level.player_start
 		player_facing = current_level.player_start_facing
 
