@@ -93,8 +93,14 @@ Fantasy, Dragons, Roguelite (for the Abyss), Old School, Party-Based RPG,
 
 ## System requirements
 
-The game is small and runs on Godot's OpenGL 3.3 renderer. These are honest
-minimums with room to spare; nothing heavier has been measured.
+The game is small and runs on Godot's OpenGL 3.3 renderer. Measured with
+`tools/perf_probe.gd` on 2026-10-08 (walking a maze, a four-monster fight, an
+Abyss fight): about 100 MB of RAM and 45 MB of video memory at peak. Held to two
+CPU threads it ran exactly as fast, so the processor is never the limit. With
+no graphics card at all (Mesa's software renderer, at 1080p) it still averaged
+37-65 fps on a fast CPU, so any real OpenGL 3.3 GPU has room to spare; the
+requirement that matters is OpenGL 3.3 itself. Not yet tried on a Steam Deck
+or a real low-end laptop.
 
 **Windows (minimum)**
 - OS: Windows 10, 64-bit

@@ -130,6 +130,10 @@ python3 tools/store_capsules.py                      # capsules and library art
 pixels. It turns vsync off, because with the display asleep every frame waits
 about a second.
 
+`perf_probe.gd` measures frame rate and memory in the heaviest scenes, for the
+system requirements; its header shows how to run it as a machine without a
+graphics card or with two CPU threads.
+
 `upload_steam.sh` sends `build/steam/windows` and `build/steam/linux` up as two
 depots with SteamPipe, using the IDs in `steam_ids.cfg`. Run it in your own
 terminal: steamcmd asks for the password and the Steam Guard code.
