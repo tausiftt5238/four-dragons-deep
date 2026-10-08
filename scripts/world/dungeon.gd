@@ -1114,7 +1114,11 @@ func _setup_environment() -> void:
 
 const ARENA_AT: Vector3 = Vector3(-400.0, 0.0, -400.0)
 const ARENA_W: float = 16.0      # across, side wall to side wall
-const ARENA_D: float = 12.0      # from the camera's end to the back wall
+# Deep enough, with the camera looking down at the near floor, that the back
+# wall's foot sits high on the screen: every figure's feet then land on floor
+# tiles. At 12, looking further back, the line was where the back row of each
+# side stood, and they stood on the wall.
+const ARENA_D: float = 18.0      # from the camera's end to the back wall
 const ARENA_H: float = 4.0
 
 var arena_camera: Camera3D
@@ -1167,10 +1171,12 @@ func _build_arena() -> void:
 		mat.set_shader_parameter("surface", int(part[1]))
 		mat.set_shader_parameter("tint", _tint)
 		mat.set_shader_parameter("viewer", cam_at)
-		mat.set_shader_parameter("viewer_range", 11.0)
+		# Reaching as far, against the deeper room, as they did when the back
+		# wall stood at 12.
+		mat.set_shader_parameter("viewer_range", 16.0)
 		mat.set_shader_parameter("torches", torches)
 		mat.set_shader_parameter("torch_count", 2)
-		mat.set_shader_parameter("torch_range", 6.0)
+		mat.set_shader_parameter("torch_range", 9.0)
 		mat.set_shader_parameter("ambient", Color(0.22, 0.20, 0.22))
 		mi.material_override = mat
 		add_child(mi)
@@ -1189,7 +1195,7 @@ func _build_arena() -> void:
 	arena_camera.environment = env
 	add_child(arena_camera)
 	arena_camera.position = cam_at
-	arena_camera.look_at(ARENA_AT + Vector3(0.0, 0.0, -3.4), Vector3.UP)
+	arena_camera.look_at(ARENA_AT + Vector3(0.0, 0.0, -2.0), Vector3.UP)
 
 
 # Two triangles over four corners, wound the way the corners are given.
