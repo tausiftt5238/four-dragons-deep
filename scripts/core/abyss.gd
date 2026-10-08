@@ -287,6 +287,57 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 	return group
 
 
+# ── Bosses: one every fifth floor ─────────────────────────────────────────────
+
+# Seeds this run's order of bosses; saved with the run (Main), rolled anew for
+# each descent.
+static var run_seed: int = 0
+
+
+static func boss_floor(floor_num: int) -> bool:
+	return active and floor_num > Level.FLOOR_COUNT \
+			and depth_of(floor_num) % Level.BOSS_EVERY == 0
+
+
+# Which of Enemy.ABYSS_BOSS_TEMPLATES waits at this depth. They come in rounds,
+# none twice until all have been met: the first round is the adults in a
+# shuffled order and then the ancients, so the ancients are the deep ones;
+# later rounds shuffle all of them together.
+static func boss_for_depth(depth: int) -> int:
+	var n: int = maxi(0, depth / Level.BOSS_EVERY - 1)
+	var count: int = Enemy.ABYSS_BOSS_TEMPLATES.size()
+	var round_no: int = n / count
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, round_no])
+	var order: Array[int] = []
+	if round_no == 0:
+		var young: Array[int] = []
+		var old: Array[int] = []
+		for i: int in count:
+			if Enemy.ABYSS_BOSS_TEMPLATES[i].get("ancient", false):
+				old.append(i)
+			else:
+				young.append(i)
+		order.append_array(_shuffled(young, rng))
+		order.append_array(_shuffled(old, rng))
+	else:
+		var all: Array[int] = []
+		for i: int in count:
+			all.append(i)
+		order = _shuffled(all, rng)
+	return order[n % count]
+
+
+static func _shuffled(list: Array[int], rng: RandomNumberGenerator) -> Array[int]:
+	var out: Array[int] = list.duplicate()
+	for i: int in range(out.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: int = out[i]
+		out[i] = out[j]
+		out[j] = tmp
+	return out
+
+
 # ── Gear: a new shelf every five floors ──────────────────────────────────────
 
 const GEAR_PER_KIND: int = 4

@@ -15,10 +15,12 @@ const FLOOR_COUNT:   int = DRAGON_FLOORS + ABYSS_FLOORS
 const BOSS_EVERY:    int = 5
 
 
-# Boss floors are the multiples of five: the four dragons' corridors, and the
-# Necromancer's at the bottom of the Abyss.
+# Boss floors are the multiples of five: the four dragons' corridors, the
+# Necromancer's hall at the bottom of the Abyss, and in the Abyss mode every
+# fifth floor down (Abyss.boss_floor).
 static func is_boss_floor(floor_num: int) -> bool:
-	return floor_num % BOSS_EVERY == 0 and floor_num <= FLOOR_COUNT
+	return (floor_num % BOSS_EVERY == 0 and floor_num <= FLOOR_COUNT) \
+			or Abyss.boss_floor(floor_num)
 
 
 # The five floors under the Void Dragon.
@@ -214,7 +216,7 @@ var pit_cells: Dictionary = {}
 
 
 static func is_necro_floor(floor_num: int) -> bool:
-	return is_boss_floor(floor_num) and floor_num >= FLOOR_COUNT
+	return floor_num == FLOOR_COUNT
 
 const HAZARD_ICE: String   = "ice"
 const HAZARD_LAVA: String  = "lava"

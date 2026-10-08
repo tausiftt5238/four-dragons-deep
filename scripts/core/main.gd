@@ -180,6 +180,7 @@ func _ready() -> void:
 	GameBoot.pending_abyss = ""
 	Abyss.active = abyss_intent != ""
 	if abyss_intent == "new":
+		Abyss.run_seed = randi() | 1
 		player_char.load_save(Abyss.cleared_hero())
 		player_char.hp = player_char.max_hp
 		player_char.mp = player_char.max_mp
@@ -545,7 +546,7 @@ func _check_portal() -> void:
 		if not _boss_beaten:
 			_start_boss_combat()
 			return
-		if floor_num >= Level.FLOOR_COUNT:
+		if Level.is_necro_floor(floor_num):
 			_show_congratulations()
 			return
 
@@ -1169,12 +1170,17 @@ func _start_gauntlet(names: Array[String]) -> void:
 
 
 func _start_boss_combat() -> void:
-	_pending_congratulations = (floor_num >= Level.FLOOR_COUNT)
+	_pending_congratulations = Level.is_necro_floor(floor_num)
 	_pending_demo_end = Build.demo() and floor_num == DEMO_LAST_FLOOR
 	# Bosses come alone; their own icon count is what makes them a fight. The
 	# Necromancer comes alone too, and does not stay that way.
-	var solo: Array[Enemy] = [Enemy.make_necromancer(floor_num)
-			if floor_num >= Level.FLOOR_COUNT else Enemy.make_boss(floor_num)]
+	var solo: Array[Enemy] = []
+	if Level.is_necro_floor(floor_num):
+		solo.append(Enemy.make_necromancer(floor_num))
+	elif Abyss.boss_floor(floor_num):
+		solo.append(Enemy.make_abyss_boss(floor_num, Abyss.boss_for_depth(Abyss.depth_of(floor_num))))
+	else:
+		solo.append(Enemy.make_boss(floor_num))
 	_launch_combat(solo)
 
 
@@ -1719,8 +1725,11 @@ func _sync_boss_banner() -> void:
 	if _boss_beaten:
 		return
 	var sprite_id: String = ""
-	if floor_num >= Level.FLOOR_COUNT:
+	if Level.is_necro_floor(floor_num):
 		sprite_id = Enemy.necro_sprite()
+	elif Abyss.boss_floor(floor_num):
+		sprite_id = Enemy.ABYSS_BOSS_TEMPLATES[Abyss.boss_for_depth(Abyss.depth_of(floor_num))] \
+				.get("sprite_id", "") as String
 	else:
 		var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
 				0, Enemy.BOSS_TEMPLATES.size() - 1)
@@ -2169,6 +2178,7 @@ func _gather_save_data() -> Dictionary:
 	return {
 		timestamp   = Time.get_datetime_string_from_system(),
 		abyss       = Abyss.active,
+		abyss_seed  = Abyss.run_seed,
 		floor_num   = floor_num,
 		play_time   = play_time,
 		player_pos  = [player_pos.x, player_pos.y],
@@ -2210,6 +2220,7 @@ func _restore_save(data: Dictionary) -> void:
 	floor_num = int(data["floor_num"])
 	play_time = float(data.get("play_time", 0.0))
 	Abyss.active = bool(data.get("abyss", false))
+	Abyss.run_seed = int(data.get("abyss_seed", 0))
 	_show_floor_title()
 	Music.play(Music.dungeon_track(floor_num))
 

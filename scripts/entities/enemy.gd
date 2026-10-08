@@ -665,6 +665,89 @@ const BOSS_TEMPLATES: Array[Dictionary] = [
 
 
 
+# ── The Abyss's bosses ────────────────────────────────────────────────────────
+#
+# One waits at the bottom of every fifth Abyss floor, in a corridor like the
+# dragons' (Abyss.boss_floor). The Abyss has one life and no saves, so they are
+# built like the monsters around them, at the floor's own level, and are a
+# boss only by being alone with ABYSS_BOSS_MULT times the HP and the rewards,
+# and two actions a turn. The six adults come first, the four ancients after
+# (Abyss.boss_for_depth). Each keeps its own chart: they are not rolled into
+# an element the way the Abyss's ordinary monsters are.
+const ABYSS_BOSS_MULT: int = 3
+const ABYSS_BOSS_TEMPLATES: Array[Dictionary] = [
+	{name = "Adult Green Dragon", rank = 1,
+		str =  8, def =  6, mag =  8, agl =  5,
+		weakness = "fire", light = "weak", dark = "drain",
+		attack_element = "dark", reach = "all", status_attack = "poison", ail = 22, support = "mire",
+		sprite_id = "Adult_Green_Dragon"},
+	{name = "Adult White Dragon", rank = 1,
+		str =  8, def =  6, mag =  8, agl =  5,
+		weakness = "fire", absorb_element = "ice",
+		attack_element = "ice", reach = "all", status_attack = "blind", ail = 22, support = "damp",
+		sprite_id = "Adult_White_Dragon"},
+	{name = "Adult Copper Dragon", rank = 1,
+		str =  7, def =  5, mag =  8, agl =  8,
+		weakness = "fire", absorb_element = "thunder",
+		attack_element = "thunder", reach = "all", status_attack = "paralyzed", ail = 22, support = "quicken",
+		sprite_id = "Adult_Copper_Dragon"},
+	{name = "Adult Gold Dragon", rank = 1,
+		str =  9, def =  6, mag =  8, agl =  4,
+		weakness = "dark", nulls = ["fire"], light = "drain",
+		attack_elements = ["fire", "light"], reach = "few", status_attack = "", ail = 22, support = "whet",
+		sprite_id = "Adult_Gold_Dragon"},
+	{name = "Adult Bone Dragon", rank = 1,
+		str =  9, def =  7, mag =  7, agl =  3,
+		weakness = "light", dark = "drain", phys = "resist",
+		attack_element = "dark", reach = "few", status_attack = "silence", ail = 22, support = "sunder",
+		unique = ["hp_leech"],
+		sprite_id = "Adult_Bone_Dragon"},
+	{name = "Adult Mercury Dragon", rank = 1,
+		str =  6, def =  6, mag =  9, agl =  7,
+		weakness = "thunder", reflect_element = "ice", light = "resist",
+		attack_elements = ["ice", "light"], reach = "all", caster = true,
+		status_attack = "silence", ail = 22, support = "quicken",
+		sprite_id = "Adult_Mercury_Dragon"},
+	{name = "Ancient Gold Dragon", rank = 2, ancient = true,
+		str = 10, def =  7, mag =  9, agl =  5,
+		weakness = "dark", absorb_element = "fire", light = "drain",
+		attack_elements = ["fire", "light"], reach = "all", status_attack = "", ail = 25, support = "stoke",
+		sprite_id = "Ancient_Gold_Dragon"},
+	{name = "Ancient Blue Dragon", rank = 2, ancient = true,
+		str =  9, def =  7, mag = 10, agl =  5,
+		weakness = "fire", absorb_element = "ice", nulls = ["thunder"],
+		attack_elements = ["ice", "thunder"], reach = "all", status_attack = "paralyzed", ail = 25, support = "ward",
+		sprite_id = "Ancient_Blue_Dragon"},
+	{name = "Ancient Silver Dragon", rank = 2, ancient = true,
+		str =  9, def =  8, mag =  9, agl =  5,
+		weakness = "dark", nulls = ["ice"], light = "drain",
+		attack_elements = ["light", "ice"], reach = "all", status_attack = "blind", ail = 25, support = "purge",
+		sprite_id = "Ancient_Silver_Dragon"},
+	{name = "Ancient Multihued Dragon", rank = 2, ancient = true,
+		str =  9, def =  7, mag = 10, agl =  6,
+		weakness = "light", nulls = ["fire", "ice", "thunder"], dark = "resist",
+		attack_elements = ["fire", "ice", "thunder", "dark"], reach = "all", caster = true,
+		status_attack = "silence", ail = 25, support = "stoke",
+		sprite_id = "Ancient_Multihued_Dragon"},
+]
+
+
+# An Abyss boss at this floor's level (see ABYSS_BOSS_TEMPLATES).
+static func make_abyss_boss(floor_num: int, which: int) -> Enemy:
+	var t: Dictionary = ABYSS_BOSS_TEMPLATES[clampi(which, 0, ABYSS_BOSS_TEMPLATES.size() - 1)]
+	var e: Enemy = _build(t, floor_num)
+	e.icons = 2
+	e.negotiable = false
+	e.talk_difficulty = 0
+	e.unreadable = true
+	e.tint = Color.WHITE
+	e.max_hp *= ABYSS_BOSS_MULT
+	e.hp = e.max_hp
+	e.exp_reward *= ABYSS_BOSS_MULT
+	e.gold_reward *= ABYSS_BOSS_MULT
+	return e
+
+
 # Folds the template's element fields into a single affinity chart.
 # weakness -> WEAK, reflect -> REPEL, absorb -> DRAIN, plus an optional
 # explicit "phys" state for enemies that shrug off or crumple to a blade.
@@ -750,6 +833,9 @@ static func make_group(floor_num: int) -> Array[Enemy]:
 # Whether this is one of the four dragons.
 func is_dragon() -> bool:
 	for t: Dictionary in BOSS_TEMPLATES:
+		if t["name"] == enemy_name:
+			return true
+	for t: Dictionary in ABYSS_BOSS_TEMPLATES:
 		if t["name"] == enemy_name:
 			return true
 	return false
