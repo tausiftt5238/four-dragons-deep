@@ -111,7 +111,7 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 		color = Color(0.95, 0.88, 0.60)
 		hp = [p.hp, p.max_hp]
 		mp = [p.mp, p.max_mp]
-		exp_row = _make_bar_row("EXP", p.exp, p.exp_to_next, Color(0.90, 0.70, 0.10))
+		exp_row = _make_bar_row("XP", p.exp, p.exp_to_next, Color(0.90, 0.70, 0.10))
 		lv_text = "LV %d" % p.lv
 	else:
 		var demon: Enemy = p.bound_demon(demon_name)
@@ -131,9 +131,9 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 		mp = [demon.max_mp, demon.max_mp]
 		# A demon stops banking exp at the hero's level: 0 / 0 until he climbs.
 		if demon.lv >= p.lv:
-			exp_row = _make_bar_row("EXP", 0, 0, Color(0.90, 0.70, 0.10))
+			exp_row = _make_bar_row("XP", 0, 0, Color(0.90, 0.70, 0.10))
 		else:
-			exp_row = _make_bar_row("EXP", int(p.demon_exp.get(demon_name, 0)),
+			exp_row = _make_bar_row("XP", int(p.demon_exp.get(demon_name, 0)),
 					PlayerCharacter.demon_exp_to_next(demon.lv), Color(0.90, 0.70, 0.10))
 		demon.free()
 	portrait.set_zoom(3.0)

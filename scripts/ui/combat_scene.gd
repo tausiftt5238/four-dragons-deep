@@ -1865,7 +1865,6 @@ func _show_skills_submenu() -> void:
 	var demon: Enemy = actor as Enemy
 	var known: Array = player.skills_of(demon.enemy_name)
 	var silenced_demon: bool = demon.has_status(Status.SILENCE)
-	var reach: String = Spell.reach_tag_for(demon.attack_reach)
 	# One button per skill it carries — its own lines at whatever rung they have
 	# reached, and every buff or debuff it has picked up since it was bound.
 	for i: int in known.size():
@@ -1887,7 +1886,8 @@ func _show_skills_submenu() -> void:
 		else:
 			# Its rung is already in its name (Ember, Blaze, Inferno).
 			icon = skill.get("element", "") as String
-			tag = _reach_count(reach)
+			tag = _reach_count(Spell.reach_tag_for(
+					Spell.reach_for(icon, demon.attack_reach)))
 		entries.append(_skill_entry("Skill:%d" % i,
 				PlayerCharacter.skill_name(skill), tag,
 				_demon_cost_text(skill) if hp_price > 0 else "%d MP" % cost, blocked, icon,
@@ -1966,7 +1966,7 @@ func _resolve_skill(chosen: String) -> Dictionary:
 	# A bound demon casts exactly what it cast at you — same lines, same width.
 	# The single-target case keeps the target you picked; anything wider draws
 	# its own, which is why the menu does not ask.
-	if actor.attack_reach != Spell.SHAPE_ONE:
+	if Spell.reach_for(element, actor.attack_reach) != Spell.SHAPE_ONE:
 		return _demon_spread(actor, element, power * Spell.rung_power(rung),
 				banishing, Spell.rung_boost(rung), named)
 
@@ -2500,7 +2500,8 @@ func _on_skill_chosen(action: String) -> void:
 			# A leech bites one, whatever reach its kind usually has.
 			if skill.get("kind", "") == "support" \
 					or (skill.get("kind", "") == "element"
-						and demon.attack_reach != Spell.SHAPE_ONE):
+						and Spell.reach_for(skill.get("element", "") as String,
+							demon.attack_reach) != Spell.SHAPE_ONE):
 				await _commit_action(action)
 				return
 	_with_target(func() -> void: await _commit_action(action))
@@ -3170,7 +3171,7 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 	# A wide line takes the whole row rather than one of them. Only a cast it
 	# actually paid for spreads: the dregs a dry caster scrapes together are a
 	# single-target consolation, and a swing is a swing.
-	if paid and actor.attack_reach != Spell.SHAPE_ONE:
+	if paid and Spell.reach_for(element, actor.attack_reach) != Spell.SHAPE_ONE:
 		return _enemy_spread(actor, element, base, dry)
 
 	var target: CharacterSheet = _pick_target(element)

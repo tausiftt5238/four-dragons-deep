@@ -18,12 +18,12 @@ class_name Spell
 
 # ── Reach ─────────────────────────────────────────────────────────────────────
 #
-# Every element is learnable at all three reaches from the first floor, so the
+# Every element is learnable at each of its reaches from the first floor, so the
 # choice is never "do I have the big one yet" but "is this a fight worth paying
 # 22 MP to open". Width is paid for twice: once in MP, once in the spread, which
 # is what keeps the single-target spell in the loadout.
 const SHAPE_ONE: String = "single"
-const SHAPE_FEW: String = "few"     # 2-3 demons, chosen at random
+const SHAPE_FEW: String = "few"     # 2-3 demons, chosen at random; never light or dark
 const SHAPE_ALL: String = "all"
 
 # ── Rungs ─────────────────────────────────────────────────────────────────────
@@ -64,7 +64,6 @@ static func rung_of(data: Dictionary) -> float:
 # spread= field the spell table still carries.
 const SPREAD_FEW_DMG:    float = 0.75
 const SPREAD_ALL_DMG:    float = 0.60
-const SPREAD_FEW_BANISH: float = 0.70
 const SPREAD_ALL_BANISH: float = 0.50
 
 static var DATA: Dictionary = {
@@ -229,9 +228,6 @@ static var DATA: Dictionary = {
 	"banish":        {name="Banish",       mp=14, type="banish", heal=0, element="light",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_I,
 		desc="Tries to expel one monster outright. Some things cannot abide the light."},
-	"winnow":        {name="Winnow",       mp=24, type="banish", heal=0, element="light",
-		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_I,
-		desc="Reaches for two or three at once, and holds each of them less firmly."},
 	"daybreak":      {name="Daybreak",     mp=36, type="banish", heal=0, element="light",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_I,
 		desc="Opens the light on every monster standing. Thin, across that many."},
@@ -239,9 +235,6 @@ static var DATA: Dictionary = {
 	"exile":         {name="Exile",        mp=26, type="banish", heal=0, element="light",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_II,
 		desc="A firmer hand on one monster than Banish can manage."},
-	"scour":         {name="Scour",        mp=44, type="banish", heal=0, element="light",
-		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_II,
-		desc="Two or three of them, and it does not let go as easily."},
 	"zenith":        {name="Zenith",       mp=64, type="banish", heal=0, element="light",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_II,
 		desc="Light from directly overhead, on all of them."},
@@ -249,9 +242,6 @@ static var DATA: Dictionary = {
 	"absolve":       {name="Absolve",      mp=42, type="banish", heal=0, element="light",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_III,
 		desc="One monster, and very little argument about it."},
-	"sunburst":      {name="Sunburst",     mp=70, type="banish", heal=0, element="light",
-		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_III,
-		desc="Two or three caught in the open at once."},
 	"whitehour":     {name="White Hour",   mp=104, type="banish", heal=0, element="light",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_III,
 		desc="Nowhere in the room is dark enough to stand in."},
@@ -260,9 +250,6 @@ static var DATA: Dictionary = {
 	"consign":       {name="Consign",      mp=14, type="banish", heal=0, element="dark",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_I,
 		desc="Tries to unmake one monster outright. Some things cannot abide the dark."},
-	"cull":          {name="Cull",         mp=24, type="banish", heal=0, element="dark",
-		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_I,
-		desc="Takes two or three together, and takes each of them less surely."},
 	"nightfall":     {name="Nightfall",    mp=36, type="banish", heal=0, element="dark",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_I,
 		desc="Closes the dark over the whole room. Thin, across that many."},
@@ -270,9 +257,6 @@ static var DATA: Dictionary = {
 	"erase":         {name="Erase",        mp=26, type="banish", heal=0, element="dark",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_II,
 		desc="One monster, and a better chance there is nothing left."},
-	"reap":          {name="Reap",         mp=44, type="banish", heal=0, element="dark",
-		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_II,
-		desc="Two or three of them, cut down in one pass."},
 	"eclipse":       {name="Eclipse",      mp=64, type="banish", heal=0, element="dark",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_II,
 		desc="The light goes out on all of them at once."},
@@ -280,9 +264,6 @@ static var DATA: Dictionary = {
 	"unmake":        {name="Unmake",       mp=42, type="banish", heal=0, element="dark",
 		shape=SHAPE_ONE, spread=1.0, boost=BOOST_III,
 		desc="One monster, and very little of it survives the asking."},
-	"harvest":       {name="Harvest",      mp=70, type="banish", heal=0, element="dark",
-		shape=SHAPE_FEW, spread=SPREAD_FEW_BANISH, boost=BOOST_III,
-		desc="Two or three taken together and not given back."},
 	"longnight":     {name="Long Night",   mp=104, type="banish", heal=0, element="dark",
 		shape=SHAPE_ALL, spread=SPREAD_ALL_BANISH, boost=BOOST_III,
 		desc="The dark closes over everything standing and stays closed."},
@@ -365,10 +346,29 @@ static var DATA: Dictionary = {
 }
 
 
-# The elemental grid is three reaches on three rungs per element, so an
-# element, a rung and a reach name exactly one cast. A demon that grows a rung
-# looks its new spell up here rather than carrying a table of its own.
+# Light and dark either take a thing or they do not, and a banishing that
+# lands on two or three picked at random was a gamble on a gamble: they reach
+# one, or all. A line written to reach a few in either of them reaches one.
+static func reach_for(element: String, shape: String) -> String:
+	if shape == SHAPE_FEW and Affinity.is_banishing(element):
+		return SHAPE_ONE
+	return shape
+
+
+# The spells that used to cast light and dark over a random few, and what a
+# save that holds one is given instead: the room-wide spell on the same rung.
+const RETIRED: Dictionary = {
+	"winnow": "daybreak", "scour": "zenith", "sunburst": "whitehour",
+	"cull": "nightfall", "reap": "eclipse", "harvest": "longnight",
+}
+
+
+# The elemental grid is three reaches on three rungs per element (two for
+# light and dark, see reach_for), so an element, a rung and a reach name
+# exactly one cast. A demon that grows a rung looks its new spell up here
+# rather than carrying a table of its own.
 static func elemental_id(element: String, rung: int, shape: String) -> String:
+	shape = reach_for(element, shape)
 	var at: int = clampi(rung - 1, 0, 2)
 	var banishing: bool = Affinity.is_banishing(element)
 	var want: float = ([BOOST_I, BOOST_II, BOOST_III] if banishing

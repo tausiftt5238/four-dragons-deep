@@ -976,6 +976,20 @@ func to_save() -> Dictionary:
 	}
 
 
+# Light and dark lost their spells over a random few (Spell.RETIRED). A save
+# that learned one has the room-wide spell on the same rung instead, in the
+# same place in the list, and never the same spell twice.
+static func _retire_spells(list: Array[String]) -> void:
+	for i: int in range(list.size() - 1, -1, -1):
+		var now: String = Spell.RETIRED.get(list[i], "") as String
+		if now == "":
+			continue
+		if now in list:
+			list.remove_at(i)
+		else:
+			list[i] = now
+
+
 func load_save(pdata: Dictionary) -> void:
 	lv          = int(pdata["lv"])
 	str         = int(pdata["str"])
@@ -1018,6 +1032,9 @@ func load_save(pdata: Dictionary) -> void:
 		for spell_id: String in known_spells:
 			if not equip_spell(spell_id):
 				break
+
+	_retire_spells(known_spells)
+	_retire_spells(equipped_spells)
 
 	recruited.clear()
 	recruited.assign(pdata.get("recruited", []) as Array)
@@ -1112,6 +1129,14 @@ func load_save(pdata: Dictionary) -> void:
 
 	inventory.clear()
 	inventory.assign(pdata["inventory"] as Array)
+	# A scroll for one of them becomes the scroll for what replaced it.
+	for i: int in inventory.size():
+		var teaches: String = inventory[i].get("teaches", "") as String
+		if Spell.RETIRED.has(teaches):
+			var swap: Dictionary = Item.spell_scroll(Spell.RETIRED[teaches] as String,
+					int(inventory[i].get("floor", 1)))
+			swap["qty"] = int(inventory[i].get("qty", 1))
+			inventory[i] = swap
 
 	equipped_weapon = pdata.get("equipped_weapon", {}) as Dictionary
 	equipped_armor  = pdata.get("equipped_armor",  {}) as Dictionary

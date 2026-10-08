@@ -11,6 +11,7 @@ onslaught,Onslaught,dmg,phys,all,II,,19,3.2,,,,,,,Scroll of Onslaught,10,270,"Ev
 deathblow,Deathblow,dmg,phys,one,III,,12,4.6,,,,,,,Scroll of Deathblow,12,320,"One monster, one blow, and no second needed."
 carnage,Carnage,dmg,phys,few,III,,18,4.6,,,,,,,Scroll of Carnage,14,370,"Two or three of them, and nothing tidy about it."
 warpath,Warpath,dmg,phys,all,III,,24,4.6,,,,,,,Scroll of Warpath,16,420,"The whole room, cut down to the last."
+pierce,Pierce,dmg,phys,one,II,,11,3.2,,,,,,,Scroll of Pierce,11,295,"Finds the gap in any armour: nothing resists it, nothing turns it back."
 ember,Ember,dmg,fire,one,I,8,,2.0,,,,,,,Scroll of Ember,1,45,A flame set on one monster.
 cinderfall,Cinderfall,dmg,fire,few,I,14,,2.0,,,,,,,Scroll of Cinderfall,2,70,Embers fall across two or three of them.
 pyre,Pyre,dmg,fire,all,I,22,,2.0,,,,,,,Scroll of Pyre,4,120,The whole room catches.
@@ -39,28 +40,22 @@ levin,Levin,dmg,thunder,one,III,32,,4.6,,,,,,,Scroll of Levin,12,320,"White fire
 skyfall,Skyfall,dmg,thunder,few,III,54,,4.6,,,,,,,Scroll of Skyfall,14,370,It comes down on two or three at once.
 stormcrown,Stormcrown,dmg,thunder,all,III,82,,4.6,,,,,,,Scroll of Stormcrown,16,420,Everything standing is standing under it.
 banish,Banish,banish,light,one,I,14,,,0.0,,,,,,Scroll of Banish,3,95,Tries to expel one monster outright. Some things cannot abide the light.
-winnow,Winnow,banish,light,few,I,24,,,0.0,,,,,,Scroll of Winnow,5,145,"Reaches for two or three at once, and holds each of them less firmly."
 daybreak,Daybreak,banish,light,all,I,36,,,0.0,,,,,,Scroll of Daybreak,6,170,"Opens the light on every monster standing. Thin, across that many."
 exile,Exile,banish,light,one,II,26,,,0.1,,,,,,Scroll of Exile,8,220,A firmer hand on one monster than Banish can manage.
-scour,Scour,banish,light,few,II,44,,,0.1,,,,,,Scroll of Scour,10,270,"Two or three of them, and it does not let go as easily."
 zenith,Zenith,banish,light,all,II,64,,,0.1,,,,,,Scroll of Zenith,12,320,"Light from directly overhead, on all of them."
 absolve,Absolve,banish,light,one,III,42,,,0.2,,,,,,Scroll of Absolve,14,370,"One monster, and very little argument about it."
-sunburst,Sunburst,banish,light,few,III,70,,,0.2,,,,,,Scroll of Sunburst,16,420,Two or three caught in the open at once.
 whitehour,White Hour,banish,light,all,III,104,,,0.2,,,,,,Scroll of White Hour,18,470,Nowhere in the room is dark enough to stand in.
 consign,Consign,banish,dark,one,I,14,,,0.0,,,,,,Scroll of Consign,3,95,Tries to unmake one monster outright. Some things cannot abide the dark.
-cull,Cull,banish,dark,few,I,24,,,0.0,,,,,,Scroll of Cull,5,145,"Takes two or three together, and takes each of them less surely."
 nightfall,Nightfall,banish,dark,all,I,36,,,0.0,,,,,,Scroll of Nightfall,6,170,"Closes the dark over the whole room. Thin, across that many."
 erase,Erase,banish,dark,one,II,26,,,0.1,,,,,,Scroll of Erase,8,220,"One monster, and a better chance there is nothing left."
-reap,Reap,banish,dark,few,II,44,,,0.1,,,,,,Scroll of Reap,10,270,"Two or three of them, cut down in one pass."
 eclipse,Eclipse,banish,dark,all,II,64,,,0.1,,,,,,Scroll of Eclipse,12,320,The light goes out on all of them at once.
 unmake,Unmake,banish,dark,one,III,42,,,0.2,,,,,,Scroll of Unmake,14,370,"One monster, and very little of it survives the asking."
-harvest,Harvest,banish,dark,few,III,70,,,0.2,,,,,,Scroll of Harvest,16,420,Two or three taken together and not given back.
 longnight,Long Night,banish,dark,all,III,104,,,0.2,,,,,,Scroll of Long Night,18,470,The dark closes over everything standing and stays closed.
-cure,Cure,heal,,one,,6,,,,30,,,,,Scroll of Cure,1,45,Restores 30 HP to one of you.
-cura,Cura,heal,,one,,15,,,,80,,,,,Scroll of Cura,7,195,Restores 80 HP to one of you.
+cure,Cure,heal,,one,,6,,,,40,,,,,Scroll of Cure,1,45,"Restores 40 HP, plus twice your MAG, to one of you."
+cura,Cura,heal,,one,,15,,,,100,,,,,Scroll of Cura,7,195,"Restores 100 HP, plus twice your MAG, to one of you."
 curaga,Curaga,heal,,one,,30,,,,9999,,,,,Scroll of Curaga,13,345,Fully restores one of you.
-cure_all,Cure All,heal,,all,,14,,,,25,,,,,Scroll of Cure All,4,120,Restores 25 HP to the whole party.
-cura_all,Cura All,heal,,all,,34,,,,65,,,,,Scroll of Cura All,10,270,Restores 65 HP to the whole party.
+cure_all,Cure All,heal,,all,,14,,,,35,,,,,Scroll of Cure All,4,120,"Restores 35 HP, plus half again your MAG, to the whole party."
+cura_all,Cura All,heal,,all,,34,,,,85,,,,,Scroll of Cura All,10,270,"Restores 85 HP, plus half again your MAG, to the whole party."
 curaga_all,Curaga All,heal,,all,,64,,,,9999,,,,,Scroll of Curaga All,16,420,Fully restores the whole party.
 whet,Whet,buff,,one,,8,,,,,atk,1,party,,Scroll of Whet,2,70,Sharpens the party's attacks.
 ward,Ward,buff,,one,,8,,,,,def,1,party,,Scroll of Ward,2,70,Hardens the party's guard.
@@ -75,4 +70,4 @@ steady,Steady,dispel,,one,,20,,,,,,,party,,Scroll of Steady,8,1000,Clears every 
 venom,Venom,ailment,,one,,4,,,,,,,,poison,Scroll of Venom,2,70,Poisons the enemy.
 shock,Shock,ailment,,one,,6,,,,,,,,paralyzed,Scroll of Shock,2,70,Paralyzes the enemy.
 mute,Mute,ailment,,one,,5,,,,,,,,silence,Scroll of Mute,3,95,Silences the enemy.
-bind,Bind,ailment,,one,,4,,,,,,,,immobilize,Scroll of Bind,3,95,Immobilizes the enemy.
+blind,Blind,ailment,,one,,4,,,,,,,,blind,Scroll of Blind,3,95,"Blinds the enemy, halving its agility."

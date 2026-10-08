@@ -2,10 +2,15 @@ id,name,kind,floor,price,hp_restore,mp_restore,cures,inflicts,element,dmg,max_hp
 health_potion,Health Potion,restore,1,45,30,,,,,,,,,Restores 30 HP.
 hi_potion,Hi-Potion,restore,2,70,80,,,,,,,,,Restores 80 HP.
 ether,Ether,restore,1,45,,20,,,,,,,,Restores 20 MP.
+super_potion,Super Potion,restore,4,160,250,,,,,,,,,Restores 250 HP.
+hi_ether,Hi-Ether,restore,4,180,,60,,,,,,,,Restores 60 MP.
+elixir,Elixir,restore,4,600,9999,9999,,,,,,,,Restores all HP and MP.
+potion_cauldron,Potion Cauldron,restore,4,750,9999,,,,,,,,,Restores all HP to the whole party.
+ether_fountain,Ether Fountain,restore,4,600,,40,,,,,,,,Restores 40 MP to the whole party.
 antidote,Antidote,cure,1,45,,,poison,,,,,,,Cures Poison.
 stimulant,Stimulant,cure,1,45,,,paralyzed,,,,,,,Cures Paralysis.
 echo_gem,Echo Gem,cure,1,45,,,silence,,,,,,,Cures Silence.
-elixir_motion,Elixir of Motion,cure,1,45,,,immobilize,,,,,,,Cures Immobilize.
+eye_drops,Eye Drops,cure,1,45,,,blind,,,,,,,Cures Blind.
 panacea,Panacea,cure,4,120,,,all,,,,,,,Cures all ailments.
 heartstone,Heartstone,stone,1,45,,,,,,,15,,,"Raises maximum HP by 15, for good."
 wellstone,Wellstone,stone,1,45,,,,,,,,8,,"Raises maximum MP by 8, for good."
@@ -13,9 +18,9 @@ revival_feather,Revival Feather,revive,2,120,,,,,,,,,50,Brings a fallen ally bac
 attack_mirror,Attack Mirror,mirror,1,1000,,,,,,,,,,Reflects every physical attack at the party until your next turn.
 magic_mirror,Magic Mirror,mirror,1,1000,,,,,,,,,,Reflects every spell cast at the party until your next turn.
 venom_flask,Venom Flask,ailment,1,45,,,,poison,,,,,,Throws a vial of poison at an enemy.
-flash_powder,Flash Powder,ailment,2,70,,,,paralyzed,,,,,,Blinds and paralyzes an enemy.
+flash_powder,Flash Powder,ailment,2,70,,,,blind,,,,,,"Blinds an enemy, halving its agility."
 silence_dust,Silence Dust,ailment,2,70,,,,silence,,,,,,"Silences an enemy, preventing spells."
-binding_web,Binding Web,ailment,3,95,,,,immobilize,,,,,,"Ensnares an enemy, immobilizing it."
+binding_web,Binding Web,ailment,3,95,,,,paralyzed,,,,,,"Ensnares an enemy, paralyzing it."
 fire_bomb,Fire Bomb,throwable,2,70,,,,,fire,20,,,,Hurls a flaming explosive. Effective vs. fire-weak foes.
 ice_shard,Ice Shard,throwable,3,95,,,,,ice,20,,,,Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.
 thunder_bead,Thunder Bead,throwable,3,95,,,,,thunder,20,,,,Discharges a crackling orb. Effective vs. thunder-weak foes.

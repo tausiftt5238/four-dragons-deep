@@ -286,7 +286,6 @@ const ELEMENTAL_SCROLLS: Dictionary = {
 	"cinderfall": 2, "hailfall": 2, "forkfall": 2, "sweep": 2,
 	"pyre": 4, "whiteout": 4, "thunderhead": 4, "rampage": 4,
 	"banish": 3, "consign": 3,
-	"winnow": 5, "cull": 5,
 	"daybreak": 6, "nightfall": 6,
 
 	# Rung two
@@ -295,7 +294,6 @@ const ELEMENTAL_SCROLLS: Dictionary = {
 	"firestorm": 8, "blizzard": 8, "thunderstorm": 8, "scything_arc": 8,
 	"inferno": 10, "deepwinter": 10, "tempest": 10, "onslaught": 10,
 	"exile": 8, "erase": 8,
-	"scour": 10, "reap": 10,
 	"zenith": 12, "eclipse": 12,
 
 	# Rung three
@@ -303,7 +301,6 @@ const ELEMENTAL_SCROLLS: Dictionary = {
 	"ashfall": 14, "shardfall": 14, "skyfall": 14, "carnage": 14,
 	"worldfire": 16, "killingfrost": 16, "stormcrown": 16, "warpath": 16,
 	"absolve": 14, "unmake": 14,
-	"sunburst": 16, "harvest": 16,
 	"whitehour": 18, "longnight": 18,
 }
 
