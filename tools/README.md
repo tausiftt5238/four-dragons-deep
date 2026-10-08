@@ -1,3 +1,9 @@
+# Building everything
+
+`tools/build_all.sh` builds every version in one go: Steam for Linux and
+Windows (`build/steam/`), the web build (`build/web/`) and the APK, and leaves
+the two files the itch.io page takes in `build/itch/`.
+
 # The two builds
 
 One codebase makes two games (`scripts/core/build.gd`):
