@@ -93,6 +93,16 @@ func _build_geometry(level: Level) -> void:
 					cache_face = level.exit_pos
 				elif level.chest_cells.has(here):
 					cache_face = level.chest_cells[here] as Vector2i
+				# The Necromancer's hall: the pit is drawn as nothing but the
+				# ceiling over it, and the cliff where a walkway (or the tip he
+				# stands on) drops into it. Only its outer walls are walls.
+				if not level.drawn_walls.is_empty() and not level.drawn_walls.has(here):
+					_add_ceiling_only(col, row, level)
+					if here == level.exit_wall_pos:
+						_add_floor_quad(col, row, false)
+						_add_cell_outline(col, row, 0.0, _faint(level.wire_floor_color, _FLOOR_LINE_ALPHA))
+						_add_drops(level, here)
+					continue
 				for n: Vector2i in _NEIGHBOURS:
 					if not _is_open(level, col + n.x, row + n.y):
 						continue
@@ -104,12 +114,62 @@ func _build_geometry(level: Level) -> void:
 				_add_cell_outline(col, row, 0.0, _faint(level.wire_floor_color, _FLOOR_LINE_ALPHA))
 				_add_cell_outline(col, row, WALL_HEIGHT,
 						_faint(level.wire_floor_color.darkened(0.35), _CEIL_LINE_ALPHA))
+				if not level.pit_cells.is_empty():
+					_add_drops(level, Vector2i(col, row))
 
 	_commit_fill(level)
 	_commit_flat(level, _floor_v, 1, Vector3.UP)
 	_commit_flat(level, _ceil_v, 2, Vector3.DOWN)
 	_commit_wire()
 	_place_torches(level)
+
+
+# How far the pit's cliffs fall before the dark takes them.
+const PIT_DEPTH: float = 6.0
+
+
+# The ceiling over a cell with no floor: a pit cell, or the tip he stands on.
+func _add_ceiling_only(col: int, row: int, level: Level) -> void:
+	var wx: float = col * CELL_SIZE
+	var wz: float = row * CELL_SIZE
+	var h: float = CELL_SIZE * 0.5
+	var up: Vector3 = Vector3(0.0, WALL_HEIGHT, 0.0)
+	var c0: Vector3 = Vector3(wx - h, 0.0, wz - h)
+	var c1: Vector3 = Vector3(wx + h, 0.0, wz - h)
+	var c2: Vector3 = Vector3(wx + h, 0.0, wz + h)
+	var c3: Vector3 = Vector3(wx - h, 0.0, wz + h)
+	_ceil_v.append_array([c0 + up, c2 + up, c1 + up, c0 + up, c3 + up, c2 + up])
+	_add_cell_outline(col, row, WALL_HEIGHT,
+			_faint(level.wire_floor_color.darkened(0.35), _CEIL_LINE_ALPHA))
+
+
+# The cliff under a floor cell's edge wherever the pit lies beside it: stone
+# from the floor down PIT_DEPTH, facing out over the pit.
+func _add_drops(level: Level, cell: Vector2i) -> void:
+	for n: Vector2i in _NEIGHBOURS:
+		if not level.pit_cells.has(cell + n):
+			continue
+		var wx: float = cell.x * CELL_SIZE
+		var wz: float = cell.y * CELL_SIZE
+		var h: float = CELL_SIZE * 0.5
+		var a: Vector3
+		var b: Vector3
+		if n.x != 0:
+			a = Vector3(wx + n.x * h, 0.0, wz + h)
+			b = Vector3(wx + n.x * h, 0.0, wz - h)
+		else:
+			a = Vector3(wx - h, 0.0, wz + n.y * h)
+			b = Vector3(wx + h, 0.0, wz + n.y * h)
+		if n.x < 0 or n.y > 0:
+			var t: Vector3 = a
+			a = b
+			b = t
+		var down: Vector3 = Vector3(0.0, -PIT_DEPTH, 0.0)
+		_fill_v.append_array([a, a + down, b + down, a, b + down, b])
+		var facing: Vector3 = Vector3(float(n.x), 0.0, float(n.y))
+		for i: int in 6:
+			_fill_n.append(facing)
+		_add_line(a, b, _faint(level.wire_color, _WALL_LINE_ALPHA))
 
 
 func _is_open(level: Level, col: int, row: int) -> bool:
@@ -175,7 +235,7 @@ func _faint(c: Color, alpha: float) -> Color:
 
 
 # The flagstones under an open cell, and the slab over it.
-func _add_floor_quad(col: int, row: int) -> void:
+func _add_floor_quad(col: int, row: int, ceiling: bool = true) -> void:
 	var wx: float = col * CELL_SIZE
 	var wz: float = row * CELL_SIZE
 	var h: float  = CELL_SIZE * 0.5
@@ -184,6 +244,8 @@ func _add_floor_quad(col: int, row: int) -> void:
 	var c2: Vector3 = Vector3(wx + h, 0.0, wz + h)
 	var c3: Vector3 = Vector3(wx - h, 0.0, wz + h)
 	_floor_v.append_array([c0, c1, c2, c0, c2, c3])
+	if not ceiling:
+		return
 	var up: Vector3 = Vector3(0.0, WALL_HEIGHT, 0.0)
 	_ceil_v.append_array([c0 + up, c2 + up, c1 + up, c0 + up, c3 + up, c2 + up])
 
@@ -267,6 +329,9 @@ func _place_torches(level: Level) -> void:
 				if _is_open(level, wall.x, wall.y):
 					continue
 				if wall == level.exit_wall_pos or level.chest_cells.has(wall):
+					continue
+				# Nothing to hang a torch on at the edge of the pit.
+				if not level.drawn_walls.is_empty() and not level.drawn_walls.has(wall):
 					continue
 				spots.append([cell, n])
 	# Shuffled with the seeded generator, not Array.shuffle, which would not

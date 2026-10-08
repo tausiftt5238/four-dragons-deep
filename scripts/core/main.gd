@@ -1698,9 +1698,13 @@ func _sync_boss_banner() -> void:
 	var wall: Vector2i = current_level.exit_wall_pos
 	var from: Vector2i = current_level.exit_pos
 	var toward: Vector3 = Vector3(float(from.x - wall.x), 0.0, float(from.y - wall.y))
-	# The Necromancer's corridor ends in wall, not a stairwell: he stands just
-	# in front of it rather than in it.
-	var inset: float = 0.62 if floor_num >= Level.FLOOR_COUNT else 0.35
+	var inset: float = 0.35
+	# In his hall he stands in the middle of the pier's tip, his own cell,
+	# looking out over the pit at where the player comes in.
+	if Level.is_necro_floor(floor_num):
+		inset = 0.0
+		var arrive: Vector2i = current_level.player_start
+		toward = Vector3(float(arrive.x - wall.x), 0.0, float(arrive.y - wall.y)).normalized()
 	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, banner.feet_drop,
 			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * inset)
 	banner.rotation = Vector3(0.0, atan2(toward.x, toward.z), 0.0)
@@ -2187,22 +2191,27 @@ func _restore_save(data: Dictionary) -> void:
 	current_level.floor_num = floor_num
 	world.add_child(current_level)
 
-	# Overwrite the freshly-generated maze with the saved layout.
-	var raw_maze: Array = map_data["maze"] as Array
-	var saved_maze: Array[Array] = []
-	for row: Variant in raw_maze:
-		saved_maze.append(row as Array)
-	current_level.maze = saved_maze
+	# Overwrite the freshly-generated maze with the saved layout. Not the
+	# Necromancer's hall: it is always built off Level.NECRO_HALL, so a save
+	# made in it, or in the corridor that stood there before, finds the hall.
+	var necro_hall: bool = Level.is_necro_floor(floor_num)
+	if not necro_hall:
+		var raw_maze: Array = map_data["maze"] as Array
+		var saved_maze: Array[Array] = []
+		for row: Variant in raw_maze:
+			saved_maze.append(row as Array)
+		current_level.maze = saved_maze
 
-	var ew: Array  = map_data["exit_wall"]   as Array
-	var ep: Array  = map_data["exit_pos"]    as Array
-	current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
-	current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
+		var ew: Array  = map_data["exit_wall"]   as Array
+		var ep: Array  = map_data["exit_pos"]    as Array
+		current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
+		current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
 	current_level.next_scene      = scene_path
 	current_level.trap_cells      = SaveSystem.unpack_cell_map(map_data.get("trap_cells", {}) as Dictionary)
 	_pending_roamers              = map_data.get("roamers", []) as Array
-	current_level.orb_cells.assign(
-			SaveSystem.unpack_cells(map_data.get("orbs", []) as Array).keys())
+	if not necro_hall:
+		current_level.orb_cells.assign(
+				SaveSystem.unpack_cells(map_data.get("orbs", []) as Array).keys())
 	# Caches are saved, so a load does not re-roll where they were and whether
 	# they were empty. An older save's "mimics" list is simply ignored.
 	var saved_chests: Dictionary = map_data.get("chests", {}) as Dictionary
@@ -2242,6 +2251,11 @@ func _restore_save(data: Dictionary) -> void:
 	var pos_arr: Array = data["player_pos"] as Array
 	player_pos    = Vector2i(int(pos_arr[0]), int(pos_arr[1]))
 	player_facing = int(data["player_facing"])
+	# A save from the corridor that used to be the bottom can stand somewhere
+	# the hall has no floor: back to where the hall is come into.
+	if Level.is_necro_floor(floor_num) and not _is_open(player_pos.x, player_pos.y):
+		player_pos = current_level.player_start
+		player_facing = current_level.player_start_facing
 
 	_sync_player()
 	_snap_cam_yaw()

@@ -186,6 +186,36 @@ var looted: Dictionary = {}
 # A hazard that has gone off is recorded in found_traps, not erased.
 var trap_cells: Dictionary = {}
 
+
+# ── The Necromancer's hall ────────────────────────────────────────────────────
+#
+# The bottom of the run is not a corridor but a hole: a walkway round the edge
+# of a pit, under the ceiling, with one pier reaching out over it and the
+# Necromancer at its tip. The player comes in across the pit from him and
+# walks round to the pier. Rows of NECRO_HALL, read top down:
+#   "#" wall, drawn      "=" walkway      " " the pit: no floor, no way across
+#   "N" where he stands (solid; the fight starts walking into him off the pier)
+#   "@" where the player arrives          "O" the orb
+const NECRO_HALL: Array[String] = [
+	"###########",
+	"#=========#",
+	"#=       O#",
+	"#===N    @#",
+	"#=       =#",
+	"#=       =#",
+	"#=========#",
+	"###########",
+]
+
+# Wall faces drawn: only the "#" cells. The pit's cells block the way like
+# rock but are drawn as nothing, with the walkway's edge dropping into them.
+var drawn_walls: Dictionary = {}
+var pit_cells: Dictionary = {}
+
+
+static func is_necro_floor(floor_num: int) -> bool:
+	return is_boss_floor(floor_num) and floor_num >= FLOOR_COUNT
+
 const HAZARD_ICE: String   = "ice"
 const HAZARD_LAVA: String  = "lava"
 const HAZARD_SPARK: String = "spark"

@@ -7,7 +7,9 @@ func _ready() -> void:
 	next_scene = "res://scenes/map.tscn"
 
 	# Every fifth floor is a boss corridor; everything else is a maze.
-	if Level.is_boss_floor(floor_num):
+	if Level.is_necro_floor(floor_num):
+		_setup_necro_floor()
+	elif Level.is_boss_floor(floor_num):
 		_setup_boss_floor()
 	else:
 		_setup_normal_floor(floor_num)
@@ -82,6 +84,48 @@ func _setup_boss_floor() -> void:
 	# No traps. The corridor is one way and the orb at its mouth is the last
 	# chance to heal, so HP shaved off between there and the dragon is HP the
 	# player has no way to get back.
+
+
+# The Necromancer's hall, off Level.NECRO_HALL, set into the 20x20 grid with
+# rock all round it.
+func _setup_necro_floor() -> void:
+	wire_color       = Level.boss_wire(floor_num)
+	wire_floor_color = Level.boss_wire_floor(floor_num)
+	wire_fill_color  = Level.boss_wire_fill(floor_num)
+	const SIZE: int = 20
+	var grid: Array[Array] = []
+	for _i: int in range(SIZE):
+		var row: Array = []
+		row.resize(SIZE)
+		row.fill(1)
+		grid.append(row)
+	orb_cells.clear()
+	drawn_walls.clear()
+	pit_cells.clear()
+	for y: int in Level.NECRO_HALL.size():
+		var line: String = Level.NECRO_HALL[y]
+		for x: int in line.length():
+			var cell: Vector2i = Vector2i(x, y)
+			match line[x]:
+				"#":
+					drawn_walls[cell] = true
+				" ":
+					pit_cells[cell] = true
+				"N":
+					exit_wall_pos = cell
+				_:
+					(grid[cell.y] as Array)[cell.x] = 0
+					if line[x] == "@":
+						player_start = cell
+					elif line[x] == "O":
+						orb_cells.append(cell)
+	maze = grid
+	# Across the pit from him, facing him. The fight starts walking into him
+	# off the end of the pier.
+	player_start_facing = 3  # West
+	entry_pos = player_start
+	entry_facing = 3
+	exit_pos = exit_wall_pos + Vector2i(-1, 0)
 
 
 func _generate_corridor() -> Array[Array]:
