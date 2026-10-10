@@ -35,6 +35,8 @@ CAPSULES = {
     "library_header": (920, 430, True),
     "library_hero": (3840, 1240, False),
     "page_background": (1438, 810, False),
+    # Not Steam's: the itch.io page's cover image.
+    "itch_cover": (630, 500, True),
 }
 
 
@@ -110,6 +112,11 @@ def capsule(w: int, h: int, text: bool) -> Image.Image:
     img = backdrop(w, h, 0.55 if text else 0.7)
     if not text:
         draw_dragons(img, (0, int(h * 0.30), w, int(h * 0.62)))
+        return img
+    if 1.2 <= w / h < 1.5:   # near square (itch's cover): a word to a line,
+        # the dragons in a row under it
+        draw_title(img, (int(w * 0.08), int(h * 0.04), int(w * 0.84), int(h * 0.48)), stacked=True)
+        draw_dragons(img, (int(w * 0.05), int(h * 0.55), int(w * 0.90), int(h * 0.40)))
         return img
     if w / h < 1.2:   # tall: a word to a line, the dragons two by two
         draw_title(img, (int(w * 0.06), int(h * 0.04), int(w * 0.88), int(h * 0.40)), stacked=True)
