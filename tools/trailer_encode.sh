@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Turns the frames tools/trailer.gd recorded into an MP4, scaled up 2x with
-# nearest-neighbour so the pixel art stays sharp (1080x2340, phone portrait).
+# nearest-neighbour so the pixel art stays sharp: 1080x2340 for the phone
+# trailer, or SIZE=1920x1080 for the PC one (tools/trailer_steam.gd).
 # GStreamer rather than ffmpeg because that is what this machine has.
 #
 #   tools/trailer_encode.sh FRAME_DIR OUT.mp4 [MUSIC.ogg]
@@ -13,6 +14,7 @@ set -euo pipefail
 dir="${1:?frame dir}"
 out="${2:?output .mp4}"
 music="${3:-}"
+size="${SIZE:-1080x2340}"
 wav="$dir/frame.wav"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -64,7 +66,7 @@ fi
 gst-launch-1.0 -q \
   multifilesrc location="$dir/frame%08d.png" index=0 caps="image/png,framerate=30/1" \
   ! pngdec ! videoconvert \
-  ! videoscale method=nearest-neighbour ! video/x-raw,width=1080,height=2340 \
+  ! videoscale method=nearest-neighbour ! video/x-raw,width=${size%x*},height=${size#*x} \
   ! videoconvert ! video/x-raw,format=I420 \
   ! x264enc speed-preset=slow bitrate=8000 key-int-max=60 \
   ! video/x-h264,profile=high ! queue ! mux. \
