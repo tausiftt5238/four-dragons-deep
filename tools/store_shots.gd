@@ -41,6 +41,8 @@ func _initialize() -> void:
 	await _wait(1.0)
 	await _party_shot("08-party.png")
 	await _orb_shot("09-orb.png")
+	await _victory_shot("10-victory.png")
+	await _hall_shot("11-necromancer-hall.png")
 	Records.flush()
 	for path: String in kept:
 		if kept[path] == null:
@@ -71,6 +73,7 @@ func _dress_party() -> void:
 	# A fuller skill list than the opening one, and the whistle, so no shot
 	# opens on an ambush with the menu greyed out.
 	p.known_spells.assign(["analyze", "ember", "rime", "arc", "cure", "whet"])
+	p.equipped_spells.assign(["analyze", "ember", "rime", "arc", "cure"])
 	p.equipped_accessories.append(Accessory.sentrys_whistle())
 	p.hp = p.max_hp
 	p.mp = p.max_mp
@@ -170,3 +173,42 @@ func _orb_shot(file: String) -> void:
 	await _frames(45)
 	await _save(file)
 	main._close_orb()
+
+
+# A won fight: the results over the field, the party mid-hop.
+func _victory_shot(file: String) -> void:
+	await _go_to_floor(8)
+	main._launch_combat([Enemy.make_from_name("Young Silver Dragon", 8), Enemy.make_from_name("Hellhound", 8)])
+	await _wait(1.0)
+	var scene: CombatScene = _combat_scene()
+	for f: Enemy in scene.foes:
+		f.hp = 0
+	scene._refresh_hp()
+	scene._end_combat("win")
+	# A beat into the hops, caught with most of the party in the air.
+	await _wait(0.62)
+	var img: Image = root.get_texture().get_image()
+	if img.get_width() < 1920:
+		img.resize(1920, 1080, Image.INTERPOLATE_NEAREST)
+	img.save_png(ProjectSettings.globalize_path(OUT_DIR + file))
+	print("saved ", file)
+	# Through the results and whatever level-ups follow, back to the corridor.
+	for i: int in 20:
+		if not main.in_combat:
+			break
+		for b: Node in root.find_children("*", "Button", true, false):
+			if (b as Button).text in ["Continue", "Confirm", "Skip"] and (b as Button).is_visible_in_tree():
+				(b as Button).pressed.emit()
+				break
+		await _wait(0.4)
+
+
+# The bottom of the run: the walkway round the pit, the Necromancer on the pier.
+func _hall_shot(file: String) -> void:
+	await _go_to_floor(Level.FLOOR_COUNT)
+	if main.orb_open:
+		main._close_orb()
+	_stand(Vector2i(6, 1), 2)
+	await _wait(0.8)
+	_clear_popup()
+	await _save(file)
