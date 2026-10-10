@@ -113,9 +113,11 @@ func _build_wide() -> void:
 	col.add_child(row)
 	var buttons: Array[Button] = _menu_buttons(Vector2(140, 40))
 	# A window on a desktop needs a way out that is not the corner's cross.
-	var quit_btn: Button = _make_btn("QUIT", Vector2(140, 40))
-	quit_btn.pressed.connect(func() -> void: get_tree().quit())
-	buttons.append(quit_btn)
+	# Not in a browser, where a page cannot close itself.
+	if not Build.web():
+		var quit_btn: Button = _make_btn("QUIT", Vector2(140, 40))
+		quit_btn.pressed.connect(func() -> void: get_tree().quit())
+		buttons.append(quit_btn)
 	for btn: Button in buttons:
 		row.add_child(btn)
 	# Ready for the keyboard or a pad without a click first.

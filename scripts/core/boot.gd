@@ -26,8 +26,10 @@ func _ready() -> void:
 	Controls.ensure()
 	if OS.is_debug_build() and OS.has_feature("template"):
 		_start_diagnostics()
-	# A test or a tool run (--script) keeps the window it was given.
-	if Build.steam() and not "--script" in OS.get_cmdline_args():
+	# A test or a tool run (--script) keeps the window it was given, and so
+	# does a browser: the page sizes the canvas, and fullscreen there needs a
+	# click first (Options has it).
+	if Build.steam() and not Build.web() and not "--script" in OS.get_cmdline_args():
 		# Once the window is up: asked for before then, the mode is lost.
 		await get_tree().process_frame
 		await get_tree().process_frame

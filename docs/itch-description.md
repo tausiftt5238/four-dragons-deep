@@ -52,8 +52,9 @@ score.
 - No ads, no account, no internet needed
 
 **Which version?**
-- **Play the demo in the browser:** the first five floors, up to and
-  including the Ice Dragon. The full game is coming to Steam.
+- **Play the demo in the browser:** the PC version, played with a keyboard,
+  mouse or controller, through the first five floors, up to and including
+  the Ice Dragon. The full game is coming to Steam.
 - **Download the APK** for the whole thing, Abyss included, on an Android phone.
 
 **Controls**
@@ -79,8 +80,9 @@ controller. Follow the devlog here for news.
 Embed options for the web build:
 
 - **Kind of project:** HTML
-- **Viewport:** 405 × 877 (the game is 540 × 1170, portrait)
-- **Mobile friendly:** on, orientation portrait
+- **Viewport:** 960 × 540 (the PC version's canvas, landscape; it stretches
+  to fill whatever the embed is given)
+- **Mobile friendly:** off. The demo is the PC version; phones have the APK.
 - **Fullscreen button:** on
 - **SharedArrayBuffer support:** on. The build uses threads, and without this it
   will not start.
