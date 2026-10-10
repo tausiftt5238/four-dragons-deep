@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Upload the itch.io builds with butler (itch's uploader): the browser demo and
-# the Android APK, each to its own channel on the page.
+# Upload the itch.io builds with butler (itch's uploader), each to its own
+# channel on the page: the browser demo, the Android APK, and the full PC game
+# for Linux and Windows (the Steam builds, from build/steam/).
 #
-#   tools/upload_itch.sh             both
+#   tools/upload_itch.sh             all four
 #   tools/upload_itch.sh web         the browser demo only
 #   tools/upload_itch.sh android     the APK only
+#   tools/upload_itch.sh linux       the Linux build only
+#   tools/upload_itch.sh windows     the Windows build only
 #   tools/upload_itch.sh --dry-run   say what would go up, upload nothing
 #
 # Build first (tools/build_all.sh). butler sends only what changed since the
@@ -33,8 +36,8 @@ WHICH=all
 for arg in "$@"; do
 	case "$arg" in
 		--dry-run) DRY=(--dry-run) ;;
-		web|android|all) WHICH="$arg" ;;
-		*) echo "usage: tools/upload_itch.sh [web|android] [--dry-run]" >&2; exit 2 ;;
+		web|android|linux|windows|all) WHICH="$arg" ;;
+		*) echo "usage: tools/upload_itch.sh [web|android|linux|windows] [--dry-run]" >&2; exit 2 ;;
 	esac
 done
 
@@ -48,7 +51,11 @@ push() {   # what, channel
 
 case "$WHICH" in
 	all|web)     push build/web web ;;&
-	all|android) push build/android/four-dragons-deep_portable.apk android ;;
+	all|android) push build/android/four-dragons-deep_portable.apk android ;;&
+	# itch reads the platform off the channel name, so these two come up as
+	# Linux and Windows downloads with no setting on the page.
+	all|linux)   push build/steam/linux linux ;;&
+	all|windows) push build/steam/windows windows ;;
 esac
 
 [ ${#DRY[@]} -gt 0 ] || "$BUTLER" status "$TARGET"
