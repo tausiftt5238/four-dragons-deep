@@ -1273,9 +1273,16 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			if item_drop.is_empty() and "scavenger" in player_char.passive_skills \
 					and randi() % 2 == 0:
 				item_drop = foe.roll_drop()
-	for foe: Enemy in group:
-		foe.queue_free()
-	combat_layer.queue_free()
+	# A win keeps the field up under the results, the party hopping on it, and
+	# the foes it still draws; both go once the results are done with
+	# (_clear_victory). Anything else ends the fight on the spot.
+	if result == "win":
+		_victory_layer = combat_layer
+		_victory_foes = group
+	else:
+		for foe: Enemy in group:
+			foe.queue_free()
+		combat_layer.queue_free()
 	Music.play(Music.dungeon_track(floor_num))
 
 	# Whatever walked into the fight is already off the floor. Winning or talking
@@ -1405,6 +1412,7 @@ func _show_combat_result(exp: int, gold: int, item: Dictionary,
 		lv_before: Dictionary, lv_after: Dictionary,
 		demon_ups: Array[Dictionary] = []) -> void:
 	var ui: CombatResultUI = CombatResultUI.new()
+	ui.over_battle = is_instance_valid(_victory_layer)
 	ui.exp_gained  = exp
 	ui.gold_gained = gold
 	ui.item_drop   = item
@@ -1440,7 +1448,22 @@ func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
 	_get_overlay_layer().add_child(ui)
 
 
+var _victory_layer: CanvasLayer = null
+var _victory_foes: Array[Enemy] = []
+
+
+func _clear_victory() -> void:
+	if is_instance_valid(_victory_layer):
+		_victory_layer.queue_free()
+	_victory_layer = null
+	for foe: Enemy in _victory_foes:
+		if is_instance_valid(foe):
+			foe.queue_free()
+	_victory_foes = []
+
+
 func _resume_from_overlay() -> void:
+	_clear_victory()
 	hud_layer.visible = true
 	in_combat = false
 	# A fight and everything after it is over; this is a good place to be.

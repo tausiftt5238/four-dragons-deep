@@ -63,6 +63,8 @@ var _foe_icon_pips: UIGlyph   # enemy-side press-turn icons, drawn
 var _enemy_side: Control
 var _party_box:  Control
 var _party_slots: Array[Dictionary] = []
+# The fight is won and over (see _end_combat): the field is only scenery now.
+var finished: bool = false
 
 const STEP_DISTANCE: float = 60.0
 const STEP_DURATION: float = 0.25
@@ -464,8 +466,46 @@ func _end_combat(result: String) -> void:
 		if demon.is_alive():
 			continue
 		_strike_off(demon)
+	# A win leaves the field up under the results (Main frees it once they
+	# are done) with the party hopping for joy; nothing on it answers any more.
+	if result == "win":
+		finished = true
+		_set_buttons(false)
+		_celebrate()
+		combat_ended.emit(result)
+		return
 	combat_ended.emit(result)
 	queue_free()
+
+
+# How the party celebrates a win: everyone still standing hops, a beat apart,
+# over and over until the field is taken down.
+const HOP_HEIGHT: float = 14.0
+const HOP_UP: float = 0.14
+const HOP_REST: float = 0.30
+const HOP_STAGGER: float = 0.09
+
+
+func _celebrate() -> void:
+	var n: int = 0
+	for slot: Dictionary in _party_slots:
+		var member: CharacterSheet = slot.get("member") as CharacterSheet
+		var pic: TextureRect = slot.get("portrait") as TextureRect
+		if member == null or not member.is_alive() or not is_instance_valid(pic):
+			continue
+		var base: float = pic.position.y
+		var hop: Tween = pic.create_tween().set_loops()
+		hop.tween_property(pic, "position:y", base - HOP_HEIGHT, HOP_UP) \
+				.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		hop.tween_property(pic, "position:y", base, HOP_UP) \
+				.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		hop.tween_interval(HOP_REST)
+		# Each one starts a beat after the last, so they hop in a ripple.
+		hop.pause()
+		get_tree().create_timer(HOP_STAGGER * n).timeout.connect(func() -> void:
+			if hop.is_valid():
+				hop.play())
+		n += 1
 
 
 # ── Phase flow ────────────────────────────────────────────────────────────────
@@ -546,6 +586,8 @@ func _next_living(from_idx: int) -> int:
 # One icon per living party member. A demon bound during this phase does not
 # add its icon until the next one, which is what stops summoning from looping.
 func _begin_player_phase() -> void:
+	if finished:
+		return
 	_step_back_immediate()
 	for member: CharacterSheet in party:
 		member.defending = false
@@ -741,6 +783,8 @@ func _beg_resolved() -> void:
 
 
 func _prompt_actor() -> void:
+	if finished:
+		return
 	_clear_floats()
 	_refresh_hp()
 	_step_forward_actor()

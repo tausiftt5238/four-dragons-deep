@@ -143,6 +143,8 @@ func _focus_list() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if finished:
+		return
 	if event.is_action_pressed("ui_cancel") and _right_back_btn != null \
 			and _right_back_btn.visible:
 		_on_back_pressed()
@@ -152,7 +154,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # Left and right are taken before the focused list entry can turn them into a
 # sideways focus hop: on the top of a tab they change the tab.
 func _input(event: InputEvent) -> void:
-	if not (_at_top and _buttons_on and not _actions_locked):
+	if finished or not (_at_top and _buttons_on and not _actions_locked):
 		return
 	var step: int = 0
 	if event.is_action_pressed("ui_left", true):

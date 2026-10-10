@@ -9,6 +9,10 @@ signal dismissed
 var exp_gained:  int = 0
 var gold_gained: int = 0
 var item_drop:   Dictionary = {}
+# Shown over the won fight, which stays up with the party hopping on it: the
+# field is only dimmed, and the window stands clear of the party (over the
+# fallen foes on a wide screen, over the menu on a phone).
+var over_battle: bool = false
 
 
 func _ready() -> void:
@@ -18,13 +22,19 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.0, 0.0, 0.0, 0.78)
+	bg.color = Color(0.0, 0.0, 0.0, 0.25 if over_battle else 0.78)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	# Everything tappable lives in the lower pane, under where the map sits.
 	var lower: Control = Control.new()
 	Layout.lower_pane(lower)
+	if over_battle:
+		lower.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		if Build.steam():
+			lower.anchor_right = 0.5       # the foes' side
+		else:
+			lower.anchor_top = 0.62        # down over the menu
 	lower.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lower)
 
