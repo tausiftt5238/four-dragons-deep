@@ -4,6 +4,9 @@
 Windows (`build/steam/`), the web build (`build/web/`) and the APK, and leaves
 the two files the itch.io page takes in `build/itch/`.
 
+`tools/upload_itch.sh` then sends the browser demo and the APK to the itch.io
+page with butler, each to its own channel; its header has the one-time setup.
+
 # The two builds
 
 One codebase makes two games (`scripts/core/build.gd`):
