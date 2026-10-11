@@ -10,13 +10,13 @@ const MAP_PANE_W: int = 380
 
 
 # The part of the screen an overlay (level up, a fight's result, a chest, the
-# save slots, game over) belongs in: under the map band on a phone, over the
-# dungeon view beside the map column on a wide screen. `c` is full-rect.
+# save slots, game over) belongs in: under the map band on a phone, where the
+# thumbs are. A wide screen centres it on the whole screen: its veil covers the
+# map column too, so sitting beside the map only pushed it off to the right.
+# `c` is full-rect.
 static func lower_pane(c: Control) -> void:
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	if Build.steam():
-		c.offset_left = MAP_PANE_W
-	else:
+	if not Build.steam():
 		c.offset_top = MAP_PANE_H
 
 
