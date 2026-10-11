@@ -1,29 +1,41 @@
-id,name,tier,price,def,agl,resist,weak,desc
-leather_vest,Leather Vest,1,45,3,,,fire,"Light, quiet, and no help at all against a flame."
-padded_coat,Padded Coat,1,45,4,-1,ice,,Quilted against the cold. Bulky through a doorway.
-leather_garb,Leather Garb,1,45,2,1,,,Worn soft by the road. It hides nothing and it slows nothing.
-fur_mantle,Fur Mantle,1,45,3,-1,,,A whole pelt. Frost and spark slide off it; a spark of the other kind does not.
-tarred_jerkin,Tarred Jerkin,1,45,4,,,,"Pitch keeps the lightning out. It burns, and it cracks in the cold."
-pilgrims_robe,Pilgrim's Robe,1,45,2,1,,,Blessed at every shrine on the road down. No blessing stops a blade.
-chain_mail,Chain Mail,2,70,8,-1,phys,thunder,"Turns a blade, and draws lightning like a hooked rug."
-salt_tanned_hide,Salt-Tanned Hide,2,70,7,,dark,,Cured hard in brine. Whatever crawls does not like it.
-silver_armor,Silver Armour,2,70,9,-1,light,,Polished to throw back whatever is thrown at it.
-scale_hauberk,Scale Hauberk,2,70,10,-2,,thunder,Overlapping plates on a leather backing. Heavy in all the usual places.
-bronze_cuirass,Bronze Cuirass,2,70,9,-1,,,Turns an edge and shrugs off heat. Rings like a bell when the sky strikes.
-wyrmhide_jacket,Wyrmhide Jacket,2,70,8,,,,"A young drake's skin, good in the fire and the cold. It never learned the storm."
-grave_shroud,Grave Shroud,2,70,7,,,,Taken off someone who did not need it. The dark and the cold know it as theirs.
-plate_armor,Plate Armour,3,95,15,-3,,ice,"Everything a smith knows, all at once, all of it heavy."
-warded_surcoat,Warded Surcoat,3,95,11,-1,light,,Stitched through with something that objects to being looked at.
-gold_armor,Gold Armour,3,95,13,-2,dark,thunder,"Soft, heavy, and it makes you look worth robbing."
-mythril_chain,Mythril Chain,3,95,13,,,,The only mail down here that costs you nothing to wear.
-obsidian_plate,Obsidian Plate,3,95,15,-3,,,"Volcanic glass, edge-proof and fire-born. Cold shatters it; lightning finds the seams."
-stormglass_mail,Stormglass Mail,3,95,13,-1,,,"Fused where lightning struck sand. It drinks the storm and the frost, and melts."
-templars_hauberk,Templar's Hauberk,3,95,14,-2,,,Consecrated mail. Steel and the light both glance off; the dark has its measure.
-gargoyle_scale,Gargoyle Scale,4,120,22,-3,phys,thunder,Prised off something that was part of a wall. Still wants to be one.
-drakescale_cuirass,Drakescale Cuirass,4,120,19,-2,fire,,It has already survived worse than anything down here.
-platinum_armor,Platinum Armour,4,120,24,-3,,,No trick to it and no hole in it. Only the number.
-diamond_armor,Diamond Armour,4,120,27,-4,,ice,Set with stone across the chest. It cracks at a temperature you will meet.
-saints_raiment,Saint's Raiment,4,120,17,-1,dark,,"Cloth, and it has outlasted every plate in this tier."
-abyssal_carapace,Abyssal Carapace,4,120,24,-3,,,"Grown, not forged, somewhere under the last floor. It hates the light and the storm."
-seraphs_mail,Seraph's Mail,4,120,21,-1,,,"Feather-light and bright. Storm, frost and the light all pass it by; the dark does not."
-dragonbone_plate,Dragonbone Plate,4,120,26,-3,,,"Cut from the dragons themselves: fire, frost and storm. Nothing holy or unholy in it."
+id,name,tier,price,def,agl,str,mag,luk,resist,weak,wards,desc
+leather_vest,Leather Vest,1,100,3,,,,,,fire,,"Light, quiet, and no help at all against a flame."
+padded_coat,Padded Coat,1,100,4,-1,,,,ice,,,Quilted against the cold. Bulky through a doorway.
+leather_garb,Leather Garb,1,100,2,1,,,,,,,Worn soft by the road. It hides nothing and it slows nothing.
+fur_mantle,Fur Mantle,1,100,3,-1,,,,ice thunder,fire,,A whole pelt. Frost and spark slide off it; a spark of the other kind does not.
+tarred_jerkin,Tarred Jerkin,1,100,4,,,,,thunder,fire ice,,"Pitch keeps the lightning out. It burns, and it cracks in the cold."
+pilgrims_robe,Pilgrim's Robe,1,100,2,1,,,,light dark,phys,,Blessed at every shrine on the road down. No blessing stops a blade.
+thiefs_cloak,Thief's Cloak,1,100,2,2,,,2,,phys,,"Dark wool with too many pockets. Light on the feet, thin against a blade."
+monks_wraps,Monk's Wraps,1,100,2,,2,,,,dark,,"Bands of linen, wound tight for the fist. The dark finds the gaps."
+apprentice_robe,Apprentice Robe,1,100,2,,,2,,light,fire,,"Singed at the hem, as they all are. The lessons stuck."
+chain_mail,Chain Mail,2,500,8,-1,,,,phys,thunder,,"Turns a blade, and draws lightning like a hooked rug."
+salt_tanned_hide,Salt-Tanned Hide,2,500,7,,,,,dark,,,Cured hard in brine. Whatever crawls does not like it.
+silver_armor,Silver Armour,2,500,9,-1,,,,light,,,Polished to throw back whatever is thrown at it.
+scale_hauberk,Scale Hauberk,2,500,10,-2,,,,,thunder,,Overlapping plates on a leather backing. Heavy in all the usual places.
+bronze_cuirass,Bronze Cuirass,2,500,9,-1,,,,phys fire,thunder ice,,Turns an edge and shrugs off heat. Rings like a bell when the sky strikes.
+wyrmhide_jacket,Wyrmhide Jacket,2,500,8,,,,,fire ice,thunder,,"A young drake's skin, good in the fire and the cold. It never learned the storm."
+grave_shroud,Grave Shroud,2,500,7,,,,,dark ice,light fire,,Taken off someone who did not need it. The dark and the cold know it as theirs.
+berserker_hide,Berserker Hide,2,500,6,,3,-2,,,ice,,"A bear's pelt, worn head and all. You think less and hit harder."
+sages_vestment,Sage's Vestment,2,500,5,,,4,,dark,phys,,Embroidered with every word the order kept. None of them stop a sword.
+marsh_leathers,Marsh Leathers,2,500,7,,,,,ice,thunder,poison,Oiled for the fens. Cold and venom run off it; the storm runs in.
+plate_armor,Plate Armour,3,1000,15,-3,,,,,ice,,"Everything a smith knows, all at once, all of it heavy."
+warded_surcoat,Warded Surcoat,3,1000,11,-1,,,,light,,,Stitched through with something that objects to being looked at.
+gold_armor,Gold Armour,3,1000,13,-2,,,,dark,thunder,,"Soft, heavy, and it makes you look worth robbing."
+mythril_chain,Mythril Chain,3,1000,13,,,,,,,,The only mail down here that costs you nothing to wear.
+obsidian_plate,Obsidian Plate,3,1000,15,-3,,,,phys fire,ice thunder,,"Volcanic glass, edge-proof and fire-born. Cold shatters it; lightning finds the seams."
+stormglass_mail,Stormglass Mail,3,1000,13,-1,,,,thunder ice,fire,,"Fused where lightning struck sand. It drinks the storm and the frost, and melts."
+templars_hauberk,Templar's Hauberk,3,1000,14,-2,,,,phys light,dark,,Consecrated mail. Steel and the light both glance off; the dark has its measure.
+duellists_coat,Duellist's Coat,3,1000,10,2,,,2,,,,Cut for the lunge. It has seen more first blood than last.
+warlocks_robe,Warlock's Robe,3,1000,9,,-2,6,,dark,light,,"Heavy with sigils, and the arms are too long for anything but casting."
+spiked_plate,Spiked Plate,3,1000,15,-3,3,,,phys,thunder,,Every edge of it is a point. A shoulder in this is an attack.
+gargoyle_scale,Gargoyle Scale,4,1800,22,-3,,,,phys,thunder,,Prised off something that was part of a wall. Still wants to be one.
+drakescale_cuirass,Drakescale Cuirass,4,1800,19,-2,,,,fire,,,It has already survived worse than anything down here.
+platinum_armor,Platinum Armour,4,1800,24,-3,,,,,,,No trick to it and no hole in it. Only the number.
+diamond_armor,Diamond Armour,4,1800,27,-4,,,,,ice,,Set with stone across the chest. It cracks at a temperature you will meet.
+saints_raiment,Saint's Raiment,4,1800,17,-1,,,,dark,,,"Cloth, and it has outlasted every plate in this tier."
+abyssal_carapace,Abyssal Carapace,4,1800,24,-3,,,,dark fire ice,light thunder,,"Grown, not forged, somewhere under the last floor. It hates the light and the storm."
+seraphs_mail,Seraph's Mail,4,1800,21,-1,,,,light thunder ice,dark,,"Feather-light and bright. Storm, frost and the light all pass it by; the dark does not."
+dragonbone_plate,Dragonbone Plate,4,1800,26,-3,,,,fire ice thunder,light dark,,"Cut from the dragons themselves: fire, frost and storm. Nothing holy or unholy in it."
+mirrorplate,Mirrorplate,4,1800,22,-2,,,,light dark,phys,,Polished until it shows you everything. Holy and unholy both turn on it; steel does not.
+dragonlord_mail,Dragonlord Mail,4,1800,24,-3,4,4,,fire,ice,,"Red scale on black steel, cut to the king's own measure. It runs hot, and the cold bites it."
+shadow_weave,Shadow Weave,4,1800,16,4,,,4,dark,light,,Spun from the dark between torches. A lamp shows it for what it is.

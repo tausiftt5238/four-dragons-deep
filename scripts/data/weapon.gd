@@ -12,17 +12,24 @@
 # drains or repels fire ends the phase exactly as a cast would. On the two
 # banishing lines the swing expels rather than wounds, at the same odds a cast
 # gets.
+#
+# `extra` carries the rest: luk_bonus, and what a blade does when it lands —
+# hit_status / hit_status_pct (an ailment on those odds), hit_stage /
+# hit_stage_pct (one stage off the foe struck) and drain_pct (that share of the
+# blow back as HP). CombatScene._weapon_on_hit reads them.
 class_name Weapon
 
 
 static func make(id: String, name: String, desc: String,
 		str_bonus: int, mag_bonus: int, floor: int, agl_pen: int = 0,
 		attack_element: String = "", found_only: bool = false,
-		def_bonus: int = 0) -> Dictionary:
-	return {id=id, name=name, type="weapon", desc=desc,
+		def_bonus: int = 0, extra: Dictionary = {}) -> Dictionary:
+	var d: Dictionary = {id=id, name=name, type="weapon", desc=desc,
 			str_bonus=str_bonus, mag_bonus=mag_bonus, agl_pen=agl_pen,
 			def_bonus=def_bonus, attack_element=attack_element,
 			found_only=found_only, floor=floor, qty=1}
+	d.merge(extra)
+	return d
 
 
 # ── Tier I · floors 1-5 ──────────────────────────────────────────────────────
@@ -53,6 +60,21 @@ static func chapel_censer() -> Dictionary:
 	return make("chapel_censer", "Chapel Censer",
 			"It still smells of the service. Swung, it argues.",
 			0, 3, 1, 0, "", false, 1)
+
+static func thorn_whip() -> Dictionary:
+	return make("thorn_whip", "Thorn Whip",
+			"Bramble wound on a handle. Every barb was dipped in something.",
+			3, 0, 1, 0, "", false, 0, {hit_status = Status.POISON, hit_status_pct = 25})
+
+static func bone_club() -> Dictionary:
+	return make("bone_club", "Bone Club",
+			"A thighbone, and not a small one. It makes a fine guard and a poor argument.",
+			5, -1, 1, 0, "", false, 1)
+
+static func gamblers_knife() -> Dictionary:
+	return make("gamblers_knife", "Gambler's Knife",
+			"Won at cards, the story goes. It has never once lost since.",
+			2, 0, 1, 0, "", false, 0, {luk_bonus = 3})
 
 
 # ── Tier II · floors 6-10 ────────────────────────────────────────────────────
@@ -86,6 +108,21 @@ static func ice_sword() -> Dictionary:
 static func thunder_sword() -> Dictionary:
 	return make("thunder_sword", "Thunder Sword",
 			"It stands your hair up before it lands.", 6, 0, 2, 0, "thunder")
+
+static func venom_kris() -> Dictionary:
+	return make("venom_kris", "Venom Kris",
+			"A wavy blade with a groove down it. The groove is not empty.",
+			7, 0, 2, 1, "", false, 0, {hit_status = Status.POISON, hit_status_pct = 30})
+
+static func dulling_mace() -> Dictionary:
+	return make("dulling_mace", "Dulling Mace",
+			"Flanged iron. What it hits swings softer afterwards.",
+			8, 0, 2, -1, "", false, 0, {hit_stage = "atk", hit_stage_pct = 30})
+
+static func moonlit_staff() -> Dictionary:
+	return make("moonlit_staff", "Moonlit Staff",
+			"Pale wood that glows at night. Struck with it, a throat forgets its words.",
+			0, 8, 2, 0, "", false, 0, {luk_bonus = 2, hit_status = Status.SILENCE, hit_status_pct = 20})
 
 
 # ── Tier III · floors 11-15 ──────────────────────────────────────────────────
@@ -122,6 +159,26 @@ static func flamberge() -> Dictionary:
 			"The waved blade was for show. What runs down it now is not.",
 			14, 0, 3, -1, "fire")
 
+static func sunder_pick() -> Dictionary:
+	return make("sunder_pick", "Sunder Pick",
+			"A miner's pick, honed. It finds the seam in a plate and opens it.",
+			14, 0, 3, -2, "", false, 0, {hit_stage = "def", hit_stage_pct = 35})
+
+static func gorgon_spear() -> Dictionary:
+	return make("gorgon_spear", "Gorgon Spear",
+			"The head is grey stone. Whatever it pricks goes stiff around the wound.",
+			13, 0, 3, 0, "", false, 0, {hit_status = Status.PARALYZED, hit_status_pct = 20})
+
+static func leech_blade() -> Dictionary:
+	return make("leech_blade", "Leech Blade",
+			"Warm to hold, and warmer after. It shares what it takes.",
+			12, 0, 3, 0, "", false, 0, {drain_pct = 20})
+
+static func gloom_sceptre() -> Dictionary:
+	return make("gloom_sceptre", "Gloom Sceptre",
+			"Smoked glass on a black rod. It puts out the eyes it touches.",
+			0, 14, 3, 0, "", false, -1, {hit_status = Status.BLIND, hit_status_pct = 25})
+
 
 # ── Tier IV · floors 16-20 ───────────────────────────────────────────────────
 
@@ -147,6 +204,31 @@ static func rimefang_greatsword() -> Dictionary:
 			"Two hands, and the air in front of it goes white.",
 			20, 0, 4, -2, "ice")
 
+static func mirebrand() -> Dictionary:
+	return make("mirebrand", "Mirebrand",
+			"Forged in a bog and never quite dried. Its cuts drag at the legs.",
+			22, 0, 4, -1, "", false, 0, {hit_stage = "agl", hit_stage_pct = 40})
+
+static func vampire_fang() -> Dictionary:
+	return make("vampire_fang", "Vampire Fang",
+			"A curved tooth the length of a forearm. It drinks, and you feel it go down.",
+			21, 0, 4, 0, "", false, 0, {drain_pct = 25})
+
+static func archmages_staff() -> Dictionary:
+	return make("archmages_staff", "Archmage's Staff",
+			"Iron-shod and rune-cut. Its last owner stood behind it and lived to be old.",
+			0, 22, 4, 0, "", false, 3)
+
+static func berserker_axe() -> Dictionary:
+	return make("berserker_axe", "Berserker Axe",
+			"No guard, no grip worth the name. It was made by someone who did not mean to come back.",
+			32, 0, 4, -2, "", false, -6)
+
+static func hexing_rod() -> Dictionary:
+	return make("hexing_rod", "Hexing Rod",
+			"A twisted wand of yew. A spellcaster it touches loses the thread.",
+			0, 20, 4, 0, "", false, 0, {hit_stage = "mag", hit_stage_pct = 30})
+
 # The one weapon no orb will sell. It turns up in the deep, or not at all.
 static func excalibur() -> Dictionary:
 	return make("excalibur", "Excalibur",
@@ -157,12 +239,17 @@ static func excalibur() -> Dictionary:
 static func all() -> Array[Dictionary]:
 	return [rusty_dagger(), iron_sword(), hazel_wand(),
 			bronze_shortsword(), woodsmans_hatchet(), chapel_censer(),
+			thorn_whip(), bone_club(), gamblers_knife(),
 			battle_axe(), silver_rapier(), magic_rod(), steel_longsword(),
 			fire_sword(), ice_sword(), thunder_sword(),
+			venom_kris(), dulling_mace(), moonlit_staff(),
 			runed_glaive(), headsman_maul(), witchs_focus(),
 			mythril_sword(), silver_sword(), obsidian_edge(), flamberge(),
+			sunder_pick(), gorgon_spear(), leech_blade(), gloom_sceptre(),
 			drakebone_sabre(), titans_cleaver(), sorcerers_crook(),
-			diamond_sword(), rimefang_greatsword(), excalibur()]
+			diamond_sword(), rimefang_greatsword(),
+			mirebrand(), vampire_fang(), archmages_staff(), berserker_axe(), hexing_rod(),
+			excalibur()]
 
 
 # What an orb at this depth will sell: this tier and everything above it, minus

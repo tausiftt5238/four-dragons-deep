@@ -278,6 +278,8 @@ func _show_item_submenu() -> void:
 		var usable: bool = is_throwable or item.has("mirror") or player.can_use_item(item)
 		if item.has("revive"):
 			usable = not _fallen_members().is_empty()
+		elif item.has("stage_up"):
+			usable = true
 		elif _restorative(item):
 			usable = _living_party().any(func(m: CharacterSheet) -> bool: return m.could_use(item))
 		entries.append({title = item["name"] as String,
@@ -358,6 +360,37 @@ func _roll_crit() -> bool:
 # whatever happened, which made a throwable the safe way to probe a chart.
 func _use_item_by_id(item_id: String) -> Dictionary:
 	for item: Dictionary in player.inventory:
+		if item["id"] == item_id and item["type"] == "consumable" and item.has("revive") \
+				and item.get("party", false):
+			var fallen: Array[CharacterSheet] = _fallen_members()
+			if fallen.is_empty():
+				return {msg = "[color=gray]Nobody to revive.[/color]", cost = PressTurn.COST_FULL}
+			player.remove_item(item, 1)
+			var names: Array[String] = []
+			for m: CharacterSheet in fallen:
+				m.heal(maxi(1, m.max_hp * int(item["revive"]) / 100))
+				names.append(_member_name(m))
+			_refresh_hp()
+			return {msg = "[color=lime]Used %s! %s %s back on their feet.[/color]" % [
+					item["name"], ", ".join(names), "is" if names.size() == 1 else "are"],
+					cost = PressTurn.COST_FULL}
+		if item["id"] == item_id and item["type"] == "consumable" and item.has("stage_up"):
+			player.remove_item(item, 1)
+			var rose: Array[String] = []
+			for st: Variant in item["stage_up"] as Dictionary:
+				var moved: int = 0
+				for m: CharacterSheet in _living_party():
+					if m.shift_stage(st as String, int((item["stage_up"] as Dictionary)[st])) != 0:
+						moved += 1
+				if moved > 0:
+					rose.append(_stat_name(st as String))
+			_refresh_hp()
+			if rose.is_empty():
+				return {msg = "[color=gray]Used %s — the party is already at the limit.[/color]" % item["name"],
+						cost = PressTurn.COST_FULL}
+			return {msg = "[color=aqua]Used %s!  The party's %s %s.[/color]" % [
+					item["name"], ", ".join(rose), "rises" if rose.size() == 1 else "rise"],
+					cost = PressTurn.COST_FULL}
 		if item["id"] == item_id and item["type"] == "consumable" and item.has("revive"):
 			var who: CharacterSheet = _ally_target
 			if who == null or who.is_alive():
@@ -914,6 +947,10 @@ static func _restorative(item: Dictionary) -> bool:
 
 
 func _on_use_item(item: Dictionary) -> void:
+	# A Phoenix Plume or a draught is for everyone: nobody to pick.
+	if item.has("stage_up") or (item.has("revive") and item.get("party", false)):
+		await _commit_item(item)
+		return
 	if item.has("revive"):
 		_pick_ally(true, "Revive who?", _back_to(_show_item_submenu),
 				func() -> void: await _commit_item(item))
@@ -1021,6 +1058,8 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 		var heal_amt: int = max(1, dmg / 5)
 		player.heal(heal_amt)
 		extra = "  [color=lime]Vampiric: +%d HP.[/color]" % heal_amt
+	if _actor_is_player() and melee:
+		extra += _weapon_on_hit(dmg)
 	# What happened after the blow: the foe going down, or a warden answering it.
 	var after: String = ""
 	if not enemy.is_alive():
@@ -1031,6 +1070,32 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 			prefix, CombatMath.outcome_tag(outcome, crit, muted), enemy.display_name(),
 			dmg, extra, after],
 			cost = CombatMath.cost_for(outcome, crit, muted)}
+
+
+# What the hero's blade does besides cut: drink some of the blow back, and on
+# its own odds lay an ailment or knock a stage off the foe it struck. Read off
+# the weapon (Weapon.make's `extra`), so a plain blade adds nothing.
+func _weapon_on_hit(dmg: int) -> String:
+	var w: Dictionary = player.equipped_weapon
+	var out: String = ""
+	var drain: int = int(w.get("drain_pct", 0))
+	if drain > 0 and dmg > 0:
+		var back: int = maxi(1, dmg * drain / 100)
+		player.heal(back)
+		out += "  [color=lime]%s drinks %d HP.[/color]" % [w["name"], back]
+	if not enemy.is_alive():
+		return out
+	var status: String = w.get("hit_status", "") as String
+	if status != "" and randi() % 100 < int(w.get("hit_status_pct", 0)) \
+			and not enemy.has_status(status) and not enemy.resists_status(status):
+		enemy.apply_status(status)
+		out += "  [color=violet]%s is now %s.[/color]" % [enemy.display_name(),
+				Status.get_data(status).get("name", status)]
+	var stat: String = w.get("hit_stage", "") as String
+	if stat != "" and randi() % 100 < int(w.get("hit_stage_pct", 0)) \
+			and enemy.shift_stage(stat, -1) != 0:
+		out += "  [color=orange]%s's %s falls.[/color]" % [enemy.display_name(), _stat_name(stat)]
+	return out
 
 
 # ── Enemy side ────────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ class_name Accessory
 
 # What a ward trinket costs at an orb. Its depth tier says nothing about what
 # it is worth to someone the Thunder Dragon keeps paralysing.
-const WARD_PRICE: int = 400
+const WARD_PRICE: int = 800
 
 
 static func make(id: String, name: String, desc: String, floor: int,
@@ -77,7 +77,7 @@ static func wards_off(acc: Dictionary, status_id: String) -> bool:
 # Nothing gets the jump on its wearer (CombatScene.can_ambush), however slow
 # they are. On the first shelf so a player who keeps being ambushed has an
 # answer, and priced so it is a decision on floor one rather than a given.
-const SENTRY_PRICE: int = 500
+const SENTRY_PRICE: int = 1000
 
 static func sentrys_whistle() -> Dictionary:
 	var d: Dictionary = make("sentrys_whistle", "Sentry's Whistle",
@@ -90,7 +90,7 @@ static func sentrys_whistle() -> Dictionary:
 # Walking brings MP back only while this is worn (Main._recover_mp_on_step):
 # a slice of the pool a step, fifty steps from empty to full. Without it MP
 # comes back at orbs and from ethers, and nowhere else.
-const WELL_PRICE: int = 100
+const WELL_PRICE: int = 250
 
 static func wellspring_charm() -> Dictionary:
 	var d: Dictionary = make("wellspring_charm", "Wellspring Charm",
@@ -103,7 +103,7 @@ static func wellspring_charm() -> Dictionary:
 # At the end of every round in a fight, the hero and every demon standing with
 # him get a slice of their MP back (CombatScene._recover_mp_each_round): a
 # tenth of the pool, so a long fight pays for its own spells.
-const TIDE_PRICE: int = 500
+const TIDE_PRICE: int = 1200
 
 static func tide_stone() -> Dictionary:
 	var d: Dictionary = make("tide_stone", "Tide Stone",

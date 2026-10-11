@@ -193,10 +193,17 @@ func give_keepsake(item: Dictionary, demon_name: String) -> String:
 	if item.has("stat_up"):
 		var stat: String = item["stat_up"] as String
 		var gains: Dictionary = demon_gains.get(demon_name, {}) as Dictionary
-		gains[stat] = int(gains.get(stat, 0)) + int(item.get("stat_up_amount", 1))
+		# A Prism Stone is every seed but Luck, which demons do not have.
+		var raised: Array = Item.SEEDS.keys().filter(func(k: String) -> bool: return k != "luk") \
+				if stat == Item.ALL_STATS else [stat]
+		for st: Variant in raised:
+			gains[st] = int(gains.get(st, 0)) + int(item.get("stat_up_amount", 1))
 		demon_gains[demon_name] = gains
 		var e: Enemy = bound_demon(demon_name)
-		out = "%s's %s rises to %d." % [demon_name, Item.SEEDS[stat][2], int(e.get(stat))]
+		if stat == Item.ALL_STATS:
+			out = "%s's every stat rises by %d." % [demon_name, int(item.get("stat_up_amount", 1))]
+		else:
+			out = "%s's %s rises to %d." % [demon_name, Item.SEEDS[stat][2], int(e.get(stat))]
 		e.free()
 	else:
 		var bonus: Dictionary = demon_bonus.get(demon_name, {}) as Dictionary
@@ -719,11 +726,12 @@ func unequip_accessory(item_id: String) -> void:
 			return
 
 
-# The worn trinket that keeps this ailment off, or {} if none does.
+# The worn piece that keeps this ailment off, or {} if none does: a trinket,
+# or the odd armour that wards one too.
 func ward_against(status_id: String) -> Dictionary:
-	for acc: Dictionary in equipped_accessories:
-		if Accessory.wards_off(acc, status_id):
-			return acc
+	for piece: Dictionary in _worn():
+		if Accessory.wards_off(piece, status_id):
+			return piece
 	return {}
 
 
@@ -751,35 +759,43 @@ func never_ambushed() -> bool:
 	return false
 
 
-func _accessory_sum(key: String) -> int:
+# Everything worn: the weapon, the armour and the trinkets.
+func _worn() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for piece: Dictionary in [equipped_weapon, equipped_armor]:
+		if not piece.is_empty():
+			out.append(piece)
+	out.append_array(equipped_accessories)
+	return out
+
+
+# Any slot can carry any stat: a weapon with luck in it, armour that feeds the
+# arm or the mind as well as the guard.
+func _gear_sum(key: String) -> int:
 	var total: int = 0
-	for acc: Dictionary in equipped_accessories:
-		total += int(acc.get(key, 0))
+	for piece: Dictionary in _worn():
+		total += int(piece.get(key, 0))
 	return total
 
 
 # ── Effective stats (base + what he is carrying) ──────────────────────────────
 
 func effective_str() -> int:
-	return maxi(1, str + int(equipped_weapon.get("str_bonus", 0))
-			+ _accessory_sum("str_bonus"))
+	return maxi(1, str + _gear_sum("str_bonus"))
 
 func effective_def() -> int:
-	return maxi(0, def + int(equipped_armor.get("def_bonus", 0))
-			+ int(equipped_weapon.get("def_bonus", 0))
-			+ _accessory_sum("def_bonus"))
+	return maxi(0, def + _gear_sum("def_bonus"))
 
 func effective_mag() -> int:
-	return maxi(1, mag + int(equipped_weapon.get("mag_bonus", 0))
-			+ _accessory_sum("mag_bonus"))
+	return maxi(1, mag + _gear_sum("mag_bonus"))
 
 # Weight is paid in agility, and a heavy weapon and heavy armour both charge.
+# Weapons and armour write it as agl_pen, trinkets as agl_bonus.
 func effective_agl() -> int:
-	return maxi(1, agl + int(equipped_weapon.get("agl_pen", 0))
-			+ int(equipped_armor.get("agl_pen", 0)) + _accessory_sum("agl_bonus"))
+	return maxi(1, agl + _gear_sum("agl_pen") + _gear_sum("agl_bonus"))
 
 func effective_luk() -> int:
-	return maxi(1, luk + _accessory_sum("luk_bonus"))
+	return maxi(1, luk + _gear_sum("luk_bonus"))
 
 
 # What an ordinary swing is scored as. Most weapons are phys; an elemental one
@@ -885,7 +901,9 @@ func use_item(item: Dictionary) -> String:
 			var msg: String = ""
 			if item.has("stat_up"):
 				var stat: String = item["stat_up"] as String
-				set(stat, int(get(stat)) + int(item.get("stat_up_amount", 1)))
+				var raised: Array = Item.SEEDS.keys() if stat == Item.ALL_STATS else [stat]
+				for st: Variant in raised:
+					set(st as String, int(get(st as String)) + int(item.get("stat_up_amount", 1)))
 				# Defence and Magic feed the HP and MP ceilings. Recomputing
 				# refills them, which a seed should not do: keep what was there.
 				var keep_hp: int = hp
@@ -895,6 +913,8 @@ func use_item(item: Dictionary) -> String:
 				hp = mini(keep_hp, max_hp)
 				mp = mini(keep_mp, max_mp)
 				remove_item(item, 1)
+				if stat == Item.ALL_STATS:
+					return "Every stat rises by %d." % int(item.get("stat_up_amount", 1))
 				return "%s rises to %d." % [Item.SEEDS[stat][2], int(get(stat))]
 			var max_hp_up: int = item.get("max_hp_gain", 0)
 			var max_mp_up: int = item.get("max_mp_gain", 0)

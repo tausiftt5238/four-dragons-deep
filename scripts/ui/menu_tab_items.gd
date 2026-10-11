@@ -202,6 +202,9 @@ func _build_give(item_id: String) -> void:
 static func _now_line(item: Dictionary, who: CharacterSheet) -> String:
 	if item.has("stat_up"):
 		var stat: String = item["stat_up"] as String
+		if stat == Item.ALL_STATS:
+			return "STR %d  DEF %d  MAG %d  AGL %d" % [int(who.get("str")), int(who.get("def")),
+					int(who.get("mag")), int(who.get("agl"))]
 		return "%s %d" % [stat.to_upper(), int(who.get(stat))]
 	if int(item.get("max_hp_gain", 0)) > 0:
 		return "Max HP %d" % who.max_hp

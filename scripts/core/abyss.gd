@@ -390,7 +390,7 @@ static func _reforge(base: Dictionary, band: int, mult: float, word: String, cyc
 			g[k] = maxi(1, roundi(float(g[k]) * mult))
 	g.erase("found_only")
 	g["floor"] = 4
-	g["price"] = roundi(float(20 + 4 * 25) * mult * 2.0)
+	g["price"] = roundi(float(OrbUI.GEAR_PRICE[4]) * mult)
 	# One twist: a weapon may take up an element; worn things may turn one.
 	var el: String = ["fire", "ice", "thunder", "light", "dark", Affinity.PHYS][rng.randi() % 6]
 	match g.get("type", ""):

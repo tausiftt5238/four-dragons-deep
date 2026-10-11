@@ -18,14 +18,15 @@ const ITEM_SCRIPT: String = "res://scripts/data/item.gd"
 const ITEM_COLUMNS: Array[String] = [
 	"id", "name", "kind", "floor", "price",
 	"hp_restore", "mp_restore", "cures", "inflicts", "element", "dmg",
-	"max_hp_gain", "max_mp_gain", "revive_pct", "desc",
+	"max_hp_gain", "max_mp_gain", "revive_pct", "party", "stage_up", "stat_up", "desc",
 ]
 const WEAPON_COLUMNS: Array[String] = [
-	"id", "name", "tier", "price", "str", "mag", "def", "agl",
-	"attack_element", "found_only", "desc",
+	"id", "name", "tier", "price", "str", "mag", "def", "agl", "luk",
+	"attack_element", "on_hit", "found_only", "desc",
 ]
 const ARMOR_COLUMNS: Array[String] = [
-	"id", "name", "tier", "price", "def", "agl", "resist", "weak", "desc",
+	"id", "name", "tier", "price", "def", "agl", "str", "mag", "luk",
+	"resist", "weak", "wards", "desc",
 ]
 const ACCESSORY_COLUMNS: Array[String] = [
 	"id", "name", "tier", "price", "str", "def", "mag", "agl", "luk",
@@ -57,20 +58,28 @@ func _initialize() -> void:
 		cures = d.get("cures_status", ""), inflicts = d.get("inflicts_status", ""),
 		element = d.get("element", ""), dmg = _nz(d.get("dmg", 0)),
 		max_hp_gain = _nz(d.get("max_hp_gain", 0)), max_mp_gain = _nz(d.get("max_mp_gain", 0)),
-		revive_pct = _nz(d.get("revive", 0)), desc = d["desc"]}))
+		revive_pct = _nz(d.get("revive", 0)),
+		party = "yes" if bool(d.get("party", false)) else "",
+		stage_up = " ".join((d.get("stage_up", {}) as Dictionary).keys()),
+		stat_up = d.get("stat_up", ""), desc = d["desc"]}))
 
 	_write("weapons", WEAPON_COLUMNS, Weapon.all().map(func(d: Dictionary) -> Dictionary: return {
 		id = d["id"], name = d["name"], tier = d["floor"], price = OrbUI.item_price(d),
 		str = _nz(d.get("str_bonus", 0)), mag = _nz(d.get("mag_bonus", 0)),
 		def = _nz(d.get("def_bonus", 0)), agl = _nz(d.get("agl_pen", 0)),
+		luk = _nz(d.get("luk_bonus", 0)),
 		attack_element = d.get("attack_element", ""),
+		on_hit = GearTooltip.on_hit_text(d, false),
 		found_only = "yes" if bool(d.get("found_only", false)) else "",
 		desc = d["desc"]}))
 
 	_write("armor", ARMOR_COLUMNS, Armor.all().map(func(d: Dictionary) -> Dictionary: return {
 		id = d["id"], name = d["name"], tier = d["floor"], price = OrbUI.item_price(d),
 		def = _nz(d.get("def_bonus", 0)), agl = _nz(d.get("agl_pen", 0)),
-		resist = d.get("resist_element", ""), weak = d.get("weakness", ""),
+		str = _nz(d.get("str_bonus", 0)), mag = _nz(d.get("mag_bonus", 0)),
+		luk = _nz(d.get("luk_bonus", 0)),
+		resist = " ".join(Armor.resists_of(d)), weak = " ".join(Armor.weaknesses_of(d)),
+		wards = " ".join(d.get("wards", []) as Array),
 		desc = d["desc"]}))
 
 	_write("accessories", ACCESSORY_COLUMNS, Accessory.all().map(func(d: Dictionary) -> Dictionary: return {

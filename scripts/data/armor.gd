@@ -7,6 +7,9 @@
 # carry one of each at most; the layered ones (make_layered) carry two or three,
 # and pay for every element they turn with a hole somewhere else. Nothing here
 # grants a drain or a repel: those belong to demons, not to smithing.
+#
+# `extra` on make_layered gives a piece stats beyond the guard (str_bonus,
+# mag_bonus, luk_bonus) — negative ones too — or `wards`, as a trinket has.
 class_name Armor
 
 
@@ -20,10 +23,11 @@ static func make(id: String, name: String, desc: String,
 
 static func make_layered(id: String, name: String, desc: String,
 		def_bonus: int, floor: int, agl_pen: int,
-		resists: Array[String], weaknesses: Array[String]) -> Dictionary:
+		resists: Array[String], weaknesses: Array[String], extra: Dictionary = {}) -> Dictionary:
 	var d: Dictionary = make(id, name, desc, def_bonus, floor, agl_pen)
 	d["resists"] = resists
 	d["weaknesses"] = weaknesses
+	d.merge(extra)
 	return d
 
 
@@ -81,6 +85,21 @@ static func pilgrims_robe() -> Dictionary:
 			"Blessed at every shrine on the road down. No blessing stops a blade.",
 			2, 1, 1, [Affinity.LIGHT, Affinity.DARK], [Affinity.PHYS])
 
+static func thiefs_cloak() -> Dictionary:
+	return make_layered("thiefs_cloak", "Thief's Cloak",
+			"Dark wool with too many pockets. Light on the feet, thin against a blade.",
+			2, 1, 2, [], [Affinity.PHYS], {luk_bonus = 2})
+
+static func monks_wraps() -> Dictionary:
+	return make_layered("monks_wraps", "Monk's Wraps",
+			"Bands of linen, wound tight for the fist. The dark finds the gaps.",
+			2, 1, 0, [], [Affinity.DARK], {str_bonus = 2})
+
+static func apprentice_robe() -> Dictionary:
+	return make_layered("apprentice_robe", "Apprentice Robe",
+			"Singed at the hem, as they all are. The lessons stuck.",
+			2, 1, 0, [Affinity.LIGHT], ["fire"], {mag_bonus = 2})
+
 
 # ── Tier II · floors 6-10 ────────────────────────────────────────────────────
 
@@ -117,6 +136,21 @@ static func grave_shroud() -> Dictionary:
 			"Taken off someone who did not need it. The dark and the cold know it as theirs.",
 			7, 2, 0, [Affinity.DARK, "ice"], [Affinity.LIGHT, "fire"])
 
+static func berserker_hide() -> Dictionary:
+	return make_layered("berserker_hide", "Berserker Hide",
+			"A bear's pelt, worn head and all. You think less and hit harder.",
+			6, 2, 0, [], ["ice"], {str_bonus = 3, mag_bonus = -2})
+
+static func sages_vestment() -> Dictionary:
+	return make_layered("sages_vestment", "Sage's Vestment",
+			"Embroidered with every word the order kept. None of them stop a sword.",
+			5, 2, 0, [Affinity.DARK], [Affinity.PHYS], {mag_bonus = 4})
+
+static func marsh_leathers() -> Dictionary:
+	return make_layered("marsh_leathers", "Marsh Leathers",
+			"Oiled for the fens. Cold and venom run off it; the storm runs in.",
+			7, 2, 0, ["ice"], ["thunder"], {wards = [Status.POISON]})
+
 
 # ── Tier III · floors 11-15 ──────────────────────────────────────────────────
 
@@ -152,6 +186,21 @@ static func templars_hauberk() -> Dictionary:
 	return make_layered("templars_hauberk", "Templar's Hauberk",
 			"Consecrated mail. Steel and the light both glance off; the dark has its measure.",
 			14, 3, -2, [Affinity.PHYS, Affinity.LIGHT], [Affinity.DARK])
+
+static func duellists_coat() -> Dictionary:
+	return make_layered("duellists_coat", "Duellist's Coat",
+			"Cut for the lunge. It has seen more first blood than last.",
+			10, 3, 2, [], [], {luk_bonus = 2})
+
+static func warlocks_robe() -> Dictionary:
+	return make_layered("warlocks_robe", "Warlock's Robe",
+			"Heavy with sigils, and the arms are too long for anything but casting.",
+			9, 3, 0, [Affinity.DARK], [Affinity.LIGHT], {mag_bonus = 6, str_bonus = -2})
+
+static func spiked_plate() -> Dictionary:
+	return make_layered("spiked_plate", "Spiked Plate",
+			"Every edge of it is a point. A shoulder in this is an attack.",
+			15, 3, -3, [Affinity.PHYS], ["thunder"], {str_bonus = 3})
 
 
 # ── Tier IV · floors 16-20 ───────────────────────────────────────────────────
@@ -194,17 +243,36 @@ static func dragonbone_plate() -> Dictionary:
 			"Cut from the dragons themselves: fire, frost and storm. Nothing holy or unholy in it.",
 			26, 4, -3, ["fire", "ice", "thunder"], [Affinity.LIGHT, Affinity.DARK])
 
+static func mirrorplate() -> Dictionary:
+	return make_layered("mirrorplate", "Mirrorplate",
+			"Polished until it shows you everything. Holy and unholy both turn on it; steel does not.",
+			22, 4, -2, [Affinity.LIGHT, Affinity.DARK], [Affinity.PHYS])
+
+static func dragonlord_mail() -> Dictionary:
+	return make_layered("dragonlord_mail", "Dragonlord Mail",
+			"Red scale on black steel, cut to the king's own measure. It runs hot, and the cold bites it.",
+			24, 4, -3, ["fire"], ["ice"], {str_bonus = 4, mag_bonus = 4})
+
+static func shadow_weave() -> Dictionary:
+	return make_layered("shadow_weave", "Shadow Weave",
+			"Spun from the dark between torches. A lamp shows it for what it is.",
+			16, 4, 4, [Affinity.DARK], [Affinity.LIGHT], {luk_bonus = 4})
+
 
 static func all() -> Array[Dictionary]:
 	return [leather_vest(), padded_coat(), leather_garb(),
 			fur_mantle(), tarred_jerkin(), pilgrims_robe(),
+			thiefs_cloak(), monks_wraps(), apprentice_robe(),
 			chain_mail(), salt_tanned_hide(), silver_armor(), scale_hauberk(),
 			bronze_cuirass(), wyrmhide_jacket(), grave_shroud(),
+			berserker_hide(), sages_vestment(), marsh_leathers(),
 			plate_armor(), warded_surcoat(), gold_armor(), mythril_chain(),
 			obsidian_plate(), stormglass_mail(), templars_hauberk(),
+			duellists_coat(), warlocks_robe(), spiked_plate(),
 			gargoyle_scale(), drakescale_cuirass(), platinum_armor(),
 			diamond_armor(), saints_raiment(),
-			abyssal_carapace(), seraphs_mail(), dragonbone_plate()]
+			abyssal_carapace(), seraphs_mail(), dragonbone_plate(),
+			mirrorplate(), dragonlord_mail(), shadow_weave()]
 
 
 # What a floor could plausibly turn up: this tier and everything above it.

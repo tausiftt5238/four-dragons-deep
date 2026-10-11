@@ -820,6 +820,9 @@ func _supplies() -> Array[Dictionary]:
 		out.append(Item.revival_feather())
 	if floor_num >= Item.DEEP_SUPPLIES_FLOOR:
 		out.append_array(Item.deep_supplies())
+	for d: Dictionary in Item.wider_supplies():
+		if int(d["depth"]) <= floor_num:
+			out.append(d)
 	return out
 
 
@@ -857,8 +860,25 @@ func _gear() -> Array[Dictionary]:
 # Price follows the item's depth tier, unless it carries one of its own — the
 # dispel scrolls do, because what they are worth has nothing to do with how far
 # down you have to be to be offered one.
+#
+# Gear and scrolls climb with the gold a fight pays down there (about eleven a
+# floor a fight): a piece costs a handful of fights at its own depth, and a
+# scroll, which is kept for good, rather more the deeper it is learned. They
+# were once 20 + 25 a tier for both, so a tier-four blade cost half of one
+# floor-eighteen fight.
+const GEAR_PRICE: Array[int] = [0, 100, 500, 1000, 1800]
+const SCROLL_MIN: int = 45
+
 static func item_price(item: Dictionary) -> int:
-	return int(item.get("price", 20 + int(item.get("floor", 1)) * 25))
+	if item.has("price"):
+		return int(item["price"])
+	var floor: int = int(item.get("floor", 1))
+	match item.get("type", "") as String:
+		"weapon", "armor", "accessory":
+			return GEAR_PRICE[clampi(floor, 1, GEAR_PRICE.size() - 1)]
+		"scroll":
+			return maxi(SCROLL_MIN, floor * (30 + 5 * floor))
+	return 20 + floor * 25
 
 
 # Split the way the pack is used in a fight: what patches you up, and what you

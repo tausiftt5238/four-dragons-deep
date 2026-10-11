@@ -39,6 +39,10 @@ static func build(item: Dictionary, player: PlayerCharacter) -> String:
 		lines.append("Swings: %s%s" % [Affinity.element_name(el),
 				"  (expels rather than wounds)" if Affinity.is_banishing(el) else ""])
 
+	var hit: String = on_hit_text(item, false)
+	if hit != "":
+		lines.append("On hit: %s" % hit)
+
 	var r: PackedStringArray = PackedStringArray()
 	for e: String in Armor.resists_of(item):
 		r.append(Affinity.element_name(e))
@@ -128,3 +132,23 @@ static func wards_text(item: Dictionary) -> String:
 	for id: Variant in w:
 		names.append((Status.get_data(id as String).get("noun", id) as String).capitalize())
 	return ", ".join(names)
+
+
+# What a weapon does when it lands, besides the damage: "Poison 25%",
+# "ATK- 30%", "Drains 20%". `markup` paints it for a list row (ItemInfo);
+# without it the words are plain, for the tooltip.
+static func on_hit_text(item: Dictionary, markup: bool) -> String:
+	var parts: Array[String] = []
+	var status: String = item.get("hit_status", "") as String
+	if status != "":
+		var pct: String = " %d%%" % int(item.get("hit_status_pct", 0))
+		parts.append((ItemInfo.ailment(status) if markup \
+				else Status.get_data(status).get("name", status) as String) + pct)
+	var stat: String = item.get("hit_stage", "") as String
+	if stat != "":
+		var pct2: String = " %d%%" % int(item.get("hit_stage_pct", 0))
+		parts.append((ItemInfo.stat_tag(stat, -1) if markup else "foe %s-" % stat.to_upper()) + pct2)
+	if int(item.get("drain_pct", 0)) > 0:
+		var drain: String = "Drains %d%%" % int(item["drain_pct"])
+		parts.append("[color=%s]%s[/color]" % [ItemInfo.HP_COLOR, drain] if markup else drain)
+	return ", ".join(parts)

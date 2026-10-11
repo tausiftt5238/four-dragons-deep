@@ -50,6 +50,12 @@ static func desc_for(spell_id: String, desc: String) -> String:
 	return "%s %s  —  %s" % [head, Spell.reach_tag(spell_id), desc]
 
 
+# A consumable whose worth has outgrown its tier's 20 + 25 a step.
+static func _priced(d: Dictionary, price: int) -> Dictionary:
+	d["price"] = price
+	return d
+
+
 static func elemental_throwable(id: String, name: String, desc: String,
 		element: String, dmg: int, floor: int) -> Dictionary:
 	return {id=id, name=name, type="consumable", desc=desc,
@@ -64,9 +70,9 @@ static func health_potion() -> Dictionary:
 			30, 0, 1)
 
 static func hi_potion() -> Dictionary:
-	return consumable("hi_potion", "Hi-Potion",
+	return _priced(consumable("hi_potion", "Hi-Potion",
 			"Restores 80 HP.",
-			80, 0, 2)
+			80, 0, 2), 150)
 
 static func ether() -> Dictionary:
 	return consumable("ether", "Ether",
@@ -92,26 +98,124 @@ static func _deep(d: Dictionary, price: int, party: bool = false) -> Dictionary:
 
 static func super_potion() -> Dictionary:
 	return _deep(consumable("super_potion", "Super Potion",
-			"Restores 250 HP.", 250, 0, 4), 160)
+			"Restores 250 HP.", 250, 0, 4), 500)
 
 static func hi_ether() -> Dictionary:
 	return _deep(consumable("hi_ether", "Hi-Ether",
-			"Restores 60 MP.", 0, 60, 4), 180)
+			"Restores 60 MP.", 0, 60, 4), 600)
 
 static func elixir() -> Dictionary:
 	return _deep(consumable("elixir", "Elixir",
-			"Restores all HP and MP.", FULL, FULL, 4), 600)
+			"Restores all HP and MP.", FULL, FULL, 4), 2000)
 
 static func potion_cauldron() -> Dictionary:
 	return _deep(consumable("potion_cauldron", "Potion Cauldron",
-			"Restores all HP to the whole party.", FULL, 0, 4), 750, true)
+			"Restores all HP to the whole party.", FULL, 0, 4), 2500, true)
 
 static func ether_fountain() -> Dictionary:
 	return _deep(consumable("ether_fountain", "Ether Fountain",
-			"Restores 40 MP to the whole party.", 0, 40, 4), 600, true)
+			"Restores 40 MP to the whole party.", 0, 40, 4), 1800, true)
 
 static func deep_supplies() -> Array[Dictionary]:
 	return [super_potion(), hi_ether(), elixir(), potion_cauldron(), ether_fountain()]
+
+# ── The wider shelf ───────────────────────────────────────────────────────────
+#
+# Supplies for each band past the first, on the shelf from the band's first
+# floor (`depth`), the way the deep supplies are from the fourth. `party` is
+# the whole living party at once, as for the cauldron; a party `revive` lifts
+# every fallen ally. A draught's `stage_up` raises those stages for the fight,
+# on everyone standing, exactly as the matching buff spell would.
+const BAND_TWO:   int = 6
+const BAND_THREE: int = 11
+
+static func _shelf(d: Dictionary, depth: int, price: int, party: bool = false) -> Dictionary:
+	d["depth"] = depth
+	d["price"] = price
+	if party:
+		d["party"] = true
+	return d
+
+static func tonic() -> Dictionary:
+	return _shelf(consumable("tonic", "Tonic",
+			"Restores 50 HP and 25 MP.", 50, 25, 2), BAND_TWO, 200)
+
+static func full_potion() -> Dictionary:
+	return _shelf(consumable("full_potion", "Full Potion",
+			"Restores all HP.", FULL, 0, 3), BAND_THREE, 700)
+
+static func max_ether() -> Dictionary:
+	return _shelf(consumable("max_ether", "Max Ether",
+			"Restores all MP.", 0, FULL, 4), DEEP_SUPPLIES_FLOOR, 1200)
+
+static func healing_mist() -> Dictionary:
+	return _shelf(consumable("healing_mist", "Healing Mist",
+			"Restores 60 HP to the whole party.", 60, 0, 2), BAND_TWO, 350, true)
+
+static func ether_mist() -> Dictionary:
+	return _shelf(consumable("ether_mist", "Ether Mist",
+			"Restores 20 MP to the whole party.", 0, 20, 2), BAND_TWO, 400, true)
+
+static func healing_rain() -> Dictionary:
+	return _shelf(consumable("healing_rain", "Healing Rain",
+			"Restores 200 HP to the whole party.", 200, 0, 3), BAND_THREE, 900, true)
+
+static func cleansing_mist() -> Dictionary:
+	return _shelf(consumable("cleansing_mist", "Cleansing Mist",
+			"Cures every ailment on the whole party.", 0, 0, 3, "all"), BAND_THREE, 600, true)
+
+static func megalixir() -> Dictionary:
+	return _shelf(consumable("megalixir", "Megalixir",
+			"Restores all HP and MP to the whole party.", FULL, FULL, 4),
+			DEEP_SUPPLIES_FLOOR, 5000, true)
+
+static func phoenix_plume() -> Dictionary:
+	var d: Dictionary = consumable("phoenix_plume", "Phoenix Plume",
+			"Brings every fallen ally back with half their HP.", 0, 0, 4)
+	d["revive"] = 50
+	return _shelf(d, DEEP_SUPPLIES_FLOOR, 2500, true)
+
+static func _draught(id: String, name: String, desc: String, stages: Dictionary,
+		depth: int, price: int) -> Dictionary:
+	var d: Dictionary = consumable(id, name, desc, 0, 0, 2 if depth < DEEP_SUPPLIES_FLOOR else 4)
+	d["stage_up"] = stages
+	return _shelf(d, depth, price)
+
+static func power_draught() -> Dictionary:
+	return _draught("power_draught", "Power Draught", "Raises the party's attack for the fight.",
+			{atk = 1}, BAND_TWO, 250)
+
+static func iron_draught() -> Dictionary:
+	return _draught("iron_draught", "Iron Draught", "Raises the party's defence for the fight.",
+			{def = 1}, BAND_TWO, 250)
+
+static func swift_draught() -> Dictionary:
+	return _draught("swift_draught", "Swift Draught", "Raises the party's agility for the fight.",
+			{agl = 1}, BAND_TWO, 250)
+
+static func mind_draught() -> Dictionary:
+	return _draught("mind_draught", "Mind Draught", "Raises the party's magic for the fight.",
+			{mag = 1}, BAND_TWO, 250)
+
+static func heros_draught() -> Dictionary:
+	return _draught("heros_draught", "Hero's Draught",
+			"Raises the party's attack, defence, agility and magic for the fight.",
+			{atk = 1, def = 1, agl = 1, mag = 1}, DEEP_SUPPLIES_FLOOR, 1500)
+
+# Every seed at once. On the deep shelf only, and priced like it.
+static func prism_stone() -> Dictionary:
+	var d: Dictionary = {id = "prism_stone", name = "Prism Stone", type = "consumable",
+			desc = "Raises every stat by %d, for good." % SEED_GAIN,
+			hp_restore = 0, mp_restore = 0, floor = 4, qty = 1,
+			stat_up = ALL_STATS, stat_up_amount = SEED_GAIN}
+	return _shelf(d, DEEP_SUPPLIES_FLOOR, 3000)
+
+static func wider_supplies() -> Array[Dictionary]:
+	return [tonic(), healing_mist(), ether_mist(),
+			power_draught(), iron_draught(), swift_draught(), mind_draught(),
+			full_potion(), healing_rain(), cleansing_mist(),
+			max_ether(), megalixir(), phoenix_plume(), heros_draught(), prism_stone()]
+
 
 static func antidote() -> Dictionary:
 	return consumable("antidote", "Antidote",
@@ -134,9 +238,9 @@ static func eye_drops() -> Dictionary:
 			0, 0, 1, "blind")
 
 static func panacea() -> Dictionary:
-	return consumable("panacea", "Panacea",
+	return _priced(consumable("panacea", "Panacea",
 			"Cures all ailments.",
-			0, 0, 4, "all")
+			0, 0, 4, "all"), 300)
 
 
 # ── Stones ────────────────────────────────────────────────────────────────────
@@ -188,6 +292,7 @@ const SEEDS: Dictionary = {
 	"luk": ["seed_luck",     "Seed of Luck",     "Luck"],
 }
 const SEED_GAIN: int = 1
+const ALL_STATS: String = "all"   # a stat_up that raises every SEEDS stat
 const SEED_FROM_CHEST: int = 8   # percent
 const SEED_FROM_KILL:  int = 2   # percent
 
@@ -246,7 +351,7 @@ static func revival_feather() -> Dictionary:
 	var d: Dictionary = consumable("revival_feather", "Revival Feather",
 			"Brings a fallen ally back with half their HP.", 0, 0, 2)
 	d["revive"] = 50
-	d["price"] = 120
+	d["price"] = 400
 	return d
 
 static func scroll_venom() -> Dictionary:
@@ -425,37 +530,37 @@ static func venom_flask() -> Dictionary:
 			0, 0, 1, "", "poison")
 
 static func flash_powder() -> Dictionary:
-	return consumable("flash_powder", "Flash Powder",
+	return _priced(consumable("flash_powder", "Flash Powder",
 			"Blinds an enemy, halving its agility.",
-			0, 0, 2, "", "blind")
+			0, 0, 2, "", "blind"), 120)
 
 static func silence_dust() -> Dictionary:
-	return consumable("silence_dust", "Silence Dust",
+	return _priced(consumable("silence_dust", "Silence Dust",
 			"Silences an enemy, preventing spells.",
-			0, 0, 2, "", "silence")
+			0, 0, 2, "", "silence"), 120)
 
 static func binding_web() -> Dictionary:
-	return consumable("binding_web", "Binding Web",
+	return _priced(consumable("binding_web", "Binding Web",
 			"Ensnares an enemy, paralyzing it.",
-			0, 0, 3, "", "paralyzed")
+			0, 0, 3, "", "paralyzed"), 200)
 
 
 # ── Elemental throwables ──────────────────────────────────────────────────────
 
 static func fire_bomb() -> Dictionary:
-	return elemental_throwable("fire_bomb", "Fire Bomb",
+	return _priced(elemental_throwable("fire_bomb", "Fire Bomb",
 			"Hurls a flaming explosive. Effective vs. fire-weak foes.",
-			"fire", 20, 2)
+			"fire", 20, 2), 120)
 
 static func ice_shard() -> Dictionary:
-	return elemental_throwable("ice_shard", "Ice Shard",
+	return _priced(elemental_throwable("ice_shard", "Ice Shard",
 			"Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.",
-			"ice", 20, 3)
+			"ice", 20, 3), 160)
 
 static func thunder_bead() -> Dictionary:
-	return elemental_throwable("thunder_bead", "Thunder Bead",
+	return _priced(elemental_throwable("thunder_bead", "Thunder Bead",
 			"Discharges a crackling orb. Effective vs. thunder-weak foes.",
-			"thunder", 20, 3)
+			"thunder", 20, 3), 160)
 
 
 # ── Enemy drop table ──────────────────────────────────────────────────────────
@@ -534,6 +639,7 @@ static func drop_table() -> Array[Dictionary]:
 		scroll_damp(), scroll_blunt(), scroll_sunder(), scroll_mire(),
 		scroll_venom(), scroll_shock(), scroll_mute(), scroll_blind(),
 	]
+	out.append_array(wider_supplies())
 	out.append_array(elemental_scrolls())
 	out.append_array(Accessory.all())
 	out.append_array(Weapon.all())

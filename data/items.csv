@@ -1,26 +1,41 @@
-id,name,kind,floor,price,hp_restore,mp_restore,cures,inflicts,element,dmg,max_hp_gain,max_mp_gain,revive_pct,desc
-health_potion,Health Potion,restore,1,45,30,,,,,,,,,Restores 30 HP.
-hi_potion,Hi-Potion,restore,2,70,80,,,,,,,,,Restores 80 HP.
-ether,Ether,restore,1,45,,20,,,,,,,,Restores 20 MP.
-super_potion,Super Potion,restore,4,160,250,,,,,,,,,Restores 250 HP.
-hi_ether,Hi-Ether,restore,4,180,,60,,,,,,,,Restores 60 MP.
-elixir,Elixir,restore,4,600,9999,9999,,,,,,,,Restores all HP and MP.
-potion_cauldron,Potion Cauldron,restore,4,750,9999,,,,,,,,,Restores all HP to the whole party.
-ether_fountain,Ether Fountain,restore,4,600,,40,,,,,,,,Restores 40 MP to the whole party.
-antidote,Antidote,cure,1,45,,,poison,,,,,,,Cures Poison.
-stimulant,Stimulant,cure,1,45,,,paralyzed,,,,,,,Cures Paralysis.
-echo_gem,Echo Gem,cure,1,45,,,silence,,,,,,,Cures Silence.
-eye_drops,Eye Drops,cure,1,45,,,blind,,,,,,,Cures Blind.
-panacea,Panacea,cure,4,120,,,all,,,,,,,Cures all ailments.
-heartstone,Heartstone,stone,1,45,,,,,,,15,,,"Raises maximum HP by 15, for good."
-wellstone,Wellstone,stone,1,45,,,,,,,,8,,"Raises maximum MP by 8, for good."
-revival_feather,Revival Feather,revive,2,120,,,,,,,,,50,Brings a fallen ally back with half their HP.
-attack_mirror,Attack Mirror,mirror,1,1000,,,,,,,,,,Reflects every physical attack at the party until your next turn.
-magic_mirror,Magic Mirror,mirror,1,1000,,,,,,,,,,Reflects every spell cast at the party until your next turn.
-venom_flask,Venom Flask,ailment,1,45,,,,poison,,,,,,Throws a vial of poison at an enemy.
-flash_powder,Flash Powder,ailment,2,70,,,,blind,,,,,,"Blinds an enemy, halving its agility."
-silence_dust,Silence Dust,ailment,2,70,,,,silence,,,,,,"Silences an enemy, preventing spells."
-binding_web,Binding Web,ailment,3,95,,,,paralyzed,,,,,,"Ensnares an enemy, paralyzing it."
-fire_bomb,Fire Bomb,throwable,2,70,,,,,fire,20,,,,Hurls a flaming explosive. Effective vs. fire-weak foes.
-ice_shard,Ice Shard,throwable,3,95,,,,,ice,20,,,,Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.
-thunder_bead,Thunder Bead,throwable,3,95,,,,,thunder,20,,,,Discharges a crackling orb. Effective vs. thunder-weak foes.
+id,name,kind,floor,price,hp_restore,mp_restore,cures,inflicts,element,dmg,max_hp_gain,max_mp_gain,revive_pct,party,stage_up,stat_up,desc
+health_potion,Health Potion,restore,1,45,30,,,,,,,,,,,,Restores 30 HP.
+hi_potion,Hi-Potion,restore,2,150,80,,,,,,,,,,,,Restores 80 HP.
+ether,Ether,restore,1,45,,20,,,,,,,,,,,Restores 20 MP.
+super_potion,Super Potion,restore,4,500,250,,,,,,,,,,,,Restores 250 HP.
+hi_ether,Hi-Ether,restore,4,600,,60,,,,,,,,,,,Restores 60 MP.
+elixir,Elixir,restore,4,2000,9999,9999,,,,,,,,,,,Restores all HP and MP.
+potion_cauldron,Potion Cauldron,restore,4,2500,9999,,,,,,,,,yes,,,Restores all HP to the whole party.
+ether_fountain,Ether Fountain,restore,4,1800,,40,,,,,,,,yes,,,Restores 40 MP to the whole party.
+tonic,Tonic,restore,2,200,50,25,,,,,,,,,,,Restores 50 HP and 25 MP.
+full_potion,Full Potion,restore,3,700,9999,,,,,,,,,,,,Restores all HP.
+max_ether,Max Ether,restore,4,1200,,9999,,,,,,,,,,,Restores all MP.
+healing_mist,Healing Mist,restore,2,350,60,,,,,,,,,yes,,,Restores 60 HP to the whole party.
+ether_mist,Ether Mist,restore,2,400,,20,,,,,,,,yes,,,Restores 20 MP to the whole party.
+healing_rain,Healing Rain,restore,3,900,200,,,,,,,,,yes,,,Restores 200 HP to the whole party.
+cleansing_mist,Cleansing Mist,cure,3,600,,,all,,,,,,,yes,,,Cures every ailment on the whole party.
+megalixir,Megalixir,restore,4,5000,9999,9999,,,,,,,,yes,,,Restores all HP and MP to the whole party.
+phoenix_plume,Phoenix Plume,revive,4,2500,,,,,,,,,50,yes,,,Brings every fallen ally back with half their HP.
+power_draught,Power Draught,restore,2,250,,,,,,,,,,,atk,,Raises the party's attack for the fight.
+iron_draught,Iron Draught,restore,2,250,,,,,,,,,,,def,,Raises the party's defence for the fight.
+swift_draught,Swift Draught,restore,2,250,,,,,,,,,,,agl,,Raises the party's agility for the fight.
+mind_draught,Mind Draught,restore,2,250,,,,,,,,,,,mag,,Raises the party's magic for the fight.
+heros_draught,Hero's Draught,restore,4,1500,,,,,,,,,,,atk def agl mag,,"Raises the party's attack, defence, agility and magic for the fight."
+prism_stone,Prism Stone,restore,4,3000,,,,,,,,,,,,all,"Raises every stat by 1, for good."
+antidote,Antidote,cure,1,45,,,poison,,,,,,,,,,Cures Poison.
+stimulant,Stimulant,cure,1,45,,,paralyzed,,,,,,,,,,Cures Paralysis.
+echo_gem,Echo Gem,cure,1,45,,,silence,,,,,,,,,,Cures Silence.
+eye_drops,Eye Drops,cure,1,45,,,blind,,,,,,,,,,Cures Blind.
+panacea,Panacea,cure,4,300,,,all,,,,,,,,,,Cures all ailments.
+heartstone,Heartstone,stone,1,45,,,,,,,15,,,,,,"Raises maximum HP by 15, for good."
+wellstone,Wellstone,stone,1,45,,,,,,,,8,,,,,"Raises maximum MP by 8, for good."
+revival_feather,Revival Feather,revive,2,400,,,,,,,,,50,,,,Brings a fallen ally back with half their HP.
+attack_mirror,Attack Mirror,mirror,1,1000,,,,,,,,,,,,,Reflects every physical attack at the party until your next turn.
+magic_mirror,Magic Mirror,mirror,1,1000,,,,,,,,,,,,,Reflects every spell cast at the party until your next turn.
+venom_flask,Venom Flask,ailment,1,45,,,,poison,,,,,,,,,Throws a vial of poison at an enemy.
+flash_powder,Flash Powder,ailment,2,120,,,,blind,,,,,,,,,"Blinds an enemy, halving its agility."
+silence_dust,Silence Dust,ailment,2,120,,,,silence,,,,,,,,,"Silences an enemy, preventing spells."
+binding_web,Binding Web,ailment,3,200,,,,paralyzed,,,,,,,,,"Ensnares an enemy, paralyzing it."
+fire_bomb,Fire Bomb,throwable,2,120,,,,,fire,20,,,,,,,Hurls a flaming explosive. Effective vs. fire-weak foes.
+ice_shard,Ice Shard,throwable,3,160,,,,,ice,20,,,,,,,Throws a razor-sharp sliver of ice. Effective vs. ice-weak foes.
+thunder_bead,Thunder Bead,throwable,3,160,,,,,thunder,20,,,,,,,Discharges a crackling orb. Effective vs. thunder-weak foes.

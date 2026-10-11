@@ -132,14 +132,22 @@ static func supply(it: Dictionary) -> String:
 				else "".join(MAGIC.map(func(e: String) -> String: return icon(e)))
 		return "Reflects %s%sparty%s1 turn" % [icons, SEP, SEP]
 	if it.has("revive"):
+		if it.get("party", false):
+			return "Revives every fallen ally at %d%% HP" % int(it["revive"])
 		return "Revives an ally at %d%% HP" % int(it["revive"])
 	var parts: Array[String] = []
+	if it.has("stage_up"):
+		var tags: Array[String] = []
+		for st: Variant in it["stage_up"] as Dictionary:
+			tags.append(_stat_tag(st as String, int((it["stage_up"] as Dictionary)[st])))
+		return "%s party%s1 fight" % [" ".join(tags), SEP]
 	if int(it.get("max_hp_gain", 0)) > 0:
 		parts.append(_paint("Max HP +%d" % int(it["max_hp_gain"]), Color(HP_COLOR)))
 	if int(it.get("max_mp_gain", 0)) > 0:
 		parts.append(_paint("Max MP +%d" % int(it["max_mp_gain"]), Color(MP_COLOR)))
 	if it.has("stat_up"):
-		parts.append(_paint("%s +%d for good" % [(it["stat_up"] as String).to_upper(),
+		parts.append(_paint("%s +%d for good" % [
+				"Every stat" if it["stat_up"] == Item.ALL_STATS else (it["stat_up"] as String).to_upper(),
 				int(it.get("stat_up_amount", 1))], Color(0.55, 0.95, 0.60)))
 	if int(it.get("dmg", 0)) > 0:
 		parts.append("%s x1" % icon(it.get("element", "") as String))
@@ -148,15 +156,22 @@ static func supply(it: Dictionary) -> String:
 		parts.append("x1")
 		parts.append(ailment(it["inflicts_status"] as String))
 	if int(it.get("hp_restore", 0)) > 0:
-		parts.append(_paint("+%d HP" % int(it["hp_restore"]), Color(HP_COLOR)))
+		parts.append(_paint(_amount(int(it["hp_restore"]), "HP"), Color(HP_COLOR)))
 	if int(it.get("mp_restore", 0)) > 0:
-		parts.append(_paint("+%d MP" % int(it["mp_restore"]), Color(MP_COLOR)))
+		parts.append(_paint(_amount(int(it["mp_restore"]), "MP"), Color(MP_COLOR)))
 	var cure: String = it.get("cures_status", "") as String
 	if cure == "all":
 		parts.append("Cures all ailments")
 	elif cure != "":
 		parts.append("Cures %s" % ailment(cure))
+	if it.get("party", false) and not parts.is_empty():
+		parts.append("party")
 	return SEP.join(parts)
+
+
+# "+30 HP", or "Full HP" for the ones that fill it whatever its size.
+static func _amount(v: int, pool: String) -> String:
+	return "Full %s" % pool if v >= Item.FULL else "+%d %s" % [v, pool]
 
 
 static func gear(it: Dictionary, deltas: String = "") -> String:
@@ -180,6 +195,9 @@ static func gear(it: Dictionary, deltas: String = "") -> String:
 	var swing: String = it.get("attack_element", "") as String
 	if swing != "":
 		parts.append("Swings %s" % icon(swing))
+	var on_hit: String = GearTooltip.on_hit_text(it, true)
+	if on_hit != "":
+		parts.append(on_hit)
 	# The chart's own letters, in the chart's own colours: S resists, W weak.
 	var chart: Array[String] = []
 	for r: String in Armor.resists_of(it):

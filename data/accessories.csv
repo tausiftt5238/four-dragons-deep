@@ -1,25 +1,25 @@
 id,name,tier,price,str,def,mag,agl,luk,resist,weak,desc
-cold_iron_ring,Cold Iron Ring,1,45,2,,,,,,,Iron that was never heated. Heavy on the hand.
-dowsing_pendulum,Dowsing Pendulum,1,45,,,,,3,,,It swings before you decide to move it.
-thin_brass_bell,Thin Brass Bell,1,45,,,,2,1,,,Too small to hear. Something answers it anyway.
-ironwood_bracer,Ironwood Bracer,1,45,1,2,,,,,,Cut from a tree that grew through a fence and kept the fence.
-salt_line,Pouch of Salt,2,70,,1,,,,dark,,"A line of it under the door. Old habit, still works."
-bone_rosary,Bone Rosary,2,70,,2,,,,light,,Someone counted their way through something on these.
-copper_coil,Coil of Copper Wire,2,70,,,2,,,thunder,,Wound tight. It takes the current so you do not.
-hummingbird_feather,Hummingbird Feather,2,70,,-1,,3,,,,"Weightless, and it makes everything else you carry feel like a decision."
-ash_phylactery,Ash Phylactery,3,95,,3,,,,fire,,A locket of someone's ashes. It has already burned once.
-widows_lens,Widow's Lens,3,95,,,3,-1,,,,Ground from a mourning brooch. You see more and move slower.
-gravediggers_gloves,Gravedigger's Gloves,3,95,3,,,-1,,,,Stiff with work. Your hands are surer and no faster.
-scrying_mirror,Scrying Mirror,3,95,,,4,,,light,,You are in it twice and you only stepped up once.
-serpents_tooth,Serpent's Tooth,3,95,5,,,,,,dark,Sharper than you are. It wants something in return.
-ferrymans_coin,Ferryman's Coin,4,120,,,,,4,,,"It was under a tongue. It is warm, and it should not be."
-kings_signet,King's Signet,4,120,2,2,2,2,2,,,Whoever wore it last is further down than you have been.
-thiefs_lantern,Thief's Lantern,4,120,,,,2,3,,,Shuttered on three sides. It shows you the floor and nothing else.
-star_pendant,Star Pendant,2,400,,,,,,,,A tin star on a cord. Venom finds nothing in you to hold.
-silver_specs,Silver Specs,2,400,,,,,,,,Round lenses rimmed in silver. Whatever is thrown in your eyes slides off.
-echo_bangle,Echo Bangle,2,400,,,,,,,,"A ring of tiny bells. However it is smothered, your voice carries."
-grounding_cord,Grounding Cord,2,400,,,,,,,,Braided copper trailing to the floor. The current runs past you.
-ribbon,Ribbon,4,120,,,,,,,,"A plain ribbon. Nobody can say why it works, and it always has."
-sentrys_whistle,Sentry's Whistle,1,500,,,,,,,,Blown at the first footstep. Nothing in the dark gets the first move on you.
-wellspring_charm,Wellspring Charm,1,100,,,,,,,,"A wet stone on a cord. Every step you take, a little of what you spent comes back."
-tide_stone,Tide Stone,1,500,,,,,,,,"Smooth and cold, and it rises and falls in your hand. In a fight, all of you breathe with it."
+cold_iron_ring,Cold Iron Ring,1,100,2,,,,,,,Iron that was never heated. Heavy on the hand.
+dowsing_pendulum,Dowsing Pendulum,1,100,,,,,3,,,It swings before you decide to move it.
+thin_brass_bell,Thin Brass Bell,1,100,,,,2,1,,,Too small to hear. Something answers it anyway.
+ironwood_bracer,Ironwood Bracer,1,100,1,2,,,,,,Cut from a tree that grew through a fence and kept the fence.
+salt_line,Pouch of Salt,2,500,,1,,,,dark,,"A line of it under the door. Old habit, still works."
+bone_rosary,Bone Rosary,2,500,,2,,,,light,,Someone counted their way through something on these.
+copper_coil,Coil of Copper Wire,2,500,,,2,,,thunder,,Wound tight. It takes the current so you do not.
+hummingbird_feather,Hummingbird Feather,2,500,,-1,,3,,,,"Weightless, and it makes everything else you carry feel like a decision."
+ash_phylactery,Ash Phylactery,3,1000,,3,,,,fire,,A locket of someone's ashes. It has already burned once.
+widows_lens,Widow's Lens,3,1000,,,3,-1,,,,Ground from a mourning brooch. You see more and move slower.
+gravediggers_gloves,Gravedigger's Gloves,3,1000,3,,,-1,,,,Stiff with work. Your hands are surer and no faster.
+scrying_mirror,Scrying Mirror,3,1000,,,4,,,light,,You are in it twice and you only stepped up once.
+serpents_tooth,Serpent's Tooth,3,1000,5,,,,,,dark,Sharper than you are. It wants something in return.
+ferrymans_coin,Ferryman's Coin,4,1800,,,,,4,,,"It was under a tongue. It is warm, and it should not be."
+kings_signet,King's Signet,4,1800,2,2,2,2,2,,,Whoever wore it last is further down than you have been.
+thiefs_lantern,Thief's Lantern,4,1800,,,,2,3,,,Shuttered on three sides. It shows you the floor and nothing else.
+star_pendant,Star Pendant,2,800,,,,,,,,A tin star on a cord. Venom finds nothing in you to hold.
+silver_specs,Silver Specs,2,800,,,,,,,,Round lenses rimmed in silver. Whatever is thrown in your eyes slides off.
+echo_bangle,Echo Bangle,2,800,,,,,,,,"A ring of tiny bells. However it is smothered, your voice carries."
+grounding_cord,Grounding Cord,2,800,,,,,,,,Braided copper trailing to the floor. The current runs past you.
+ribbon,Ribbon,4,1800,,,,,,,,"A plain ribbon. Nobody can say why it works, and it always has."
+sentrys_whistle,Sentry's Whistle,1,1000,,,,,,,,Blown at the first footstep. Nothing in the dark gets the first move on you.
+wellspring_charm,Wellspring Charm,1,250,,,,,,,,"A wet stone on a cord. Every step you take, a little of what you spent comes back."
+tide_stone,Tide Stone,1,1200,,,,,,,,"Smooth and cold, and it rises and falls in your hand. In a fight, all of you breathe with it."
