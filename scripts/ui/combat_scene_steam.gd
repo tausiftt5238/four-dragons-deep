@@ -405,9 +405,9 @@ func _build_icon_overlay() -> void:
 	_turn_lbl = Label.new()
 	_turn_lbl.add_theme_font_size_override("font_size", 13)
 	_top_row.add_child(_turn_lbl)
-	_icon_pips = UIGlyph.pips(Color(0.55, 0.95, 1.0))
+	_icon_pips = UIGlyph.ghost_pips(true)
 	_top_row.add_child(_icon_pips)
-	_foe_icon_pips = UIGlyph.pips(Color(1.0, 0.45, 0.45))
+	_foe_icon_pips = UIGlyph.ghost_pips(false)
 	_top_row.add_child(_foe_icon_pips)
 	_top_row.add_child(_log_label)
 

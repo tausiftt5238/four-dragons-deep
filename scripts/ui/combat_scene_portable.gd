@@ -214,10 +214,10 @@ func _build_icon_overlay() -> void:
 	col.add_theme_constant_override("separation", 1)
 	m.add_child(col)
 
-	_icon_pips = UIGlyph.pips(Color(0.55, 0.95, 1.0))
+	_icon_pips = UIGlyph.ghost_pips(true)
 	col.add_child(_side_row("You", Color(0.55, 0.95, 1.0), _icon_pips))
 
-	_foe_icon_pips = UIGlyph.pips(Color(1.0, 0.45, 0.45))
+	_foe_icon_pips = UIGlyph.ghost_pips(false)
 	col.add_child(_side_row("Foe", Color(1.0, 0.45, 0.45), _foe_icon_pips))
 
 
