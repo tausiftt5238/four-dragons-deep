@@ -290,10 +290,17 @@ func _build_gacha() -> void:
 	for row: Array in [
 			[Gacha.EXP, "%d exp" % exp_pair, "%d exp" % Gacha.exp_prize(floor_num, true)],
 			[Gacha.GOLD, "%d g" % gold_pair, "%d g" % Gacha.gold_prize(floor_num, true)],
-			[Gacha.ITEM, "a supply", "gear, tier %s" % _tier_name(1)],
-			[Gacha.MONSTER, "tier %s monster" % _tier_name(0), "tier %s monster" % _tier_name(1)]]:
+			[Gacha.ITEM, "a supply", "deeper gear" if _abyss_floor() else "gear, tier %s" % _tier_name(1)],
+			[Gacha.MONSTER] + (["a monster", "a strong monster"] if _abyss_floor()
+					else ["tier %s monster" % _tier_name(0), "tier %s monster" % _tier_name(1)])]:
 		_content.add_child(_paytable_row(row[0] as String, row[1] as String, row[2] as String))
 	_content.add_child(_note("Pair pays the middle column, jackpot the right. Prizes grow with the floor; luck nudges the reels."))
+
+
+# The Abyss mode has no bands to name: its prizes say what they are instead
+# (Gacha.monster_prize, Gacha's jackpot gear off the next shelf down).
+func _abyss_floor() -> bool:
+	return Abyss.active and floor_num > Level.FLOOR_COUNT
 
 
 # This floor's band, or the one below it, as a roman numeral.

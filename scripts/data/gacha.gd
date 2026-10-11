@@ -109,6 +109,7 @@ static func item_prize(supplies: Array[Dictionary], floor_num: int, jackpot: boo
 
 
 # A pair: a monster from this floor's band. A jackpot: one from the band below.
+# (The Abyss: see ABYSS_STRONG.)
 # Only what can be talked to (anything else could never be recruited anyway),
 # and nothing already on the roster. Joins at its level on this floor, but
 # never above the hero's, the same rule recruiting keeps. {} when nothing fits.
@@ -117,10 +118,25 @@ static func item_prize(supplies: Array[Dictionary], floor_num: int, jackpot: boo
 # demons in it, so from floor eleven (a jackpot) or sixteen (anything) a player
 # who already kept both was told "Roster full" and paid in gold, however much
 # room the roster had.
+#
+# The Abyss has no bands: everything comes up out of it at once. There a pair
+# is a monster of any band, and a jackpot a strong one, from the two deepest
+# (ABYSS_STRONG), each in an element.
+const ABYSS_STRONG: Array[int] = [3, 4]
+
+
 static func monster_prize(p: PlayerCharacter, floor_num: int, jackpot: bool) -> Dictionary:
+	var abyss: bool = Abyss.active and floor_num > Level.FLOOR_COUNT
 	var tier: int = Enemy.tier_for_floor(floor_num) + (1 if jackpot else 0)
 	tier = mini(4, tier)
 	var pool: Array[String] = []
+	if abyss:
+		for t: Dictionary in Enemy.TEMPLATES:
+			if (not jackpot or int(t.get("tier", 1)) in ABYSS_STRONG) \
+					and bool(t.get("negotiable", true)) and t["name"] not in p.recruited:
+				pool.append(t["name"] as String)
+		# Every strong one already kept: any other will do.
+		tier = 4 if pool.is_empty() else 0
 	while pool.is_empty() and tier >= 1:
 		for t: Dictionary in Enemy.TEMPLATES:
 			if int(t.get("tier", 1)) == tier and bool(t.get("negotiable", true)) \
