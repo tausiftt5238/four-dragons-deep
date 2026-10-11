@@ -77,9 +77,16 @@ func _clear() -> void:
 const PANEL_H: float = 440.0
 const PANEL_FULL_H: float = 600.0
 
+# A dragon's name can take two lines at the header's size ("Juvenile Multihued
+# Dragon"); the panel grows by what the wrap adds (_header).
+var _base_h: float = PANEL_H
+var _header_extra: float = 0.0
+
 func _set_height(h: float) -> void:
-	_panel.offset_top    = -h / 2.0
-	_panel.offset_bottom =  h / 2.0
+	_base_h = h
+	var full: float = h + _header_extra
+	_panel.offset_top    = -full / 2.0
+	_panel.offset_bottom =  full / 2.0
 
 
 func _header(vbox: VBoxContainer) -> void:
@@ -88,7 +95,15 @@ func _header(vbox: VBoxContainer) -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_color_override("font_color", Color(0.80, 0.62, 1.00))
 	header.add_theme_font_size_override("font_size", 24)
+	header.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(header)
+	var font: Font = header.get_theme_font("font")
+	var inner_w: float = _panel.offset_right - _panel.offset_left - 40.0
+	_header_extra = 0.0
+	if font != null:
+		_header_extra = font.get_multiline_string_size(demon_name,
+				HORIZONTAL_ALIGNMENT_CENTER, inner_w, 24).y - font.get_height(24)
+	_set_height(_base_h)
 
 
 func _show_stats() -> void:
@@ -161,6 +176,7 @@ func _show_offer(offer: Dictionary) -> void:
 	var name_lbl: Label = Label.new()
 	name_lbl.text = PlayerCharacter.skill_name(offer)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.add_theme_font_size_override("font_size", 22)
 	name_lbl.add_theme_color_override("font_color", Color(0.50, 0.85, 1.00))
 	_vbox.add_child(name_lbl)

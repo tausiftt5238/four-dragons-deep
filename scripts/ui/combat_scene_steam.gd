@@ -345,7 +345,8 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.add_child(StatusOverlay.new(foe))
 	card.add_child(icon)
 
-	var name_lbl: Label = Label.new()
+	# A name too long for the card scrolls rather than shrinking (MarqueeLabel).
+	var name_lbl: Label = MarqueeLabel.new()
 	name_lbl.text = foe.display_name()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.add_theme_font_size_override("font_size", 11)
@@ -539,9 +540,8 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	row.custom_minimum_size = Vector2(0, 34)
 	_party_rows.add_child(row)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = MarqueeLabel.new()
 	name_lbl.custom_minimum_size = Vector2(118, 0)
-	name_lbl.clip_text = true
 	name_lbl.add_theme_font_size_override("font_size", 15)
 	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(name_lbl)
@@ -884,9 +884,8 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 		pic.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
 		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(pic)
-	var title_lbl: Label = Label.new()
+	var title_lbl: Label = MarqueeLabel.new()
 	title_lbl.text = title
-	title_lbl.clip_text = true
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_lbl.add_theme_font_size_override("font_size", 14)
 	title_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
