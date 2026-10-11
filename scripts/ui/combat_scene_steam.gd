@@ -378,12 +378,14 @@ func _build_foe_card(foe: Enemy) -> Control:
 	chart.knows = func(element: String) -> bool:
 		return player.knows_affinity(foe.lore_name(), element)
 	chart.position = Vector2(CARD_W / 2.0 - 52, under + 26)
-	chart.size = Vector2(104, 24)
+	chart.size = Vector2(104, AffinityChart.ROW_HEIGHT)
 	card.add_child(chart)
 
+	# Under the chart's real bottom: it is never shorter than ROW_HEIGHT, so
+	# placing these off a smaller size put them across its last row.
 	var stages: StageArrows = StageArrows.new()
 	stages.member = foe
-	stages.position = Vector2(CARD_W / 2.0 - 34, under + 52)
+	stages.position = Vector2(CARD_W / 2.0 - 34, under + 26 + AffinityChart.ROW_HEIGHT + 2)
 	stages.size = Vector2(68, 16)
 	card.add_child(stages)
 
@@ -866,6 +868,9 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 	var btn: Button = Button.new()
 	btn.flat = true
 	btn.disabled = disabled
+	# The cursor is the menu's: a gold box round the row (SidePanel's page
+	# rows), not the engine's thin default outline.
+	btn.add_theme_stylebox_override("focus", SidePanel._box(Color(0, 0, 0, 0), 2, SidePanel.GOLD))
 	var row: HBoxContainer = HBoxContainer.new()
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 4

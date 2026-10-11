@@ -79,6 +79,8 @@ func _init(title: String, commands: Array, actions: Array[String]) -> void:
 		b.add_theme_color_override("font_focus_color", GOLD)
 		b.pressed.connect(_on_pressed.bind(id))
 		b.focus_entered.connect(_on_cursor.bind(id))
+		if id in actions:
+			b.focus_exited.connect(_light_current)
 		_cmd_col.add_child(b)
 		buttons[id] = b
 
@@ -171,10 +173,23 @@ func _on_pressed(id: String) -> void:
 		focus_page.call_deferred()
 
 
+# On Close or Leave the cursor is the only thing lit: the page behind stays up
+# but its command goes quiet, or two commands read as chosen at once. It is lit
+# again as the cursor steps off (_light_current).
 func _on_cursor(id: String) -> void:
-	if id in _actions or id == _current:
+	if id in _actions:
+		for k: String in buttons:
+			(buttons[k] as Button).set_pressed_no_signal(false)
+		return
+	if id == _current:
 		return
 	picked.emit(id)
+
+
+func _light_current() -> void:
+	var b: Button = buttons.get(_current) as Button
+	if b != null:
+		b.set_pressed_no_signal(true)
 
 
 func _in_commands(c: Control) -> bool:
