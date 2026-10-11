@@ -35,6 +35,8 @@ const LINES: Array[String] = [
 	"It did not bite. It did not flee. It hung from the rafters and watched us, and when we spoke, it listened.",
 	"That is the strangest thing of all. The creatures below are more than beasts. They think. They want. Some may even bargain.",
 	"So before you draw steel, try words. Speak with them. You may find allies where you expected only teeth.",
+	# PlayerCharacter.START_GOLD: change the two together.
+	"And take this. Five hundred gold from the Watch's own coffers. The orbs below will trade with anyone who can pay, so spend it well.",
 	"Go now, hero. The Tower is waiting, and it is a long way down.",
 ]
 

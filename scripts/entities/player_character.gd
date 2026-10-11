@@ -28,7 +28,9 @@ static func portrait() -> AtlasTexture:
 	a.region = Rect2(0, 0, tex.get_width(), tex.get_height())
 	return a
 
-var gold: int = 200
+# What Captain Ysolde hands over at the start (IntroUI.LINES says so in words).
+const START_GOLD: int = 500
+var gold: int = START_GOLD
 
 # What he is carrying into the dark: a weapon, a worn piece, and two trinkets.
 # Empty dict means the slot is empty.
