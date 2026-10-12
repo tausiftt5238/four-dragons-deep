@@ -449,13 +449,11 @@ func _build_menu_panel(parent: Control) -> void:
 	# No "X's turn" banner: whoever is acting already steps forward with the
 	# caret over them, and a long name ("Skeleton Archer's turn") next to a long
 	# title pushed the header, and the whole battle with it, off the right edge.
-	# The title takes the rest of the row and trims itself instead of growing.
-	_right_title = Label.new()
+	# The title takes the rest of the row and scrolls a long line instead of growing.
+	_right_title = MarqueeLabel.new()
 	_right_title.text = "\u2014"
 	_right_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_right_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_right_title.clip_text = true
-	_right_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_right_title.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
 	header.add_child(_right_title)
 

@@ -754,8 +754,7 @@ func _list_column(col: VBoxContainer, with_back: bool = true) -> Dictionary:
 		header.add_child(back)
 	else:
 		col.tree_exiting.connect(back.queue_free)
-	var title: Label = Label.new()
-	title.clip_text = true
+	var title: Label = MarqueeLabel.new()
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_size_override("font_size", 14)
 	header.add_child(title)
@@ -805,6 +804,27 @@ func _open_stack() -> void:
 func _process(_delta: float) -> void:
 	if _stack_win != null and _stack_win.visible:
 		(_stack_list["header"] as Control).visible = (_stack_list["title"] as Label).text != ""
+	_keep_cursor()
+
+
+# The cursor is never lost while there is something to choose. A list that is
+# locked while its answer plays out and then rebuilt (a talk's next round, a
+# bribe's next offer) left it on a button that was gone, and only a click got
+# it back. Whenever it is nowhere, or on something greyed or hidden in this
+# fight, it goes to the first line that can be chosen. Focus some other window
+# has (the results, a level-up) is left alone.
+func _keep_cursor() -> void:
+	if finished:
+		return
+	var owner_now: Control = get_viewport().gui_get_focus_owner()
+	if owner_now != null:
+		if not is_ancestor_of(owner_now):
+			return
+		var usable: bool = owner_now.is_visible_in_tree() \
+				and not (owner_now is BaseButton and (owner_now as BaseButton).disabled)
+		if usable:
+			return
+	_focus_list()
 
 
 func _close_stack() -> void:

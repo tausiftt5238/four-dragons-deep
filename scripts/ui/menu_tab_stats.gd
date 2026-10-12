@@ -149,9 +149,8 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 	names.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	names.add_theme_constant_override("separation", 0)
 	row.add_child(names)
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = MarqueeLabel.new()
 	name_lbl.text = title
-	name_lbl.clip_text = true
 	name_lbl.add_theme_color_override("font_color", color)
 	names.add_child(name_lbl)
 	var lv_lbl: Label = Label.new()
@@ -223,10 +222,8 @@ func _worn(p: PlayerCharacter) -> VBoxContainer:
 		lines.append(p.equipped_accessories[i].get("name", "") as String
 				if i < p.equipped_accessories.size() else "No trinket")
 	for text: String in lines:
-		var l: Label = Label.new()
+		var l: Label = MarqueeLabel.new()
 		l.text = text
-		l.clip_text = true
-		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		if text.begins_with("No "):
 			l.add_theme_color_override("font_color", Color(0.55, 0.55, 0.62))
 		col.add_child(l)

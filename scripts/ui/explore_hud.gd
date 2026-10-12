@@ -431,11 +431,13 @@ func _party_card(m: CharacterSheet, is_hero: bool) -> PanelContainer:
 	names.add_theme_constant_override("separation", -2)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(names)
-	var name_lbl: Label = _label(m.display_name() if m.has_method("display_name") else "Hero",
-			TEXT, GOLD if is_hero else PALE)
-	if is_hero:
-		name_lbl.text = "Hero"
-	name_lbl.clip_text = true
+	# A long name (Baby Green Dragon) scrolls like a banner rather than being cut.
+	var name_lbl: Label = MarqueeLabel.new()
+	name_lbl.text = "Hero" if is_hero else (m.display_name() if m.has_method("display_name") else "")
+	name_lbl.add_theme_font_size_override("font_size", TEXT)
+	name_lbl.add_theme_color_override("font_color", GOLD if is_hero else PALE)
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	names.add_child(name_lbl)
 	# No ailment marks: a fight's ailments end with the fight.
 	var lv: Label = _label("", SMALL, DIM)

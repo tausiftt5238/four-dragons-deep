@@ -122,11 +122,10 @@ func add_entry(title: String, title_color: Color, detail: String,
 	head.add_theme_constant_override("separation", 8)
 	col.add_child(head)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = MarqueeLabel.new()
 	name_lbl.text = title
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	name_lbl.clip_text = true
 	name_lbl.add_theme_color_override("font_color", title_color)
 	head.add_child(name_lbl)
 

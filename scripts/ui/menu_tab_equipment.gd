@@ -122,9 +122,8 @@ func _gear_slot(label: String, worn: Dictionary, on_remove: Callable) -> Control
 	slot_lbl.add_theme_color_override("font_color", Color(0.70, 0.65, 0.50))
 	head.add_child(slot_lbl)
 
-	var name_lbl: Label = Label.new()
+	var name_lbl: Label = MarqueeLabel.new()
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.clip_text = true
 	if worn.is_empty():
 		name_lbl.text = "(empty)"
 		name_lbl.add_theme_color_override("font_color", Color(0.50, 0.50, 0.56))
