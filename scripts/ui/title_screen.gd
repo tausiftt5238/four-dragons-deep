@@ -4,6 +4,10 @@ class_name TitleScreen extends Control
 
 const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
 
+# A run is on its way in: the intro or the loading screen.
+var _starting: bool = false
+var _descending: bool = false
+
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -158,6 +162,12 @@ func _menu_buttons(min_size: Vector2) -> Array[Button]:
 
 # A new run opens on the captain's briefing; loading a save skips it.
 func _on_new_game() -> void:
+	# The intro listens for yes itself; left on NEW GAME, every yes would
+	# press it again and stack another intro on top.
+	if _starting:
+		return
+	_starting = true
+	get_viewport().gui_release_focus()
 	GameBoot.pending_slot = 0
 	GameBoot.pending_abyss = ""
 	var fade: ScreenFade = ScreenFade.cover(get_tree())
@@ -170,6 +180,9 @@ func _on_new_game() -> void:
 
 # Through black to the loading screen, which carries on into the game.
 func _descend_into_game() -> void:
+	if _descending:
+		return
+	_descending = true
 	var fade: ScreenFade = ScreenFade.cover(get_tree())
 	await fade.covered
 	LoadingScreen.change_scene(get_tree(), "res://scenes/main.tscn")
@@ -182,7 +195,7 @@ func _on_abyss() -> void:
 	var panel: Control = Control.new()
 	panel.name = "AbyssMenu"
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(panel)
+	_cover(panel)
 	var veil: ColorRect = ColorRect.new()
 	veil.color = Color(0.03, 0.01, 0.06, 0.94)
 	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -228,7 +241,7 @@ func _show_records() -> void:
 	var panel: Control = Control.new()
 	panel.name = "RecordsPanel"
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(panel)
+	_cover(panel)
 	var veil: ColorRect = ColorRect.new()
 	veil.color = Color(0.03, 0.02, 0.06, 1.0)
 	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -261,6 +274,10 @@ func _show_records() -> void:
 
 
 func _start_abyss(how: String) -> void:
+	if _starting:
+		return
+	_starting = true
+	get_viewport().gui_release_focus()
 	GameBoot.pending_slot = 0
 	GameBoot.pending_abyss = how
 	if how != "new":
@@ -284,13 +301,13 @@ func _start_abyss(how: String) -> void:
 func _on_tutorial() -> void:
 	var tut: TutorialUI = TutorialUI.new()
 	tut.closed.connect(func() -> void: tut.queue_free())
-	add_child(tut)
+	_cover(tut)
 
 
 func _on_options() -> void:
 	var ui: OptionsUI = OptionsUI.new()
 	ui.closed.connect(func() -> void: ui.queue_free())
-	add_child(ui)
+	_cover(ui)
 
 
 func _on_load_game() -> void:
@@ -298,6 +315,7 @@ func _on_load_game() -> void:
 	picker.mode = "load"
 	picker.beside_map = false
 	picker.slot_chosen.connect(func(slot: int) -> void:
+		_starting = true
 		GameBoot.pending_abyss = ""
 		GameBoot.pending_slot = slot
 		_descend_into_game()
@@ -305,7 +323,33 @@ func _on_load_game() -> void:
 	picker.cancelled.connect(func() -> void:
 		picker.queue_free()
 	)
-	add_child(picker)
+	_cover(picker)
+
+
+# Opens a panel over the title. The cursor moves into it, so yes cannot
+# press the button underneath, and goes back to that button when it closes,
+# so a pad or a keyboard carries on without a click.
+func _cover(panel: Control) -> void:
+	var back: Control = get_viewport().gui_get_focus_owner()
+	get_viewport().gui_release_focus()
+	panel.tree_exited.connect(func() -> void:
+		if is_instance_valid(back) and back.is_inside_tree() and not _starting:
+			back.grab_focus()
+	)
+	add_child(panel)
+	if back != null:
+		_focus_in.call_deferred(panel)
+
+
+func _focus_in(panel: Control) -> void:
+	if not is_instance_valid(panel) or not panel.is_inside_tree():
+		return
+	var owner_now: Control = get_viewport().gui_get_focus_owner()
+	if owner_now != null and panel.is_ancestor_of(owner_now):
+		return
+	var f: Control = SidePanel._first_focusable(panel)
+	if f != null:
+		f.grab_focus()
 
 
 func _make_lbl(text: String, size: int, color: Color) -> Label:

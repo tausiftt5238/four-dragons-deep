@@ -103,6 +103,9 @@ var _hint: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Yes comes here through _unhandled_input; a button left with the cursor
+	# behind the intro would take it first.
+	get_viewport().gui_release_focus()
 	Music.play(Music.ORB if rescue else Music.INTRO)
 	_build()
 	if rescue:
@@ -172,8 +175,10 @@ func _build() -> void:
 	box.anchor_right = 1.0
 	box.offset_left = 18.0
 	box.offset_right = -18.0
-	box.offset_top = _feet_y() + 50.0
-	box.offset_bottom = _feet_y() + (220.0 if Build.steam() else 330.0)
+	# Tall enough for the longest line, so the box never grows under the
+	# hint (or, on a PC, off the bottom of the screen).
+	box.offset_top = _feet_y() + (40.0 if Build.steam() else 50.0)
+	box.offset_bottom = _feet_y() + (310.0 if Build.steam() else 390.0)
 	if Build.steam():
 		# A reading width, not the whole screen.
 		box.anchor_left = 0.5
@@ -209,7 +214,7 @@ func _build() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.anchor_left = 0.0
 	hint.anchor_right = 1.0
-	var below: float = _feet_y() + (226.0 if Build.steam() else 340.0)
+	var below: float = box.offset_bottom + 4.0
 	hint.offset_top = below
 	hint.offset_bottom = below + 30.0
 	add_child(hint)
@@ -231,7 +236,7 @@ func _build() -> void:
 # The floor the captain stands on, just above the dialogue box: under the
 # phone's map band, or in the upper half of a wide screen.
 func _feet_y() -> float:
-	return 250.0 if Build.steam() else Main.MAP_PANE_H + 160.0
+	return 190.0 if Build.steam() else Main.MAP_PANE_H + 160.0
 
 
 func _actor(sprite_id: String) -> AnimatedPortrait:
