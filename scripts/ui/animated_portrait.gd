@@ -314,6 +314,31 @@ func fx_rect() -> Rect2:
 	return _frame_rect(float(FRAME_SIZE))
 
 
+# How far down this box the figure's head is: the topmost pixel any frame of
+# its sheet draws (a slime bobs up). For a mark that sits on top of the
+# figure rather than on top of its box (the fight's target caret). The top of
+# the box when there is nothing to measure.
+func figure_top() -> float:
+	if not _loaded or _atlas.atlas == null:
+		return 0.0
+	var sheet: Image = _atlas.atlas.get_image()
+	if sheet == null:
+		return 0.0
+	var side: int = sheet.get_height()
+	if sheet.is_compressed():
+		sheet.decompress()
+	var head: int = sheet.get_used_rect().position.y
+	# The same sums as _frame_rect, with a dragon's sheet left unzoomed as
+	# _frame_region leaves it.
+	var z: float = maxf(_zoom, 1.0) if side >= FRAME_SIZE else 1.0
+	var r: float = side / z
+	var pad: float = r / shrink - r
+	var inset: float = (side - r) / 2.0
+	var d: float = minf(size.x, size.y)
+	var k: float = d / (r / shrink)
+	return (size.y - d) / 2.0 + (pad - inset + head) * k
+
+
 # Whether the figure is drawn edge to edge in its frame (the dragons' 16px
 # sheets) rather than small in the middle of a 100px one, which zoom crops into.
 # An edge-to-edge figure's feet are on the bottom of its box, not partway up.

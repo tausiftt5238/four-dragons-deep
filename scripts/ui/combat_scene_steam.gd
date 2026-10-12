@@ -363,7 +363,11 @@ func _build_foe_card(foe: Enemy) -> Control:
 	card.add_child(name_lbl)
 
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))
-	marker.position = Vector2(CARD_W / 2.0 - 8, PORTRAIT_TOP - 16)
+	# Just over its head, not over its box: the cards stand in overlapping
+	# rows, and a short figure's box reaches up into the card above it.
+	# The caret's tip is 1.5px above the bottom of its 14px box.
+	var head: float = icon.position.y + icon.figure_top() - 12.0
+	marker.position = Vector2(CARD_W / 2.0 - 8, maxf(PORTRAIT_TOP - 16, head))
 	marker.size = Vector2(16, 14)
 	card.add_child(marker)
 

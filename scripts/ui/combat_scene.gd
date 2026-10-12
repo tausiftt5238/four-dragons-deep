@@ -24,6 +24,8 @@ var floor_num: int = 1
 # all address the demon they are talking to through it.
 var foes: Array[Enemy] = []
 var enemy: Enemy
+# The foe under the cursor in the target list, before it is chosen.
+var _aimed: Enemy = null
 
 # One row widget per foe: {foe, portrait, name_lbl, bar, hp_lbl, marker, chart}.
 var _foe_rows: Array[Dictionary] = []
@@ -1607,10 +1609,23 @@ func _with_target(cb: Callable) -> void:
 		var btn: Button = _big_button(foe.display_name(),
 				"%d / %d" % [foe.hp, foe.max_hp], false)
 		btn.pressed.connect(func() -> void:
+			_aimed = null
 			enemy = foe
 			_refresh_hp()
 			cb.call())
+		# The caret over the field moves with the cursor, not only on a choice.
+		btn.focus_entered.connect(_aim_at.bind(foe))
+		btn.mouse_entered.connect(_aim_at.bind(foe))
 		_submenu_add(btn)
+
+
+# Points the target caret at `foe` while it is only being looked at in the
+# target list; null hands it back to the real target.
+func _aim_at(foe: Enemy) -> void:
+	if _aimed == foe:
+		return
+	_aimed = foe
+	_refresh_foe_rows()
 
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
@@ -1636,7 +1651,7 @@ func _refresh_foe_rows() -> void:
 			(r["chart"] as AffinityChart).visible = false
 			continue
 		var alive: bool = foe.is_alive()
-		var targeted: bool = (foe == enemy) and alive
+		var targeted: bool = (foe == (_aimed if _aimed != null else enemy)) and alive
 		(r["marker"] as UIGlyph).visible = targeted and multiple
 		(r["portrait"] as TextureRect).modulate.a = 1.0 if alive else 0.18
 		if not alive and not r.get("_death_played", false):
@@ -2584,6 +2599,9 @@ const CARD_PORTRAIT_MIN: int = 56
 # Detaches immediately rather than waiting on queue_free, so the very next
 # _submenu_add sees the slots as empty.
 func _submenu_clear() -> void:
+	# Leaving the target list, by a choice or by backing out.
+	if _aimed != null:
+		_aim_at(null)
 	while _sub_slots.size() > MENU_SLOTS:
 		var extra: MarginContainer = _sub_slots.pop_back()
 		_sub_bar.remove_child(extra)
