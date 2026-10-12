@@ -224,6 +224,25 @@ func _play_anim(node: TextureRect, anim_name: String) -> void:
 		(node as AnimatedPortrait).play_once(anim_name)
 
 
+# A blow lands when the swing that throws it is over: the cut, the burst, the
+# shake, the number and the bar all together, rather than the moment the arm
+# goes up. Swings run quicker in a fight than the sheets' own 8 a second, and
+# the longest are cut short of their end, so a turn never waits long.
+const SWING_FPS: float = 12.0
+const SWING_MAX: float = 0.9
+
+
+func _windup(node: TextureRect, anim_name: String) -> void:
+	if not node is AnimatedPortrait:
+		return
+	var fig: AnimatedPortrait = node as AnimatedPortrait
+	var frames: int = fig.frames_of(anim_name)
+	if frames <= 0:
+		return
+	fig.play_once(anim_name, SWING_FPS)
+	await get_tree().create_timer(minf(float(frames) / SWING_FPS, SWING_MAX)).timeout
+
+
 func _card_portrait(card: Control) -> TextureRect:
 	for r: Dictionary in _foe_rows:
 		if r.get("card") == card:
@@ -908,16 +927,20 @@ func _commit_action(action: String) -> void:
 	_set_buttons(false)
 	var actor_pr: TextureRect = _actor_portrait()
 	if actor_pr != null:
-		var anim: String = "attack"
-		if action == "Defend":
-			anim = "block"
 		# A spell in the Knight's hands is his special attack, held on the
 		# flash of the blade and coloured by what he is casting
-		# (AnimatedPortrait.play_cast). A plain swing is his first attack.
-		if action.begins_with("Magic:") and _actor_is_player() and actor_pr is AnimatedPortrait:
+		# (AnimatedPortrait.play_cast); it lands on the flash. A plain swing
+		# is his first attack, and lands when the swing is over. Bracing has
+		# nothing to wait for.
+		if action == "Defend":
+			_play_anim(actor_pr, "block")
+		elif action.begins_with("Magic:") and _actor_is_player() and actor_pr is AnimatedPortrait:
 			(actor_pr as AnimatedPortrait).play_cast(_cast_kind(action.substr(6)))
+			await get_tree().create_timer(AnimatedPortrait.CAST_FLASH).timeout
 		else:
-			_play_anim(actor_pr, anim)
+			await _windup(actor_pr, "attack")
+		if not is_instance_valid(self) or finished:
+			return
 	var res: Dictionary = _resolve_action(action)
 	_log(res["msg"] as String)
 	await _after_action(res["cost"] as String)
@@ -1219,7 +1242,7 @@ func _enemy_cast_ailment(actor: Enemy) -> Dictionary:
 # outside the icon economy because a failed negotiation is its own risk.
 func _apply_enemy_turn() -> String:
 	_force_target = player
-	var res: Dictionary = _enemy_act(enemy)
+	var res: Dictionary = await _enemy_act(enemy)
 	_force_target = null
 	return res["msg"] as String
 
@@ -1733,8 +1756,15 @@ func _enemy_phase() -> void:
 		_foe_turn_idx += 1
 		_clear_floats()
 		_step_forward_foe(actor)
-		var res: Dictionary = _necro_act(actor) if actor.is_necromancer() \
-				else (_warden_act(actor) if actor.is_warden() else _enemy_act(actor))
+		var res: Dictionary
+		if actor.is_necromancer():
+			res = await _necro_act(actor)
+		elif actor.is_warden():
+			res = await _warden_act(actor)
+		else:
+			res = await _enemy_act(actor)
+		if not is_instance_valid(self):
+			return
 		_log(res["msg"] as String)
 		# Their phase ends on a repel or a drain exactly as yours does, and it
 		# is worth saying out loud — the reason the pack stopped is a read the
@@ -3192,12 +3222,12 @@ func _can_spare_support(actor: Enemy) -> bool:
 
 
 func _enemy_act(actor: Enemy) -> Dictionary:
-	var epr: TextureRect = _foe_portrait(actor)
-	if epr != null:
-		_play_anim(epr, "attack")
 	if actor.has_status(Status.PARALYZED) and randf() < PARALYSIS_SKIP:
 		return {msg = "[color=yellow]%s is paralyzed and cannot act![/color]" % actor.display_name(),
 				cost = PressTurn.COST_FULL}
+	var epr: TextureRect = _foe_portrait(actor)
+	if epr != null:
+		await _windup(epr, "attack")
 
 	# The same rule the party's own menus keep: Silence takes every cast away
 	# (elements, buffs, ailments and bites) and leaves the swing.
@@ -3421,7 +3451,7 @@ func _necro_act(actor: Enemy) -> Dictionary:
 	# Silenced, it can neither raise the dead nor cast: it swings the scythe.
 	if actor.has_status(Status.SILENCE):
 		if epr != null:
-			_play_anim(epr, "attack01")
+			await _windup(epr, "attack01")
 		return _enemy_strike(actor, _pick_target(Affinity.PHYS), Affinity.PHYS,
 				float(actor.str), "[color=gray]%s is silenced.[/color]\n" % actor.display_name())
 
@@ -3429,12 +3459,12 @@ func _necro_act(actor: Enemy) -> Dictionary:
 		_necro_turn["summoned"] = true
 		if _necro_minions().size() < Enemy.NECRO_MINIONS_MAX:
 			if epr != null:
-				_play_anim(epr, "summon")
+				await _windup(epr, "summon")
 			return _summon_minion(actor)
 
 	# Everything past here is a spell: the staff, not the scythe.
 	if epr != null:
-		_play_anim(epr, "attack02")
+		await _windup(epr, "attack02")
 
 	if not _necro_turn["dispelled"]:
 		var steady: Dictionary = Spell.get_data("steady")
@@ -3526,9 +3556,9 @@ func _warden_act(actor: Enemy) -> Dictionary:
 		_warden_raised = true
 		var epr: TextureRect = _foe_portrait(actor)
 		if epr != null:
-			_play_anim(epr, "attack")
+			await _windup(epr, "attack")
 		return _summon_minion(actor)
-	return _enemy_act(actor)
+	return await _enemy_act(actor)
 
 
 # The Black Knight's answer to a blade that did not finish it.

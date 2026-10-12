@@ -59,7 +59,7 @@ func _resolve(approach: String) -> void:
 		_s._set_buttons(false)
 		_s._log("[color=red]%s: \"Enough talk!\"[/color]" % _s.enemy.enemy_name)
 		var p_hp_before: int = _s.player.hp
-		var e_msg: String    = _s._apply_enemy_turn()
+		var e_msg: String    = await _s._apply_enemy_turn()
 		_s._refresh_hp()
 		if _s.player.hp < p_hp_before:
 			_s._shake_portrait(_s._player_portrait)

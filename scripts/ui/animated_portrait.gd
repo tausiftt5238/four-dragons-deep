@@ -102,7 +102,7 @@ func _play_default() -> void:
 		play("flying")
 
 
-func play(anim_name: String, loop: bool = true) -> void:
+func play(anim_name: String, loop: bool = true, fps: float = DEFAULT_FPS) -> void:
 	var key: String = _resolve(anim_name)
 	if key == "":
 		return
@@ -115,12 +115,18 @@ func play(anim_name: String, loop: bool = true) -> void:
 	_playing = true
 	_timer = 0.0
 	_stop_at = -1
-	_fps = DEFAULT_FPS
+	_fps = fps
 	_update_frame()
 
 
-func play_once(anim_name: String) -> void:
-	play(anim_name, false)
+func play_once(anim_name: String, fps: float = DEFAULT_FPS) -> void:
+	play(anim_name, false, fps)
+
+
+# How many frames an animation has, 0 for one this figure has not got.
+func frames_of(anim_name: String) -> int:
+	var key: String = _resolve(anim_name)
+	return int((_anims[key] as Dictionary)["frames"]) if key != "" else 0
 
 
 # ── Casting ──────────────────────────────────────────────────────────────────
@@ -137,6 +143,8 @@ const CAST_HOLD: float = 0.6
 # after a spell lands, and at 8 he was pulled back to standing before the
 # blade ever flashed. At 16 the flash is up in a third of a second.
 const CAST_FPS: float = 16.0
+# How long a cast takes to reach the flash it holds on: where its spell lands.
+const CAST_FLASH: float = float(CAST_FRAME + 1) / CAST_FPS
 const DEFAULT_FPS: float = 8.0
 const FLASH_SHADES: Array[Color] = [Color8(125, 24, 24), Color8(159, 50, 50),
 		Color8(190, 81, 47), Color8(221, 144, 74)]
