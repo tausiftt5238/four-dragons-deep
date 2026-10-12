@@ -3,7 +3,10 @@
 # and gold. HP/MP persist across encounters; manage them carefully.
 class_name PlayerCharacter extends CharacterSheet
 
+# The name the hero goes by until they are given one (NameEntry), and what a
+# save from before names existed loads as.
 const DISPLAY_NAME: String = "Hero"
+var hero_name: String = DISPLAY_NAME
 
 const SPRITE_KNIGHT: String = "Knight"
 
@@ -968,6 +971,7 @@ func sort_inventory(mode: String = "type") -> void:
 # the floor; the Abyss keeps one as its waiting hero).
 func to_save() -> Dictionary:
 	return {
+		hero_name = hero_name,
 		lv = lv, str = str, def = def, mag = mag, agl = agl, luk = luk,
 		exp = exp, exp_to_next = exp_to_next,
 		hp = hp, max_hp = max_hp, mp = mp, max_mp = max_mp,
@@ -1013,6 +1017,7 @@ static func _retire_spells(list: Array[String]) -> void:
 
 
 func load_save(pdata: Dictionary) -> void:
+	hero_name   = pdata.get("hero_name", DISPLAY_NAME) as String
 	lv          = int(pdata["lv"])
 	str         = int(pdata["str"])
 	def         = int(pdata["def"])

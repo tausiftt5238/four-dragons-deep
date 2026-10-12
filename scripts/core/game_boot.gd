@@ -7,3 +7,5 @@ static var pending_slot: int = 0
 # The Abyss (Abyss): "new" starts a descent with the cleared hero, "continue"
 # picks up its autosave. Empty for the main game.
 static var pending_abyss: String = ""
+# The name a new run's hero was given in the intro (IntroUI); empty is "Hero".
+static var pending_name: String = ""

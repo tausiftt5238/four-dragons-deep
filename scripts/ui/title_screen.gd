@@ -170,6 +170,7 @@ func _on_new_game() -> void:
 	get_viewport().gui_release_focus()
 	GameBoot.pending_slot = 0
 	GameBoot.pending_abyss = ""
+	GameBoot.pending_name = ""
 	var fade: ScreenFade = ScreenFade.cover(get_tree())
 	await fade.covered
 	var intro: IntroUI = IntroUI.new()
@@ -292,6 +293,7 @@ func _start_abyss(how: String) -> void:
 		menu.queue_free()
 	var intro: IntroUI = IntroUI.new()
 	intro.lines = IntroUI.ABYSS_LINES
+	intro.hero_name = Abyss.cleared_hero().get("hero_name", PlayerCharacter.DISPLAY_NAME) as String
 	intro.closing_text = "And so, the Abyss begins."
 	intro.finished.connect(_descend_into_game)
 	add_child(intro)

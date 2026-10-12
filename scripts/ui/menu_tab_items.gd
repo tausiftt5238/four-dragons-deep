@@ -181,7 +181,7 @@ func _build_give(item_id: String) -> void:
 	_m._content.add_child(HSeparator.new())
 
 	var list: SlotList = SlotList.new(_m._content)
-	list.add_entry(PlayerCharacter.DISPLAY_NAME, Color(0.85, 0.85, 0.92),
+	list.add_entry(p.hero_name, Color(0.85, 0.85, 0.92),
 			_now_line(item, p), "LV %d" % p.lv, Color(0.66, 0.66, 0.74),
 			[{text = "Give", disabled = not p.can_use_item(item),
 				press = func() -> void: _give(item, "")}])

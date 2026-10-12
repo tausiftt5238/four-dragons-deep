@@ -107,7 +107,7 @@ func _row(p: PlayerCharacter, demon_name: String, filled: bool, big: bool) -> Pa
 	var lv_text: String = ""
 	if demon_name == "":
 		portrait.load_sprite_id(p.hero_sprite_id())
-		title = PlayerCharacter.DISPLAY_NAME
+		title = p.hero_name
 		color = Color(0.95, 0.88, 0.60)
 		hp = [p.hp, p.max_hp]
 		mp = [p.mp, p.max_mp]

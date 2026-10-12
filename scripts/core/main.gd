@@ -176,6 +176,11 @@ func _ready() -> void:
 	# Create the player's persistent RPG character.
 	player_char = PlayerCharacter.new()
 	add_child(player_char)
+	# A new run's hero is who the intro named (a save or the Abyss brings
+	# its own name with it, over this).
+	if GameBoot.pending_name != "":
+		player_char.hero_name = GameBoot.pending_name
+	GameBoot.pending_name = ""
 
 	# An Abyss descent: the hero who beat the game, whole again, at Abyss 1.
 	var abyss_intent: String = GameBoot.pending_abyss
@@ -1518,6 +1523,7 @@ func _show_abyss_end() -> void:
 	hud_layer.visible = false
 	var ui: IntroUI = IntroUI.new()
 	ui.lines = IntroUI.ABYSS_END_LINES
+	ui.hero_name = player_char.hero_name
 	ui.closing_text = "The end of the Abyss."
 	_get_overlay_layer().add_child(ui)
 	fade.reveal()
@@ -1544,6 +1550,7 @@ func _show_demo_end() -> void:
 	hud_layer.visible = false
 	var ui: IntroUI = IntroUI.new()
 	ui.lines = IntroUI.DEMO_LINES
+	ui.hero_name = player_char.hero_name
 	ui.closing_text = "Thank you for playing the demo."
 	_get_overlay_layer().add_child(ui)
 	fade.reveal()
@@ -1726,6 +1733,7 @@ func _show_game_over() -> void:
 		var rescue: IntroUI = IntroUI.new()
 		rescue.rescue = true
 		rescue.lines = IntroUI.RESCUE_LINES
+		rescue.hero_name = player_char.hero_name
 		rescue.closing_text = "Abyss %d. Back in the light." % Abyss.depth_of(floor_num)
 		_get_overlay_layer().add_child(rescue)
 		await rescue.finished

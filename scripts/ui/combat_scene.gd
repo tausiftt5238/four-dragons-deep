@@ -624,7 +624,7 @@ func _actor_is_player() -> bool:
 
 func _member_name(member: CharacterSheet) -> String:
 	if member == player:
-		return PlayerCharacter.DISPLAY_NAME
+		return player.hero_name
 	return (member as Enemy).enemy_name
 
 
@@ -1227,7 +1227,7 @@ func _enemy_cast_ailment(actor: Enemy) -> Dictionary:
 	# warded hero sees why, every time.
 	if target == player and not player.ward_against(status_id).is_empty():
 		return {msg = "%s  [color=lime]%s's %s wards it off![/color]" % [lead,
-				PlayerCharacter.DISPLAY_NAME, player.ward_against(status_id)["name"]],
+				player.hero_name, player.ward_against(status_id)["name"]],
 				cost = PressTurn.COST_FULL}
 	if randi() % 100 >= ail_landing_chance(actor.ailment_chance):
 		return {msg = "%s  [color=gray]%s shrugs it off.[/color]" % [

@@ -18,8 +18,14 @@ const ZOOM: float = 2.0
 const CAPTAIN_STEP: float = BOX * 0.27
 const BAT_FROM: float = BOX * 0.15
 const BAT_TO: float = -BOX * 0.12
+# On a phone, where the name board goes while the keyboard is up: under Skip,
+# above the half of the screen the keyboard takes.
+const KEYBOARD_TOP: float = 90.0
 
-# A line beginning with ">" brings the Hellbat out before it is said.
+# A line beginning with ">" brings the Hellbat out before it is said; one
+# beginning with "?" is the one she cannot finish, and the hero is asked their
+# name after it (NameEntry). {hero} and {Hero} are what she calls them: the
+# name they gave, or "hero" if they kept her guess.
 const LINES: Array[String] = [
 	"Ah, there you are. Come in out of the wind, traveller, and let me look at you.",
 	"I am Ysolde, Captain of the Tower Watch. For three hundred years my order has kept a single vigil.",
@@ -28,8 +34,8 @@ const LINES: Array[String] = [
 	"Three nights ago, that seal broke.",
 	"Since then they have not stopped coming. Bats with ember eyes. Slimes that eat the stone. Things the old bestiaries have no names for. They pour up the stair like water from a cracked jar.",
 	"So the Watch sent word to every village and crossroads, asking for one soul brave enough to go down.",
-	"You answered. You have my thanks, and the thanks of every family sleeping behind a barred door tonight, uhhh...",
-	"...hero. Right? Yes. Hero. That will do nicely.",
+	"?You answered. You have my thanks, and the thanks of every family sleeping behind a barred door tonight, uhhh...",
+	"...{hero}. Right? Yes. {Hero}. That will do nicely.",
 	"Your task is simple to say and hard to do: go down, and learn how the seal came undone. Seals like that do not break on their own.",
 	">But you will not go alone. This one flew up out of the stair on the first night.",
 	"It did not bite. It did not flee. It hung from the rafters and watched us, and when we spoke, it listened.",
@@ -37,12 +43,12 @@ const LINES: Array[String] = [
 	"So before you draw steel, try words. Speak with them. You may find allies where you expected only teeth.",
 	# PlayerCharacter.START_GOLD: change the two together.
 	"And take this. Five hundred gold from the Watch's own coffers. The orbs below will trade with anyone who can pay, so spend it well.",
-	"Go now, hero. The Tower is waiting, and it is a long way down.",
+	"Go now, {hero}. The Tower is waiting, and it is a long way down.",
 ]
 
 # The Abyss mode's opening: the captain sends for the hero again.
 const ABYSS_LINES: Array[String] = [
-	"Hero. I hoped I would never have to send for you again.",
+	"{Hero}. I hoped I would never have to send for you again.",
 	"I am sorry to be the one to tell you. When the Necromancer fell, the Tower closed... and something else opened where it stood.",
 	"There is no Tower now. Only a pit. An abyss, with no stair and no floor that any of us can see.",
 	"We lowered a lantern on a thousand feet of rope. We never felt it land.",
@@ -54,18 +60,18 @@ const ABYSS_LINES: Array[String] = [
 
 # The end of the Abyss: the Ancient Multihued Dragon has fallen at its bottom.
 const ABYSS_END_LINES: Array[String] = [
-	"Hero? Hero! We felt the whole pit shake, and then... nothing. Just quiet.",
+	"{Hero}? {Hero}! We felt the whole pit shake, and then... nothing. Just quiet.",
 	"You found it. The bottom of the Abyss. I did not believe there was one.",
 	"Every lantern we lowered, every rope we lost... and you walked all the way down and stood at the end of it.",
 	"Nothing has come up out of the dark since. Not one. The Watch does not know what to do with itself.",
 	"Perhaps, at last, this kingdom can have its peace. Thanks to you.",
-	"Come home, hero. You have earned the light.",
+	"Come home, {hero}. You have earned the light.",
 ]
 
 # The demo's last scene (Build.demo): the Ice Dragon is down, and the captain
 # thanks the hero and says where the rest of the Tower is.
 const DEMO_LINES: Array[String] = [
-	"Hero! You came back up. And that is frost on your boots, unless I am much mistaken.",
+	"{Hero}! You came back up. And that is frost on your boots, unless I am much mistaken.",
 	"The Ice Dragon. The first of the four, fallen. The whole Watch felt the stair go quiet.",
 	"But the Tower goes deeper still. Three more dragons wait below it, and something worse beneath them.",
 	"This is as far as the road goes for now. Thank you, truly, for walking it with us.",
@@ -75,7 +81,7 @@ const DEMO_LINES: Array[String] = [
 # The Abyss mode's last scene: she hauls the fallen hero back up the rope.
 const RESCUE_LINES: Array[String] = [
 	"Hold on. Hold on, I have you.",
-	"Easy, hero. Do not try to stand. The Watch has the rope, and we are pulling you up.",
+	"Easy, {hero}. Do not try to stand. The Watch has the rope, and we are pulling you up.",
 	"You did your best. You went deeper than any of us dared to look.",
 	"Rest now. We have you, and we are not letting go. Do not worry.",
 	"The Abyss will still be there tomorrow. So will we.",
@@ -88,6 +94,9 @@ var closing_text: String = "And so, the descent begins."
 # The rescue: the captain hauling the fallen hero up a rope, rising as she
 # talks, with no Hellbat.
 var rescue: bool = false
+# Who she is talking to. A new run sets it at the "?" line, and the run takes
+# it from GameBoot.pending_name.
+var hero_name: String = PlayerCharacter.DISPLAY_NAME
 
 var _idx: int = -1
 var _typing: bool = false
@@ -99,6 +108,11 @@ var _bat: AnimatedPortrait
 var _done: bool = false
 var _box: PanelContainer
 var _hint: Control
+# The name board while it is up; Skip on the way there stops at it.
+var _entry: NameEntry
+var _entry_hint: Control
+var _named: bool = false
+var _skipping: bool = false
 
 
 func _ready() -> void:
@@ -259,11 +273,14 @@ func _on_input(event: InputEvent) -> void:
 	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
 		return
 	accept_event()
-	_advance()
+	if _entry == null:
+		_advance()
 
 
 # Yes on a keyboard or a pad does what a tap does.
 func _unhandled_input(event: InputEvent) -> void:
+	if _entry != null:
+		return
 	if event.is_action_pressed("ui_accept"):
 		get_viewport().set_input_as_handled()
 		_advance()
@@ -278,7 +295,10 @@ func _advance() -> void:
 		_arrow.visible = true
 	else:
 		Sfx.play("tap")
-		_next()
+		if lines[_idx].begins_with("?") and not _named:
+			_ask_name()
+		else:
+			_next()
 
 
 func _next() -> void:
@@ -292,7 +312,8 @@ func _next() -> void:
 	if line.begins_with(">"):
 		line = line.substr(1)
 		_bring_bat()
-	_text.text = line
+	line = line.trim_prefix("?")
+	_text.text = _say(line)
 	_text.visible_characters = 0
 	_shown = 0.0
 	_typing = true
@@ -347,11 +368,82 @@ func _closing() -> void:
 
 
 func _finish() -> void:
-	if _done:
+	if _done or _entry != null:
+		return
+	# Skipped before the hero was named: on to the name, and then the rest.
+	var ask: int = _ask_line()
+	if ask >= 0 and not _named:
+		_skipping = true
+		_idx = ask
+		_typing = false
+		_text.text = _say(lines[ask].trim_prefix("?"))
+		_text.visible_characters = -1
+		_ask_name()
 		return
 	_done = true
 	_typing = false
 	finished.emit()
+
+
+# What she says, with the hero's name in it.
+func _say(line: String) -> String:
+	var kept: bool = hero_name == PlayerCharacter.DISPLAY_NAME
+	return line.replace("{hero}", "hero" if kept else hero_name) \
+			.replace("{Hero}", "Hero" if kept else hero_name)
+
+
+# The line after which the hero is asked their name; -1 for a telling that
+# never asks.
+func _ask_line() -> int:
+	for i: int in lines.size():
+		if lines[i].begins_with("?"):
+			return i
+	return -1
+
+
+# The dialogue box gives way to the name board, the same size in the same
+# place (NameEntry). On a phone it goes up to the top of the screen while
+# the keyboard is out, which would cover it down here.
+func _ask_name() -> void:
+	_entry = NameEntry.new()
+	for side: String in ["anchor_left", "anchor_right", "offset_left", "offset_right",
+			"offset_top", "offset_bottom"]:
+		_entry.set(side, _box.get(side))
+	_box.visible = false
+	_hint.visible = false
+	add_child(_entry)
+	if Build.steam():
+		_entry_hint = NameEntry.hint_line(13, Color(0.40, 0.37, 0.46))
+		_entry_hint.anchor_left = 0.0
+		_entry_hint.anchor_right = 1.0
+		_entry_hint.offset_top = _hint.offset_top
+		_entry_hint.offset_bottom = _hint.offset_bottom
+		add_child(_entry_hint)
+	else:
+		var low: float = _box.offset_top
+		var tall: float = _box.offset_bottom - _box.offset_top
+		var entry: NameEntry = _entry
+		entry.typing.connect(func(on: bool) -> void:
+			entry.offset_top = KEYBOARD_TOP if on else low
+			entry.offset_bottom = entry.offset_top + tall)
+	_entry.named.connect(_on_named)
+
+
+func _on_named(chosen: String) -> void:
+	hero_name = chosen
+	GameBoot.pending_name = chosen
+	_named = true
+	_entry.queue_free()
+	_entry = null
+	if _entry_hint != null:
+		_entry_hint.queue_free()
+		_entry_hint = null
+	_box.visible = true
+	_hint.visible = true
+	if _skipping:
+		_finish()
+	else:
+		_next()
 
 
 # The rope from above, the captain holding it, and the hero lying at her feet,

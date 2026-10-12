@@ -433,7 +433,7 @@ func _party_card(m: CharacterSheet, is_hero: bool) -> PanelContainer:
 	top.add_child(names)
 	# A long name (Baby Green Dragon) scrolls like a banner rather than being cut.
 	var name_lbl: Label = MarqueeLabel.new()
-	name_lbl.text = "Hero" if is_hero else (m.display_name() if m.has_method("display_name") else "")
+	name_lbl.text = (m as PlayerCharacter).hero_name if is_hero else (m.display_name() if m.has_method("display_name") else "")
 	name_lbl.add_theme_font_size_override("font_size", TEXT)
 	name_lbl.add_theme_color_override("font_color", GOLD if is_hero else PALE)
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
