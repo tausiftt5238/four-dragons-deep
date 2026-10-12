@@ -122,6 +122,34 @@ func _init(title: String, commands: Array, actions: Array[String]) -> void:
 func _ready() -> void:
 	for b: Button in buttons.values():
 		b.add_theme_font_size_override("font_size", TEXT)
+	_wrap_commands()
+	get_viewport().gui_focus_changed.connect(_show_whole_row)
+
+
+# The scroll follows the cursor only as far as the button it is on, and a
+# row's detail line is under that: on the last row of a page (the Tide Stone
+# at the bottom of the trinkets) it stayed out of sight with nothing below to
+# scroll on to. The whole row comes into view instead.
+func _show_whole_row(c: Control) -> void:
+	if c == null or not content.is_ancestor_of(c):
+		return
+	var row: Node = c
+	while row != null and row != content and not row is MarginContainer:
+		row = row.get_parent()
+	if row is MarginContainer:
+		# After follow_focus has had its go, or it puts the button back.
+		scroll.ensure_control_visible.call_deferred(row as Control)
+
+
+# Up from the first command is the last and down from the last is the first,
+# and each step in between is the next command in the list, over the gap
+# before Leave: left to the engine, down from Leave found Save again.
+func _wrap_commands() -> void:
+	var order: Array = buttons.values()
+	for i: int in order.size():
+		var b: Button = order[i] as Button
+		b.focus_neighbor_top = b.get_path_to(order[(i + order.size() - 1) % order.size()] as Button)
+		b.focus_neighbor_bottom = b.get_path_to(order[(i + 1) % order.size()] as Button)
 
 
 func set_page(id: String, title: String) -> void:
