@@ -14,7 +14,11 @@ const PIP_R:    float = 4.0
 const PIP_STEP: float = 12.0
 const CARET_W:  float = 11.0
 const CARET_H:  float = 7.0
+# Drawn by tools/make_arrows.py.
 const BACK_ICON := preload("res://resources/icons/back.png")
+const NEXT_ICON := preload("res://resources/icons/next.png")
+const BACK_BIG_ICON := preload("res://resources/icons/back_big.png")
+const NEXT_BIG_ICON := preload("res://resources/icons/next_big.png")
 # Button.DrawMode -> the colour its words take then.
 const _FONT_STATE: Array[String] = ["font_color", "font_pressed_color",
 		"font_hover_color", "font_disabled_color", "font_hover_pressed_color"]
@@ -117,7 +121,8 @@ static func caret_right(color: Color) -> UIGlyph:
 #
 # `centered` keeps the arrow beside the words in the middle of a wide button;
 # a Button's own icon sits at its edge however far away the words are.
-static func back_button(btn: Button, words: String = "", centered: bool = false) -> void:
+static func back_button(btn: Button, words: String = "", centered: bool = false,
+		big: bool = false) -> void:
 	btn.set_meta("back", true)
 	if not centered:
 		btn.text = words
@@ -128,27 +133,58 @@ static func back_button(btn: Button, words: String = "", centered: bool = false)
 			btn.add_theme_color_override("icon_%s_color" % state,
 					btn.get_theme_color("font_%s_color" % state if state != "normal" else "font_color"))
 		return
+	_arrow_row(btn, words, false, big)
+
+
+# The way on: "Next" and the right arrow after it, together in the middle.
+static func next_button(btn: Button, words: String, big: bool = false) -> void:
+	_arrow_row(btn, words, true, big)
+
+
+# Changes what a back_button(centered) or next_button says; `arrow` false
+# leaves the words alone, as "Done" is.
+static func set_arrow_words(btn: Button, words: String, arrow: bool = true) -> void:
+	(btn.get_meta("arrow_words") as Label).text = words
+	(btn.get_meta("arrow") as TextureRect).visible = arrow
+
+
+static func _arrow_row(btn: Button, words: String, forward: bool, big: bool) -> void:
 	btn.text = ""
 	var mid: CenterContainer = CenterContainer.new()
 	mid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(mid)
 	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 8 if big else 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mid.add_child(row)
 	var arrow: TextureRect = TextureRect.new()
-	arrow.texture = BACK_ICON
+	if forward:
+		arrow.texture = NEXT_BIG_ICON if big else NEXT_ICON
+	else:
+		arrow.texture = BACK_BIG_ICON if big else BACK_ICON
 	arrow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	arrow.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(arrow)
+	# The phone's words are twice the PC's: the small arrow, doubled, keeps
+	# step with them and its pixels square.
+	if big and not Build.steam():
+		arrow.texture = NEXT_ICON if forward else BACK_ICON
+		arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		arrow.stretch_mode = TextureRect.STRETCH_SCALE
+		arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		arrow.custom_minimum_size = arrow.texture.get_size() * 2.0
 	var label: Label = Label.new()
 	label.text = words
 	label.add_theme_font_override("font", btn.get_theme_font("font"))
 	label.add_theme_font_size_override("font_size", btn.get_theme_font_size("font_size"))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
+	row.add_child(arrow)
+	if not forward:
+		row.move_child(arrow, 0)
+	btn.set_meta("arrow_words", label)
+	btn.set_meta("arrow", arrow)
 	btn.custom_minimum_size.x = maxf(btn.custom_minimum_size.x,
 			row.get_combined_minimum_size().x + 16.0)
 	# Both lit as the button's words would be, hovered, pressed or not.

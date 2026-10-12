@@ -153,7 +153,7 @@ func _build() -> void:
 	col.add_child(nav)
 
 	_back_btn = _button("Back")
-	UIGlyph.back_button(_back_btn, "Back", true)
+	UIGlyph.back_button(_back_btn, "Back", true, true)
 	_back_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_back_btn.pressed.connect(func() -> void: _show(_page - 1))
 	nav.add_child(_back_btn)
@@ -163,7 +163,8 @@ func _build() -> void:
 	_count.custom_minimum_size = Vector2(70, 0)
 	nav.add_child(_count)
 
-	_next_btn = _button("Next >")
+	_next_btn = _button("Next")
+	UIGlyph.next_button(_next_btn, "Next", true)
 	_next_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_next_btn.pressed.connect(func() -> void:
 		if _page >= PAGES.size() - 1:
@@ -185,7 +186,8 @@ func _show(page: int) -> void:
 	_shot.texture = load(path) as Texture2D if ResourceLoader.exists(path) else null
 	_count.text = "%d / %d" % [_page + 1, PAGES.size()]
 	_back_btn.disabled = _page == 0
-	_next_btn.text = "Done" if _page == PAGES.size() - 1 else "Next >"
+	var last: bool = _page == PAGES.size() - 1
+	UIGlyph.set_arrow_words(_next_btn, "Done" if last else "Next", not last)
 
 
 func _label(text: String, size: int, color: Color) -> Label:
