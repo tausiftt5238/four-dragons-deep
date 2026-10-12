@@ -201,6 +201,13 @@ func _add_mapping(col: VBoxContainer) -> void:
 			b.custom_minimum_size = Vector2(110, 0)
 			b.add_theme_font_override("font", _FONT)
 			b.pressed.connect(_start_capture.bind(id, pad, b))
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			b.expand_icon = false
+			# The theme greys a button's icon; the pad's icons are drawn in
+			# their own black and white.
+			for state: String in ["icon_normal_color", "icon_focus_color",
+					"icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
+				b.add_theme_color_override(state, Color.WHITE)
 			grid.add_child(b)
 			b.add_theme_font_size_override("font_size", 14)
 			_map_btns.append({action = id, pad = pad, btn = b})
@@ -223,13 +230,19 @@ func _paint_mapping() -> void:
 	for m: Dictionary in _map_btns:
 		var b: Button = m["btn"] as Button
 		var id: String = m["action"] as String
-		b.text = Controls.pad_name(Controls.pad_of(id)) if bool(m["pad"]) \
-				else Controls.key_name(Controls.key_of(id))
+		if not bool(m["pad"]):
+			b.text = Controls.key_name(Controls.key_of(id))
+			continue
+		# The pad's own icon for the button, its name for one without.
+		var button: int = Controls.pad_of(id)
+		b.icon = Controls.pad_icon(button)
+		b.text = "" if b.icon != null else Controls.pad_name(button)
 
 
 func _start_capture(action: String, pad: bool, btn: Button) -> void:
 	_paint_mapping()
 	_capture = {action = action, pad = pad, btn = btn}
+	btn.icon = null
 	btn.text = "press a button" if pad else "press a key"
 
 
@@ -263,7 +276,7 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventJoypadButton and event.pressed:
 		get_viewport().set_input_as_handled()
 		var b: int = (event as InputEventJoypadButton).button_index
-		# Any button binds, the one on × included; Escape is the way out.
+		# Any button binds, the one on B included; Escape is the way out.
 		if not pad:
 			_say("Left as it was.")
 		else:

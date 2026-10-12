@@ -1,11 +1,11 @@
 # Controls
-# The whole game runs on eight presses: the four directions, two strafes, ○
-# for yes and × for no. One key and one pad button each, rebindable from Options (Button
+# The whole game runs on eight presses: the four directions, two strafes, yes
+# and no. One key and one pad button each, rebindable from Options (Button
 # mapping) and kept in settings.cfg beside the other preferences.
 #
 # In the dungeon up and down walk, left and right turn, the strafes step
-# sideways (the PC build only), ○ acts on what is in front of you and × opens
-# the menu. Everywhere else ○ chooses and × backs
+# sideways (the PC build only), yes acts on what is in front of you and no
+# opens the menu. Everywhere else yes chooses and no backs
 # out. The engine's ui_ actions, which every menu and the fight read, are
 # rebuilt from the same bindings, so a rebinding holds everywhere at once.
 #
@@ -18,8 +18,8 @@ const SECTION_KEYS: String = "keys"
 const SECTION_PAD: String = "pad"
 
 # In the order Options lists them: [action, name, default key, default button].
-# ○ is the pad's right face button and × the bottom one: yes on the right,
-# the way the Japanese releases have it.
+# Yes is the pad's bottom face button (A) and no the right one (B), the way
+# the Steam Deck and an Xbox pad have it.
 const ACTIONS: Array = [
 	["up", "Up", KEY_W, JOY_BUTTON_DPAD_UP],
 	["down", "Down", KEY_S, JOY_BUTTON_DPAD_DOWN],
@@ -27,8 +27,8 @@ const ACTIONS: Array = [
 	["right", "Right", KEY_D, JOY_BUTTON_DPAD_RIGHT],
 	["strafe_left", "Strafe left", KEY_Q, JOY_BUTTON_LEFT_SHOULDER],
 	["strafe_right", "Strafe right", KEY_E, JOY_BUTTON_RIGHT_SHOULDER],
-	["yes", "O  Yes", KEY_Z, JOY_BUTTON_B],
-	["no", "X  No", KEY_X, JOY_BUTTON_A],
+	["yes", "Yes", KEY_Z, JOY_BUTTON_A],
+	["no", "No", KEY_X, JOY_BUTTON_B],
 ]
 
 # The keys that always work as well, whatever is bound.
@@ -114,26 +114,55 @@ static func key_name(key: int) -> String:
 	return OS.get_keycode_string(key) if key != KEY_NONE else "-"
 
 
-# What the pad's buttons are called, by the shapes on them: the game's own
-# words for yes and no are O and X.
+# The pad's buttons by the names on a Steam Deck (and an Xbox pad), and the
+# icon drawn for each (tools/make_pad_glyphs.py). The back grips are SDL's
+# paddles: one and two the upper right and left, three and four the lower.
+const PAD_GLYPHS: Dictionary = {
+	JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y",
+	JOY_BUTTON_BACK: "View", JOY_BUTTON_START: "Menu",
+	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3",
+	JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB",
+	JOY_BUTTON_DPAD_UP: "D_Up", JOY_BUTTON_DPAD_DOWN: "D_Down",
+	JOY_BUTTON_DPAD_LEFT: "D_Left", JOY_BUTTON_DPAD_RIGHT: "D_Right",
+	JOY_BUTTON_PADDLE1: "R4", JOY_BUTTON_PADDLE2: "L4",
+	JOY_BUTTON_PADDLE3: "R5", JOY_BUTTON_PADDLE4: "L5",
+}
+const PAD_ICON_DIR: String = "res://resources/icons/pad/"
+
+
 static func pad_name(button: int) -> String:
 	match button:
-		JOY_BUTTON_A: return "X"
-		JOY_BUTTON_B: return "O"
-		JOY_BUTTON_X: return "Square"
-		JOY_BUTTON_Y: return "Triangle"
-		JOY_BUTTON_BACK: return "Back"
-		JOY_BUTTON_START: return "Start"
-		JOY_BUTTON_GUIDE: return "Guide"
-		JOY_BUTTON_LEFT_STICK: return "LS"
-		JOY_BUTTON_RIGHT_STICK: return "RS"
-		JOY_BUTTON_LEFT_SHOULDER: return "LB"
-		JOY_BUTTON_RIGHT_SHOULDER: return "RB"
+		JOY_BUTTON_GUIDE: return "Steam"
 		JOY_BUTTON_DPAD_UP: return "D-Up"
 		JOY_BUTTON_DPAD_DOWN: return "D-Down"
 		JOY_BUTTON_DPAD_LEFT: return "D-Left"
 		JOY_BUTTON_DPAD_RIGHT: return "D-Right"
+	if PAD_GLYPHS.has(button):
+		return PAD_GLYPHS[button] as String
 	return "Button %d" % button if button >= 0 else "-"
+
+
+# The icon for a pad button, or null for one without (the name stands in).
+static func pad_icon(button: int) -> Texture2D:
+	if not PAD_GLYPHS.has(button):
+		return null
+	var path: String = PAD_ICON_DIR + (PAD_GLYPHS[button] as String) + ".png"
+	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+
+
+# Whether the last thing pressed was on a pad, so what the screen names is the
+# button in your hands. Boot hands every event here.
+static var using_pad: bool = false
+
+
+static func note(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		using_pad = false
+	elif event is InputEventJoypadButton and event.pressed:
+		using_pad = true
+	elif event is InputEventJoypadMotion \
+			and absf((event as InputEventJoypadMotion).axis_value) > 0.6:
+		using_pad = true
 
 
 static func _apply() -> void:
@@ -170,8 +199,8 @@ static func _save() -> void:
 	cfg.save(Settings.PATH)
 
 
-# What a screen that waits for a tap says: the tap on a phone, the yes button
-# on a wide screen.
+# What a screen that waits for a tap says: the tap on a phone, the yes key on
+# a wide screen (ButtonHint shows the pad's icon instead, once a pad is used).
 static func continue_hint() -> String:
 	if not Build.steam():
 		return "tap to continue"

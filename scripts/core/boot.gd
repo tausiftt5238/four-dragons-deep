@@ -46,6 +46,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	Controls.note(event)
 	if _diag == null or event is InputEventMouseMotion or event is InputEventJoypadMotion \
 			and absf((event as InputEventJoypadMotion).axis_value) < 0.5:
 		return

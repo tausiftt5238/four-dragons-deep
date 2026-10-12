@@ -799,8 +799,6 @@ const STICK_DEAD: float = 0.6
 func _stick_input(m: InputEventJoypadMotion) -> void:
 	if m.axis != JOY_AXIS_LEFT_X and m.axis != JOY_AXIS_LEFT_Y:
 		return
-	if _explore_hud != null:
-		_explore_hud.set_pad(true)
 	# The stick has to come back to the middle before it counts again, so
 	# holding it does not run you down a corridor.
 	var held: Vector2i = _stick_held
@@ -852,8 +850,6 @@ func _input(event: InputEvent) -> void:
 	var is_pad: bool = event is InputEventJoypadButton and event.pressed
 	if not (is_key or is_pad):
 		return
-	if _explore_hud != null:
-		_explore_hud.set_pad(is_pad)
 	var key: int = (event as InputEventKey).keycode if is_key else KEY_NONE
 
 	# Q and N are cheats for testing; a release build has neither.

@@ -81,8 +81,7 @@ func _build_climb() -> void:
 	_text.modulate.a = 0.0
 	add_child(_text)
 
-	var hint: Label = _label(Controls.continue_hint(), 13, Color(0.40, 0.37, 0.46))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var hint: Control = ButtonHint.continue_line(13, Color(0.40, 0.37, 0.46))
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.anchor_right = 1.0

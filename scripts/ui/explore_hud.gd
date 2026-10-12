@@ -45,14 +45,13 @@ var _party_sig: String = ""
 var _party_cards: Array[Dictionary] = []
 var _demons: Array[Enemy] = []
 var _prompt: PanelContainer
-var _prompt_lbl: Label
+var _prompt_hint: ButtonHint
 var _map_win: PanelContainer
 var _map_title: Label
 var _key_lbl: Label
 var _key_pic: KeyIcon
 var _map_holder: Control
 var _hint_btns: Dictionary = {}
-var _pad: bool = false
 # The map's column (its dark and its window) and everything over the view,
 # kept as two groups so the menu and the orb can push the one and fade the
 # other (push_map).
@@ -205,9 +204,9 @@ func _build_prompt() -> void:
 	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_prompt.visible = false
 	_view_bits.add_child(_prompt)
-	_prompt_lbl = _label("", TEXT, PALE)
-	_prompt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.add_child(_prompt_lbl)
+	_prompt_hint = ButtonHint.new("yes", "", TEXT, PALE, true)
+	_prompt_hint.alignment = BoxContainer.ALIGNMENT_CENTER
+	_prompt.add_child(_prompt_hint)
 
 
 func _build_map() -> void:
@@ -267,9 +266,17 @@ func _build_map() -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect((h[1] as Signal).emit)
 		b.clip_text = true
+		# The mark below draws the words, so the button has no text of its own
+		# to be sized by: tall enough for an icon or a line of SMALL text.
+		b.custom_minimum_size = Vector2(0, 24)
 		hints.add_child(b)
+		# The key or the pad's icon and the word, centred in the button.
+		var mark: ButtonHint = ButtonHint.new(h[0] as String, _WORDS[h[0]] as String,
+				SMALL, PALE, true)
+		mark.alignment = BoxContainer.ALIGNMENT_CENTER
+		mark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		b.add_child(mark)
 		_hint_btns[h[0]] = b
-	_paint_hints()
 
 
 # The map's window, down its column.
@@ -331,7 +338,7 @@ func _refresh_prompt() -> void:
 	_prompt.visible = what != ""
 	if what == "":
 		return
-	_prompt_lbl.text = "%s  %s" % [_key_name("yes"), what]
+	_prompt_hint.text = what
 
 
 static func _thousands(n: int) -> String:
@@ -470,28 +477,9 @@ func _bar_row(col: VBoxContainer, color: Color) -> Array:
 const _WORDS: Dictionary = {yes = "Act", no = "Menu"}
 
 
-# Whatever the action is bound to now (Controls), so a rebinding shows here.
-func _key_name(what: String) -> String:
-	return "[%s]" % (Controls.pad_name(Controls.pad_of(what)) if _pad
-			else Controls.key_name(Controls.key_of(what)))
-
-
-# Options can rebind while the HUD is up behind the menu.
+# Options can rebind while the HUD is up behind the menu. The marks follow by
+# themselves (ButtonHint); what the prompt says may have changed.
 func repaint_keys() -> void:
-	_paint_hints()
-	_refresh_prompt()
-
-
-func _paint_hints() -> void:
-	for what: String in _hint_btns:
-		(_hint_btns[what] as Button).text = "%s %s" % [_key_name(what), _WORDS[what] as String]
-
-
-func set_pad(on: bool) -> void:
-	if on == _pad:
-		return
-	_pad = on
-	_paint_hints()
 	_refresh_prompt()
 
 

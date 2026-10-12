@@ -98,7 +98,7 @@ var _captain: AnimatedPortrait
 var _bat: AnimatedPortrait
 var _done: bool = false
 var _box: PanelContainer
-var _hint: Label
+var _hint: Control
 
 
 func _ready() -> void:
@@ -209,9 +209,8 @@ func _build() -> void:
 	blink.tween_property(_arrow, "modulate:a", 0.2, 0.45)
 	blink.tween_property(_arrow, "modulate:a", 1.0, 0.45)
 
-	var hint: Label = _label(Controls.continue_hint(), 13, Color(0.40, 0.37, 0.46))
+	var hint: Control = ButtonHint.continue_line(13, Color(0.40, 0.37, 0.46))
 	_hint = hint
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.anchor_left = 0.0
 	hint.anchor_right = 1.0
 	var below: float = box.offset_bottom + 4.0
