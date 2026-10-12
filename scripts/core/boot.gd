@@ -10,7 +10,8 @@
 #     out of sight.
 #
 # It also stays for F11 and Alt+Enter, which switch fullscreen on and off on
-# any screen of the PC build.
+# any screen of the PC build, and puts InputDedupe at the end of the root,
+# where it drops a press that arrives twice (a Steam Deck in desktop mode).
 #
 # An exported debug build (tools/export_steam.sh debug) also puts a line of
 # diagnostics in the corner: the window, the screen, the pads it can see and
@@ -24,6 +25,7 @@ var _seen: Array[String] = []
 
 func _ready() -> void:
 	Controls.ensure()
+	_start_dedupe()
 	if OS.is_debug_build() and OS.has_feature("template"):
 		_start_diagnostics()
 	# A test or a tool run (--script) keeps the window it was given, and so
@@ -46,7 +48,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	Controls.note(event)
 	if _diag == null or event is InputEventMouseMotion or event is InputEventJoypadMotion \
 			and absf((event as InputEventJoypadMotion).axis_value) < 0.5:
 		return
@@ -61,6 +62,19 @@ func _input(event: InputEvent) -> void:
 				"down" if event.pressed else "up"]
 	_seen.push_front(what)
 	_seen.resize(mini(_seen.size(), 8))
+
+
+# The filter that drops a press arriving twice (InputDedupe). Input goes to
+# the last node first, so it is kept at the end of the root: a scene arriving
+# after it is moved in front.
+func _start_dedupe() -> void:
+	var root: Window = get_tree().root
+	var dedupe: Node = (load("res://scripts/core/input_dedupe.gd") as GDScript).new()
+	dedupe.name = "InputDedupe"
+	root.add_child.call_deferred(dedupe)
+	root.child_entered_tree.connect(func(n: Node) -> void:
+		if n != dedupe and dedupe.is_inside_tree():
+			root.move_child.call_deferred(dedupe, -1))
 
 
 func _start_diagnostics() -> void:
