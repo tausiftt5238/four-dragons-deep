@@ -1229,6 +1229,7 @@ func _launch_combat(group: Array[Enemy], warden: bool = false) -> void:
 	var scene: CombatScene = CombatSceneSteam.new() if Build.steam() else CombatScenePortable.new()
 	scene.name = "CombatScene"
 	scene.player = player_char
+	scene.floor_num = floor_num
 	# The scene removes negotiated demons from its own list, so hand it a copy
 	# and keep the full roster here for the reward tally.
 	scene.foes = group.duplicate()

@@ -30,6 +30,9 @@ const SHEETS: Dictionary = {
 	"dark":    [["Dark", 10.0], ["Dark", 10.0, 1.4]],
 	"phys":    [["Phys", 10.0], ["Phys", 10.0]],
 }
+# Sheets that travel one way: drawn flying at the monsters, and turned around
+# when they land on one of yours (whose figures are drawn facing the other way).
+const ONE_WAY: Array[String] = ["Fire_II"]
 # Where a bigger sheet grows from, as a share of its frame: the pillars'
 # feet, so a bigger one still stands where the demon does.
 const GROW_FROM: Vector2 = Vector2(0.5, 0.6)
@@ -118,6 +121,7 @@ static func play_sheet(over: Control, sheet_name: String, fps: float,
 	fx.frames = fx.tex.get_width() / fx.tex.get_height()
 	fx.fps = fps
 	fx.grow = grow
+	fx.turned = sheet_name in ONE_WAY and over is TextureRect and (over as TextureRect).flip_h
 	fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fx.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -199,6 +203,7 @@ class _Sheet extends Control:
 	var frames: int = 1
 	var fps: float = 12.0
 	var grow: float = 1.0
+	var turned: bool = false
 	var _t: float = 0.0
 
 	func _process(delta: float) -> void:
@@ -220,6 +225,8 @@ class _Sheet extends Control:
 		else:
 			var d: float = minf(over.size.x, over.size.y) * 2.6
 			at = Rect2(over.size / 2.0 - Vector2(d, d) / 2.0, Vector2(d, d))
+		if turned:
+			draw_set_transform(Vector2(over.size.x - position.x * 2.0, 0.0), 0.0, Vector2(-1.0, 1.0))
 		var pivot: Vector2 = at.position + at.size * GROW_FROM
 		at = Rect2(pivot + (at.position - pivot) * grow, at.size * grow)
 		draw_texture_rect_region(tex, Rect2(at.position - position, at.size),

@@ -15,6 +15,9 @@ class_name CombatScene extends Control
 signal combat_ended(result: String)
 
 var player: PlayerCharacter
+# The floor the fight is on (Main sets it). The monsters' spells look the rung
+# an orb on this floor would sell (_foe_rung).
+var floor_num: int = 1
 
 # Every demon in this encounter. `enemy` is whichever one the player currently
 # has targeted — it is kept as a plain field because the CombatNeg* handlers
@@ -3303,13 +3306,26 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 
 	if Affinity.is_banishing(element):
 		return _enemy_banish(actor, target, element, dry)
-	return _enemy_strike(actor, target, element, base, dry)
+	return _enemy_strike(actor, target, element, base, dry, paid)
 
 
 # One blow or one single-target cast from the other side, from the hit roll to
 # the log line. `base` is the attack's raw power before the target's guard.
+# What a monster's element looks like when it lands: the highest rung of it an
+# orb on this floor sells (Item.ELEMENTAL_SCROLLS), so a monster on the floor
+# where you can first buy Blaze casts something that looks like Blaze. The
+# look only: a monster's element hits as hard as its MAG says, as it always has.
+func _foe_rung(element: String) -> float:
+	var best: int = 1
+	for rung: int in [2, 3]:
+		var id: String = Spell.elemental_id(element, rung, Spell.SHAPE_ONE)
+		if id != "" and int(Item.ELEMENTAL_SCROLLS.get(id, 999)) <= floor_num:
+			best = rung
+	return Spell.rung_power(best)
+
+
 func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
-		base: float, dry: String) -> Dictionary:
+		base: float, dry: String, skill: bool = false) -> Dictionary:
 	# A swing misses on agility; a spell misses half as often. A miss does not
 	# spend the target's brace — it never had to absorb anything.
 	if element == Affinity.PHYS and not CombatMath.lands(actor, target):
@@ -3358,9 +3374,13 @@ func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
 	if hit_pr != null:
 		_shake_portrait(hit_pr, guarding)
 		if element == Affinity.PHYS:
-			SlashFX.strike(hit_pr)
+			# A swing is a slash; a physical line it paid for looks its rung.
+			if skill:
+				SpellFX.skill(hit_pr, _foe_rung(element))
+			else:
+				SlashFX.strike(hit_pr)
 		else:
-			SpellFX.cast(hit_pr, element)
+			SpellFX.cast(hit_pr, element, _foe_rung(element))
 	var msg: String = dry + "[color=red]%s %s %s for %d damage.[/color]%s" % [
 			ename, verb, tname, dmg, CombatMath.outcome_tag(outcome, crit, muted)]
 	if element != Affinity.PHYS:
@@ -3577,9 +3597,9 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 		var fx_pr: TextureRect = _member_portrait(who)
 		if fx_pr != null:
 			if element == Affinity.PHYS:
-				SlashFX.strike(fx_pr)
+				SpellFX.skill(fx_pr, _foe_rung(element))
 			else:
-				SpellFX.cast(fx_pr, element)
+				SpellFX.cast(fx_pr, element, _foe_rung(element))
 		if banishing:
 			var br: Dictionary = CombatMath.resolve_banish(who, element,
 					maxi(1, int(base)), who == player, actor)
@@ -3677,7 +3697,7 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	# them whether or not it takes.
 	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
-		SpellFX.cast(hit_pr, element)
+		SpellFX.cast(hit_pr, element, _foe_rung(element))
 
 	match res["outcome"]:
 		"banished":
