@@ -131,8 +131,8 @@ static func _length(sound: String) -> float:
 
 
 static func _on_button(btn: Button) -> void:
-	var label: String = btn.text.strip_edges().trim_prefix("<").strip_edges().to_lower()
-	play("back" if label in BACK_LABELS else "tap")
+	var label: String = btn.text.strip_edges().to_lower()
+	play("back" if btn.has_meta("back") or label in BACK_LABELS else "tap")
 
 
 class _Hub extends Node:

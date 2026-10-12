@@ -152,7 +152,8 @@ func _build() -> void:
 	nav.add_theme_constant_override("separation", 10)
 	col.add_child(nav)
 
-	_back_btn = _button("< Back")
+	_back_btn = _button("Back")
+	UIGlyph.back_button(_back_btn, "Back", true)
 	_back_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_back_btn.pressed.connect(func() -> void: _show(_page - 1))
 	nav.add_child(_back_btn)

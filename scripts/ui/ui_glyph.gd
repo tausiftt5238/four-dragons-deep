@@ -14,6 +14,10 @@ const PIP_R:    float = 4.0
 const PIP_STEP: float = 12.0
 const CARET_W:  float = 11.0
 const CARET_H:  float = 7.0
+const BACK_ICON := preload("res://resources/icons/back.png")
+# Button.DrawMode -> the colour its words take then.
+const _FONT_STATE: Array[String] = ["font_color", "font_pressed_color",
+		"font_hover_color", "font_disabled_color", "font_hover_pressed_color"]
 
 # Press-turn icons are Ghostfire's head, cut from its
 # Flying strip and played like a portrait: the whole flaming skull while the
@@ -105,6 +109,53 @@ static func caret_right(color: Color) -> UIGlyph:
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	g.custom_minimum_size = Vector2(CARET_H + 4.0, CARET_W)
 	return g
+
+
+# A way back: the left arrow, before `words` if there are any ("Back"), the
+# same grey as the words in every state. Marked so it sounds like going back
+# whatever it says (Sfx).
+#
+# `centered` keeps the arrow beside the words in the middle of a wide button;
+# a Button's own icon sits at its edge however far away the words are.
+static func back_button(btn: Button, words: String = "", centered: bool = false) -> void:
+	btn.set_meta("back", true)
+	if not centered:
+		btn.text = words
+		btn.icon = BACK_ICON
+		btn.expand_icon = false
+		btn.add_theme_constant_override("h_separation", 6)
+		for state: String in ["normal", "focus", "hover", "pressed", "hover_pressed", "disabled"]:
+			btn.add_theme_color_override("icon_%s_color" % state,
+					btn.get_theme_color("font_%s_color" % state if state != "normal" else "font_color"))
+		return
+	btn.text = ""
+	var mid: CenterContainer = CenterContainer.new()
+	mid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(mid)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mid.add_child(row)
+	var arrow: TextureRect = TextureRect.new()
+	arrow.texture = BACK_ICON
+	arrow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	arrow.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(arrow)
+	var label: Label = Label.new()
+	label.text = words
+	label.add_theme_font_override("font", btn.get_theme_font("font"))
+	label.add_theme_font_size_override("font_size", btn.get_theme_font_size("font_size"))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(label)
+	btn.custom_minimum_size.x = maxf(btn.custom_minimum_size.x,
+			row.get_combined_minimum_size().x + 16.0)
+	# Both lit as the button's words would be, hovered, pressed or not.
+	btn.draw.connect(func() -> void:
+		var tint: Color = btn.get_theme_color(_FONT_STATE[btn.get_draw_mode()])
+		label.add_theme_color_override("font_color", tint)
+		arrow.modulate = tint)
 
 
 func set_pips(in_hand: int, half: int) -> void:

@@ -440,7 +440,7 @@ func _build_menu_panel(parent: Control) -> void:
 	col.add_child(header)
 
 	_right_back_btn = Button.new()
-	_right_back_btn.text = "< Back"
+	UIGlyph.back_button(_right_back_btn, "Back")
 	_right_back_btn.custom_minimum_size = Vector2(72, 26)
 	_right_back_btn.pressed.connect(_on_back_pressed)
 	_right_back_btn.hide()

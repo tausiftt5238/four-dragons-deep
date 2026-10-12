@@ -742,7 +742,7 @@ func _list_column(col: VBoxContainer, with_back: bool = true) -> Dictionary:
 	header.add_theme_constant_override("separation", 6)
 	col.add_child(header)
 	var back: Button = Button.new()
-	back.text = "<"
+	UIGlyph.back_button(back)
 	back.flat = true
 	back.focus_mode = Control.FOCUS_NONE
 	back.custom_minimum_size = Vector2(26, 0)
