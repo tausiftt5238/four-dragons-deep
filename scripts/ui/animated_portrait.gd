@@ -29,6 +29,16 @@ var shrink: float = 1.0:
 		if _loaded:
 			_update_frame()
 
+# Draw the whole frame instead of the zoom's window onto it, so a swing or a
+# cast flash that reaches past the box is not cut off at its edge (the
+# fight's figures). The box keeps its size and place; only the drawing
+# spills out of it.
+var spill: bool = false:
+	set(v):
+		spill = v
+		if _loaded:
+			_update_frame()
+
 signal anim_done(anim_name: String)
 
 
@@ -254,6 +264,46 @@ func _update_frame() -> void:
 	var r: float = _atlas.region.size.x
 	var pad: float = r / shrink - r
 	_atlas.margin = Rect2(pad / 2.0, pad, pad, pad)
+	# Spilling, the TextureRect draws nothing of its own and _draw lays the
+	# whole frame down where the window onto it would have gone.
+	var whole: bool = _spills()
+	texture = null if whole else _atlas
+	if whole:
+		queue_redraw()
+
+
+func _spills() -> bool:
+	return spill and _loaded and _atlas.atlas != null \
+			and _atlas.atlas.get_height() >= FRAME_SIZE and _zoom > 1.0
+
+
+func _draw() -> void:
+	if not _spills():
+		return
+	var side: float = float(_atlas.atlas.get_height())
+	if flip_h:
+		draw_set_transform(Vector2(size.x, 0.0), 0.0, Vector2(-1.0, 1.0))
+	draw_texture_rect_region(_atlas.atlas, _frame_rect(side),
+			Rect2(_frame * side, 0.0, side, side))
+
+
+# Where a whole `side`-pixel frame goes, in this box, for its middle to land
+# exactly where the zoomed window onto it is drawn (the zoom, the shrink and
+# its feet on the box's floor all taken into account).
+func _frame_rect(side: float) -> Rect2:
+	var r: float = side / maxf(_zoom, 1.0)
+	var pad: float = r / shrink - r
+	var inset: float = (side - r) / 2.0
+	var d: float = minf(size.x, size.y)
+	var k: float = d / (r / shrink)
+	var at: Vector2 = (size - Vector2(d, d)) / 2.0 + (Vector2(pad / 2.0, pad) - Vector2(inset, inset)) * k
+	return Rect2(at, Vector2(side, side) * k)
+
+
+# Where an effect drawn in the packs' own 100px frames (SpellFX's sheets)
+# goes to line up with this figure, in this box's coordinates.
+func fx_rect() -> Rect2:
+	return _frame_rect(float(FRAME_SIZE))
 
 
 # Whether the figure is drawn edge to edge in its frame (the dragons' 16px

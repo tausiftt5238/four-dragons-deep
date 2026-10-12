@@ -138,6 +138,8 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.custom_minimum_size = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
 	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	icon.set_zoom(3.0)
+	# A swing reaches past the box rather than being cut off at its edge.
+	icon.spill = true
 	# self_modulate, not modulate: the tint is the monster's colour, and the
 	# ailment marks drawn over it should keep their own.
 	icon.self_modulate = foe.tint
@@ -302,6 +304,8 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	icon.custom_minimum_size   = Vector2(CARD_PORTRAIT, CARD_PORTRAIT)
 	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	icon.set_zoom(3.0)
+	# A swing reaches past the box rather than being cut off at its edge.
+	icon.spill = true
 	icon.flip_h = true
 	if is_hero:
 		icon.load_sprite_id(player.hero_sprite_id())

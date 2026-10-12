@@ -15,7 +15,8 @@ func player_to_act() -> bool:
 
 
 # The wide-screen layout: strips, the field, the formations, the cards.
-const TOP_STRIP_H: float = 30.0
+# Two lines of the log: a long one wraps rather than running off the top.
+const TOP_STRIP_H: float = 44.0
 const BOTTOM_STRIP_H: float = 162.0
 const CARD_W: float = 170.0
 const CARD_H: float = 230.0
@@ -89,7 +90,10 @@ func _build_log_strip(parent: Control) -> void:
 	_log_label.scroll_following = true
 	_log_label.fit_content      = false
 	_log_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_log_label.custom_minimum_size = Vector2(0, TOP_STRIP_H - 4)
+	# Exactly two whole lines (18px each at this size), centred in the strip,
+	# so no sliver of the line before peeks in at the top.
+	_log_label.custom_minimum_size = Vector2(0, 36)
+	_log_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_log_label.mouse_filter     = Control.MOUSE_FILTER_IGNORE
 	_log_label.add_theme_font_size_override("normal_font_size", 13)
 	_log_label.add_theme_color_override("default_color", Color(0.88, 0.84, 0.74))
@@ -338,6 +342,8 @@ func _build_foe_card(foe: Enemy) -> Control:
 	icon.position = Vector2((CARD_W - PORTRAIT) / 2.0, PORTRAIT_TOP)
 	icon.size = Vector2(PORTRAIT, PORTRAIT)
 	icon.set_zoom(PORTRAIT_ZOOM)
+	# A swing reaches past the box rather than being cut off at its edge.
+	icon.spill = true
 	icon.self_modulate = foe.tint
 	if foe.abyss_element != "":
 		icon.material = Abyss.palette_material(foe.abyss_element, foe.sprite_id)
@@ -512,6 +518,8 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	icon.position = Vector2((CARD_W - PORTRAIT) / 2.0, PORTRAIT_TOP)
 	icon.size = Vector2(PORTRAIT, PORTRAIT)
 	icon.set_zoom(PORTRAIT_ZOOM)
+	# A swing reaches past the box rather than being cut off at its edge.
+	icon.spill = true
 	icon.flip_h = true
 	if is_hero:
 		icon.load_sprite_id(player.hero_sprite_id())
@@ -542,8 +550,18 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	row.custom_minimum_size = Vector2(0, 34)
 	_party_rows.add_child(row)
 
+	# Whose turn it is: the triangle that points at them on the field, on its
+	# side. Always in the row, only shown for the one acting, so the name
+	# never moves.
+	var turn_mark: UIGlyph = UIGlyph.caret_right(Color(1.0, 0.92, 0.45))
+	turn_mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	turn_mark.modulate.a = 0.0
+	row.add_child(turn_mark)
+
+	# 118 wide with the old "> " in front of the name; the mark and the gap
+	# after it take that room now.
 	var name_lbl: Label = MarqueeLabel.new()
-	name_lbl.custom_minimum_size = Vector2(118, 0)
+	name_lbl.custom_minimum_size = Vector2(118 - turn_mark.custom_minimum_size.x - 8, 0)
 	name_lbl.add_theme_font_size_override("font_size", 15)
 	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(name_lbl)
@@ -594,7 +612,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 	_party_slots.append({member = member, portrait = icon, name_lbl = name_lbl,
 			hp_bar = hp_bar, mp_bar = mp_bar, val_lbl = val_lbl, mp_lbl = mp_lbl,
 			sts_lbl = null, stages = stages, ails = ails, marker = marker,
-			card = card, row = row})
+			turn_mark = turn_mark, card = card, row = row})
 	return card
 
 
@@ -614,7 +632,8 @@ func _refresh_party_slots() -> void:
 			slot["_death_played"] = true
 
 		var name_lbl: Label = slot["name_lbl"] as Label
-		name_lbl.text = ("> " if is_actor else "  ") + _member_name(member)
+		(slot["turn_mark"] as UIGlyph).modulate.a = 1.0 if is_actor else 0.0
+		name_lbl.text = _member_name(member)
 		if not alive:
 			name_lbl.add_theme_color_override("font_color", Color(0.40, 0.32, 0.32))
 		elif is_actor:

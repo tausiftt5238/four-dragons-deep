@@ -15,6 +15,27 @@ const SPRITES: Dictionary = {
 
 const _LIFE: float = 0.62
 
+# Rungs II and III play one of the character packs' own effect sheets over
+# the portrait instead (tools/make_spell_fx.py builds them): [rung II, rung
+# III], how fast each runs and, optionally, how much bigger it is drawn.
+# Rung I keeps what it always drew. Where both rungs share a sheet, III is
+# either drawn bigger (light and dark) or throws rung I's motes or slash over
+# it as well, so the bigger cast still looks bigger.
+const SHEET_DIR: String = "res://resources/characterSprites/SpellFX/"
+const SHEETS: Dictionary = {
+	"fire":    [["Fire_II", 12.0], ["Fire_III", 12.0]],
+	"ice":     [["Ice", 14.0], ["Ice", 14.0]],
+	"thunder": [["Thunder", 12.0], ["Thunder", 12.0]],
+	"light":   [["Light", 10.0], ["Light", 10.0, 1.4]],
+	"dark":    [["Dark", 10.0], ["Dark", 10.0, 1.4]],
+	"phys":    [["Phys", 10.0], ["Phys", 10.0]],
+}
+# Where a bigger sheet grows from, as a share of its frame: the pillars'
+# feet, so a bigger one still stands where the demon does.
+const GROW_FROM: Vector2 = Vector2(0.5, 0.6)
+# Every rung of Cure: nothing used to show a heal landing at all.
+const HEAL_SHEET: Array = ["Heal", 8.0]
+
 # Fraction of the run each mote spends alive. The rest is its stagger, so the
 # burst arrives as a scatter rather than all at once.
 const _MOTE_LIFE: float = 0.58
@@ -49,10 +70,59 @@ static func count_for(rung: float) -> int:
 # and dark are drawn by BanishFX and phys is the slash, so neither lands here.
 static func cast(over: Control, elem: String, rung: float = Spell.POWER_I) -> void:
 	Sfx.cast(elem)
+	if _sheet_for(over, elem, rung):
+		return
 	if BanishFX.handles(elem):
 		BanishFX.burst(over, elem, rung)
 		return
 	burst(over, elem, rung)
+
+
+# A physical skill: the slash on rung I, the rock spikes above it.
+static func skill(over: Control, rung: float) -> void:
+	if not _sheet_for(over, Affinity.PHYS, rung):
+		SlashFX.strike(over)
+
+
+# A heal landing on someone.
+static func heal(over: Control) -> void:
+	play_sheet(over, HEAL_SHEET[0] as String, float(HEAL_SHEET[1]))
+
+
+# The sheet a rung II or III cast plays, if there is one; false leaves the
+# cast to rung I's own drawing.
+static func _sheet_for(over: Control, elem: String, rung: float) -> bool:
+	if rung < Spell.POWER_II or not SHEETS.has(elem):
+		return false
+	var pair: Array = SHEETS[elem]
+	var top: bool = rung >= Spell.POWER_III
+	var pick: Array = pair[1 if top else 0]
+	var grow: float = float(pick[2]) if pick.size() > 2 else 1.0
+	if not play_sheet(over, pick[0] as String, float(pick[1]), grow):
+		return false
+	if top and pick[0] == pair[0][0] and grow == 1.0:
+		if elem == Affinity.PHYS:
+			SlashFX.strike(over)
+		else:
+			burst(over, elem, rung)
+	return true
+
+
+static func play_sheet(over: Control, sheet_name: String, fps: float,
+		grow: float = 1.0) -> bool:
+	var path: String = SHEET_DIR + sheet_name + ".png"
+	if over == null or not is_instance_valid(over) or not ResourceLoader.exists(path):
+		return false
+	var fx: _Sheet = _Sheet.new()
+	fx.tex = load(path) as Texture2D
+	fx.frames = fx.tex.get_width() / fx.tex.get_height()
+	fx.fps = fps
+	fx.grow = grow
+	fx.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	over.add_child(fx)
+	return true
 
 
 static func burst(over: Control, elem: String, rung: float = Spell.POWER_I) -> void:
@@ -119,3 +189,38 @@ func _draw() -> void:
 		draw_texture_rect(_tex, Rect2(-side, -side, side * 2.0, side * 2.0),
 				false, Color(1.0, 1.0, 1.0, alpha))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+# One run through an effect sheet over a portrait, then gone. Drawn in the
+# figure's own frame (AnimatedPortrait.fx_rect), so a pillar stands where the
+# feet are and a burst sits on the body, and free to reach past the box.
+class _Sheet extends Control:
+	var tex: Texture2D
+	var frames: int = 1
+	var fps: float = 12.0
+	var grow: float = 1.0
+	var _t: float = 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if int(_t * fps) >= frames:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var over: Control = get_parent() as Control
+		if tex == null or over == null:
+			return
+		var side: float = float(tex.get_height())
+		var f: int = mini(int(_t * fps), frames - 1)
+		var at: Rect2
+		if over is AnimatedPortrait:
+			at = (over as AnimatedPortrait).fx_rect()
+		else:
+			var d: float = minf(over.size.x, over.size.y) * 2.6
+			at = Rect2(over.size / 2.0 - Vector2(d, d) / 2.0, Vector2(d, d))
+		var pivot: Vector2 = at.position + at.size * GROW_FROM
+		at = Rect2(pivot + (at.position - pivot) * grow, at.size * grow)
+		draw_texture_rect_region(tex, Rect2(at.position - position, at.size),
+				Rect2(f * side, 0.0, side, side))

@@ -1048,7 +1048,9 @@ func _land_hit(res: Dictionary, element: String, prefix: String,
 	var pr: TextureRect = _foe_portrait(enemy)
 	if pr != null:
 		_shake_portrait(pr)
-		if melee:
+		if melee and element == Affinity.PHYS:
+			SpellFX.skill(pr, rung)
+		elif melee:
 			SlashFX.strike(pr)
 		else:
 			SpellFX.cast(pr, element, rung)
@@ -2095,7 +2097,8 @@ func _resolve_skill(chosen: String) -> Dictionary:
 			int(power * Spell.rung_power(rung)) - _guard_vs(enemy, element),
 			element, enemy, crit, enemy.defending)
 	return _land_hit(res, element, "%s %s %s!" % [
-			actor.display_name(), "uses" if phys else "calls up", named], phys)
+			actor.display_name(), "uses" if phys else "calls up", named], phys,
+			Spell.rung_power(rung))
 
 
 # ── Leeches ───────────────────────────────────────────────────────────────────
@@ -2678,12 +2681,14 @@ func _cast_spell(spell_id: String) -> Dictionary:
 				var was: int = m.hp
 				m.heal(amount)
 				total += m.hp - was
+				SpellFX.heal(_member_portrait(m))
 			return {msg = "[color=lime]You cast %s! The party recovers %d HP.[/color]" % [
 					data["name"], total], cost = PressTurn.COST_FULL}
 		var who: CharacterSheet = _ally_target if _ally_target != null \
 				and _ally_target.is_alive() else player
 		var before: int = who.hp
 		who.heal(amount)
+		SpellFX.heal(_member_portrait(who))
 		return {msg = "[color=lime]You cast %s! %s recovers %d HP.[/color]" % [
 				data["name"], _member_name(who), who.hp - before], cost = PressTurn.COST_FULL}
 
