@@ -651,6 +651,20 @@ func _action_back() -> void:
 		_shake_camera()
 
 
+# A step to the side without turning (the PC build's strafe): `side` is -1
+# for left, 1 for right.
+func _action_strafe(side: int) -> void:
+	var dir: Vector2i = DIR_OFFSET[(player_facing + 4 + side) % 4]
+	var nxt: Vector2i = player_pos + dir
+	if _is_open(nxt.x, nxt.y):
+		player_pos = nxt
+		_slide(dir)
+		Sfx.play("step")
+		_post_move()
+	else:
+		_shake_camera()
+
+
 func _action_turn_left() -> void:
 	player_facing = (player_facing + 3) % 4
 	_tween_turn(PI / 2.0)
@@ -843,7 +857,9 @@ func _input(event: InputEvent) -> void:
 	var key: int = (event as InputEventKey).keycode if is_key else KEY_NONE
 
 	# Q and N are cheats for testing; a release build has neither.
-	if OS.is_debug_build() and key == KEY_Q and not in_combat:
+	# Q is also the PC build's strafe left; strafing wins.
+	if OS.is_debug_build() and key == KEY_Q and not in_combat \
+			and not (Build.steam() and event.is_action("strafe_left")):
 		_encounters_enabled = not _encounters_enabled
 		_update_encounter_debug_label()
 		return
@@ -898,6 +914,10 @@ func _input(event: InputEvent) -> void:
 		_action_turn_left()
 	elif event.is_action_pressed("right", true):
 		_action_turn_right()
+	elif Build.steam() and event.is_action_pressed("strafe_left", true):
+		_action_strafe(-1)
+	elif Build.steam() and event.is_action_pressed("strafe_right", true):
+		_action_strafe(1)
 
 
 # ── Encounter system ─────────────────────────────────────────────────────────

@@ -1,10 +1,11 @@
 # Controls
-# The whole game runs on six presses: the four directions, ○ for yes and ×
-# for no. One key and one pad button each, rebindable from Options (Button
+# The whole game runs on eight presses: the four directions, two strafes, ○
+# for yes and × for no. One key and one pad button each, rebindable from Options (Button
 # mapping) and kept in settings.cfg beside the other preferences.
 #
-# In the dungeon up and down walk, left and right turn, ○ acts on what is in
-# front of you and × opens the menu. Everywhere else ○ chooses and × backs
+# In the dungeon up and down walk, left and right turn, the strafes step
+# sideways (the PC build only), ○ acts on what is in front of you and × opens
+# the menu. Everywhere else ○ chooses and × backs
 # out. The engine's ui_ actions, which every menu and the fight read, are
 # rebuilt from the same bindings, so a rebinding holds everywhere at once.
 #
@@ -24,6 +25,8 @@ const ACTIONS: Array = [
 	["down", "Down", KEY_S, JOY_BUTTON_DPAD_DOWN],
 	["left", "Left", KEY_A, JOY_BUTTON_DPAD_LEFT],
 	["right", "Right", KEY_D, JOY_BUTTON_DPAD_RIGHT],
+	["strafe_left", "Strafe left", KEY_Q, JOY_BUTTON_LEFT_SHOULDER],
+	["strafe_right", "Strafe right", KEY_E, JOY_BUTTON_RIGHT_SHOULDER],
 	["yes", "O  Yes", KEY_Z, JOY_BUTTON_B],
 	["no", "X  No", KEY_X, JOY_BUTTON_A],
 ]
@@ -34,7 +37,7 @@ const FIXED: Dictionary = {
 	yes = [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE], no = [KEY_ESCAPE],
 }
 
-# The engine's own action each one drives as well.
+# The engine's own action each one drives as well (the strafes drive none).
 const UI: Dictionary = {up = "ui_up", down = "ui_down", left = "ui_left",
 		right = "ui_right", yes = "ui_accept", no = "ui_cancel"}
 
@@ -140,7 +143,10 @@ static func _apply() -> void:
 			InputMap.add_action(id)
 		# The ui_ action keeps what the engine gave it for the sticks; its
 		# keys and buttons are these.
-		for action: String in [id, UI[id] as String]:
+		var drives: Array[String] = [id]
+		if UI.has(id):
+			drives.append(UI[id] as String)
+		for action: String in drives:
 			for ev: InputEvent in InputMap.action_get_events(action):
 				if ev is InputEventKey or ev is InputEventJoypadButton:
 					InputMap.action_erase_event(action, ev)
