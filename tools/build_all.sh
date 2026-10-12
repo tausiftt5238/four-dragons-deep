@@ -9,8 +9,9 @@
 #
 # build/itch/ ends up holding exactly the two files the itch.io page takes.
 # Each build is also zipped on its own into $DRIVE_DIR (~/four-dragons-deep-builds
-# by default), ready for `drive-push` to send up to Google Drive. The zips keep
-# the same names each time, so a new build replaces the last.
+# by default), ready for `drive-push` to send up to Google Drive; the APK goes
+# as it is, unzipped. They keep the same names each time, so a new build
+# replaces the last.
 # Stops at the first build that fails. Override the Godot binary with $GODOT.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -50,7 +51,11 @@ drive_zip() {   # name, folder or file
 drive_zip four-dragons-deep-linux build/steam/linux
 drive_zip four-dragons-deep-windows build/steam/windows
 drive_zip four-dragons-deep-web build/web
-drive_zip four-dragons-deep-android build/android/four-dragons-deep_portable.apk
+# The APK goes up as it is: a phone installs it straight from Drive, and
+# zipped it had to be unpacked first.
+rm -f "$DRIVE_DIR/four-dragons-deep-android.zip"
+cp build/android/four-dragons-deep_portable.apk "$DRIVE_DIR/four-dragons-deep-android.apk"
+echo "copied $DRIVE_DIR/four-dragons-deep-android.apk ($(du -h "$DRIVE_DIR/four-dragons-deep-android.apk" | cut -f1))"
 
 echo "== Done, from $(git describe --always --dirty)"
 ls -la build/steam/linux build/steam/windows build/itch
