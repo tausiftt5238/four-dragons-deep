@@ -505,7 +505,7 @@ class _LegendMark extends Control:
 		match kind:
 			"you":
 				draw_colored_polygon(PackedVector2Array([Vector2(c.x, 0), Vector2(0, s.y),
-						Vector2(s.x, s.y)]), Color(1.0, 0.86, 0.42))
+						Vector2(s.x, s.y)]), Minimap.C_PLAYER)
 			"orb":
 				draw_circle(c, s.x / 2.0, Minimap.C_ORB)
 			"portal":

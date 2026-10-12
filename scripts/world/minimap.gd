@@ -233,10 +233,16 @@ func _draw() -> void:
 	if not whole_floor:
 		pcx = PAD + VIEW_HALF * cell + cell * 0.5
 		pcy = PAD + VIEW_HALF * cell + cell * 0.5
+	# A triangle pointing the way the hero faces, as the legend shows it.
 	var center: Vector2 = Vector2(pcx, pcy)
-	var tip: Vector2 = center + FACING_DIR[player_facing] * (cell * 0.65)
-	draw_circle(center, maxf(2.0, cell * 0.3), C_PLAYER)
-	draw_line(center, tip, C_PLAYER, maxf(1.5, cell * 0.18))
+	var ahead: Vector2 = FACING_DIR[player_facing]
+	var side: Vector2 = Vector2(-ahead.y, ahead.x)
+	var r: float = maxf(3.0, cell * 0.5)
+	draw_colored_polygon(PackedVector2Array([
+		center + ahead * r,
+		center - ahead * r + side * r * 0.85,
+		center - ahead * r - side * r * 0.85,
+	]), C_PLAYER)
 
 	draw_rect(Rect2(Vector2.ZERO, Vector2(map_w, map_h)), border_color, false, 1.5)
 

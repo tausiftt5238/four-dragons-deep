@@ -8,7 +8,7 @@
 # missing from a font.
 class_name UIGlyph extends Control
 
-enum Shape { PIPS, CARET_DOWN, CARET_UP }
+enum Shape { PIPS, CARET_DOWN, CARET_UP, CARET_RIGHT }
 
 const PIP_R:    float = 4.0
 const PIP_STEP: float = 12.0
@@ -97,6 +97,16 @@ static func caret(down: bool, color: Color) -> UIGlyph:
 	return g
 
 
+# The same triangle turned on its side, for pointing at a name in a list.
+static func caret_right(color: Color) -> UIGlyph:
+	var g: UIGlyph = UIGlyph.new()
+	g.shape = Shape.CARET_RIGHT
+	g.tint = color
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.custom_minimum_size = Vector2(CARET_H + 4.0, CARET_W)
+	return g
+
+
 func set_pips(in_hand: int, half: int) -> void:
 	if in_hand == full and half == spent:
 		return
@@ -120,6 +130,7 @@ func _draw() -> void:
 		Shape.PIPS:    _draw_pips()
 		Shape.CARET_DOWN: _draw_caret(true)
 		Shape.CARET_UP:   _draw_caret(false)
+		Shape.CARET_RIGHT: _draw_caret_right()
 
 
 func _draw_pips() -> void:
@@ -180,3 +191,13 @@ func _draw_caret(down: bool) -> void:
 		pts.append(Vector2(cx + CARET_W * 0.5, top + CARET_H))
 		pts.append(Vector2(cx - CARET_W * 0.5, top + CARET_H))
 	draw_colored_polygon(pts, tint)
+
+
+func _draw_caret_right() -> void:
+	var left: float = (size.x - CARET_H) * 0.5
+	var cy: float = size.y * 0.5
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(left, cy - CARET_W * 0.5),
+		Vector2(left + CARET_H, cy),
+		Vector2(left, cy + CARET_W * 0.5),
+	]), tint)
