@@ -3571,6 +3571,15 @@ func _enemy_spread(actor: Enemy, element: String, base: float,
 	var dealt: int = 0
 
 	for who: CharacterSheet in targets:
+		# Every one it reaches gets its own burst or cut, the way a wide cast
+		# from your side does; without it a breath over the whole party was
+		# only the portraits shaking.
+		var fx_pr: TextureRect = _member_portrait(who)
+		if fx_pr != null:
+			if element == Affinity.PHYS:
+				SlashFX.strike(fx_pr)
+			else:
+				SpellFX.cast(fx_pr, element)
 		if banishing:
 			var br: Dictionary = CombatMath.resolve_banish(who, element,
 					maxi(1, int(base)), who == player, actor)
@@ -3664,6 +3673,12 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	var tname: String = _member_name(target)
 	var word: String  = "Light" if element == Affinity.LIGHT else "Dark"
 
+	# On the cast, not the result, as the hero's own banishing does: it reaches
+	# them whether or not it takes.
+	var hit_pr: TextureRect = _member_portrait(target)
+	if hit_pr != null:
+		SpellFX.cast(hit_pr, element)
+
 	match res["outcome"]:
 		"banished":
 			target.take_damage(target.max_hp * 2)
@@ -3692,10 +3707,8 @@ func _enemy_banish(actor: Enemy, target: CharacterSheet, element: String,
 	# The hero takes it as a wound rather than an expulsion.
 	var hurt: int = int(res["dmg"])
 	target.take_damage(hurt)
-	var hit_pr: TextureRect = _member_portrait(target)
 	if hit_pr != null:
 		_shake_portrait(hit_pr, target.defending)
-		SpellFX.cast(hit_pr, element)
 	var tag: String = "  [color=yellow]Weak![/color]" if res["outcome"] == "weak" else ""
 	return {msg = dry + "[color=red]%s calls the %s — %s takes %d.[/color]%s" % [
 			ename, word, tname, hurt, tag],
