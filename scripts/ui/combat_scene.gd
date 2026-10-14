@@ -950,14 +950,20 @@ func _commit_action(action: String) -> void:
 	await _after_action(res["cost"] as String)
 
 
-# The colour a spell flashes in: its element, else green for a heal and teal
-# for anything else (a buff, an ailment, Analyze).
+# The colour a spell flashes in: its element (grey for a physical skill),
+# green for a heal, a buff or debuff in its stat's colour, and teal for
+# anything else (an ailment, a dispel, Analyze).
 static func _cast_kind(spell_id: String) -> String:
 	var d: Dictionary = Spell.get_data(spell_id)
 	var el: String = d.get("element", "") as String
 	if el != "":
 		return el
-	return "heal" if d.get("type", "") == "heal" else "other"
+	match d.get("type", ""):
+		"heal":
+			return "heal"
+		"buff":
+			return d.get("stat", "other") as String
+	return "other"
 
 
 func _actor_portrait() -> TextureRect:

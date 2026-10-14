@@ -157,6 +157,11 @@ const CAST_RAMPS: Dictionary = {
 	"phys":    [Color8(92, 100, 112), Color8(140, 150, 162), Color8(190, 200, 212), Color8(240, 245, 250)],
 	"heal":    [Color8(26, 96, 46), Color8(48, 140, 70), Color8(92, 196, 110), Color8(176, 240, 180)],
 	"other":   [Color8(24, 92, 104), Color8(44, 134, 148), Color8(90, 190, 200), Color8(170, 236, 240)],
+	# A buff or debuff flashes in its stat's colour, the StageArrows ones.
+	"atk":     [Color8(120, 52, 14), Color8(180, 90, 30), Color8(255, 140, 56), Color8(255, 206, 150)],
+	"mag":     [Color8(70, 30, 110), Color8(120, 70, 180), Color8(204, 133, 255), Color8(236, 206, 255)],
+	"def":     [Color8(26, 60, 120), Color8(56, 110, 190), Color8(107, 184, 255), Color8(196, 228, 255)],
+	"agl":     [Color8(24, 96, 30), Color8(60, 160, 66), Color8(115, 242, 122), Color8(200, 255, 204)],
 }
 static var _cast_sheets: Dictionary = {}    # "sprite|kind" -> Texture2D
 
