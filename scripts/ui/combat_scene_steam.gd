@@ -817,6 +817,9 @@ func _process(_delta: float) -> void:
 # it back. Whenever it is nowhere, or on something greyed or hidden in this
 # fight, it goes to the first line that can be chosen. Focus some other window
 # has (the results, a level-up) is left alone.
+# A greyed line in the open list is not lost, though: the arrows have to pass
+# over it on the way down. Sending the cursor home from there pinned it above
+# the first greyed entry — out of MP, nothing under Blaze could be reached.
 func _keep_cursor() -> void:
 	if finished:
 		return
@@ -828,7 +831,23 @@ func _keep_cursor() -> void:
 				and not (owner_now is BaseButton and (owner_now as BaseButton).disabled)
 		if usable:
 			return
+		if owner_now.is_visible_in_tree() and _in_open_list(owner_now):
+			return
 	_focus_list()
+
+
+# True when `c` is a line of the list the arrows are in, and that list still
+# has something to choose (a locked list is waiting on its answer, not open).
+func _in_open_list(c: Control) -> bool:
+	var found: bool = false
+	var any_live: bool = false
+	for slot: MarginContainer in _sub_slots:
+		for b: Node in slot.get_children():
+			if b == c:
+				found = true
+			if b is Button and not (b as Button).disabled:
+				any_live = true
+	return found and any_live
 
 
 func _close_stack() -> void:
@@ -940,14 +959,37 @@ func _big_button(title: String, subtitle: String, disabled: bool,
 	title_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(title_lbl)
 	if subtitle != "":
-		var sub: Label = Label.new()
+		var sub: Label = MarqueeLabel.new()
 		sub.text = subtitle
 		sub.add_theme_font_size_override("font_size", 14)
 		sub.add_theme_color_override("font_color", tint if tint.a > 0.0 else Color(0.66, 0.70, 0.86))
 		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(sub)
+		row.resized.connect(_share_row.bind(row, title_lbl, sub))
 	return btn
+
+
+# A line whose name and detail fit shows both whole, the detail at its own
+# width. One that does not keeps the name in view — up to TITLE_SHARE of the
+# line — and the detail scrolls in what is left. A plain Label for the detail
+# took its full length, so a long one (a plea's "joins your roster…") pushed
+# the name it belonged to down to nothing.
+const TITLE_SHARE: float = 0.45
+
+func _share_row(row: HBoxContainer, title_lbl: Label, sub: Label) -> void:
+	var font: Font = sub.get_theme_font("font")
+	if font == null:
+		return
+	var avail: float = row.size.x - float(row.get_theme_constant("separation"))
+	for c: Node in row.get_children():
+		if c is TextureRect:
+			avail -= (c as Control).custom_minimum_size.x + float(row.get_theme_constant("separation"))
+	var title_w: float = font.get_string_size(title_lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14).x
+	var sub_w: float = ceilf(font.get_string_size(sub.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14).x)
+	if title_w + sub_w > avail:
+		sub_w = maxf(0.0, avail - minf(title_w, avail * TITLE_SHARE))
+	sub.custom_minimum_size.x = sub_w
 
 
 # The backdrop behind the fight: the dungeon dimmed to a stage, a floor running
