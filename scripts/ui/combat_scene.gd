@@ -961,12 +961,17 @@ static func _cast_kind(spell_id: String) -> String:
 
 
 func _actor_portrait() -> TextureRect:
-	if _actor_is_player():
-		return _member_portrait(_actor())
-	var a: CharacterSheet = _actor()
-	if a is Enemy:
-		return _foe_portrait(a as Enemy)
-	return _member_portrait(a)
+	return _portrait_of(_actor())
+
+
+# Whoever this is, on whichever side. A bound demon is an Enemy too, so "is
+# Enemy" never meant "is a foe": reading it that way sent every demon of yours
+# to _foe_rows, found nothing, and its swing never played.
+func _portrait_of(who: CharacterSheet) -> TextureRect:
+	var pr: TextureRect = _member_portrait(who)
+	if pr == null and who is Enemy:
+		pr = _foe_portrait(who as Enemy)
+	return pr
 
 
 # A potion, an ether or a cure: anything that mends rather than hurts or
@@ -2205,8 +2210,7 @@ const LEECH_MP_TINT: Color = Color(0.30, 0.60, 1.0)
 
 
 func _bite_fx(target: CharacterSheet, tint: Color, guarded: bool = false) -> void:
-	var pr: TextureRect = _foe_portrait(target as Enemy) if target is Enemy \
-			else _member_portrait(target)
+	var pr: TextureRect = _portrait_of(target)
 	if pr == null:
 		return
 	_shake_portrait(pr, guarded)
@@ -2557,10 +2561,7 @@ func _on_mp_gained(amount: int, who: CharacterSheet) -> void:
 func _show_float(who: CharacterSheet, text: String, color: Color, mp: bool = false) -> void:
 	if not is_inside_tree():
 		return
-	# A bound demon is an Enemy too, but only foes have a row in _foe_rows.
-	var portrait: TextureRect = _foe_portrait(who as Enemy) if who is Enemy else null
-	if portrait == null:
-		portrait = _member_portrait(who)
+	var portrait: TextureRect = _portrait_of(who)
 	# Not "visible in tree": the blow that kills is the one most worth seeing,
 	# and a card can start hiding on the same frame.
 	if portrait == null:
@@ -2905,13 +2906,9 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 # many actually moved is what tells the player they have hit the cap.
 # `lead` names who cast it — "You cast Whet" for the hero, "Hellbat calls
 # up Whet" for a demon of his.
-# Rings in the stat's colour over whoever's stat just moved (StageFX). A bound
-# demon is an Enemy too, so the party's slots are looked in first.
+# Rings in the stat's colour over whoever's stat just moved (StageFX).
 func _stage_fx(who: CharacterSheet, stat: String, delta: int) -> void:
-	var pr: TextureRect = _member_portrait(who)
-	if pr == null and who is Enemy:
-		pr = _foe_portrait(who as Enemy)
-	StageFX.play(pr, stat, delta)
+	StageFX.play(_portrait_of(who), stat, delta)
 
 
 func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
