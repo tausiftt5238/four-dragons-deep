@@ -2125,11 +2125,11 @@ func _resolve_skill(chosen: String) -> Dictionary:
 	# its own, which is why the menu does not ask.
 	if Spell.reach_for(element, actor.attack_reach) != Spell.SHAPE_ONE:
 		return _demon_spread(actor, element, power * Spell.rung_power(rung),
-				banishing, Spell.rung_boost(rung), named)
+				banishing, Spell.rung_boost(rung), named, Spell.rung_power(rung))
 
 	if banishing:
 		return _demon_banish_one(actor, enemy, element, power,
-				Spell.rung_boost(rung))
+				Spell.rung_boost(rung), Spell.rung_power(rung))
 
 	# A physical line is a swing: it misses like one and wastes what one does.
 	if phys and not CombatMath.lands(actor, enemy):
@@ -2234,10 +2234,11 @@ func _enemy_leech(actor: Enemy) -> Dictionary:
 # One demon of yours, one line, one foe. Light and dark expel rather than burn,
 # the same as they do out of the hero's own hands.
 func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
-		power: float, boost: float = 0.0) -> Dictionary:
+		power: float, boost: float = 0.0, rung: float = Spell.POWER_I) -> Dictionary:
 	var res: Dictionary = CombatMath.resolve_banish(foe, element,
 			maxi(1, int(power)), false, actor, boost)
 	_reveal(foe, element)
+	_spread_fx(foe, element, rung, "null")
 	var lead: String = "%s calls the %s!" % [
 			actor.display_name(), Affinity.element_name(element)]
 	match res["outcome"]:
@@ -2264,8 +2265,12 @@ func _demon_banish_one(actor: Enemy, foe: Enemy, element: String,
 
 # A bound demon's wide cast. Same arithmetic as the hero's own spread —
 # what it gains in width it gives up on each target.
+# `rung` is only for the picture: each demon it reaches gets the burst the
+# hero's own cast of that rung would give it. This drew nothing at all, so a
+# bound demon's Forkfall or Sweep did its damage with no sign of where.
 func _demon_spread(actor: Enemy, element: String, base: float,
-		banishing: bool, boost: float = 0.0, named: String = "") -> Dictionary:
+		banishing: bool, boost: float = 0.0, named: String = "",
+		rung: float = Spell.POWER_I) -> Dictionary:
 	var targets: Array[Enemy] = _spread_targets(actor.attack_reach)
 	# Every target takes the whole cast, as the hero's does (see _cast_spread).
 	var phys: bool = element == Affinity.PHYS
@@ -2282,6 +2287,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 			var br: Dictionary = CombatMath.resolve_banish(
 					foe, element, maxi(1, int(base)), false, actor, boost)
 			_reveal(foe, element)
+			_spread_fx(foe, element, rung, "null")
 			match br["outcome"]:
 				"banished":
 					var was_weak: bool = foe.affinity_of(element) == Affinity.WEAK
@@ -2317,6 +2323,7 @@ func _demon_spread(actor: Enemy, element: String, base: float,
 		var outcome: String = res["outcome"] as String
 		var dmg: int = int(res["dmg"])
 		outcomes.append(outcome)
+		_spread_fx(foe, element, rung, outcome)
 		match outcome:
 			"drain":
 				foe.heal(dmg)
@@ -2810,6 +2817,23 @@ static func _spread_cost(outcomes: Array[String]) -> String:
 	return PressTurn.COST_FULL
 
 
+# Every demon a wide cast reaches gets its own burst. That is what makes a wide
+# cast look wide — the count per portrait is the rung, not the reach. A
+# physical one is the swing's picture (the slash at rung I, the spikes above
+# it): SpellFX.cast has no rung-I drawing for phys, so Sweep and Rampage
+# showed nothing.
+func _spread_fx(foe: Enemy, element: String, rung: float, outcome: String) -> void:
+	var pr: TextureRect = _foe_portrait(foe)
+	if pr == null:
+		return
+	if element == Affinity.PHYS:
+		SpellFX.skill(pr, rung)
+	else:
+		SpellFX.cast(pr, element, rung)
+	if outcome != "null" and outcome != "drain":
+		_shake_portrait(pr)
+
+
 func _cast_spread(data: Dictionary) -> Dictionary:
 	var element: String = data.get("element", "") as String
 	var targets: Array[Enemy] = _spread_targets(data.get("shape", Spell.SHAPE_ALL) as String)
@@ -2841,13 +2865,7 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 		outcomes.append(outcome)
 		var dmg: int = int(res["dmg"])
 
-		# Every demon it reaches gets its own burst. That is what makes a wide
-		# cast look wide — the count per portrait is the rung, not the reach.
-		var spread_pr: TextureRect = _foe_portrait(foe)
-		if spread_pr != null:
-			SpellFX.cast(spread_pr, element, rung)
-			if outcome != "null" and outcome != "drain":
-				_shake_portrait(spread_pr)
+		_spread_fx(foe, element, rung, outcome)
 
 		match outcome:
 			"drain":
