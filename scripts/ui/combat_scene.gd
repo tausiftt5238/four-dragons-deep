@@ -404,8 +404,10 @@ func _use_item_by_id(item_id: String) -> Dictionary:
 			for st: Variant in item["stage_up"] as Dictionary:
 				var moved: int = 0
 				for m: CharacterSheet in _living_party():
-					if m.shift_stage(st as String, int((item["stage_up"] as Dictionary)[st])) != 0:
+					var by: int = int((item["stage_up"] as Dictionary)[st])
+					if m.shift_stage(st as String, by) != 0:
 						moved += 1
+						_stage_fx(m, st as String, by)
 				if moved > 0:
 					rose.append(_stat_name(st as String))
 			_refresh_hp()
@@ -1124,6 +1126,7 @@ func _weapon_on_hit(dmg: int) -> String:
 	var stat: String = w.get("hit_stage", "") as String
 	if stat != "" and randi() % 100 < int(w.get("hit_stage_pct", 0)) \
 			and enemy.shift_stage(stat, -1) != 0:
+		_stage_fx(enemy, stat, -1)
 		out += "  [color=orange]%s's %s falls.[/color]" % [enemy.display_name(), _stat_name(stat)]
 	return out
 
@@ -1742,6 +1745,7 @@ func _enemy_phase() -> void:
 			f.enraged = true
 			f.icons += 1
 			f.shift_stage(CharacterSheet.STAT_ATK, 2)
+			_stage_fx(f, CharacterSheet.STAT_ATK, 2)
 			_log("[color=#ff6a4a]%s bellows and goes berserk! Its attack rises.[/color]"
 					% f.display_name())
 			_refresh_hp()
@@ -2901,6 +2905,15 @@ func _cast_spread(data: Dictionary) -> Dictionary:
 # many actually moved is what tells the player they have hit the cap.
 # `lead` names who cast it — "You cast Whet" for the hero, "Hellbat calls
 # up Whet" for a demon of his.
+# Rings in the stat's colour over whoever's stat just moved (StageFX). A bound
+# demon is an Enemy too, so the party's slots are looked in first.
+func _stage_fx(who: CharacterSheet, stat: String, delta: int) -> void:
+	var pr: TextureRect = _member_portrait(who)
+	if pr == null and who is Enemy:
+		pr = _foe_portrait(who as Enemy)
+	StageFX.play(pr, stat, delta)
+
+
 func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
 	if lead == "":
 		lead = "You cast %s" % data["name"]
@@ -2915,11 +2928,13 @@ func _apply_stage_spell(data: Dictionary, lead: String = "") -> Dictionary:
 			total += 1
 			if member.shift_stage(stat, delta) != 0:
 				moved += 1
+				_stage_fx(member, stat, delta)
 	else:
 		for foe: Enemy in _living_foes():
 			total += 1
 			if foe.shift_stage(stat, delta) != 0:
 				moved += 1
+				_stage_fx(foe, stat, delta)
 
 	var who: String = "the party" if on_party else "every enemy"
 	if moved == 0:
@@ -3305,10 +3320,12 @@ func _enemy_act(actor: Enemy) -> Dictionary:
 				for f: Enemy in _living_foes():
 					if f.shift_stage(stat, delta) != 0:
 						moved += 1
+						_stage_fx(f, stat, delta)
 			else:
 				for m: CharacterSheet in _living_party():
 					if m.shift_stage(stat, delta) != 0:
 						moved += 1
+						_stage_fx(m, stat, delta)
 			if moved > 0:
 				actor.mp -= int(sup.get("mp", 8))
 				return {msg = "[color=%s]%s casts %s! %s %s on %d.[/color]" % [
