@@ -2287,6 +2287,7 @@ func _gather_save_data() -> Dictionary:
 			found_traps = SaveSystem.pack_cell_map(current_level.found_traps),
 			has_key     = _has_key,
 			door_open   = _door_open,
+			boss_beaten = _boss_beaten,
 		},
 		visited = visited_serial,
 	}
@@ -2366,6 +2367,11 @@ func _restore_save(data: Dictionary) -> void:
 	_pending_has_key              = bool(map_data.get("has_key", true))
 	# Saves from before the door needed turning: holding the key meant open.
 	_pending_door_open            = bool(map_data.get("door_open", _pending_has_key))
+
+	# The boss corridor's dragon is down only if it was down when this was
+	# saved. Left alone, a load after the win (the party fell further on, so
+	# back to before the fight) kept it dead and the corridor walked through.
+	_boss_beaten = bool(map_data.get("boss_beaten", false))
 
 	_spark_steps = 0
 	dungeon = Dungeon.new()
