@@ -151,6 +151,7 @@ func _show_stats() -> void:
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(_next_offer)
 	vbox.add_child(btn)
+	btn.grab_focus.call_deferred()
 
 
 # The offers are worked through front to back; the popup closes after the last.
@@ -206,6 +207,7 @@ func _show_offer(offer: Dictionary) -> void:
 		var skip: Button = _button("Skip")
 		skip.pressed.connect(_next_offer)
 		row.add_child(skip)
+		learn.grab_focus.call_deferred()
 		return
 
 	# Full: every slot it has is a way to say yes, and the last one says no.
@@ -233,6 +235,8 @@ func _show_offer(offer: Dictionary) -> void:
 	keep.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	keep.pressed.connect(_next_offer)
 	_vbox.add_child(keep)
+	# Skip is the safe answer; forgetting a skill is never the default.
+	keep.grab_focus.call_deferred()
 
 
 # What the skill does, in the words the magic tab uses for the same spell.
@@ -262,10 +266,14 @@ static func _describe(skill: Dictionary) -> String:
 			d.get("desc", "")]
 
 
+# Each page puts the cursor on its first answer, so a pad has somewhere to start:
+# nothing took focus here before, and Learn and Skip could only be clicked. The
+# cursor is the menus' gold box, not the engine's faint default outline.
 func _button(text: String) -> Button:
 	var btn: Button = Button.new()
 	btn.text = text
 	btn.custom_minimum_size = Vector2(130, 36)
+	btn.add_theme_stylebox_override("focus", SidePanel._box(Color(0, 0, 0, 0), 2, SidePanel.GOLD))
 	return btn
 
 
