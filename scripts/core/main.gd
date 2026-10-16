@@ -5,7 +5,7 @@
 class_name Main extends Node3D
 
 const EYE_HEIGHT: float = 1.0
-const _UI_FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _UI_FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 # Grid offsets for each facing direction (col delta, row delta).
 # Index: 0=North(-Z)  1=East(+X)  2=South(+Z)  3=West(-X)
@@ -1619,7 +1619,8 @@ func _tell_abyss_unlocked() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.add_child(center)
 	var col: VBoxContainer = VBoxContainer.new()
-	col.custom_minimum_size = Vector2(440, 0)
+	# Wider on a wide screen, where the phone's width would break the lines.
+	col.custom_minimum_size = Vector2(600 if Build.steam() else 440, 0)
 	col.add_theme_constant_override("separation", 18)
 	center.add_child(col)
 	for row: Array in [["CONGRATULATIONS!", 26, Color(0.90, 0.75, 0.30)],
@@ -1629,7 +1630,10 @@ func _tell_abyss_unlocked() -> void:
 		var l: Label = Label.new()
 		l.text = row[0] as String
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# The one long word stays whole rather than losing its "!" to a line
+		# of its own.
+		if not (row[0] as String).begins_with("CONGRAT"):
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.add_theme_font_override("font", _UI_FONT)
 		l.add_theme_font_size_override("font_size", int(row[1]))
 		l.add_theme_color_override("font_color", row[2] as Color)
@@ -1659,7 +1663,7 @@ func _ask_replace_abyss_hero(cleared: Dictionary) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.add_child(center)
 	var col: VBoxContainer = VBoxContainer.new()
-	col.custom_minimum_size = Vector2(440, 0)
+	col.custom_minimum_size = Vector2(600 if Build.steam() else 440, 0)
 	col.add_theme_constant_override("separation", 16)
 	center.add_child(col)
 	var head: Label = Label.new()

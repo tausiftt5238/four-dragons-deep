@@ -27,7 +27,7 @@ const BTN_W:      int = 150
 const BTN_H:      int = 24     # becomes 36 after the restyle hook
 const EXTRA_H:    int = 34     # one AffinityChart row
 const DETAIL_SIZE: int = 11    # the detail line's font size
-const _DETAIL_FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
+const _DETAIL_FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 var _host:   VBoxContainer
 var _slots:  Array[MarginContainer] = []

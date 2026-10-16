@@ -10,7 +10,7 @@
 # it outlive the scene change it is covering.
 class_name LoadingScreen extends CanvasLayer
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 const _SPRITE_SIZE: float = 260.0
 

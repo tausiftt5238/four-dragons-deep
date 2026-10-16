@@ -11,7 +11,7 @@ extends SceneTree
 # seconds whatever the machine does. Run it with the real art restored, or the
 # trailer shows the silhouettes git stores.
 
-const FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
+const FONT: Font = preload("res://resources/misc/ui_font.tres")
 const GOLD: Color = Color(0.90, 0.75, 0.30)
 
 var main: Main

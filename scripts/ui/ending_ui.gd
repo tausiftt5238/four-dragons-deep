@@ -10,7 +10,7 @@ class_name EndingUI extends Control
 
 signal finished
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 const LINES: Array[String] = [
 	"The Necromancer falls, and with it the dark that held the Tower open.",
@@ -68,8 +68,11 @@ func _build_climb() -> void:
 	_text.anchor_right = 1.0
 	_text.offset_left = 36.0
 	_text.offset_right = -36.0
-	_text.offset_top = Main.MAP_PANE_H + 170.0
-	_text.offset_bottom = Main.MAP_PANE_H + 470.0
+	# Under the road: the phone's lower pane, or just below the walkers on
+	# a wide screen.
+	var under: float = _Walk.ground_y() + 40.0 if Build.steam() else Main.MAP_PANE_H + 170.0
+	_text.offset_top = under
+	_text.offset_bottom = under + (150.0 if Build.steam() else 300.0)
 	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -145,9 +148,9 @@ func _build_credits() -> void:
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	col.offset_left = 30.0
 	col.offset_right = -30.0
-	col.offset_top = 90.0
-	col.offset_bottom = -60.0
-	col.add_theme_constant_override("separation", 14)
+	col.offset_top = 30.0 if Build.steam() else 90.0
+	col.offset_bottom = -30.0 if Build.steam() else -60.0
+	col.add_theme_constant_override("separation", 8 if Build.steam() else 14)
 	add_child(col)
 
 	var thanks: Label = _label("Thank you\nfor playing!", 40, Color(0.90, 0.75, 0.30))
@@ -157,24 +160,36 @@ func _build_credits() -> void:
 	# The two of them, done, side by side.
 	var pair: HBoxContainer = HBoxContainer.new()
 	pair.alignment = BoxContainer.ALIGNMENT_CENTER
-	pair.add_theme_constant_override("separation", -60)
+	pair.add_theme_constant_override("separation", -50)
 	col.add_child(pair)
 	for id: String in [PlayerCharacter.SPRITE_KNIGHT, PlayerCharacter.STARTING_DEMON]:
 		var a: AnimatedPortrait = AnimatedPortrait.new()
-		a.custom_minimum_size = Vector2(260, 260)
+		a.custom_minimum_size = Vector2(180, 180) if Build.steam() else Vector2(220, 220)
 		a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		a.load_sprite_id(id)
-		a.set_zoom(2.2)
+		a.set_zoom(1.7)
 		a.flip_h = id != PlayerCharacter.SPRITE_KNIGHT
 		pair.add_child(a)
 
+	# The credits one under another on a phone; side by side on a wide
+	# screen, where there is room across but not down.
+	var row: HBoxContainer = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 60)
+	if Build.steam():
+		col.add_child(row)
 	for entry: Array in CREDITS:
+		var into: VBoxContainer = col
+		if Build.steam():
+			into = VBoxContainer.new()
+			into.add_theme_constant_override("separation", 6)
+			row.add_child(into)
 		var head: Label = _label(entry[0] as String, 15, Color(0.55, 0.50, 0.62))
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		col.add_child(head)
+		into.add_child(head)
 		var names: Label = _label(entry[1] as String, 22, Color(0.90, 0.88, 0.94))
 		names.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		col.add_child(names)
+		into.add_child(names)
 
 	var spacer: Control = Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -205,8 +220,8 @@ func _label(text: String, size: int, color: Color) -> Label:
 # the Abyss's bone white back to the first floor's cyan.
 class _Walk extends Control:
 	const BOX: float = 230.0
-	const ZOOM: float = 2.2
-	const GAP: float = 112.0      # between one walker and the next
+	const ZOOM: float = 1.7
+	const GAP: float = 88.0       # between one walker and the next
 	const SPEED: float = 70.0     # how fast the ground goes by, px a second
 
 	var climb_time: float = 20.0
@@ -239,7 +254,7 @@ class _Walk extends Control:
 	func _process(delta: float) -> void:
 		_t += delta
 		queue_redraw()
-		var ground: float = _ground_y()
+		var ground: float = ground_y()
 		var crop: float = 100.0 / ZOOM
 		var feet_in_box: float = (56.0 - (100.0 - crop) / 2.0) / crop * BOX
 		# The party is centred on the screen, the knight at its head.
@@ -253,8 +268,10 @@ class _Walk extends Control:
 				y += -70.0 + sin(_t * 3.0 + float(i)) * 8.0
 			_followers[i].position = Vector2(x - BOX / 2.0, y)
 
-	func _ground_y() -> float:
-		return Main.MAP_PANE_H * 0.80
+	# The road: across the phone's upper pane, or a little above the middle
+	# of a wide screen, the tale under it.
+	static func ground_y() -> float:
+		return 250.0 if Build.steam() else Main.MAP_PANE_H * 0.80
 
 	# How far along the road home, 0 at the Necromancer, 1 at the surface.
 	func _progress() -> float:
@@ -282,7 +299,7 @@ class _Walk extends Control:
 			draw_rect(Rect2(0, y0, w, glow_h / 64.0 + 1.0), Color(sky, a))
 		# The road: a floor in the band's colour, its flagstones sliding by.
 		var col: Color = _band_color()
-		var gy: float = _ground_y()
+		var gy: float = ground_y()
 		draw_rect(Rect2(0, gy, w, h - gy), Color(col.r * 0.10, col.g * 0.10, col.b * 0.13))
 		draw_line(Vector2(0, gy), Vector2(w, gy), col, 2.0)
 		var tile: float = 64.0

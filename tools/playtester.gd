@@ -33,7 +33,7 @@ extends SceneTree
 # The machine's own saves are copied aside at the start and put back at the
 # end, so a playtest never costs you a run (see BACKUP_DIR).
 
-const FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
+const FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 var main: Main
 var out_dir: String = ""

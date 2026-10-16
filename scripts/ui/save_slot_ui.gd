@@ -12,7 +12,7 @@ signal slot_chosen(slot: int)
 signal cancelled
 
 const SLOT_COUNT: int = 3
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 var mode: String = "save"  # "save" or "load"
 # Beside the map in the game; the title has no map, so it centres on the

@@ -2,7 +2,7 @@
 # Shown at game launch. Transitions to the main game scene on button press.
 class_name TitleScreen extends Control
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 # A run is on its way in: the intro or the loading screen.
 var _starting: bool = false

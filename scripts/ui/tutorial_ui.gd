@@ -9,7 +9,7 @@ class_name TutorialUI extends Control
 
 signal closed
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 const _DIR: String = "res://resources/tutorial/"
 
 const PAGES: Array[Dictionary] = [

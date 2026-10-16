@@ -6,7 +6,7 @@ class_name OptionsUI extends Control
 
 signal closed
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 # Sizes: a phone's for a thumb, a wide screen's the windows' own (SidePanel).
 var _wide: bool = false

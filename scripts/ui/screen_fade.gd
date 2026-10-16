@@ -14,7 +14,7 @@ class_name ScreenFade extends CanvasLayer
 
 signal covered
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 const COVER_TIME: float = 0.4
 const REVEAL_TIME: float = 0.5
 

@@ -8,7 +8,7 @@
 # for an icon never moves the words next to it.
 class_name ButtonHint extends HBoxContainer
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 var action: String = "yes"
 # The words after the mark; "" for the mark alone.

@@ -13,7 +13,7 @@
 # up with the letters whatever width the column ends up.
 class_name AffinityChart extends Control
 
-const FONT: FontFile = preload("res://resources/misc/OldSchoolAdventures-42j9.ttf")
+const FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 const SLOTS: Array[String] = ["phys", "fire", "ice", "thunder", "light", "dark"]
 

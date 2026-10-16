@@ -20,7 +20,7 @@ signal named(hero_name: String)
 # On a phone: the field has the keyboard up (true) or has let it go.
 signal typing(on: bool)
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 const MAX_LEN: int = 10
 const DEFAULT: String = "Hero"

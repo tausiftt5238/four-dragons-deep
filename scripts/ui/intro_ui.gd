@@ -7,12 +7,12 @@ class_name IntroUI extends Control
 
 signal finished
 
-const _FONT := preload("res://resources/misc/OldSchoolAdventures-42j9.ttf") as FontFile
+const _FONT: Font = preload("res://resources/misc/ui_font.tres")
 
 const SPEAKER: String = "Captain Ysolde"
 const CHARS_PER_SEC: float = 45.0
 const BOX: float = 380.0
-const ZOOM: float = 2.0
+const ZOOM: float = 1.5
 # When the Hellbat comes out: how far the captain steps aside, and where the
 # bat's box flies in from and settles, all from the middle of the screen.
 const CAPTAIN_STEP: float = BOX * 0.27
