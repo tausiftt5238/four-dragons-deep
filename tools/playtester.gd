@@ -25,6 +25,9 @@ extends SceneTree
 #   PLAYTEST_SLOT   the slot it saves into (default 3)
 #   PLAYTEST_HOURS  stop after this much game time (default 6)
 #   PLAYTEST_HUD    1 to caption the screen with what the bot is doing (for video)
+#   PLAYTEST_LEVEL  levels over the floor's wanted level to stand at, paid at
+#                   once by Main.debug_level_party rather than ground out
+#                   (default: off, the bot grinds as a player would)
 #
 # Recording: run it under Movie Maker, e.g.
 #   godot --path . --resolution 540x1170 --fixed-fps 30 \
@@ -41,6 +44,8 @@ var speed: float = 1.0
 var stop_floor: int = -1
 var bot_slot: int = 3
 var max_seconds: float = 6.0 * 3600.0
+var debug_level: int = -1             # PLAYTEST_LEVEL; -1 grinds for real
+var _last_roster: String = ""
 
 var _events: FileAccess
 var _backup: Dictionary = {}      # save path -> its text, put back at the end
@@ -109,6 +114,8 @@ func _initialize() -> void:
 		bot_slot = int(OS.get_environment("PLAYTEST_SLOT"))
 	if OS.get_environment("PLAYTEST_HOURS") != "":
 		max_seconds = float(OS.get_environment("PLAYTEST_HOURS")) * 3600.0
+	if OS.get_environment("PLAYTEST_LEVEL") != "":
+		debug_level = int(OS.get_environment("PLAYTEST_LEVEL"))
 	var load_env: String = OS.get_environment("PLAYTEST_LOAD")
 	var loading: int = int(load_env) if load_env != "" else 0
 	_events = FileAccess.open(out_dir.path_join("events.log"),
@@ -285,6 +292,10 @@ func _run() -> void:
 
 
 func _tick() -> void:
+	var roster: String = ", ".join(main.player_char.recruited)
+	if roster != _last_roster:
+		_event("roster: [%s]" % roster)
+		_last_roster = roster
 	var ending: Node = _find_in(main.overlay_layer, "EndingUI")
 	if ending != null:
 		_result = "won"
@@ -324,6 +335,11 @@ func _tick() -> void:
 		_result = "stopped"
 		_event("segment ends on floor %d (saved to slot %d)" % [main.floor_num, bot_slot])
 		_done = true
+		return
+	if debug_level >= 0 and main.player_char.lv < _wanted_level() + debug_level:
+		var target: int = _wanted_level() + debug_level
+		_event("debug level-up: lv %d -> %d" % [main.player_char.lv, target])
+		main.debug_level_party(target - main.player_char.lv)
 		return
 	await _walk_tick()
 
@@ -369,7 +385,10 @@ func _combat_scene() -> CombatScene:
 	for c: Node in main.get_children():
 		if c is CanvasLayer:
 			for cc: Node in c.get_children():
-				if cc is CombatScene and not cc.is_queued_for_deletion():
+				# A won fight stays up under its results (CombatScene.finished);
+				# those are the overlays' to answer, not the fight's.
+				if cc is CombatScene and not cc.is_queued_for_deletion() \
+						and not (cc as CombatScene).finished:
 					return cc as CombatScene
 	return null
 
@@ -845,7 +864,10 @@ func _orb_visit(ui: OrbUI) -> void:
 
 	# Under-levelled where there is nothing to hunt (a boss floor, or roamers
 	# that never come): the Gauntlet, which pays back twice what it costs.
-	if _should_grind() and (Level.is_boss_floor(main.floor_num) or _no_prey):
+	# On a boss floor it is also the way to the price of a mirror for every
+	# phase of the fight, which levels alone do not buy.
+	if (_should_grind() and (Level.is_boss_floor(main.floor_num) or _no_prey)) \
+			or _mirror_short():
 		await _show_tab(ui, "gauntlet")
 		if _gauntlet(ui):
 			return
@@ -853,6 +875,7 @@ func _orb_visit(ui: OrbUI) -> void:
 	# The essentials before anything shiny: a few potions and an ether.
 	await _show_tab(ui, "buy")
 	_restock(ui, true)
+	_buy_mirrors(ui)
 
 	await _show_tab(ui, "scrolls")
 	_buy_scrolls(ui)
@@ -904,9 +927,9 @@ func _sell_junk(ui: OrbUI) -> void:
 func _threats() -> Dictionary:
 	var tier: int = Level.tier_of(main.floor_num)
 	var w: Dictionary = {}
-	# On a dragon's floor only the dragon matters: dress for it alone.
-	if Level.is_boss_floor(main.floor_num) and main.floor_num <= Level.DRAGON_FLOORS:
-		var bd: Enemy = Enemy.make_boss(main.floor_num)
+	# On a boss's floor only the boss matters: dress for it alone.
+	var bd: Enemy = _band_boss(main.floor_num) if Level.is_boss_floor(main.floor_num) else null
+	if bd != null:
 		for e: String in bd.attack_elements:
 			w[e] = 1.0 / float(bd.attack_elements.size())
 		bd.free()
@@ -917,9 +940,8 @@ func _threats() -> Dictionary:
 		for e: String in Enemy._elements_from(t):
 			w[e] = float(w.get(e, 0.0)) + 1.0
 		w[Affinity.PHYS] = float(w.get(Affinity.PHYS, 0.0)) + 0.6
-	var boss_floor: int = ((main.floor_num - 1) / Level.BOSS_EVERY + 1) * Level.BOSS_EVERY
-	if boss_floor <= Level.DRAGON_FLOORS:
-		var b: Enemy = Enemy.make_boss(boss_floor)
+	var b: Enemy = _band_boss(((main.floor_num - 1) / Level.BOSS_EVERY + 1) * Level.BOSS_EVERY)
+	if b != null:
 		for e: String in b.attack_elements:
 			w[e] = float(w.get(e, 0.0)) + 4.0
 		b.free()
@@ -929,6 +951,16 @@ func _threats() -> Dictionary:
 	for k: String in w:
 		w[k] = float(w[k]) / maxf(1.0, total)
 	return w
+
+
+# The boss at the end of a band: a dragon, or the Necromancer under the last
+# of them. Null in the Abyss, which the bot does not play. The caller frees it.
+func _band_boss(boss_floor: int) -> Enemy:
+	if Abyss.active or boss_floor > Level.FLOOR_COUNT:
+		return null
+	if Level.is_necro_floor(boss_floor):
+		return Enemy.make_necromancer(boss_floor)
+	return Enemy.make_boss(boss_floor)
 
 
 func _chart_score(item: Dictionary) -> float:
@@ -1171,6 +1203,59 @@ func _buy_scrolls(ui: OrbUI) -> void:
 	ui._refresh()
 
 
+# ── Mirrors ──
+
+# Which mirror turns a foe back: a repelled hit costs the attacker the rest of
+# its phase, so the right one held up stops a boss's whole turn at its first
+# blow. "attack_mirror" for a foe that only swings, "magic_mirror" otherwise.
+func _mirror_for(foe: Enemy) -> String:
+	for el: String in foe.attack_elements:
+		if el != Affinity.PHYS:
+			return "magic_mirror"
+	return "attack_mirror"
+
+
+const MIRRORS_WANTED: int = 3
+
+
+# The mirror for the boss at the end of this floor, or "" off a boss floor.
+func _floor_mirror() -> String:
+	var b: Enemy = _band_boss(main.floor_num) if Level.is_boss_floor(main.floor_num) else null
+	if b == null:
+		return ""
+	var id: String = _mirror_for(b)
+	b.free()
+	return id
+
+
+# A boss floor where mirrors held plus what the gold buys fall short.
+func _mirror_short() -> bool:
+	var id: String = _floor_mirror()
+	if id == "":
+		return false
+	var p: PlayerCharacter = main.player_char
+	return p.item_qty(id) + (p.gold - 100) / Item.MIRROR_PRICE < MIRRORS_WANTED
+
+
+# On a boss floor, as many of the boss's mirror as the gold runs to, up to
+# three, after the essentials and before anything else.
+func _buy_mirrors(ui: OrbUI) -> void:
+	var id: String = _floor_mirror()
+	if id == "":
+		return
+	var p: PlayerCharacter = main.player_char
+	for s: Dictionary in ui._supplies():
+		if s["id"] != id:
+			continue
+		var price: int = OrbUI.item_price(s)
+		while p.item_qty(id) < MIRRORS_WANTED and p.gold >= price + 100:
+			p.gold -= price
+			spent["supplies"] += price
+			p.add_item(s.duplicate(), 1)
+			_event("bought %s (%d g)" % [s["name"], price])
+	ui._refresh()
+
+
 # ── Supplies ──
 
 func _restock(ui: OrbUI, essentials: bool) -> void:
@@ -1220,8 +1305,8 @@ func _set_party() -> void:
 		return
 	var boss_floor: int = ((main.floor_num - 1) / Level.BOSS_EVERY + 1) * Level.BOSS_EVERY
 	var boss_el: Array[String] = []
-	if boss_floor <= Level.DRAGON_FLOORS:
-		var b: Enemy = Enemy.make_boss(boss_floor)
+	var b: Enemy = _band_boss(boss_floor)
+	if b != null:
 		boss_el.assign(b.attack_elements)
 		b.free()
 	var scored: Array = []
@@ -1585,6 +1670,17 @@ func _hero_options(sc: CombatScene, foes: Array[Enemy], out: Array[Dictionary]) 
 
 	# Mending comes first when someone is in trouble.
 	_mend_options(sc, typ, out)
+
+	# Against a boss, the mirror for what it throws, once a phase: its whole
+	# next turn ends at the first blow it lands on the glass.
+	if boss and not sc._living_party().any(func(m: CharacterSheet) -> bool: return m.mirror != ""):
+		var want: String = _mirror_for(foes.filter(func(f: Enemy) -> bool:
+				return f.is_dragon() or f.is_necromancer() or f.is_warden())[0])
+		for item: Dictionary in p.battle_items():
+			if item.get("id", "") == want:
+				out.append({kind = "item", item = item, score = typ * 40.0,
+						label = item["name"]})
+				break
 
 	# Attack.
 	var atk: float = float(p.effective_str()) * CombatMath.PHYS_POWER * p.stage_mult(CharacterSheet.STAT_ATK)

@@ -2174,6 +2174,31 @@ func _gacha_exp(amount: int, orb: OrbUI) -> void:
 		_show_demon_level_ups(ups)
 
 
+# Debug only (the playtester's grind): the hero climbs `levels` and every
+# demon on the roster catches up to him, through the same screens a fight's
+# exp shows. Does nothing in a release build.
+func debug_level_party(levels: int) -> void:
+	if not OS.is_debug_build() or levels <= 0 or in_combat:
+		return
+	var hero_exp: int = player_char.exp_to_next - player_char.exp
+	for i: int in range(1, levels):
+		hero_exp += CharacterSheet.hero_exp_to_next(player_char.lv + i)
+	var before: Dictionary = _player_snapshot()
+	player_char.gain_exp(hero_exp)
+	var after: Dictionary = _player_snapshot()
+	# Twice the whole climb from level 1, so the bench's half share gets
+	# there too; a demon stops at the hero's level whatever it is paid.
+	var demon_exp: int = 0
+	for lv: int in range(1, player_char.lv):
+		demon_exp += PlayerCharacter.demon_exp_to_next(lv)
+	var demons_before: Dictionary = _demon_snapshots()
+	var grew: Dictionary = player_char.award_demon_exp(demon_exp * 2)
+	var ups: Array[Dictionary] = _demon_level_ups(grew, demons_before)
+	in_combat = true
+	hud_layer.visible = false
+	_show_level_up(before, after, ups)
+
+
 func _close_orb() -> void:
 	if is_instance_valid(orb_layer):
 		# Closing only to come straight back (the slot machine's level-up
