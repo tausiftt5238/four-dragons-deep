@@ -202,6 +202,8 @@ func _build_credits() -> void:
 	back.add_theme_font_size_override("font_size", 20)
 	back.pressed.connect(func() -> void: finished.emit())
 	col.add_child(back)
+	# Ready for the keyboard or a pad, or yes would do nothing here.
+	back.grab_focus.call_deferred()
 
 
 func _label(text: String, size: int, color: Color) -> Label:
