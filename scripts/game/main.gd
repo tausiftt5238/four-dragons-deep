@@ -217,7 +217,7 @@ func _ready() -> void:
 		_snap_cam_yaw()
 
 
-# ── Level loading ────────────────────────────────────────────────────────────
+# ── Level loading ─────────────────────────────────────────────────────────────
 
 # Loads a level scene, builds its dungeon, and places the player.
 # first_load = true  → use level.player_start (beginning of the game)
@@ -275,7 +275,7 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	Music.play(Music.dungeon_track(floor_num))
 
 
-# ── One-time setup ───────────────────────────────────────────────────────────
+# ── One-time setup ────────────────────────────────────────────────────────────
 
 # Creates the torch (OmniLight) and first-person camera.
 # Called once at startup; both nodes persist across level transitions.
@@ -477,7 +477,7 @@ func _resize_minimap() -> void:
 	minimap_ctrl.offset_bottom = float(MAP_PANE_H)
 
 
-# ── Per-frame / movement ─────────────────────────────────────────────────────
+# ── Per-frame / movement ──────────────────────────────────────────────────────
 
 # Marks the cell underfoot and the four it touches. Diagonals stay dark — the
 # old 3x3 handed over the corners of junctions before you had reached them,
@@ -757,7 +757,7 @@ func _on_menu_btn_pressed() -> void:
 		_open_menu()
 
 
-# ── The wide-screen HUD's questions and buttons ──────────────────────────────
+# ── The wide-screen HUD's questions and buttons ───────────────────────────────
 
 func has_floor_key() -> bool:
 	return _has_key
@@ -921,7 +921,7 @@ func _input(event: InputEvent) -> void:
 		_action_strafe(1)
 
 
-# ── Encounter system ─────────────────────────────────────────────────────────
+# ── Encounter system ──────────────────────────────────────────────────────────
 
 # Only the abnormal half of the toggle is worth saying out loud. With roamers on
 # the HUD stays clean; with them off the floor is silent for a reason, and that
@@ -932,7 +932,7 @@ func _update_encounter_debug_label() -> void:
 	_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
 
 
-# ── Roaming demons ───────────────────────────────────────────────────────────
+# ── Roaming demons ────────────────────────────────────────────────────────────
 
 # How many demons a floor carries. Boss corridors carry none — the boss is the
 # encounter, and a 1-cell-wide corridor gives you nowhere to dodge.
@@ -1185,6 +1185,8 @@ var _in_gauntlet: bool = false
 const GAUNTLET_PAYOUT: int = 2
 
 
+# ── Starting a fight ──────────────────────────────────────────────────────────
+
 func _start_gauntlet(names: Array[String]) -> void:
 	var group: Array[Enemy] = []
 	for n: String in names:
@@ -1263,6 +1265,8 @@ func _sync_view_width() -> void:
 			else:
 				cam.make_current()
 
+
+# ── After a fight ─────────────────────────────────────────────────────────────
 
 # Rewards are summed over the whole encounter: anything killed pays experience,
 # gold and a drop roll; anything talked down pays experience and gold only.
@@ -1429,6 +1433,8 @@ func _demon_level_ups(grew: Dictionary, before: Dictionary) -> Array[Dictionary]
 				offers = offers.get(demon_name, [])})
 	return out
 
+
+# ── Screens over the dungeon: results, level-ups, endings ─────────────────────
 
 func _show_combat_result(exp: int, gold: int, item: Dictionary,
 		lv_before: Dictionary, lv_after: Dictionary,
@@ -1947,7 +1953,7 @@ func _teleport(here: String) -> void:
 	_sync_player()
 
 
-# ── Menu ─────────────────────────────────────────────────────────────────────
+# ── Menu ──────────────────────────────────────────────────────────────────────
 
 func _open_menu() -> void:
 	menu_open = true
@@ -1986,7 +1992,7 @@ func _close_menu() -> void:
 	menu_open = false
 
 
-# ── The side panel: the menu and the orb on a wide screen ────────────────────
+# ── The side panel: the menu and the orb on a wide screen ─────────────────────
 #
 # They come in from the left over the map's place and push the map ahead of
 # them to the right edge, the view fading under the two; closing runs it back.
@@ -2054,7 +2060,7 @@ func _slide_side(holder: Control, from: float, to: float, free_after: bool) -> v
 	if free_after:
 		_side_tween.tween_callback(holder.queue_free)
 
-# ── Caches ────────────────────────────────────────────────────────────────────
+# ── Chests ────────────────────────────────────────────────────────────────────
 
 func _open_chest(wall: Vector2i) -> void:
 	chest_open = true
@@ -2118,6 +2124,8 @@ func _close_chest() -> void:
 		for child: Node in chest_layer.get_children():
 			child.queue_free()
 
+
+# ── The orb: rest, shop, gacha ────────────────────────────────────────────────
 
 func _open_orb(tab: String = "rest") -> void:
 	orb_open = true
@@ -2209,6 +2217,8 @@ func _close_orb() -> void:
 	if _reopen_orb_tab == "":
 		Music.play(Music.dungeon_track(floor_num))
 
+
+# ── Saving and loading ────────────────────────────────────────────────────────
 
 func _open_save_menu() -> void:
 	save_open = true

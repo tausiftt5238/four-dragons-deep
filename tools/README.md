@@ -9,7 +9,7 @@ page with butler, each to its own channel; its header has the one-time setup.
 
 # The two builds
 
-One codebase makes two games (`scripts/core/build.gd`):
+One codebase makes two games (`scripts/app/build.gd`):
 
 - **Four Dragons Deep Portable**, the default: upright, for Android and the web.
 - **Four Dragons Deep** for Steam: on its side, for a mouse, keyboard or pad.

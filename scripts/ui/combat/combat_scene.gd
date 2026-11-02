@@ -567,7 +567,7 @@ func _celebrate() -> void:
 		n += 1
 
 
-# ── Phase flow ────────────────────────────────────────────────────────────────
+# ── Who is acting, and picking an ally ────────────────────────────────────────
 
 # The one of the party a heal or a revive is about to land on, chosen in
 # _pick_ally just before the action commits.
@@ -1642,7 +1642,7 @@ func _aim_at(foe: Enemy) -> void:
 	_refresh_foe_rows()
 
 
-# ── Refresh ───────────────────────────────────────────────────────────────────
+# ── Refreshing the foe rows ───────────────────────────────────────────────────
 
 
 func _refresh_foe_rows() -> void:
@@ -1974,7 +1974,7 @@ func _member_portrait(member: CharacterSheet) -> TextureRect:
 	return null
 
 
-# ── Refresh ───────────────────────────────────────────────────────────────────
+# ── Refreshing after every action ─────────────────────────────────────────────
 
 func _refresh_hp() -> void:
 	# Run here because every action on either side ends in a refresh, so the

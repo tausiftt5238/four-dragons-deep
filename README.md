@@ -47,21 +47,29 @@ The main scene is `scenes/title.tscn`.
 
 | Path | What's in it |
 | --- | --- |
-| `scripts/core` | `main.gd` — the run loop, floor transitions, save/load |
-| `scripts/data` | Static tables: spells, items, shop stock |
-| `scripts/entities` | `enemy.gd` (`TEMPLATES`), the player, floor roamers |
-| `scripts/ui` | Combat, negotiation, shop, map and title screens |
-| `scripts/world` | `level.gd` (`FLOOR_COUNT = 20`) and floor generation |
-| `scenes` | Four scenes: `title`, `main`, `combat`, `map` |
-| `resources` | Map and spell art, shaders, the font, placeholder enemies |
+| `scripts/app` | Start-up, the two builds, controls, settings, save files |
+| `scripts/audio` | Music and the synthesised sound effects |
+| `scripts/combat` | Battle rules with no UI: press turns, damage, talking |
+| `scripts/data` | Tables: spells, items, gear, affinities |
+| `scripts/entities` | Stats, the hero, monsters (`Enemy.TEMPLATES`), floor roamers |
+| `scripts/game` | `main.gd`, the run itself, and the Abyss |
+| `scripts/world` | `level.gd` (`FLOOR_COUNT = 20`), maze generation, the 3D and the minimap |
+| `scripts/ui` | Screens, in `combat/`, `explore/`, `menu/`, `screens/` and `widgets/` |
+| `scenes` | Three scenes: `title`, `main`, `map` |
+| `resources` | Art, shaders, the font, placeholder enemies |
+| `data` | `sfx_recipes.json`, and CSV exports of the tables |
 | `docs` | Player and design reference — see below |
-| `tools` | Generators and the art swap script |
+| `tools` | Builds, uploads, the playtester, generators, the art swap script |
+
+`docs/architecture.md` explains how the pieces fit, file by file, and which
+parts would carry over to another game.
 
 ## Docs
 
-`docs/how-to-play.md` is the player-facing page. The rest are generated or
-hand-kept reference: `bestiary.html`, `demon-registry.html`,
-`equipment-catalog.html`, `tier-palette.html`, `drawing-the-afflictions.html`.
+`docs/architecture.md` is the guide to the code. `docs/how-to-play.md` is the
+player-facing page. The rest are generated or hand-kept reference:
+`bestiary.html`, `demon-registry.html`, `equipment-catalog.html`,
+`tier-palette.html`, `drawing-the-afflictions.html`.
 
 `bestiary.html` is **generated, not hand-edited** — `tools/README.md` has the two
 commands that rebuild it from `Enemy.TEMPLATES` and `Spell.DATA`.

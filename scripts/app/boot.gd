@@ -69,7 +69,7 @@ func _input(event: InputEvent) -> void:
 # after it is moved in front.
 func _start_dedupe() -> void:
 	var root: Window = get_tree().root
-	var dedupe: Node = (load("res://scripts/core/input_dedupe.gd") as GDScript).new()
+	var dedupe: Node = (load("res://scripts/app/input_dedupe.gd") as GDScript).new()
 	dedupe.name = "InputDedupe"
 	root.add_child.call_deferred(dedupe)
 	root.child_entered_tree.connect(func(n: Node) -> void:
