@@ -3479,21 +3479,24 @@ func _enemy_strike(actor: Enemy, target: CharacterSheet, element: String,
 # ── The Necromancer ───────────────────────────────────────────────────────────
 #
 # Its rules, in Enemy's notes on it: a new form each phase, one skeleton a
-# phase, a dispel when there is something to clear, and otherwise the form's
-# element at one target.
-const NECRO_DISPEL_ODDS: float = 0.5
+# phase, a dispel when there is something to clear (then none for the next
+# three phases), and otherwise the form's element at one target.
+const NECRO_DISPEL_EVERY: int = 4
 
 # The foe portraits' own zoom, so the circle lands under the minion's feet.
 const MINION_FX_ZOOM: float = 3.0
 
 # What it has done this phase: one summon and at most one dispel per phase.
 var _necro_turn: Dictionary = {summoned = false, dispelled = false}
+# Phases until it may dispel again; 0 means it may now.
+var _necro_dispel_wait: int = 0
 
 
 func _necro_begin_phase(necro: Enemy) -> void:
 	necro.take_form(necro.next_form())
 	necro.mp = necro.max_mp
 	_necro_turn = {summoned = false, dispelled = false}
+	_necro_dispel_wait = maxi(_necro_dispel_wait - 1, 0)
 	for r: Dictionary in _foe_rows:
 		if r["foe"] == necro:
 			(r["chart"] as AffinityChart).queue_redraw()
@@ -3522,16 +3525,18 @@ func _necro_act(actor: Enemy) -> Dictionary:
 	if epr != null:
 		await _windup(epr, "attack02")
 
-	if not _necro_turn["dispelled"]:
+	if not _necro_turn["dispelled"] and _necro_dispel_wait == 0:
 		var steady: Dictionary = Spell.get_data("steady")
 		var purge: Dictionary = Spell.get_data("purge")
 		var pick: Dictionary = {}
-		if _dispel_would_bite(steady, false) and randf() < NECRO_DISPEL_ODDS:
+		if _dispel_would_bite(steady, false):
 			pick = steady
-		elif _dispel_would_bite(purge, false) and randf() < NECRO_DISPEL_ODDS:
+		elif _dispel_would_bite(purge, false):
 			pick = purge
 		if not pick.is_empty():
 			_necro_turn["dispelled"] = true
+			# Counted down at the start of each of its phases, this one's included.
+			_necro_dispel_wait = NECRO_DISPEL_EVERY
 			var out: Dictionary = _cast_dispel(pick, false)
 			out["msg"] = "[color=#c9a6ff]%s casts[/color] %s" % [actor.display_name(), out["msg"]]
 			return out

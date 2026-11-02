@@ -871,7 +871,7 @@ func resists_status(status_id: String) -> bool:
 #     press-turn icon, so the Necromancer's two icons grow to five with three
 #     minions up.
 #   * It clears debuffs off its side (Steady) or buffs off yours (Purge) when
-#     there is something to clear, and not every phase.
+#     there is something to clear, then not again for three phases.
 const NECROMANCER: String = "Necromancer"
 const NECRO_FORMS: Array[String] = ["ice", "thunder", "fire", "dark"]
 const NECRO_ICONS: int = 2
