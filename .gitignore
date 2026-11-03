@@ -9,6 +9,6 @@ art-private/
 .claude/
 
 # Commercial music pack, kept out of the repo. The game plays silence
-# without it; see scripts/core/music.gd.
+# without it; see scripts/audio/music.gd.
 resources/music/
 override.cfg

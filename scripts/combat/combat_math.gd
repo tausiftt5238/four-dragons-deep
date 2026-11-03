@@ -14,7 +14,7 @@ const PHYS_POWER: float = 1.5
 # target kept it all, four kept 40% each). It no longer does: every target
 # takes the whole cast, and the price of the reach is the risk instead, since
 # one target that nulls, dodges or turns it back prices the whole cast (see
-# CombatScene._spread_cost).
+# CombatActions._spread_cost).
 
 
 static func variance(dmg: int) -> int:
@@ -200,7 +200,7 @@ static func resolve_banish(target: CharacterSheet, element: String,
 	# A wide cast rolls the full odds on every target it reaches, as a single
 	# one does. What keeps the wide versions from simply ending fights is the
 	# chart (null, repel and drain cannot be taken) and the press-turn price of
-	# a cast any one target blocks (CombatScene._spread_cost).
+	# a cast any one target blocks (CombatActions._spread_cost).
 	if randf() < banish_chance(target, element, caster, boost):
 		return {outcome = "banished", dmg = 0, taken = true}
 	return {outcome = "failed", dmg = 0, taken = false}

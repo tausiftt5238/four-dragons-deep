@@ -62,7 +62,7 @@ func _resolve(approach: String) -> void:
 		_s._set_buttons(false)
 		_s._log("[color=red]%s: \"You're bluffing! Have at you!\"[/color]" % _s.enemy.enemy_name)
 		var p_hp_before: int = _s.player.hp
-		var e_msg: String    = (await _s._apply_enemy_turn()) + "\n" + (await _s._apply_enemy_turn())
+		var e_msg: String    = (await _s._enemy_turns._apply_enemy_turn()) + "\n" + (await _s._enemy_turns._apply_enemy_turn())
 		_s._refresh_hp()
 		if _s.player.hp < p_hp_before:
 			_s._shake_portrait(_s._player_portrait)
@@ -74,7 +74,7 @@ func _resolve(approach: String) -> void:
 			return
 		await _s.get_tree().create_timer(1.1).timeout
 		if is_instance_valid(_s):
-			await _s._talk_attempt_failed()
+			await _s._enemy_turns._talk_attempt_failed()
 		return
 
 	_talk_fear   += gain
@@ -87,7 +87,7 @@ func _resolve(approach: String) -> void:
 		_s._log("[color=lime]%s backs down![/color]" % _s.enemy.enemy_name)
 		await _s.get_tree().create_timer(1.5).timeout
 		if is_instance_valid(_s):
-			await _s._foe_departs("talk")
+			await _s._roster._foe_departs("talk")
 		return
 
 	_s._log("[color=orange]%s[/color]" % _defiant_reaction(gain))
@@ -97,7 +97,7 @@ func _resolve(approach: String) -> void:
 		_s._set_buttons(false)
 		_s._log("[color=red]%s decides to fight![/color]" % _s.enemy.enemy_name)
 		var p_hp_before: int = _s.player.hp
-		var e_msg: String    = await _s._apply_enemy_turn()
+		var e_msg: String    = await _s._enemy_turns._apply_enemy_turn()
 		_s._refresh_hp()
 		if _s.player.hp < p_hp_before:
 			_s._shake_portrait(_s._player_portrait)
@@ -109,7 +109,7 @@ func _resolve(approach: String) -> void:
 			return
 		await _s.get_tree().create_timer(1.1).timeout
 		if is_instance_valid(_s):
-			await _s._talk_attempt_failed()
+			await _s._enemy_turns._talk_attempt_failed()
 		return
 
 	await _s.get_tree().create_timer(0.7).timeout

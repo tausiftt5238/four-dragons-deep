@@ -23,7 +23,7 @@ driver/output_latency.web=100
 
 [autoload]
 
-Boot="*res://scripts/core/boot.gd"
+Boot="*res://scripts/app/boot.gd"
 
 [display]
 

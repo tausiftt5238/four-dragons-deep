@@ -1,4 +1,4 @@
-class_name CombatNegReason extends RefCounted
+class_name CombatNegRecruit extends RefCounted
 
 var _s
 var _talk_trust:  int = 0
@@ -18,11 +18,11 @@ func start() -> void:
 
 func _show_submenu() -> void:
 	_s._set_back(_s._show_talk_submenu)
-	_s._right_title.text = "Negotiate (Round %d of %d)" % [Negotiation.ROUNDS - _talk_rounds + 1, Negotiation.ROUNDS]
-	_s._right_title.add_theme_color_override("font_color", Color(0.50, 1.0, 0.70))
+	_s._right_title.text = "Recruit (Round %d of %d)" % [Negotiation.ROUNDS - _talk_rounds + 1, Negotiation.ROUNDS]
+	_s._right_title.add_theme_color_override("font_color", Color(0.40, 1.0, 0.60))
 	_s._submenu_clear()
 
-	var opts: Array[String] = ["Survival", "Logic", "Gain"]
+	var opts: Array[String] = ["Flatter", "Pride", "Safety"]
 	for key: String in opts:
 		var btn: Button = _s._big_button(key, "", false)
 		btn.pressed.connect(func() -> void: await _resolve(key))
@@ -33,7 +33,7 @@ func _resolve(approach: String) -> void:
 	_s._lock_submenu()
 	_s._right_back_btn.hide()
 	var matched: bool = Negotiation.matches(
-			Negotiation.REASON_MATCH, _s.enemy.talk_personality, approach)
+			Negotiation.RECRUIT_MATCH, _s.enemy.talk_personality, approach)
 	var gain: int = Negotiation.roll(matched)
 	_talk_trust  += gain
 	_talk_rounds -= 1
@@ -47,20 +47,19 @@ func _resolve(approach: String) -> void:
 	if _talk_trust >= Negotiation.needed(_s.enemy):
 		_s._show_main_actions()
 		_s._set_buttons(false)
-		_s.player.gold += _s.enemy.gold_reward / 2
-		_s._log("[color=lime]%s backs down. You pocket %d gold.[/color]" % [
-				_s.enemy.enemy_name, _s.enemy.gold_reward / 2])
+		_s.player.remember_recruit(_s.enemy.enemy_name, _s.enemy.lv, _s.enemy.abyss_element)
+		_s._log("[color=yellow]%s agrees to join you![/color]" % _s.enemy.enemy_name)
 		await _s.get_tree().create_timer(1.5).timeout
 		if is_instance_valid(_s):
-			await _s._foe_departs("talk")
+			await _s._roster._foe_departs("talk")
 		return
 
 	if _talk_rounds <= 0:
 		_s._show_main_actions()
 		_s._set_buttons(false)
-		_s._log("[color=red]%s: \"Enough words!\"[/color]" % _s.enemy.enemy_name)
+		_s._log("[color=red]%s: \"Enough talk!\"[/color]" % _s.enemy.enemy_name)
 		var p_hp_before: int = _s.player.hp
-		var e_msg: String    = await _s._apply_enemy_turn()
+		var e_msg: String    = await _s._enemy_turns._apply_enemy_turn()
 		_s._refresh_hp()
 		if _s.player.hp < p_hp_before:
 			_s._shake_portrait(_s._player_portrait)
@@ -72,7 +71,7 @@ func _resolve(approach: String) -> void:
 			return
 		await _s.get_tree().create_timer(1.1).timeout
 		if is_instance_valid(_s):
-			await _s._talk_attempt_failed()
+			await _s._enemy_turns._talk_attempt_failed()
 		return
 
 	await _s.get_tree().create_timer(0.7).timeout
@@ -82,26 +81,26 @@ func _resolve(approach: String) -> void:
 
 func _good_reaction() -> String:
 	match _s.enemy.talk_personality:
-		"cowardly": return "%s: \"Hmm... fair point. Maybe this isn't worth the trouble.\"" % _s.enemy.enemy_name
-		"proud":    return "%s: \"You argue well. I'll think on it.\"" % _s.enemy.enemy_name
-		"greedy":   return "%s: \"...You're right. What do I gain from this?\"" % _s.enemy.enemy_name
-		"lonely":   return "%s: \"That... actually makes sense.\"" % _s.enemy.enemy_name
-	return "%s considers your words." % _s.enemy.enemy_name
+		"cowardly": return "%s: \"Y-you'd really protect me? ...maybe I'll consider it.\"" % _s.enemy.enemy_name
+		"proud":    return "%s: \"You recognize my power. I'll hear you out.\"" % _s.enemy.enemy_name
+		"greedy":   return "%s: \"Heh, finally someone smart. Keep talking.\"" % _s.enemy.enemy_name
+		"lonely":   return "%s: \"You really mean that? ...I'm listening.\"" % _s.enemy.enemy_name
+	return "%s seems interested." % _s.enemy.enemy_name
 
 
 func _neutral_reaction() -> String:
 	match _s.enemy.talk_personality:
-		"cowardly": return "%s: \"You have a point... but I'm not convinced yet.\"" % _s.enemy.enemy_name
-		"proud":    return "%s: \"Keep going. I'm listening.\"" % _s.enemy.enemy_name
-		"greedy":   return "%s: \"Interesting. Tell me more.\"" % _s.enemy.enemy_name
-		"lonely":   return "%s: \"...Maybe. Keep talking.\"" % _s.enemy.enemy_name
+		"cowardly": return "%s: \"Hmm... not convinced yet, but go on.\"" % _s.enemy.enemy_name
+		"proud":    return "%s: \"Interesting. You might be worth my time.\"" % _s.enemy.enemy_name
+		"greedy":   return "%s: \"You've got my attention. What else?\"" % _s.enemy.enemy_name
+		"lonely":   return "%s: \"...I suppose you're not so bad.\"" % _s.enemy.enemy_name
 	return "%s hesitates." % _s.enemy.enemy_name
 
 
 func _bad_reaction() -> String:
 	match _s.enemy.talk_personality:
-		"cowardly": return "%s: \"Nice try, but I'm not buying it.\"" % _s.enemy.enemy_name
-		"proud":    return "%s: \"Your argument is weak.\"" % _s.enemy.enemy_name
-		"greedy":   return "%s: \"Words are cheap.\"" % _s.enemy.enemy_name
-		"lonely":   return "%s: \"That's not what I want to hear.\"" % _s.enemy.enemy_name
+		"cowardly": return "%s: \"That's not going to work on me!\"" % _s.enemy.enemy_name
+		"proud":    return "%s: \"Ha! Is that the best you've got?\"" % _s.enemy.enemy_name
+		"greedy":   return "%s: \"Words are cheap. Show me something real.\"" % _s.enemy.enemy_name
+		"lonely":   return "%s: \"...You don't really mean that.\"" % _s.enemy.enemy_name
 	return "%s is unmoved." % _s.enemy.enemy_name

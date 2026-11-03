@@ -444,7 +444,7 @@ func _scene_key_and_door() -> void:
 		await _fade_to(0.0)
 		_caption("Find the key.", 2.0)
 		await _walk(_path(main.player_pos, lvl.key_pos))
-		main._sync_door()
+		main._roaming._sync_door()
 		await _wait(1.0)
 		await _fade_to(1.0)
 

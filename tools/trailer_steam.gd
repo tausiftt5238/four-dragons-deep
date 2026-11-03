@@ -261,7 +261,7 @@ func _beside(kind: String) -> Array:
 		# A spark plate bites only when lit on arrival ("spark0"/"spark1" is
 		# its group; the lit one goes by steps taken): one that will be.
 		if kind == Level.HAZARD_SPARK \
-				and int(value.substr(Level.HAZARD_SPARK.length())) != Main._spark_live_at(main._spark_steps + 1):
+				and int(value.substr(Level.HAZARD_SPARK.length())) != MainHazards._spark_live_at(main._hazards._spark_steps + 1):
 			continue
 		for d: int in 4:
 			var from: Vector2i = (cell as Vector2i) - Main.DIR_OFFSET[d]

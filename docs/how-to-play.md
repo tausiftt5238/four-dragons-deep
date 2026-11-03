@@ -291,8 +291,8 @@ it ends the run.
 - **It raises the dead.** Every turn it raises a skeleton at half its level, up
   to three. Each one fights as its kind does and brings its own turn: the
   Necromancer's two turns grow to five. They crumble when it falls.
-- **It keeps its slate clean.** Now and then it strips your buffs (Purge) or its
-  own side's debuffs (Steady), when there is something to clear.
+- **It keeps its slate clean.** Every fourth turn at most, it strips your buffs
+  (Purge) or its own side's debuffs (Steady), when there is something to clear.
 - Silence and Blind take hold on it only one time in five, as on a dragon.
 
 Good luck. Four dragons deep is further than it sounds.

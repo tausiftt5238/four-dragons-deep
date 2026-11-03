@@ -2,6 +2,11 @@
 # Top-level game controller. Owns player state, camera, torch, and minimap.
 # Delegates 3D geometry to Dungeon and map data to Level subclasses.
 # On startup it loads Map 1; stepping on the portal cell triggers a level swap.
+#
+# Four parts of it live in files of their own beside this one, each holding a
+# reference back to Main: MainSaves (saving and loading), MainScreens (the
+# screens laid over the dungeon), MainHazards (each band's floor) and
+# MainRoamers (the monsters walking it). docs/architecture.md has the map.
 class_name Main extends Node3D
 
 const EYE_HEIGHT: float = 1.0
@@ -33,6 +38,13 @@ const CAM_PULLBACK: float = 0.40
 const CAM_FOV:      float = 90.0
 var cam_rig: Node3D
 var cam: Camera3D
+
+# The rest of the run, in files of their own that work on this Main:
+var _saves: MainSaves = MainSaves.new(self)        # saving and loading
+var _screens: MainScreens = MainScreens.new(self)  # results, level-ups, endings
+var _hazards: MainHazards = MainHazards.new(self)  # what each band's floor does
+var _roaming: MainRoamers = MainRoamers.new(self)  # the monsters walking the floor
+
 
 # ── The two panes ─────────────────────────────────────────────────────────────
 #
@@ -131,12 +143,12 @@ func _notification(what: int) -> void:
 	# window can be closed at any moment: either way, write the run down first.
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST \
 			or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		_autosave()
+		_saves._autosave()
 		Records.flush()
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if not in_combat:
 			if save_open:
-				_close_save_layer()
+				_saves._close_save_layer()
 			elif orb_open:
 				_close_orb()
 			elif menu_open:
@@ -158,7 +170,7 @@ func _process(delta: float) -> void:
 
 
 func _ready() -> void:
-	get_tree().node_added.connect(_on_node_added)
+	get_tree().node_added.connect(_saves._on_node_added)
 	Controls.ensure()
 	Sfx.init()
 
@@ -199,17 +211,17 @@ func _ready() -> void:
 	_show_floor_title()
 
 	if abyss_intent == "continue":
-		call_deferred("_do_load", SaveSystem.ABYSS_SLOT, false)
+		_saves._do_load.call_deferred(SaveSystem.ABYSS_SLOT, false)
 	elif abyss_intent == "new":
 		Records.add("abyss_runs")
 		Abyss.note_depth(1)
-		call_deferred("_autosave")
+		_saves._autosave.call_deferred()
 	elif GameBoot.pending_slot <= 0:
 		Records.add("runs_started")
 	if abyss_intent == "" and GameBoot.pending_slot > 0:
 		var slot: int = GameBoot.pending_slot
 		GameBoot.pending_slot = 0
-		call_deferred("_do_load", slot, false)
+		_saves._do_load.call_deferred(slot, false)
 	else:
 		player_pos    = current_level.player_start
 		player_facing = current_level.player_start_facing
@@ -217,7 +229,7 @@ func _ready() -> void:
 		_snap_cam_yaw()
 
 
-# ── Level loading ────────────────────────────────────────────────────────────
+# ── Level loading ─────────────────────────────────────────────────────────────
 
 # Loads a level scene, builds its dungeon, and places the player.
 # first_load = true  → use level.player_start (beginning of the game)
@@ -238,13 +250,13 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 	current_level.floor_num = floor_num
 	world.add_child(current_level)
 
-	_spark_steps = 0
+	_hazards._spark_steps = 0
 	# Build geometry using the level's colours and maze
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
-	_show_sparks()
-	_sync_boss_banner()
+	_hazards._show_sparks()
+	_hazards._sync_boss_banner()
 
 	# Place the player at the appropriate spawn point
 	if first_load:
@@ -261,21 +273,21 @@ func _load_level(scene_path: String, first_load: bool) -> void:
 		visited_by_map[scene_path] = {}
 	visited = visited_by_map[scene_path]
 
-	_point_minimap_at_level()
+	_saves._point_minimap_at_level()
 	_sync_minimap_palette()
 	_resize_minimap()
 
 	_sync_player()
 	_snap_cam_yaw()
-	_spawn_roamers()
-	# After _spawn_roamers, which is what decides whether this floor holds the
+	_roaming._spawn_roamers()
+	# After MainRoamers._spawn_roamers, which is what decides whether this floor holds the
 	# key at all and so whether the way on is shut.
 	_door_open = _has_key
-	_sync_door()
+	_roaming._sync_door()
 	Music.play(Music.dungeon_track(floor_num))
 
 
-# ── One-time setup ───────────────────────────────────────────────────────────
+# ── One-time setup ────────────────────────────────────────────────────────────
 
 # Creates the torch (OmniLight) and first-person camera.
 # Called once at startup; both nodes persist across level transitions.
@@ -477,7 +489,7 @@ func _resize_minimap() -> void:
 	minimap_ctrl.offset_bottom = float(MAP_PANE_H)
 
 
-# ── Per-frame / movement ─────────────────────────────────────────────────────
+# ── Per-frame / movement ──────────────────────────────────────────────────────
 
 # Marks the cell underfoot and the four it touches. Diagonals stay dark — the
 # old 3x3 handed over the corners of junctions before you had reached them,
@@ -554,22 +566,22 @@ func _check_portal() -> void:
 			_start_boss_combat()
 			return
 		if Level.is_necro_floor(floor_num):
-			_show_congratulations()
+			_screens._show_congratulations()
 			return
 		if Abyss.is_end_floor(floor_num):
-			_show_abyss_end()
+			_screens._show_abyss_end()
 			return
 
 	if not _has_key:
-		_show_hud_popup("The door is locked. Find the key.", Color(0.75, 0.55, 1.0))
+		_screens._show_hud_popup("The door is locked. Find the key.", Color(0.75, 0.55, 1.0))
 		_shake_camera()
 		return
 
 	# The first push with the key turns it; the next one goes through.
 	if not _door_open:
 		_door_open = true
-		_sync_door()
-		_show_hud_popup("You turn the key. The door opens.", Color(0.75, 0.55, 1.0))
+		_roaming._sync_door()
+		_screens._show_hud_popup("You turn the key. The door opens.", Color(0.75, 0.55, 1.0))
 		return
 
 	if current_level.next_scene == "":
@@ -586,7 +598,7 @@ func _descend() -> void:
 	# The demo goes no deeper than its last boss: a save from there that walks
 	# on to the stairs gets the demo's ending again, not the next band.
 	if Build.demo() and floor_num >= DEMO_LAST_FLOOR:
-		_show_demo_end()
+		_screens._show_demo_end()
 		return
 	# Down through the dark, the new floor's number on it, and the floor is
 	# built while nothing can be seen.
@@ -610,7 +622,7 @@ func _descend() -> void:
 	await get_tree().process_frame
 	_fading = false
 	fade.reveal()
-	_autosave()
+	_saves._autosave()
 
 
 # Jolts the camera with quick random offsets then snaps back to base.
@@ -633,7 +645,7 @@ func _action_forward() -> void:
 	var nxt: Vector2i = player_pos + DIR_OFFSET[player_facing]
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
-		_slide(DIR_OFFSET[player_facing])
+		_hazards._slide(DIR_OFFSET[player_facing])
 		Sfx.play("step")
 		_post_move()
 	elif nxt == current_level.exit_wall_pos and player_pos == current_level.exit_pos:
@@ -649,7 +661,7 @@ func _action_back() -> void:
 	var nxt: Vector2i = player_pos - DIR_OFFSET[player_facing]
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
-		_slide(-DIR_OFFSET[player_facing])
+		_hazards._slide(-DIR_OFFSET[player_facing])
 		Sfx.play("step")
 		_post_move()
 	else:
@@ -663,7 +675,7 @@ func _action_strafe(side: int) -> void:
 	var nxt: Vector2i = player_pos + dir
 	if _is_open(nxt.x, nxt.y):
 		player_pos = nxt
-		_slide(dir)
+		_hazards._slide(dir)
 		Sfx.play("step")
 		_post_move()
 	else:
@@ -699,20 +711,20 @@ func _recover_mp_on_step() -> void:
 
 
 func _post_move() -> void:
-	_spark_steps += 1
+	_hazards._spark_steps += 1
 	_sync_player()
 	_recover_mp_on_step()
-	_take_key_here()
-	_check_trap()
-	_show_sparks()
+	_roaming._take_key_here()
+	_hazards._check_trap()
+	_hazards._show_sparks()
 	if not player_char.is_alive():
 		return
 	# Walking into a roamer counts before it gets its own step, which is also
 	# what stops the two swapping straight through one another.
-	if _engage_roamer_here():
+	if _roaming._engage_roamer_here():
 		return
-	_step_roamers()
-	if _engage_roamer_here():
+	_roaming._step_roamers()
+	if _roaming._engage_roamer_here():
 		return
 	if player_pos in current_level.orb_cells:
 		_open_orb()
@@ -757,7 +769,7 @@ func _on_menu_btn_pressed() -> void:
 		_open_menu()
 
 
-# ── The wide-screen HUD's questions and buttons ──────────────────────────────
+# ── The wide-screen HUD's questions and buttons ───────────────────────────────
 
 func has_floor_key() -> bool:
 	return _has_key
@@ -871,11 +883,11 @@ func _input(event: InputEvent) -> void:
 	if OS.is_debug_build() and key == KEY_N and not in_combat and not save_open and not orb_open \
 			and not chest_open and not menu_open:
 		if floor_num >= Level.FLOOR_COUNT:
-			_show_hud_popup("[DEBUG] Floor %d is the last one." % floor_num,
+			_screens._show_hud_popup("[DEBUG] Floor %d is the last one." % floor_num,
 					Color(0.55, 0.85, 1.0))
 		else:
 			_descend()
-			_show_hud_popup("[DEBUG] Skipped to floor %d" % (floor_num + 1),
+			_screens._show_hud_popup("[DEBUG] Skipped to floor %d" % (floor_num + 1),
 					Color(0.55, 0.85, 1.0))
 		return
 
@@ -883,7 +895,7 @@ func _input(event: InputEvent) -> void:
 			and not chest_open:
 		if menu_open:
 			_close_menu()
-		_open_load_menu()
+		_saves._open_load_menu()
 		return
 
 	# × (Escape is always one): close the save picker, then the menu; with
@@ -892,7 +904,7 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("no"):
 		if not in_combat:
 			if save_open:
-				_close_save_layer()
+				_saves._close_save_layer()
 			elif menu_open:
 				_close_menu()
 			elif not (orb_open or chest_open):
@@ -921,7 +933,7 @@ func _input(event: InputEvent) -> void:
 		_action_strafe(1)
 
 
-# ── Encounter system ─────────────────────────────────────────────────────────
+# ── Encounter system ──────────────────────────────────────────────────────────
 
 # Only the abnormal half of the toggle is worth saying out loud. With roamers on
 # the HUD stays clean; with them off the floor is silent for a reason, and that
@@ -932,249 +944,7 @@ func _update_encounter_debug_label() -> void:
 	_encounter_debug_lbl.add_theme_color_override("font_color", Color(0.90, 0.35, 0.35))
 
 
-# ── Roaming demons ───────────────────────────────────────────────────────────
-
-# How many demons a floor carries. Boss corridors carry none — the boss is the
-# encounter, and a 1-cell-wide corridor gives you nowhere to dodge.
-#
-# One demon per territory is the rule that keeps them out of each other's way,
-# so this can only ever reach as high as there are territories — see ZONE_DIV.
-func _roamer_target() -> int:
-	if Level.is_boss_floor(floor_num):
-		return 0
-	return mini(9 + floor_num * 2, 14)
-
-
-func _spawn_roamers() -> void:
-	for r: Roamer in roamers:
-		if is_instance_valid(r):
-			r.queue_free()
-	roamers.clear()
-	_engaged.clear()
-	_steps_since_spawn = 0
-	# One territory each, so they never end up in the same corner of the maze.
-	var zones: Array[Rect2i] = _build_zones()
-	zones.shuffle()
-	var target: int = _roamer_target()
-	for z: Rect2i in zones:
-		if roamers.size() >= target:
-			break
-		_spawn_roamer_in(z)
-	_spawn_warden()
-
-
-# The door and the HUD key follow the same two flags, so they are set together.
-func _sync_door() -> void:
-	if is_instance_valid(dungeon):
-		dungeon.set_locked(not _door_open)
-	if _key_icon != null:
-		_key_icon.visible = _has_key and not _door_open
-
-
-# Walking onto the loose key takes it. No prompt: there is one thing to do with
-# a key and asking whether to do it is a dialog box in front of a door.
-func _take_key_here() -> void:
-	if current_level == null or _has_key or current_level.key_taken:
-		return
-	if current_level.key_pos.x < 0 or player_pos != current_level.key_pos:
-		return
-	current_level.key_taken = true
-	_has_key = true
-	minimap_ctrl.key_pos = Vector2i(-1, -1)
-	minimap_ctrl.queue_redraw()
-	_rebuild_dungeon()
-	Sfx.play("key")
-	_show_hud_popup("You take the key. Find the door.", Color(0.75, 0.55, 1.0))
-
-
-# The thing holding the key, if anything is. A warden stands in the middle of
-# its band; the other maze floors leave the key lying and this does nothing.
-func _spawn_warden() -> void:
-	_warden = null
-	_has_key = false
-	if current_level == null:
-		_has_key = true
-		return
-	minimap_ctrl.key_pos = Vector2i(-1, -1)
-	if current_level.warden_pos.x < 0:
-		# A loose key, or a corridor with neither and no locked door.
-		if current_level.key_pos.x >= 0 and not current_level.key_taken:
-			minimap_ctrl.key_pos = current_level.key_pos
-		else:
-			_has_key = true
-		minimap_ctrl.queue_redraw()
-		return
-	var w: Roamer = Roamer.new()
-	w.warden = true
-	w.cell = current_level.warden_pos
-	world.add_child(w)
-	roamers.append(w)
-	_warden = w
-	minimap_ctrl.warden_pos = w.cell
-	minimap_ctrl.queue_redraw()
-
-
-# Carves the floor into a grid of territories. Anything smaller than a couple
-# of cells is not worth patrolling, so tiny slivers are simply skipped later.
-# The maze is cut into ZONE_DIV x ZONE_DIV territories and each one holds at
-# most one demon, which is what stops them piling into a corner or wandering
-# through each other. It is therefore also the ceiling on how many a floor can
-# carry: at 3 that was nine, and a 20x20 maze felt empty. At 4 there are
-# sixteen territories of about 5x5, still big enough that a demon patrols
-# rather than paces.
-const ZONE_DIV: int = 4
-
-func _build_zones() -> Array[Rect2i]:
-	var out: Array[Rect2i] = []
-	if current_level == null or current_level.maze.is_empty():
-		return out
-	var rows: int = current_level.maze.size()
-	var cols: int = (current_level.maze[0] as Array).size()
-	var zw: int = maxi(1, cols / ZONE_DIV)
-	var zh: int = maxi(1, rows / ZONE_DIV)
-	for zy: int in range(ZONE_DIV):
-		for zx: int in range(ZONE_DIV):
-			var x0: int = zx * zw
-			var y0: int = zy * zh
-			var w: int = (cols - x0) if zx == ZONE_DIV - 1 else zw
-			var h: int = (rows - y0) if zy == ZONE_DIV - 1 else zh
-			if w > 0 and h > 0:
-				out.append(Rect2i(x0, y0, w, h))
-	return out
-
-
-# The cells of one territory that are open, clear of the player, and not
-# already held by something else.
-func _free_cells_in(zone: Rect2i, min_dist: int) -> Array[Vector2i]:
-	var taken: Dictionary = _occupied_cells()
-	var out: Array[Vector2i] = []
-	for row: int in range(zone.position.y, zone.position.y + zone.size.y):
-		for col: int in range(zone.position.x, zone.position.x + zone.size.x):
-			var c: Vector2i = Vector2i(col, row)
-			if not _is_open(c.x, c.y) or taken.has(c):
-				continue
-			if c == current_level.exit_pos or c == current_level.warden_pos:
-				continue
-			if c in current_level.orb_cells:
-				continue
-			if absi(c.x - player_pos.x) + absi(c.y - player_pos.y) < min_dist:
-				continue
-			out.append(c)
-	return out
-
-
-func _occupied_cells() -> Dictionary:
-	var taken: Dictionary = {}
-	for r: Roamer in roamers:
-		if is_instance_valid(r):
-			taken[r.cell] = true
-	return taken
-
-
-# Places one demon inside a territory, and hands it that territory to keep to.
-func _spawn_roamer_in(zone: Rect2i) -> void:
-	var options: Array[Vector2i] = _free_cells_in(zone, 6)
-	if options.is_empty():
-		options = _free_cells_in(zone, 3)
-	if options.is_empty():
-		return
-	var r: Roamer = Roamer.new()
-	r.cell = options[randi() % options.size()]
-	r.zone = zone
-	r.tier = Enemy.roamer_tier(floor_num)
-	world.add_child(r)
-	roamers.append(r)
-
-
-# Refills a territory that has fallen empty, rather than piling another demon
-# into one that is already patrolled.
-func _spawn_roamer() -> void:
-	var held: Dictionary = {}
-	for r: Roamer in roamers:
-		if is_instance_valid(r) and not r.warden:
-			held[r.zone] = true
-	var empty: Array[Rect2i] = []
-	for z: Rect2i in _build_zones():
-		if not held.has(z):
-			empty.append(z)
-	if empty.is_empty():
-		return
-	_spawn_roamer_in(empty[randi() % empty.size()])
-
-
-# A random open cell at least min_dist away from the player, or (-1,-1) if the
-# floor is too cramped to find one.
-func _far_open_cell(min_dist: int) -> Vector2i:
-	var candidates: Array[Vector2i] = []
-	for row: int in range(current_level.maze.size()):
-		var row_data: Array = current_level.maze[row]
-		for col: int in range(row_data.size()):
-			if row_data[col] != 0:
-				continue
-			var c: Vector2i = Vector2i(col, row)
-			if absi(c.x - player_pos.x) + absi(c.y - player_pos.y) < min_dist:
-				continue
-			if c == current_level.exit_pos:
-				continue
-			candidates.append(c)
-	if candidates.is_empty():
-		return Vector2i(-1, -1)
-	return candidates[randi() % candidates.size()]
-
-
-func _step_roamers() -> void:
-	if not _encounters_enabled:
-		return
-	# Everyone sees where everyone else is standing, so two never share a cell.
-	for r: Roamer in roamers:
-		if is_instance_valid(r):
-			var taken: Dictionary = _occupied_cells()
-			# An orb is the only place a run can be saved, healed or restocked.
-			# A demon parked on one turns that into a fight you cannot decline.
-			for orb: Vector2i in current_level.orb_cells:
-				taken[orb] = true
-			taken.erase(r.cell)
-			r.move_to(r.choose_step(player_pos, _is_open, taken))
-
-	_steps_since_spawn += 1
-	if _steps_since_spawn >= _RESPAWN_STEPS and roamers.size() < _roamer_target():
-		_steps_since_spawn = 0
-		_spawn_roamer()
-
-
-# Starts a battle if a roamer is standing where the player is. Returns true if
-# one did, so the caller knows to stop.
-func _engage_roamer_here() -> bool:
-	if not _encounters_enabled:
-		return false
-	var here: Array[Roamer] = []
-	for r: Roamer in roamers:
-		if is_instance_valid(r) and r.cell == player_pos:
-			here.append(r)
-	if here.is_empty():
-		return false
-
-	# Off the floor the instant the battle opens, rather than after it resolves.
-	# They are only hidden, not freed — escaping has to put them back.
-	_engaged = here
-	var warden_here: bool = false
-	for e: Roamer in here:
-		if e.warden:
-			warden_here = true
-		roamers.erase(e)
-		e.visible = false
-
-	# The warden is a named demon, not a reroll of the floor's random table —
-	# it is the locked door, and it fights alone so its two icons read as a
-	# wall rather than getting lost in a pack.
-	if warden_here:
-		var keeper: Array[Enemy] = [Enemy.make_warden(floor_num)]
-		_launch_combat(keeper, true)
-		return true
-
-	_launch_combat(Enemy.make_group(floor_num))
-	return true
-
+# ── Starting a fight ──────────────────────────────────────────────────────────
 
 # A practice fight bought at an orb. Built at this floor's level, and marked so
 # a boss floor does not read the win as the dragon falling. It is the place to
@@ -1264,6 +1034,8 @@ func _sync_view_width() -> void:
 				cam.make_current()
 
 
+# ── After a fight ─────────────────────────────────────────────────────────────
+
 # Rewards are summed over the whole encounter: anything killed pays experience,
 # gold and a drop roll; anything talked down pays experience and gold only.
 func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasLayer) -> void:
@@ -1297,10 +1069,10 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 				item_drop = foe.roll_drop()
 	# A win keeps the field up under the results, the party hopping on it, and
 	# the foes it still draws; both go once the results are done with
-	# (_clear_victory). Anything else ends the fight on the spot.
+	# (MainScreens._clear_victory). Anything else ends the fight on the spot.
 	if result == "win":
-		_victory_layer = combat_layer
-		_victory_foes = group
+		_screens._victory_layer = combat_layer
+		_screens._victory_foes = group
 	else:
 		for foe: Enemy in group:
 			foe.queue_free()
@@ -1324,7 +1096,7 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			roamers.append(e)
 			# The warden is a fixed objective, so escaping never relocates it.
 			if not was_warden:
-				var spot: Vector2i = _far_open_cell(5)
+				var spot: Vector2i = _roaming._far_open_cell(5)
 				if spot.x >= 0:
 					e.teleport_to(spot)
 		else:
@@ -1338,9 +1110,9 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 		_has_key = true
 		minimap_ctrl.warden_pos = Vector2i(-1, -1)
 		minimap_ctrl.queue_redraw()
-		_sync_door()
+		_roaming._sync_door()
 		Sfx.play("key")
-		_show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
+		_screens._show_hud_popup("The warden falls. You take the key.", Color(0.75, 0.55, 1.0))
 
 	# On a boss floor an encounter with no roamer behind it is the boss. Only a
 	# win counts: a flee used to pass as "not a loss", so slipping away from the
@@ -1348,11 +1120,11 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 	if result not in ["lose", "flee"] and Level.is_boss_floor(floor_num) and met.is_empty() \
 			and not _in_gauntlet:
 		_boss_beaten = true
-		_sync_boss_banner()
+		_hazards._sync_boss_banner()
 	_in_gauntlet = false
 
 	if not lost.is_empty() and result != "lose":
-		_show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
+		_screens._show_hud_popup("Lost for good:  %s" % ", ".join(lost), Color(1.0, 0.45, 0.45))
 
 	# A fight the demons finish after the hero fell is still a win, but he
 	# walks out of it on his feet: at 0 HP the corridor stops treating him as
@@ -1377,25 +1149,25 @@ func _on_combat_ended(result: String, group: Array[Enemy], combat_layer: CanvasL
 			player_char.gold += paid
 			if not drop.is_empty():
 				player_char.add_item(drop)
-			var before: Dictionary = _player_snapshot()
+			var before: Dictionary = _screens._player_snapshot()
 			player_char.gain_exp(exp_reward)
-			var after: Dictionary = _player_snapshot()
+			var after: Dictionary = _screens._player_snapshot()
 			var leveled: bool = after["lv"] > before["lv"]
 			var demons_before: Dictionary = _demon_snapshots()
 			var grew: Dictionary = player_char.award_demon_exp(exp_reward)
-			_show_combat_result(exp_reward, paid, drop,
+			_screens._show_combat_result(exp_reward, paid, drop,
 				before if leveled else {}, after if leveled else {},
 				_demon_level_ups(grew, demons_before))
 		"lose":
 			_pending_congratulations = false
 			_pending_demo_end = false
 			_pending_abyss_end = false
-			_show_game_over()
+			_screens._show_game_over()
 		"flee":
 			_pending_congratulations = false
 			_pending_demo_end = false
 			_pending_abyss_end = false
-			_resume_from_overlay()
+			_screens._resume_from_overlay()
 
 
 # Stats of one bound demon as it would walk into a fight right now.
@@ -1430,524 +1202,7 @@ func _demon_level_ups(grew: Dictionary, before: Dictionary) -> Array[Dictionary]
 	return out
 
 
-func _show_combat_result(exp: int, gold: int, item: Dictionary,
-		lv_before: Dictionary, lv_after: Dictionary,
-		demon_ups: Array[Dictionary] = []) -> void:
-	var ui: CombatResultUI = CombatResultUI.new()
-	ui.over_battle = is_instance_valid(_victory_layer)
-	ui.exp_gained  = exp
-	ui.gold_gained = gold
-	ui.item_drop   = item
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		if not lv_before.is_empty():
-			_show_level_up(lv_before, lv_after, demon_ups)
-		else:
-			_show_demon_level_ups(demon_ups)
-	)
-	_get_overlay_layer().add_child(ui)
-
-
-# Each demon that grew gets its own popup, one after another, and the corridor
-# comes back after the last of them.
-func _show_demon_level_ups(queue: Array[Dictionary]) -> void:
-	if queue.is_empty():
-		_resume_from_overlay()
-		return
-	var entry: Dictionary = queue[0]
-	var rest: Array[Dictionary] = queue.slice(1)
-	var ui: DemonLevelUpUI = DemonLevelUpUI.new()
-	ui.demon_name = entry["name"] as String
-	ui.before     = entry["before"] as Dictionary
-	ui.after      = entry["after"] as Dictionary
-	ui.learned    = entry["learned"] as Array
-	ui.offers     = entry.get("offers", []) as Array
-	ui.player     = player_char
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		_show_demon_level_ups(rest)
-	)
-	_get_overlay_layer().add_child(ui)
-
-
-var _victory_layer: CanvasLayer = null
-var _victory_foes: Array[Enemy] = []
-
-
-func _clear_victory() -> void:
-	if is_instance_valid(_victory_layer):
-		_victory_layer.queue_free()
-	_victory_layer = null
-	for foe: Enemy in _victory_foes:
-		if is_instance_valid(foe):
-			foe.queue_free()
-	_victory_foes = []
-
-
-func _resume_from_overlay() -> void:
-	_clear_victory()
-	hud_layer.visible = true
-	in_combat = false
-	# A fight and everything after it is over; this is a good place to be.
-	call_deferred("_autosave")
-	if _reopen_orb_tab != "":
-		var tab: String = _reopen_orb_tab
-		_reopen_orb_tab = ""
-		_open_orb(tab)
-		return
-	if _pending_congratulations:
-		_pending_congratulations = false
-		_show_congratulations()
-	elif _pending_demo_end:
-		_pending_demo_end = false
-		_show_demo_end()
-	elif _pending_abyss_end:
-		_pending_abyss_end = false
-		_show_abyss_end()
-
-
-# The Abyss's last boss is down: the descent is over. The captain comes down
-# for the hero, and it is back to the title; the run is done with, so its save
-# goes, and the hero who cleared the game waits for the next descent as before.
-func _show_abyss_end() -> void:
-	if _fading:
-		return
-	Records.add("abyss_cleared")
-	Abyss.note_depth(Abyss.END_DEPTH)
-	Abyss.wipe_run()
-	Records.flush()
-	in_combat = true
-	_fading = true
-	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
-	await fade.covered
-	hud_layer.visible = false
-	var ui: IntroUI = IntroUI.new()
-	ui.lines = IntroUI.ABYSS_END_LINES
-	ui.hero_name = player_char.hero_name
-	ui.closing_text = "The end of the Abyss."
-	_get_overlay_layer().add_child(ui)
-	fade.reveal()
-	await ui.finished
-	var out: ScreenFade = ScreenFade.cover(get_tree())
-	await out.covered
-	Abyss.active = false
-	get_tree().change_scene_to_file("res://scenes/title.tscn")
-	out.reveal()
-
-
-# The demo's last boss is down: the captain thanks the hero and points at the
-# full game, and then it is back to the title. Saved first, so Continue comes
-# back to the dragon's corridor rather than before it.
-func _show_demo_end() -> void:
-	if _fading:
-		return
-	_autosave()
-	Records.flush()
-	in_combat = true
-	_fading = true
-	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
-	await fade.covered
-	hud_layer.visible = false
-	var ui: IntroUI = IntroUI.new()
-	ui.lines = IntroUI.DEMO_LINES
-	ui.hero_name = player_char.hero_name
-	ui.closing_text = "Thank you for playing the demo."
-	_get_overlay_layer().add_child(ui)
-	fade.reveal()
-	await ui.finished
-	var out: ScreenFade = ScreenFade.cover(get_tree())
-	await out.covered
-	get_tree().change_scene_to_file("res://scenes/title.tscn")
-	out.reveal()
-
-
-# The Necromancer is down: through black into the climb home and the credits,
-# and from there back to the title. The run is over.
-func _show_congratulations() -> void:
-	in_combat = true
-	_fading = true
-	# The Abyss opens. The first hero to clear it is the one who goes down into
-	# it; after that the player is asked, once the credits are done, whether
-	# this one should take the old one's place.
-	var cleared: Dictionary = _gather_save_data()["player"] as Dictionary
-	var ask: bool = Abyss.has_hero()
-	var abyss: bool = Abyss.in_build()
-	if abyss:
-		Abyss.unlock(cleared, not ask)
-	Records.add("runs_won")
-	Records.set_min("fastest_clear", play_time)
-	var fade: ScreenFade = ScreenFade.cover(get_tree(), "", 0.8)
-	await fade.covered
-	hud_layer.visible = false
-	var ui: EndingUI = EndingUI.new()
-	# Whoever is still walking with the hero walks home with him.
-	for demon_name: String in player_char.active_demons:
-		var d: Enemy = player_char.bound_demon(demon_name)
-		if d.sprite_id != "":
-			ui.team.append(d.sprite_id)
-		d.free()
-	ui.finished.connect(func() -> void:
-		if not abyss:
-			pass
-		elif ask:
-			await _ask_replace_abyss_hero(cleared)
-		else:
-			await _tell_abyss_unlocked()
-		var out: ScreenFade = ScreenFade.cover(get_tree())
-		await out.covered
-		get_tree().change_scene_to_file("res://scenes/title.tscn")
-		out.reveal()
-	)
-	_get_overlay_layer().add_child(ui)
-	fade.reveal(0.8)
-
-
-# After a second (or later) clear: keep the Abyss hero there is, or put this
-# one in its place. Both are shown by level, so the choice is an informed one.
-signal _abyss_hero_chosen
-
-
-# The first clear: say so, or nobody would know the mode is there.
-func _tell_abyss_unlocked() -> void:
-	var panel: Control = Control.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var veil: ColorRect = ColorRect.new()
-	veil.color = Color(0.03, 0.02, 0.06, 1.0)
-	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_child(veil)
-	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_child(center)
-	var col: VBoxContainer = VBoxContainer.new()
-	# Wider on a wide screen, where the phone's width would break the lines.
-	col.custom_minimum_size = Vector2(600 if Build.steam() else 440, 0)
-	col.add_theme_constant_override("separation", 18)
-	center.add_child(col)
-	for row: Array in [["CONGRATULATIONS!", 26, Color(0.90, 0.75, 0.30)],
-			["You have unlocked\nABYSS MODE", 28, Color(0.78, 0.60, 1.0)],
-			["An endless descent for the hero who beat the Necromancer. Find it on the title screen, below Load Game.",
-				18, Color(0.85, 0.83, 0.92)]]:
-		var l: Label = Label.new()
-		l.text = row[0] as String
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		# The one long word stays whole rather than losing its "!" to a line
-		# of its own.
-		if not (row[0] as String).begins_with("CONGRAT"):
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.add_theme_font_override("font", _UI_FONT)
-		l.add_theme_font_size_override("font_size", int(row[1]))
-		l.add_theme_color_override("font_color", row[2] as Color)
-		col.add_child(l)
-	var b: Button = Button.new()
-	b.text = "CONTINUE"
-	b.custom_minimum_size = Vector2(0, 50)
-	b.add_theme_font_override("font", _UI_FONT)
-	b.pressed.connect(func() -> void: _abyss_hero_chosen.emit())
-	col.add_child(b)
-	Sfx.play("recruit")
-	_get_overlay_layer().add_child(panel)
-	await _abyss_hero_chosen
-	panel.queue_free()
-
-
-func _ask_replace_abyss_hero(cleared: Dictionary) -> void:
-	var old_lv: int = int(Abyss.cleared_hero().get("lv", 1))
-	var new_lv: int = int(cleared.get("lv", 1))
-	var panel: Control = Control.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var veil: ColorRect = ColorRect.new()
-	veil.color = Color(0.03, 0.02, 0.06, 1.0)
-	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_child(veil)
-	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_child(center)
-	var col: VBoxContainer = VBoxContainer.new()
-	col.custom_minimum_size = Vector2(600 if Build.steam() else 440, 0)
-	col.add_theme_constant_override("separation", 16)
-	center.add_child(col)
-	var head: Label = Label.new()
-	head.text = "THE ABYSS"
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_theme_font_override("font", _UI_FONT)
-	head.add_theme_font_size_override("font_size", 36)
-	head.add_theme_color_override("font_color", Color(0.78, 0.60, 1.0))
-	col.add_child(head)
-	var q: Label = Label.new()
-	q.text = "Which hero goes down into the Abyss?\n\nThe one waiting there now is level %d.\nThe one who just won is level %d." % [old_lv, new_lv]
-	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	q.add_theme_font_override("font", _UI_FONT)
-	q.add_theme_font_size_override("font_size", 18)
-	col.add_child(q)
-	for pair: Array in [["KEEP THE ONE THERE (LV %d)" % old_lv, false],
-			["SEND THIS HERO (LV %d)" % new_lv, true]]:
-		var b: Button = Button.new()
-		b.text = pair[0] as String
-		b.custom_minimum_size = Vector2(0, 50)
-		b.add_theme_font_override("font", _UI_FONT)
-		var replace: bool = pair[1]
-		b.pressed.connect(func() -> void:
-			if replace:
-				Abyss.unlock(cleared, true)
-			_abyss_hero_chosen.emit())
-		col.add_child(b)
-	_get_overlay_layer().add_child(panel)
-	await _abyss_hero_chosen
-	panel.queue_free()
-
-
-func _player_snapshot() -> Dictionary:
-	return {
-		lv=player_char.lv, str=player_char.str, def=player_char.def,
-		mag=player_char.mag, agl=player_char.agl, luk=player_char.luk,
-		max_hp=player_char.max_hp, max_mp=player_char.max_mp,
-	}
-
-
-func _get_overlay_layer() -> CanvasLayer:
-	if not is_instance_valid(overlay_layer):
-		overlay_layer = CanvasLayer.new()
-		overlay_layer.layer = 25
-		add_child(overlay_layer)
-		Layout.focus_arrivals(overlay_layer)
-	return overlay_layer
-
-
-func _show_level_up(before: Dictionary, after: Dictionary,
-		demon_ups: Array[Dictionary] = []) -> void:
-	var ui: LevelUpUI = LevelUpUI.new()
-	ui.before  = before
-	ui.after   = after
-	ui.player  = player_char
-	ui.dismissed.connect(func():
-		ui.queue_free()
-		_show_demon_level_ups(demon_ups)
-	)
-	_get_overlay_layer().add_child(ui)
-
-
-func _show_game_over() -> void:
-	Sfx.play("game_over")
-	Records.add("deaths")
-	# The Abyss has one life: the run is over, and so is its save. The captain
-	# hauls the hero back up first, and the depth reached comes after.
-	if Abyss.active:
-		Abyss.wipe_run()
-		var rescue: IntroUI = IntroUI.new()
-		rescue.rescue = true
-		rescue.lines = IntroUI.RESCUE_LINES
-		rescue.hero_name = player_char.hero_name
-		rescue.closing_text = "Abyss %d. Back in the light." % Abyss.depth_of(floor_num)
-		_get_overlay_layer().add_child(rescue)
-		await rescue.finished
-		rescue.queue_free()
-	var ui: GameOverUI = GameOverUI.new()
-	ui.abyss_depth = Abyss.depth_of(floor_num) if Abyss.active else 0
-	ui.load_game.connect(func():
-		ui.queue_free()
-		in_combat = false
-		_open_load_menu()
-	)
-	ui.main_menu.connect(func():
-		get_tree().change_scene_to_file("res://scenes/title.tscn")
-	)
-	_get_overlay_layer().add_child(ui)
-
-
-func _show_hud_popup(text: String, color: Color = Color(1.0, 0.88, 0.28)) -> void:
-	_hud_popup.text = text
-	_hud_popup.add_theme_color_override("font_color", color)
-	_hud_popup.modulate.a = 1.0
-	if is_instance_valid(_hud_popup_tween):
-		_hud_popup_tween.kill()
-	_hud_popup_tween = create_tween()
-	_hud_popup_tween.tween_interval(1.8)
-	_hud_popup_tween.tween_property(_hud_popup, "modulate:a", 0.0, 0.6)
-
-
-# ── Floor hazards ─────────────────────────────────────────────────────────────
-#
-# One kind per band, after its dragon — see Level.trap_cells. Lava and a live
-# spark tile cost the same slice of max HP the old spike trap did, halved by
-# armour that resists the element and ignored by any that nulls it. Ice slides
-# you on; a teleporter moves you to its partner.
-
-const HAZARD_DAMAGE: float = 0.15
-
-const _HAZARD_NOTES: Dictionary = {
-	"ice":   "Ice! You slide until you reach solid floor.",
-	"spark": "Charged plates change every two steps. Lit ones hurt: step back and forth to wait.",
-	"lava":  "Lava! Fire-resistant armour halves the burn.",
-	"tele":  "A teleporter. It carries you to its twin, and back.",
-}
-
-# Charged plates count the player's moves on this floor, not time: two groups,
-# always opposite, each lit for two steps and dark for two. Two, not one — at
-# one step per change every move flips both the tile you reach and its state,
-# so walking stays in lock-step and waiting does nothing. At two, stepping back
-# and forth once flips the plate ahead, which is the whole of the puzzle.
-# Turning is not a step, and standing still never hurts.
-var _spark_steps: int = 0
-
-
-# Which group is lit at a given step count.
-static func _spark_live_at(steps: int) -> int:
-	return (steps / 2) % 2
-
-
-# What the plates show: the group that would be lit if you stepped onto it now.
-# Damage lands on arrival, so the plates show the arrival, and "do not step on
-# a lit plate" is the whole rule the player has to learn. The plate you are
-# standing on is the exception: it keeps the state it judged you by (see
-# Dungeon.set_spark_live), so lit underfoot means it shocked you.
-func _shown_spark_group() -> int:
-	return _spark_live_at(_spark_steps + 1)
-
-
-# The dragon of a boss corridor, waiting in the stairwell at its far end until
-# it is beaten. Hung on the dungeon so every rebuild clears it with the rest.
-func _sync_boss_banner() -> void:
-	if not is_instance_valid(dungeon) or not Level.is_boss_floor(floor_num):
-		return
-	var old: Node = dungeon.get_node_or_null("DragonBanner")
-	if old != null:
-		old.queue_free()
-	if _boss_beaten:
-		return
-	var sprite_id: String = ""
-	if Level.is_necro_floor(floor_num):
-		sprite_id = Enemy.necro_sprite()
-	elif Abyss.boss_floor(floor_num):
-		sprite_id = Enemy.ABYSS_BOSS_TEMPLATES[Abyss.boss_for_depth(Abyss.depth_of(floor_num))] \
-				.get("sprite_id", "") as String
-	else:
-		var idx: int = clampi(floor_num / maxi(1, Level.BOSS_EVERY) - 1,
-				0, Enemy.BOSS_TEMPLATES.size() - 1)
-		sprite_id = Enemy.BOSS_TEMPLATES[idx].get("sprite_id", "") as String
-	var banner: DragonBanner = DragonBanner.new()
-	if not banner.setup(sprite_id):
-		banner.free()
-		return
-	if sprite_id == Enemy.NECRO_STAND_IN:
-		banner.modulate = Enemy.NECRO_STAND_IN_TINT
-	banner.name = "DragonBanner"
-	# Just inside the stairwell the fight starts from, turned to face back
-	# down the corridor toward the player.
-	var wall: Vector2i = current_level.exit_wall_pos
-	var from: Vector2i = current_level.exit_pos
-	var toward: Vector3 = Vector3(float(from.x - wall.x), 0.0, float(from.y - wall.y))
-	var inset: float = 0.35
-	# In a hall over the pit the boss stands in the middle of the pier's tip,
-	# its own cell, looking out over the pit at where the player comes in.
-	if Level.is_hall_floor(floor_num):
-		inset = 0.0
-		var arrive: Vector2i = current_level.player_start
-		toward = Vector3(float(arrive.x - wall.x), 0.0, float(arrive.y - wall.y)).normalized()
-	banner.position = Vector3(wall.x * Dungeon.CELL_SIZE, banner.feet_drop,
-			wall.y * Dungeon.CELL_SIZE) + toward * (Dungeon.CELL_SIZE * inset)
-	banner.rotation = Vector3(0.0, atan2(toward.x, toward.z), 0.0)
-	dungeon.add_child(banner)
-
-
-func _show_sparks() -> void:
-	if is_instance_valid(dungeon):
-		dungeon.set_spark_live(_shown_spark_group(), player_pos, _spark_live_at(_spark_steps))
-
-
-func _hazard_here() -> String:
-	return current_level.trap_cells.get(player_pos, "") as String
-
-
-func _note_hazard(kind: String) -> bool:
-	if kind in player_char.hazards_seen:
-		return false
-	player_char.hazards_seen.append(kind)
-	_show_hud_popup(_HAZARD_NOTES.get(kind, "") as String, Color(0.85, 0.90, 1.0))
-	return true
-
-
-func _remember_hazard(at: Vector2i) -> void:
-	current_level.found_traps[at] = current_level.trap_cells[at]
-	minimap_ctrl.queue_redraw()
-
-
-# Carries the player on across ice in the direction they moved, until solid
-# floor, a wall, or a demon in the way. The whole slide is one move: the
-# roamers take one step for it and nothing else can happen partway.
-func _slide(dir: Vector2i) -> void:
-	if _hazard_here() != Level.HAZARD_ICE:
-		return
-	_note_hazard(Level.HAZARD_ICE)
-	var guard: int = 0
-	while _hazard_here() == Level.HAZARD_ICE and guard < 32:
-		guard += 1
-		_remember_hazard(player_pos)
-		var nxt: Vector2i = player_pos + dir
-		if not _is_open(nxt.x, nxt.y) or _roamer_at(nxt):
-			break
-		player_pos = nxt
-		# Seen on the way past, so the map has no hole down the middle.
-		_mark_visited()
-
-
-func _roamer_at(cell: Vector2i) -> bool:
-	for r: Roamer in roamers:
-		if is_instance_valid(r) and r.cell == cell:
-			return true
-	return false
-
-
-func _check_trap() -> void:
-	var here: String = _hazard_here()
-	if here == "":
-		return
-	var kind: String = Level.hazard_kind(here)
-	if kind == Level.HAZARD_ICE:
-		return    # handled as the move was made
-	_remember_hazard(player_pos)
-	var first: bool = _note_hazard(kind)
-	match kind:
-		Level.HAZARD_TELE:
-			_teleport(here)
-		Level.HAZARD_SPARK:
-			if Level.spark_group(here) == _spark_live_at(_spark_steps):
-				_hazard_hurt("thunder", "Shocked!", Color(0.55, 0.85, 1.0), first)
-		_:
-			_hazard_hurt("fire", "Lava!", Color(1.0, 0.45, 0.20), first)
-
-
-func _hazard_hurt(element: String, what: String, color: Color, quiet: bool) -> void:
-	var dmg: int = maxi(1, int(player_char.max_hp * HAZARD_DAMAGE))
-	match player_char.affinity_of(element):
-		Affinity.RESIST:
-			dmg = maxi(1, dmg / 2)
-		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
-			dmg = 0
-	Sfx.play("trap")
-	if dmg > 0:
-		player_char.take_damage(dmg)
-		_shake_camera()
-	# The first time, the note explaining the tile is on screen instead.
-	if not quiet:
-		_show_hud_popup("%s  -%d HP" % [what, dmg] if dmg > 0 else "%s  No effect." % what,
-				color)
-	if not player_char.is_alive():
-		_show_game_over()
-
-
-# Arrives on the partner without setting it off: a teleporter only fires when
-# you walk onto it, so stepping off and back on is how to go back.
-func _teleport(here: String) -> void:
-	var to: Vector2i = Level.tele_target(here)
-	if not _is_open(to.x, to.y):
-		return
-	player_pos = to
-	_remember_hazard(to)
-	_sync_player()
-
-
-# ── Menu ─────────────────────────────────────────────────────────────────────
+# ── Menu ──────────────────────────────────────────────────────────────────────
 
 func _open_menu() -> void:
 	menu_open = true
@@ -1963,13 +1218,13 @@ func _open_menu() -> void:
 	menu.menu_closed.connect(_close_menu)
 	menu.load_requested.connect(func():
 		_close_menu()
-		_open_load_menu()
+		_saves._open_load_menu()
 	)
 	menu.title_requested.connect(func():
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
 	menu.quit_requested.connect(func():
-		_autosave()
+		_saves._autosave()
 		Records.flush()
 		get_tree().quit()
 	)
@@ -1986,7 +1241,7 @@ func _close_menu() -> void:
 	menu_open = false
 
 
-# ── The side panel: the menu and the orb on a wide screen ────────────────────
+# ── The side panel: the menu and the orb on a wide screen ─────────────────────
 #
 # They come in from the left over the map's place and push the map ahead of
 # them to the right edge, the view fading under the two; closing runs it back.
@@ -2054,7 +1309,7 @@ func _slide_side(holder: Control, from: float, to: float, free_after: bool) -> v
 	if free_after:
 		_side_tween.tween_callback(holder.queue_free)
 
-# ── Caches ────────────────────────────────────────────────────────────────────
+# ── Chests ────────────────────────────────────────────────────────────────────
 
 func _open_chest(wall: Vector2i) -> void:
 	chest_open = true
@@ -2105,10 +1360,10 @@ func _rebuild_dungeon() -> void:
 	dungeon = Dungeon.new()
 	world.add_child(dungeon)
 	dungeon.build(current_level)
-	_show_sparks()
-	_sync_boss_banner()
+	_hazards._show_sparks()
+	_hazards._sync_boss_banner()
 	dungeon.set_viewer(cam_base_pos)
-	_sync_door()
+	_roaming._sync_door()
 
 
 func _close_chest() -> void:
@@ -2118,6 +1373,8 @@ func _close_chest() -> void:
 		for child: Node in chest_layer.get_children():
 			child.queue_free()
 
+
+# ── The orb: rest, shop, gacha ────────────────────────────────────────────────
 
 func _open_orb(tab: String = "rest") -> void:
 	orb_open = true
@@ -2133,7 +1390,7 @@ func _open_orb(tab: String = "rest") -> void:
 	ui.closed.connect(_close_orb)
 	ui.save_requested.connect(func() -> void:
 		_close_orb()
-		_open_save_menu()
+		_saves._open_save_menu()
 	)
 	ui.gauntlet_requested.connect(func(names: Array[String]) -> void:
 		_close_orb()
@@ -2149,9 +1406,9 @@ func _open_orb(tab: String = "rest") -> void:
 var _reopen_orb_tab: String = ""
 
 func _gacha_exp(amount: int, orb: OrbUI) -> void:
-	var before: Dictionary = _player_snapshot()
+	var before: Dictionary = _screens._player_snapshot()
 	player_char.gain_exp(amount)
-	var after: Dictionary = _player_snapshot()
+	var after: Dictionary = _screens._player_snapshot()
 	var demons_before: Dictionary = _demon_snapshots()
 	var grew: Dictionary = player_char.award_demon_exp(amount)
 	var ups: Array[Dictionary] = _demon_level_ups(grew, demons_before)
@@ -2169,9 +1426,9 @@ func _gacha_exp(amount: int, orb: OrbUI) -> void:
 	in_combat = true
 	hud_layer.visible = false
 	if leveled:
-		_show_level_up(before, after, ups)
+		_screens._show_level_up(before, after, ups)
 	else:
-		_show_demon_level_ups(ups)
+		_screens._show_demon_level_ups(ups)
 
 
 # Debug only (the playtester's grind): the hero climbs `levels` and every
@@ -2183,9 +1440,9 @@ func debug_level_party(levels: int) -> void:
 	var hero_exp: int = player_char.exp_to_next - player_char.exp
 	for i: int in range(1, levels):
 		hero_exp += CharacterSheet.hero_exp_to_next(player_char.lv + i)
-	var before: Dictionary = _player_snapshot()
+	var before: Dictionary = _screens._player_snapshot()
 	player_char.gain_exp(hero_exp)
-	var after: Dictionary = _player_snapshot()
+	var after: Dictionary = _screens._player_snapshot()
 	# Twice the whole climb from level 1, so the bench's half share gets
 	# there too; a demon stops at the hero's level whatever it is paid.
 	var demon_exp: int = 0
@@ -2196,7 +1453,7 @@ func debug_level_party(levels: int) -> void:
 	var ups: Array[Dictionary] = _demon_level_ups(grew, demons_before)
 	in_combat = true
 	hud_layer.visible = false
-	_show_level_up(before, after, ups)
+	_screens._show_level_up(before, after, ups)
 
 
 func _close_orb() -> void:
@@ -2209,320 +1466,3 @@ func _close_orb() -> void:
 	if _reopen_orb_tab == "":
 		Music.play(Music.dungeon_track(floor_num))
 
-
-func _open_save_menu() -> void:
-	save_open = true
-	hud_layer.visible = false
-	if not is_instance_valid(save_layer):
-		save_layer = CanvasLayer.new()
-		save_layer.layer = 16
-		add_child(save_layer)
-		Layout.focus_arrivals(save_layer)
-	var ui: SaveSlotUI = SaveSlotUI.new()
-	ui.mode = "save"
-	ui.slot_chosen.connect(_do_save)
-	ui.cancelled.connect(_close_save_layer)
-	save_layer.add_child(ui)
-
-
-func _open_load_menu() -> void:
-	save_open = true
-	hud_layer.visible = false
-	if not is_instance_valid(save_layer):
-		save_layer = CanvasLayer.new()
-		save_layer.layer = 16
-		add_child(save_layer)
-		Layout.focus_arrivals(save_layer)
-	var ui: SaveSlotUI = SaveSlotUI.new()
-	ui.mode = "load"
-	ui.slot_chosen.connect(_do_load)
-	ui.cancelled.connect(_close_save_layer)
-	save_layer.add_child(ui)
-
-
-func _close_save_layer() -> void:
-	if is_instance_valid(save_layer):
-		for child: Node in save_layer.get_children():
-			child.queue_free()
-	hud_layer.visible = true
-	save_open = false
-
-
-# Writes the autosave slot, but only from a moment a save can come back to:
-# walking the floor. Mid-fight, mid-fade, in the Gauntlet or dead, it keeps the
-# last one it wrote instead.
-func _autosave() -> void:
-	if player_char == null or current_level == null:
-		return
-	if in_combat or _fading or _in_gauntlet or chest_open or not player_char.is_alive():
-		return
-	SaveSystem.write(SaveSystem.ABYSS_SLOT if Abyss.active else SaveSystem.AUTO_SLOT,
-			_gather_save_data())
-
-
-func _do_save(slot: int) -> void:
-	SaveSystem.write(slot, _gather_save_data())
-	_close_save_layer()
-	_show_hud_popup("Game saved to Slot %d." % slot)
-
-
-func _do_load(slot: int, through_black: bool = true) -> void:
-	var data: Dictionary = SaveSystem.read(slot)
-	if data.is_empty():
-		return
-	# From the title the loading screen is already covering this; in the game
-	# the floor would swap in plain view, so it goes through black.
-	var fade: ScreenFade = null
-	if through_black:
-		_fading = true
-		fade = ScreenFade.cover(get_tree())
-		await fade.covered
-	_close_save_layer()
-	_restore_save(data)
-	if fade != null:
-		await get_tree().process_frame
-		_fading = false
-		fade.reveal()
-
-
-func _gather_save_data() -> Dictionary:
-	var p: PlayerCharacter = player_char
-	var visited_serial: Dictionary = {}
-	for sp: Variant in visited_by_map.keys():
-		visited_serial[sp as String] = SaveSystem.pack_cells(visited_by_map[sp] as Dictionary)
-
-	return {
-		timestamp   = Time.get_datetime_string_from_system(),
-		abyss       = Abyss.active,
-		abyss_seed  = Abyss.run_seed,
-		floor_num   = floor_num,
-		play_time   = play_time,
-		player_pos  = [player_pos.x, player_pos.y],
-		player_facing = player_facing,
-		player = p.to_save(),
-		map = {
-			scene       = "res://scenes/map.tscn",
-			maze        = current_level.maze,
-			exit_wall   = [current_level.exit_wall_pos.x,   current_level.exit_wall_pos.y],
-			exit_pos    = [current_level.exit_pos.x,        current_level.exit_pos.y],
-			trap_cells  = SaveSystem.pack_cell_map(current_level.trap_cells),
-			roamers     = SaveSystem.pack_cells(_roamer_cells()),
-			orbs        = SaveSystem.pack_cells(current_level.orb_cells),
-			chests      = SaveSystem.pack_cell_map(current_level.chest_cells),
-			looted      = SaveSystem.pack_cells(current_level.looted),
-			warden      = SaveSystem.vec2i_key(current_level.warden_pos),
-			key_pos     = SaveSystem.vec2i_key(current_level.key_pos),
-			key_taken   = current_level.key_taken,
-			found_traps = SaveSystem.pack_cell_map(current_level.found_traps),
-			has_key     = _has_key,
-			door_open   = _door_open,
-			boss_beaten = _boss_beaten,
-		},
-		visited = visited_serial,
-	}
-
-
-func _restore_save(data: Dictionary) -> void:
-	in_combat = false
-	menu_open = false
-	if is_instance_valid(overlay_layer):
-		for c: Node in overlay_layer.get_children():
-			c.queue_free()
-	if is_instance_valid(menu_layer):
-		for c: Node in menu_layer.get_children():
-			c.queue_free()
-
-	player_char.load_save(data["player"] as Dictionary)
-
-	floor_num = int(data["floor_num"])
-	play_time = float(data.get("play_time", 0.0))
-	Abyss.active = bool(data.get("abyss", false))
-	Abyss.run_seed = int(data.get("abyss_seed", 0))
-	_show_floor_title()
-	Music.play(Music.dungeon_track(floor_num))
-
-	if is_instance_valid(dungeon):
-		dungeon.queue_free()
-		dungeon = null
-	if is_instance_valid(current_level):
-		current_level.queue_free()
-		current_level = null
-
-	var map_data: Dictionary = data["map"] as Dictionary
-	var scene_path: String   = map_data["scene"] as String
-	var packed: PackedScene  = load(scene_path) as PackedScene
-	current_level = packed.instantiate() as Level
-	# Same reason as the other one: the level builds itself in _ready, and the
-	# generated layout is thrown away below anyway — but the shape it builds
-	# (maze or boss corridor) has to match the floor being restored.
-	current_level.floor_num = floor_num
-	world.add_child(current_level)
-
-	# Overwrite the freshly-generated maze with the saved layout. Not the
-	# Necromancer's hall: it is always built off Level.NECRO_HALL, so a save
-	# made in it, or in the corridor that stood there before, finds the hall.
-	var necro_hall: bool = Level.is_hall_floor(floor_num)
-	if not necro_hall:
-		var raw_maze: Array = map_data["maze"] as Array
-		var saved_maze: Array[Array] = []
-		for row: Variant in raw_maze:
-			saved_maze.append(row as Array)
-		current_level.maze = saved_maze
-
-		var ew: Array  = map_data["exit_wall"]   as Array
-		var ep: Array  = map_data["exit_pos"]    as Array
-		current_level.exit_wall_pos   = Vector2i(int(ew[0]), int(ew[1]))
-		current_level.exit_pos        = Vector2i(int(ep[0]), int(ep[1]))
-	current_level.next_scene      = scene_path
-	current_level.trap_cells      = SaveSystem.unpack_cell_map(map_data.get("trap_cells", {}) as Dictionary)
-	_pending_roamers              = map_data.get("roamers", []) as Array
-	if not necro_hall:
-		current_level.orb_cells.assign(
-				SaveSystem.unpack_cells(map_data.get("orbs", []) as Array).keys())
-	# Caches are saved, so a load does not re-roll where they were and whether
-	# they were empty. An older save's "mimics" list is simply ignored.
-	var saved_chests: Dictionary = map_data.get("chests", {}) as Dictionary
-	if not saved_chests.is_empty():
-		current_level.chest_cells = SaveSystem.unpack_cell_map(saved_chests, true)
-		current_level.looted = SaveSystem.unpack_cells(
-				map_data.get("looted", []) as Array)
-	current_level.warden_pos      = SaveSystem.key_vec2i(
-			map_data.get("warden", "-1,-1") as String)
-	current_level.key_pos         = SaveSystem.key_vec2i(
-			map_data.get("key_pos", "-1,-1") as String)
-	current_level.key_taken       = bool(map_data.get("key_taken", false))
-	current_level.found_traps     = SaveSystem.unpack_cell_map(
-			map_data.get("found_traps", {}) as Dictionary)
-	_pending_has_key              = bool(map_data.get("has_key", true))
-	# Saves from before the door needed turning: holding the key meant open.
-	_pending_door_open            = bool(map_data.get("door_open", _pending_has_key))
-
-	# The boss corridor's dragon is down only if it was down when this was
-	# saved. Left alone, a load after the win (the party fell further on, so
-	# back to before the fight) kept it dead and the corridor walked through.
-	_boss_beaten = bool(map_data.get("boss_beaten", false))
-
-	_spark_steps = 0
-	dungeon = Dungeon.new()
-	world.add_child(dungeon)
-	dungeon.build(current_level)
-	_show_sparks()
-	_sync_boss_banner()
-
-	# Restore fog-of-war.
-	var raw_visited: Dictionary = data["visited"] as Dictionary
-	visited_by_map = {}
-	for sp: Variant in raw_visited.keys():
-		visited_by_map[sp as String] = SaveSystem.unpack_cells(raw_visited[sp as String] as Array)
-	visited = visited_by_map.get(scene_path, {})
-
-	_point_minimap_at_level()
-	_sync_minimap_palette()
-	_resize_minimap()
-
-	var pos_arr: Array = data["player_pos"] as Array
-	player_pos    = Vector2i(int(pos_arr[0]), int(pos_arr[1]))
-	player_facing = int(data["player_facing"])
-	# A save from the corridor that used to be the bottom can stand somewhere
-	# the hall has no floor: back to where the hall is come into.
-	if Level.is_hall_floor(floor_num) and not _is_open(player_pos.x, player_pos.y):
-		player_pos = current_level.player_start
-		player_facing = current_level.player_start_facing
-
-	_sync_player()
-	_snap_cam_yaw()
-	# Player position is set above, so the roamers land relative to where the
-	# save actually left them.
-	_restore_roamers()
-	hud_layer.visible = true
-
-
-# Roamer positions are saved so a reload does not shuffle the floor's threats.
-var _pending_roamers: Array = []
-
-
-# Every one of these is a reference INTO the level, and both the walk-in and the
-# load-a-save path build a brand new Level — so all of them have to be repointed
-# or the map is still describing the floor before this one.
-#
-# It lives in one function because it did not: _restore_save repointed three of
-# the seven, so a loaded run came back with no orb, no chest and no sprung trap
-# on the map while the level itself knew exactly where all of them were.
-func _point_minimap_at_level() -> void:
-	minimap_ctrl.maze        = current_level.maze
-	minimap_ctrl.visited     = visited
-	minimap_ctrl.exit_pos    = current_level.exit_wall_pos
-	minimap_ctrl.orb_cells   = current_level.orb_cells
-	minimap_ctrl.chest_cells = current_level.chest_cells
-	minimap_ctrl.looted      = current_level.looted
-	minimap_ctrl.found_traps = current_level.found_traps
-
-
-# Where the roamers stand, for the save.
-func _roamer_cells() -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
-	for r: Roamer in roamers:
-		if is_instance_valid(r):
-			out.append(r.cell)
-	return out
-
-
-var _pending_has_key: bool = true
-var _pending_door_open: bool = true
-
-
-func _restore_roamers() -> void:
-	for r: Roamer in roamers:
-		if is_instance_valid(r):
-			r.queue_free()
-	roamers.clear()
-	_engaged.clear()
-	_warden = null
-	_steps_since_spawn = 0
-	for key: Variant in _pending_roamers:
-		var rm: Roamer = Roamer.new()
-		rm.cell = SaveSystem.key_vec2i(key as String)
-		rm.tier = Enemy.roamer_tier(floor_num)
-		world.add_child(rm)
-		roamers.append(rm)
-	_pending_roamers = []
-
-	_has_key = _pending_has_key
-	_door_open = _pending_door_open
-	minimap_ctrl.warden_pos = Vector2i(-1, -1)
-	minimap_ctrl.key_pos = Vector2i(-1, -1)
-	if not _has_key and current_level.key_pos.x >= 0 and not current_level.key_taken:
-		minimap_ctrl.key_pos = current_level.key_pos
-	if not _has_key and current_level.warden_pos.x >= 0:
-		var w: Roamer = Roamer.new()
-		w.warden = true
-		w.cell = current_level.warden_pos
-		world.add_child(w)
-		roamers.append(w)
-		_warden = w
-		minimap_ctrl.warden_pos = w.cell
-	minimap_ctrl.queue_redraw()
-	# A loaded run arrives here with the geometry already built, so the door is
-	# hung once _has_key is known rather than during the build.
-	_sync_door()
-
-
-func _on_node_added(node: Node) -> void:
-	if node is RichTextLabel:
-		(node as RichTextLabel).add_theme_font_override("normal_font", _UI_FONT)
-	elif node is Label:
-		(node as Label).add_theme_font_override("font", _UI_FONT)
-	elif node is Button:
-		var btn := node as Button
-		btn.add_theme_font_override("font", _UI_FONT)
-		# Thumb-sized on a phone; on a wide screen, under a mouse or a pad, the
-		# size the fight's windows use.
-		if Build.steam():
-			btn.add_theme_font_size_override("font_size", SidePanel.TEXT)
-		else:
-			btn.add_theme_font_size_override("font_size", 20)
-			var cur: Vector2 = btn.custom_minimum_size
-			if cur.y > 0:
-				btn.custom_minimum_size = Vector2(cur.x, roundf(cur.y * 1.5))
-	elif node is Control:
-		(node as Control).add_theme_font_override("font", _UI_FONT)

@@ -860,7 +860,7 @@ func resists_status(status_id: String) -> bool:
 # ── The Necromancer ───────────────────────────────────────────────────────────
 #
 # The final boss, at the end of the corridor under the Abyss. Everything it
-# does is its own, run by CombatScene._necro_act rather than the shared demon
+# does is its own, run by CombatEnemyTurns._necro_act rather than the shared demon
 # turn:
 #   * Each of its phases it takes one of the four dragons' forms (ice, thunder,
 #     fire or dark, never the one it just had) and wears that dragon's affinity
@@ -871,7 +871,7 @@ func resists_status(status_id: String) -> bool:
 #     press-turn icon, so the Necromancer's two icons grow to five with three
 #     minions up.
 #   * It clears debuffs off its side (Steady) or buffs off yours (Purge) when
-#     there is something to clear, and not every phase.
+#     there is something to clear, then not again for three phases.
 const NECROMANCER: String = "Necromancer"
 const NECRO_FORMS: Array[String] = ["ice", "thunder", "fire", "dark"]
 const NECRO_ICONS: int = 2
