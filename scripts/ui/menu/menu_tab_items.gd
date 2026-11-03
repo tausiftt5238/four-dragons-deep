@@ -97,8 +97,13 @@ func _add_item(list: SlotList, item_id: String) -> void:
 		# Ailments end with the fight, so an item that only cures one has nothing
 		# to do out here. It still lists — the player wants to see what they are
 		# carrying — but the field offers no Use for it.
+		# Lethe Water opens its own screen, where the points are placed again.
+		if item.has("respec"):
+			actions.append({
+				text = "Use", disabled = not p.can_use_item(item),
+				press = func() -> void: _m.respec_requested.emit(item)})
 		# A seed or a stone can go to anyone on the roster, so Use asks who.
-		if PlayerCharacter.is_keepsake(item) and not p.recruited.is_empty():
+		elif PlayerCharacter.is_keepsake(item) and not p.recruited.is_empty():
 			actions.append({
 				text = "Use", disabled = false,
 				press = func() -> void:

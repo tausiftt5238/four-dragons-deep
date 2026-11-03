@@ -310,6 +310,25 @@ func _show_level_up(before: Dictionary, after: Dictionary,
 	_get_overlay_layer().add_child(ui)
 
 
+# Lethe Water: the level-up screen with every spent point back in hand. The
+# menu stays open underneath and shows the new numbers when it closes.
+func _show_respec(item: Dictionary, menu: MenuUI) -> void:
+	var p: PlayerCharacter = main.player_char
+	var ui: LevelUpUI = LevelUpUI.new()
+	ui.player = p
+	ui.respec_item = item
+	ui.respec_points = p.respec_points()
+	ui.before = _player_snapshot()
+	ui.after = ui.before.duplicate()
+	ui.after.merge(p.respec_floor(), true)
+	ui.dismissed.connect(func() -> void:
+		ui.queue_free()
+		if is_instance_valid(menu):
+			menu._refresh()
+	)
+	_get_overlay_layer().add_child(ui)
+
+
 func _show_game_over() -> void:
 	Sfx.play("game_over")
 	Records.add("deaths")

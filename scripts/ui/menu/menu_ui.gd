@@ -7,6 +7,9 @@ signal menu_closed
 signal load_requested
 signal title_requested
 signal quit_requested
+# Lethe Water, used from the Items tab: Main opens the screen that places the
+# points again, over the menu.
+signal respec_requested(item: Dictionary)
 
 
 var player: PlayerCharacter

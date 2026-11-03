@@ -258,6 +258,11 @@ monster on your roster, benched ones included. Monsters have no Luck, so the
 Seed of Luck is the hero's. What a monster is given stays with it, and goes
 with it if you sell it.
 
+**Lethe Water** takes back every point the hero has placed at level-ups, to
+place again; what seeds added stays. Use it from the Items tab, outside a
+fight, and you can still cancel before you confirm. Any orb sells it for
+5000 gold, and it drops very rarely from chests and kills.
+
 ---
 
 ## The four dragons

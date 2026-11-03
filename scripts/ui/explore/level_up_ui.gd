@@ -2,6 +2,10 @@
 # Shown after a battle win causes a level-up.
 # HP and MP increases are shown automatically; the player distributes
 # 3 points per level gained among STR, DEF, MAG, and AGL.
+#
+# Lethe Water opens it too (respec_item set): every point the hero has spent
+# comes back to place again, `after` holds the stats they fall back to, and
+# the screen can be cancelled, with the water kept, until Confirm.
 class_name LevelUpUI extends Control
 
 signal dismissed
@@ -11,6 +15,9 @@ var after:   Dictionary       # snapshot after gain_exp (HP/MP already updated)
 var player:  PlayerCharacter  # live reference for apply_stat_bonus
 
 const POINTS_PER_LEVEL: int = 3
+
+var respec_item:   Dictionary = {}
+var respec_points: int = 0
 
 var _pts_remaining: int = 0
 var _allocated:     Dictionary = {str=0, def=0, mag=0, agl=0, luk=0}
@@ -25,13 +32,26 @@ func _ready() -> void:
 	Sfx.play("level_up")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var levels_gained: int = after["lv"] - before["lv"]
-	_pts_remaining = POINTS_PER_LEVEL * levels_gained
+	_pts_remaining = respec_points if _respec() else POINTS_PER_LEVEL * levels_gained
 	_build()
+
+
+func _respec() -> bool:
+	return not respec_item.is_empty()
+
+
+# No backs out of Lethe Water before it is drunk. Taken here so the menu
+# underneath does not close instead.
+func _input(event: InputEvent) -> void:
+	if _respec() and event.is_action_pressed("no"):
+		get_viewport().set_input_as_handled()
+		dismissed.emit()
 
 
 func _build() -> void:
 	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.04, 0.03, 0.06, 0.88)
+	# Over the menu (Lethe Water) the veil is solid, or the menu reads through.
+	bg.color = Color(0.04, 0.03, 0.06, 0.98 if _respec() else 0.88)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -64,14 +84,15 @@ func _build() -> void:
 
 	# ── Header ────────────────────────────────────────────────────────────────
 	var header: Label = Label.new()
-	header.text = "*   LEVEL UP!   *"
+	header.text = "*   LETHE WATER   *" if _respec() else "*   LEVEL UP!   *"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_color_override("font_color", Color(1.0, 0.88, 0.18))
 	header.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(header)
 
 	var lv_lbl: Label = Label.new()
-	lv_lbl.text = "LEVEL  %d  ->  %d" % [before["lv"], after["lv"]]
+	lv_lbl.text = "Place your points again" if _respec() \
+			else "LEVEL  %d  ->  %d" % [before["lv"], after["lv"]]
 	lv_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lv_lbl.add_theme_color_override("font_color", Color(0.90, 0.82, 0.50))
 	vbox.add_child(lv_lbl)
@@ -93,8 +114,11 @@ func _build() -> void:
 
 	_auto_row(auto_grid, "Max HP", before["max_hp"], after["max_hp"])
 	_auto_row(auto_grid, "Max MP", before["max_mp"], after["max_mp"])
-
-	vbox.add_child(HSeparator.new())
+	# Lethe Water raises nothing by itself: what DEF and MAG end up at decide it.
+	var auto_rule: HSeparator = HSeparator.new()
+	vbox.add_child(auto_rule)
+	for c: Control in [auto_lbl, auto_grid, auto_rule]:
+		c.visible = not _respec()
 
 	# ── Stat point allocation ─────────────────────────────────────────────────
 	var pts_row: HBoxContainer = HBoxContainer.new()
@@ -102,7 +126,7 @@ func _build() -> void:
 	vbox.add_child(pts_row)
 
 	var invest_lbl: Label = Label.new()
-	invest_lbl.text = "Invest  %d  points:" % (POINTS_PER_LEVEL * (after["lv"] - before["lv"]))
+	invest_lbl.text = "Invest  %d  points:" % _pts_remaining
 	invest_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	invest_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.55))
 	pts_row.add_child(invest_lbl)
@@ -132,6 +156,13 @@ func _build() -> void:
 	_confirm_btn.custom_minimum_size = Vector2(130, 36)
 	_confirm_btn.pressed.connect(_on_confirm)
 	btn_row.add_child(_confirm_btn)
+
+	if _respec():
+		var cancel: Button = Button.new()
+		cancel.text = "Cancel"
+		cancel.custom_minimum_size = Vector2(130, 36)
+		cancel.pressed.connect(func() -> void: dismissed.emit())
+		btn_row.add_child(cancel)
 
 	_refresh_ui()
 
@@ -226,6 +257,10 @@ func _refresh_ui() -> void:
 
 
 func _on_confirm() -> void:
+	if _respec():
+		player.respec(_allocated, respec_item)
+		dismissed.emit()
+		return
 	player.apply_stat_bonus(_allocated)
 	# Passive skills used to be picked here, three at a time, until the eight of
 	# them ran out a handful of levels in. They are off while they get reworked;

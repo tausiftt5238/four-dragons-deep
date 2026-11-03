@@ -312,10 +312,33 @@ static func roll_seed(chance_pct: int) -> Dictionary:
 	return seed_of(stats[randi() % stats.size()] as String)
 
 
-# The stone roll, then the seed roll: whichever comes up, or {}.
-static func roll_keepsake(stone_pct: int, seed_pct: int) -> Dictionary:
+# Lethe Water's roll, then the stone's, then the seed's: whichever comes up,
+# or {}.
+static func roll_keepsake(stone_pct: int, seed_pct: int, lethe_per_mille: int = 0) -> Dictionary:
+	if randi() % 1000 < lethe_per_mille:
+		return lethe_water()
 	var stone: Dictionary = roll_stone(stone_pct)
 	return stone if not stone.is_empty() else roll_seed(seed_pct)
+
+
+# ── Lethe Water ───────────────────────────────────────────────────────────────
+#
+# Takes back every point the hero has spent on levelling up, to be placed
+# again (PlayerCharacter.respec); seeds stay where they went. Used from the
+# menu, never in a fight. Every orb sells it, at a price that makes it a
+# decision, and it drops only now and then: odds in a thousand, so a run of
+# about 170 fights and 40 chests turns one up about a third of the time.
+const LETHE_PRICE: int = 5000
+const LETHE_FROM_KILL:  int = 1   # per thousand
+const LETHE_FROM_CHEST: int = 5   # per thousand
+
+
+static func lethe_water() -> Dictionary:
+	var d: Dictionary = consumable("lethe_water", "Lethe Water",
+			"Forget every level-up point the hero has spent, and place them again. Seeds stay.",
+			0, 0, 1)
+	d["respec"] = true
+	return _priced(d, LETHE_PRICE)
 
 
 # ── Predefined scrolls ────────────────────────────────────────────────────────

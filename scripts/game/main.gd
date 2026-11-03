@@ -1223,6 +1223,9 @@ func _open_menu() -> void:
 	menu.title_requested.connect(func():
 		get_tree().change_scene_to_file("res://scenes/title.tscn")
 	)
+	menu.respec_requested.connect(func(item: Dictionary) -> void:
+		_screens._show_respec(item, menu)
+	)
 	menu.quit_requested.connect(func():
 		_saves._autosave()
 		Records.flush()
@@ -1339,7 +1342,8 @@ func _loot_chest(wall: Vector2i) -> Dictionary:
 	player_char.gold += coin
 	var items: Array = []
 
-	var stone: Dictionary = Item.roll_keepsake(Item.STONE_FROM_CHEST, Item.SEED_FROM_CHEST)
+	var stone: Dictionary = Item.roll_keepsake(Item.STONE_FROM_CHEST, Item.SEED_FROM_CHEST,
+			Item.LETHE_FROM_CHEST)
 	if not stone.is_empty():
 		player_char.add_item(stone, 1)
 		items.append(stone)

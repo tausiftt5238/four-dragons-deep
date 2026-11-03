@@ -33,6 +33,15 @@ static func portrait() -> AtlasTexture:
 
 # What Captain Ysolde hands over at the start (IntroUI.LINES says so in words).
 const START_GOLD: int = 500
+
+# The hero's stats at level one, before any level-up points or seeds.
+const BASE_STATS: Dictionary = {str = 5, def = 4, mag = 2, agl = 3, luk = 3}
+
+# Points seeds and Prism Stones have added to the hero, per stat. Kept apart
+# so Lethe Water gives back what the level-ups paid for and leaves the seeds
+# where they were eaten. A save from before this has none recorded, so there
+# its seeds come back with the rest.
+var seed_stats: Dictionary = {}
 var gold: int = START_GOLD
 
 # What he is carrying into the dark: a weapon, a worn piece, and two trinkets.
@@ -84,7 +93,9 @@ func unequip_spell(spell_id: String) -> void:
 func battle_items() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for item: Dictionary in inventory:
-		if item.get("type", "") == "consumable" and int(item.get("qty", 0)) > 0:
+		# Lethe Water is for the field: points are not put back mid-fight.
+		if item.get("type", "") == "consumable" and int(item.get("qty", 0)) > 0 \
+				and not item.has("respec"):
 			out.append(item)
 	return out
 
@@ -616,11 +627,8 @@ var inventory: Array[Dictionary] = []
 
 func _ready() -> void:
 	lv  = 1
-	str = 5
-	def = 4
-	mag = 2
-	agl = 3
-	luk = 3
+	for st: String in BASE_STATS:
+		set(st, BASE_STATS[st])
 	exp = 0
 	exp_to_next = hero_exp_to_next(1)
 	# The run opens holding one spell. On the bare formula that is 10 MP — a
@@ -879,6 +887,8 @@ func remove_item(item: Dictionary, count: int = 1) -> void:
 func can_use_item(item: Dictionary) -> bool:
 	match item["type"]:
 		"consumable":
+			if item.has("respec"):
+				return respec_points() > 0
 			# A stone always has something to do: the ceiling it raises is never
 			# already full.
 			if item.get("max_hp_gain", 0) > 0 or item.get("max_mp_gain", 0) > 0 \
@@ -909,6 +919,7 @@ func use_item(item: Dictionary) -> String:
 				var raised: Array = Item.SEEDS.keys() if stat == Item.ALL_STATS else [stat]
 				for st: Variant in raised:
 					set(st as String, int(get(st as String)) + int(item.get("stat_up_amount", 1)))
+					seed_stats[st] = int(seed_stats.get(st, 0)) + int(item.get("stat_up_amount", 1))
 				# Defence and Magic feed the HP and MP ceilings. Recomputing
 				# refills them, which a seed should not do: keep what was there.
 				var keep_hp: int = hp
@@ -965,6 +976,41 @@ func sort_inventory(mode: String = "type") -> void:
 		return (a["name"] as String) < (b["name"] as String)
 	)
 
+# ── Lethe Water ───────────────────────────────────────────────────────────────
+
+# What each stat comes back to: level one, plus whatever seeds put there.
+func respec_floor() -> Dictionary:
+	var out: Dictionary = {}
+	for st: String in BASE_STATS:
+		out[st] = int(BASE_STATS[st]) + int(seed_stats.get(st, 0))
+	return out
+
+
+# The level-up points the hero has spent, to be placed again.
+func respec_points() -> int:
+	var floor_stats: Dictionary = respec_floor()
+	var total: int = 0
+	for st: String in floor_stats:
+		total += maxi(0, int(get(st)) - int(floor_stats[st]))
+	return total
+
+
+# Takes every level-up point back, puts them where `alloc` says and uses up
+# the water. HP and MP keep what they had, as after a seed, while Defence and
+# Magic move their ceilings.
+func respec(alloc: Dictionary, item: Dictionary) -> void:
+	var floor_stats: Dictionary = respec_floor()
+	for st: String in floor_stats:
+		set(st, int(floor_stats[st]) + int(alloc.get(st, 0)))
+	var keep_hp: int = hp
+	var keep_mp: int = mp
+	compute_max_hp()
+	compute_max_mp()
+	hp = mini(keep_hp, max_hp)
+	mp = mini(keep_mp, max_mp)
+	remove_item(item, 1)
+
+
 # ── Saving ────────────────────────────────────────────────────────────────────
 
 # Everything about the hero a save keeps, as plain data (Main writes it with
@@ -976,6 +1022,7 @@ func to_save() -> Dictionary:
 		exp = exp, exp_to_next = exp_to_next,
 		hp = hp, max_hp = max_hp, mp = mp, max_mp = max_mp,
 		hp_bonus = _hp_bonus, mp_bonus = _mp_bonus,
+		seed_stats = seed_stats,
 		gold = gold,
 		known_spells        = known_spells,
 		equipped_spells     = equipped_spells,
@@ -1038,6 +1085,7 @@ func load_save(pdata: Dictionary) -> void:
 	max_mp      = int(pdata["max_mp"])
 	_hp_bonus   = int(pdata.get("hp_bonus", 0))
 	_mp_bonus   = int(pdata.get("mp_bonus", 0))
+	seed_stats  = (pdata.get("seed_stats", {}) as Dictionary).duplicate()
 	gold        = int(pdata["gold"])
 
 	known_spells.clear()
