@@ -541,6 +541,7 @@ func _build_party_slot(member: CharacterSheet) -> Control:
 			icon.modulate = Color(0.55, 0.85, 0.65)
 		_stand_figure(icon, demon)
 	icon.add_child(StatusOverlay.new(member))
+	MirrorBubble.attach(icon, member)
 	card.add_child(icon)
 
 	var marker: UIGlyph = UIGlyph.caret(true, Color(1.0, 0.92, 0.45))

@@ -178,6 +178,7 @@ builds override.
 | `combat_scene_portable.gd`, `combat_scene_steam.gd` | The screen layout of each build |
 | `combat_result_ui.gd` | The results card after a win |
 | `status_overlay.gd` | Ailment marks drawn over a portrait |
+| `mirror_bubble.gd` | The glass bubble round a fighter holding a mirror |
 | `fx/` | `SlashFX`, `SpellFX`, `BanishFX`, `StageFX`, `StageArrows` |
 | `negotiation/` | `CombatNegotiation` and one helper per kind of talk (bribe, reason, recruit, threaten) |
 
