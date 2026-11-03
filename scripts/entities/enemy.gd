@@ -860,7 +860,7 @@ func resists_status(status_id: String) -> bool:
 # ── The Necromancer ───────────────────────────────────────────────────────────
 #
 # The final boss, at the end of the corridor under the Abyss. Everything it
-# does is its own, run by CombatScene._necro_act rather than the shared demon
+# does is its own, run by CombatEnemyTurns._necro_act rather than the shared demon
 # turn:
 #   * Each of its phases it takes one of the four dragons' forms (ice, thunder,
 #     fire or dark, never the one it just had) and wears that dragon's affinity

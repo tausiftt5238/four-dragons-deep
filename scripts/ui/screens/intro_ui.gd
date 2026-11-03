@@ -88,7 +88,7 @@ const RESCUE_LINES: Array[String] = [
 ]
 
 # What this telling says, and how it closes. The defaults are the main game's
-# opening; the Abyss sets its own (TitleScreen, Main._show_game_over).
+# opening; the Abyss sets its own (TitleScreen, MainScreens._show_game_over).
 var lines: Array[String] = LINES
 var closing_text: String = "And so, the descent begins."
 # The rescue: the captain hauling the fallen hero up a rope, rising as she

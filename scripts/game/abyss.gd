@@ -63,7 +63,7 @@ static func note_depth(depth: int) -> void:
 
 # Beating the Necromancer opens the mode. `keep_hero`: the hero who did it
 # becomes the one every new descent starts with (the first clear always; a
-# later one only if the player says so, Main._show_congratulations).
+# later one only if the player says so, MainScreens._show_congratulations).
 static func unlock(player_data: Dictionary, keep_hero: bool = true) -> void:
 	var cfg: ConfigFile = _cfg()
 	cfg.set_value("abyss", "unlocked", true)
@@ -296,7 +296,7 @@ static var run_seed: int = 0
 
 # The Abyss ends: the last of its bosses waits at END_DEPTH, the Ancient
 # Multihued Dragon (the template marked `final`), and beating it is the end of
-# the descent (Main._show_abyss_end).
+# the descent (MainScreens._show_abyss_end).
 const END_DEPTH: int = 50
 
 

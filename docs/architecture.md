@@ -133,13 +133,20 @@ it is read at run time.
 
 | File | Class | What it does |
 | --- | --- | --- |
-| `main.gd` | `Main` | The run: floors, walking, starting and ending fights, every overlay, saving |
+| `main.gd` | `Main` | The run: floors, walking, starting and ending fights, the menu, chests, the orb |
+| `main_saves.gd` | `MainSaves` | Saving and loading a run, the save screens, autosaves |
+| `main_screens.gd` | `MainScreens` | Screens over the dungeon: fight results, level-ups, game over, the endings |
+| `main_hazards.gd` | `MainHazards` | Each band's floor: ice, charged plates, lava, traps, teleporters |
+| `main_roamers.gd` | `MainRoamers` | The monsters walking a floor, the warden and its key |
 | `abyss.gd` | `Abyss` | The endless mode after the ending |
 
-`main.gd` is long. Its sections, in order: the two panes, level loading,
-one-time setup, per-frame movement, the wide-screen HUD, roaming demons,
-starting a fight, after a fight, screens over the dungeon, floor hazards,
-the menu, the side panel, chests, the orb, saving and loading.
+`Main` keeps the state (the player, the floor, which overlay is open); the
+four `Main*` helpers hold code, not state of their own beyond a few flags,
+and reach the run through `main`. `Main` reaches them through `_saves`,
+`_screens`, `_hazards` and `_roaming`. Its own sections, in order: the two
+panes, level loading, one-time setup, per-frame movement, the wide-screen
+HUD, starting a fight, after a fight, the menu, the side panel, chests, the
+orb.
 
 ### world/
 
@@ -153,18 +160,21 @@ the menu, the side panel, chests, the orb, saving and loading.
 
 ### ui/combat/
 
-`combat_scene.gd` is the biggest file in the game. Its sections, in order:
-helpers, submenus, item and action logic, who is acting, a demon losing its
-nerve, player-side actions, the enemy side, ailments, calling demons in and
-out, swapping, recalling, the party and enemy line-ups, target picking,
-refreshing, the phase flow, fleeing, actions and buttons, skills, leeches,
-action icons, damage numbers, casting, wide casts, dispels, physical swings,
-enemy actions, the Necromancer, wardens, wide casts from the other side, and
-the layout hooks the two builds override.
+A battle is one scene, `CombatScene`, with its code in four files. The
+scene keeps the state and the screen; the three helpers hold a reference back
+to it (`cs`) and the scene reaches them through `_enemy_turns`, `_actions`
+and `_roster`. The scene's own sections, in order: helpers, submenus, item
+logic, who is acting, whose turn it is, player-side actions, the party and
+enemy line-ups, target picking, refreshing, the phase flow, fleeing, actions
+and buttons, action icons, damage numbers, and the layout hooks the two
+builds override.
 
 | File | What it does |
 | --- | --- |
-| `combat_scene.gd` | All of the battle: phases, actions, enemy turns, bosses |
+| `combat_scene.gd` | The screen and the flow of turns: phases, choosing actions, refreshing |
+| `combat_enemy_turns.gd` | The monsters' side: targets, ailments, each turn, the Necromancer, wardens, wide casts |
+| `combat_actions.gd` | What a skill, spell or swing does: skills, bites, casting, wide spells, dispels, attacks |
+| `combat_roster.gd` | Who is on the field: begging off, summoning, swapping, recalling, leaving |
 | `combat_scene_portable.gd`, `combat_scene_steam.gd` | The screen layout of each build |
 | `combat_result_ui.gd` | The results card after a win |
 | `status_overlay.gd` | Ailment marks drawn over a portrait |
@@ -189,14 +199,14 @@ the layout hooks the two builds override.
   and a sprite folder under `resources/characterSprites/`. Then re-export the
   CSV and the bestiary (`tools/README.md`).
 - **A new spell or skill:** an entry in `Spell.DATA`. Casting goes through
-  `CombatScene`'s "Casting" section; the effect art is in `resources/spellFX/`.
+  the "Casting" section of `combat_actions.gd`; the effect art is in `resources/spellFX/`.
 - **A new item or piece of gear:** `Item`, `Weapon`, `Armor` or `Accessory`.
   Shops read the same tables by floor tier.
 - **A new boss behaviour:** see "The Necromancer" and "Wardens" in
-  `combat_scene.gd`; a boss acts through its own `_x_act` function, called
-  from the enemy phase.
+  `combat_enemy_turns.gd`; a boss acts through its own `_x_act` function,
+  called from `CombatScene._enemy_phase`.
 - **A new screen over the dungeon:** make a `Control` in `ui/explore/` or
-  `ui/screens/`, have `Main` create it on the overlay layer
+  `ui/screens/`, have `MainScreens` create it on the overlay layer
   (`_get_overlay_layer`), and close it from its own signal.
 - **A new sound:** a recipe in `data/sfx_recipes.json`, then `Sfx.play("name")`.
 
@@ -204,7 +214,7 @@ the layout hooks the two builds override.
 
 | File (`user://`) | Written by |
 | --- | --- |
-| `save_slot_N.json` | `SaveSystem`, from `Main._gather_save_data` |
+| `save_slot_N.json` | `SaveSystem`, from `MainSaves._gather_save_data` |
 | `settings.cfg` | `Settings` |
 | `records.cfg` | `Records` |
 | `abyss.cfg`, `abyss_hero.json` | `Abyss` |
@@ -228,6 +238,11 @@ templates, and the screens in `ui/`. A new game would keep the first list,
 replace the tables, and write its own `Main`.
 
 Things that will surprise you:
+
+- A helper's methods keep their leading underscore although the host calls
+  them (`_saves._autosave()`): they are private to the pair, not to the file.
+  Anything that calls a method by name (`call_deferred("_x")`) has to name
+  the helper that holds it.
 
 - The real art and music are not in git. A clone shows silhouettes and plays
   silence until `tools/real_art.sh` and the music folder are filled in (see

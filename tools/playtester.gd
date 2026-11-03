@@ -321,7 +321,7 @@ func _tick() -> void:
 		await _orb_tick()
 		return
 	if main.save_open:
-		main._close_save_layer()
+		main._saves._close_save_layer()
 		return
 	if main.menu_open:
 		main._close_menu()
@@ -331,7 +331,7 @@ func _tick() -> void:
 	if main.floor_num != _orb_floor:
 		_new_floor()
 	if stop_floor > 0 and main.floor_num >= stop_floor:
-		main._do_save(bot_slot)
+		main._saves._do_save(bot_slot)
 		_result = "stopped"
 		_event("segment ends on floor %d (saved to slot %d)" % [main.floor_num, bot_slot])
 		_done = true
@@ -497,7 +497,7 @@ func _on_game_over(ui: Node) -> void:
 	ui.queue_free()
 	main.in_combat = false
 	_event("reloading slot %d" % slot)
-	await main._do_load(slot, true)
+	await main._saves._do_load(slot, true)
 	await _wait(1.0)
 	_new_floor()
 
@@ -651,7 +651,7 @@ func _goal() -> Dictionary:
 			_no_prey = true
 			_event("no roamers turning up; done hunting on this floor")
 		if _wander.x < 0 or _wander == main.player_pos or not reachable.call(_wander):
-			_wander = main._far_open_cell(8)
+			_wander = main._roaming._far_open_cell(8)
 		if reachable.call(_wander):
 			return {cell = _wander, why = "wander for roamers"}
 
@@ -891,7 +891,7 @@ func _orb_visit(ui: OrbUI) -> void:
 	_set_party()
 
 	await _show_tab(ui, "save")
-	main._do_save(bot_slot)
+	main._saves._do_save(bot_slot)
 	await _wait(0.3)
 
 
@@ -1771,7 +1771,7 @@ func _hero_options(sc: CombatScene, foes: Array[Enemy], out: Array[Dictionary]) 
 
 	# Calling a demon into an empty place.
 	if sc.party.size() < CombatScene.MAX_PARTY:
-		var avail: Array[String] = sc._available_summons()
+		var avail: Array[String] = sc._roster._available_summons()
 		if not avail.is_empty():
 			var best: String = avail[0]
 			var best_lv: int = -1
@@ -1929,8 +1929,8 @@ func _demon_options(sc: CombatScene, demon: Enemy, foes: Array[Enemy], out: Arra
 	var silenced: bool = demon.has_status(Status.SILENCE)
 	for i: int in known.size():
 		var skill: Dictionary = known[i]
-		var hp_price: int = sc._demon_hp_cost(demon, skill)
-		var cost: int = sc._demon_skill_cost(demon, skill)
+		var hp_price: int = sc._actions._demon_hp_cost(demon, skill)
+		var cost: int = sc._actions._demon_skill_cost(demon, skill)
 		if hp_price > 0:
 			if demon.hp <= hp_price * 2:
 				continue
@@ -2009,12 +2009,12 @@ func _do(sc: CombatScene, pick: Dictionary) -> void:
 			sc._ally_target = pick.get("ally", null)
 			sc._commit_item(item)
 		"summon":
-			sc._on_summon(pick["name"] as String)
+			sc._roster._on_summon(pick["name"] as String)
 		"talk":
 			var f: Enemy = pick["target"]
 			_talked[f.get_instance_id()] = true
 			if f.enemy_name in main.player_char.recruited:
-				sc._prompt_tribute(false)
+				sc._roster._prompt_tribute(false)
 			else:
 				recruits.append(f.enemy_name)
 				sc._on_talk("Recruit")

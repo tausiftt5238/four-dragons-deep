@@ -197,11 +197,11 @@ func _open_tab() -> void:
 		_tab = "Skills" if "Skills" in open else (open[0] if not open.is_empty() else "Skills")
 	match _tab:
 		"Skills":
-			_show_skills_submenu()
+			_actions._show_skills_submenu()
 		"Item":
 			_show_item_submenu()
 		"Summon":
-			_show_summon_submenu()
+			_roster._show_summon_submenu()
 		"Talk":
 			_show_talk_targets()
 		_:
@@ -287,7 +287,7 @@ func _talk_to(foe: Enemy) -> void:
 	if enemy.enemy_name in player.recruited:
 		_log("[color=#ffd479]%s looks past you — and sees its own face already standing with you.[/color]"
 				% enemy.display_name())
-		_prompt_tribute(false)
+		_roster._prompt_tribute(false)
 		return
 	_show_talk_submenu()
 
