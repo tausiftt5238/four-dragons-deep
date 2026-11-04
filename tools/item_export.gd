@@ -131,6 +131,8 @@ func _every_item() -> Array[Dictionary]:
 static func _kind(d: Dictionary) -> String:
 	if d.has("max_hp_gain") or d.has("max_mp_gain"):
 		return "stone"
+	if d.has("poppet"):
+		return "poppet"
 	if d.has("revive"):
 		return "revive"
 	if d.has("mirror"):

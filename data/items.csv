@@ -29,7 +29,9 @@ eye_drops,Eye Drops,cure,1,45,,,blind,,,,,,,,,,Cures Blind.
 panacea,Panacea,cure,4,300,,,all,,,,,,,,,,Cures all ailments.
 heartstone,Heartstone,stone,1,45,,,,,,,15,,,,,,"Raises maximum HP by 15, for good."
 wellstone,Wellstone,stone,1,45,,,,,,,,8,,,,,"Raises maximum MP by 8, for good."
+lethe_water,Lethe Water,restore,1,5000,,,,,,,,,,,,,"Forget every level-up point the hero has spent, and place them again. Seeds stay."
 revival_feather,Revival Feather,revive,2,400,,,,,,,,,50,,,,Brings a fallen ally back with half their HP.
+straw_poppet,Straw Poppet,poppet,3,1500,,,,,,,,,,,,,"Breaks in the hero's place when they fall, leaving them on their feet with half their HP."
 attack_mirror,Attack Mirror,mirror,1,1000,,,,,,,,,,,,,Reflects every physical attack at the party until your next turn.
 magic_mirror,Magic Mirror,mirror,1,1000,,,,,,,,,,,,,Reflects every spell cast at the party until your next turn.
 venom_flask,Venom Flask,ailment,1,45,,,,poison,,,,,,,,,Throws a vial of poison at an enemy.

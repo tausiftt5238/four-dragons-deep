@@ -1595,10 +1595,19 @@ func _watch_hp(who: CharacterSheet) -> void:
 	var mp_back: Callable = _on_mp_gained.bind(who)
 	if not who.mp_gained.is_connected(mp_back):
 		who.mp_gained.connect(mp_back)
+	if who is PlayerCharacter and not (who as PlayerCharacter).poppet_broke.is_connected(_on_poppet_broke):
+		(who as PlayerCharacter).poppet_broke.connect(_on_poppet_broke)
 	var missed: Callable = _show_float.bind(who, "MISS", FLOAT_MISS)
 	if not who.evaded.is_connected(missed):
 		who.evaded.connect(missed)
 		who.evaded.connect(func() -> void: Sfx.play("miss"))
+
+
+# The blow that felled the hero broke a Straw Poppet instead; they are already
+# back up (PlayerCharacter.take_damage), so this only has to say so.
+func _on_poppet_broke() -> void:
+	_log("[color=#e8c060]A Straw Poppet breaks in %s's place! %s is back on their feet.[/color]" % [
+			_member_name(player), _member_name(player)])
 
 
 func _clear_floats() -> void:

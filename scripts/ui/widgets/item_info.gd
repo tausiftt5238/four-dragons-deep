@@ -131,6 +131,8 @@ static func supply(it: Dictionary) -> String:
 		var icons: String = icon("phys") if kind == "phys" \
 				else "".join(MAGIC.map(func(e: String) -> String: return icon(e)))
 		return "Reflects %s%sparty%s1 turn" % [icons, SEP, SEP]
+	if it.has("poppet"):
+		return "Hero falls: back up at %d%% HP%sused by itself" % [int(it["poppet"]), SEP]
 	if it.has("revive"):
 		if it.get("party", false):
 			return "Revives every fallen ally at %d%% HP" % int(it["revive"])

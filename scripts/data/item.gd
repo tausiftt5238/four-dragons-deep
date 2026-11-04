@@ -377,6 +377,21 @@ static func revival_feather() -> Dictionary:
 	d["price"] = 400
 	return d
 
+# Breaks in the hero's place: the blow that would fell the hero leaves them on
+# their feet at half HP instead, and one poppet is gone. Never used by hand; it
+# works from the pack (PlayerCharacter.take_damage), as often as there are
+# poppets in it. It stands in for the hero only, never a demon.
+const POPPET_ID: String = "straw_poppet"
+
+static func straw_poppet() -> Dictionary:
+	var d: Dictionary = consumable(POPPET_ID, "Straw Poppet",
+			"Breaks in the hero's place when they fall, leaving them on their feet with half their HP.",
+			0, 0, 3)
+	d["poppet"] = 50
+	d["price"] = 1500
+	d["depth"] = 2
+	return d
+
 static func scroll_venom() -> Dictionary:
 	return scroll("scroll_venom", "Scroll of Venom", "venom", "Venom",
 			"Poisons one monster.", 2)
@@ -655,7 +670,7 @@ static func drop_table() -> Array[Dictionary]:
 	var out: Array[Dictionary] = [
 		health_potion(), ether(), antidote(), stimulant(), echo_gem(),
 		venom_flask(), flash_powder(), silence_dust(), binding_web(),
-		fire_bomb(), ice_shard(), thunder_bead(), revival_feather(),
+		fire_bomb(), ice_shard(), thunder_bead(), revival_feather(), straw_poppet(),
 		super_potion(), hi_ether(), elixir(), potion_cauldron(), ether_fountain(),
 		scroll_cure(), scroll_cura(), scroll_cure_all(),
 		scroll_whet(), scroll_ward(), scroll_quicken(), scroll_stoke(),

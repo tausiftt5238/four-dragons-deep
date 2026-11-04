@@ -170,9 +170,14 @@ func _hazard_hurt(element: String, what: String, color: Color, quiet: bool) -> v
 		Affinity.NULL, Affinity.REPEL, Affinity.DRAIN:
 			dmg = 0
 	Sfx.play("trap")
+	var poppets: int = main.player_char.item_qty(Item.POPPET_ID)
 	if dmg > 0:
 		main.player_char.take_damage(dmg)
 		main._shake_camera()
+	# A poppet that broke is always told, even over the tile's first note.
+	if main.player_char.item_qty(Item.POPPET_ID) < poppets:
+		main._screens._show_hud_popup("%s  A Straw Poppet breaks in your place." % what, color)
+		return
 	# The first time, the note explaining the tile is on screen instead.
 	if not quiet:
 		main._screens._show_hud_popup("%s  -%d HP" % [what, dmg] if dmg > 0 else "%s  No effect." % what,

@@ -84,15 +84,16 @@ static func exp_prize(floor_num: int, jackpot: bool) -> int:
 	return per_fight * (EXP_JACKPOT_MULT if jackpot else 1)
 
 
-# A pair: one supply off this floor's shelf, mirrors aside (those are a
-# thousand gold each and would make a pair worth more than a jackpot).
+# A pair: one supply off this floor's shelf, mirrors and poppets aside (those
+# are a thousand gold and more each and would make a pair worth more than a
+# jackpot).
 # A jackpot: a piece of gear from the next band down, or the deepest band once
 # there is no deeper one. Found-only pieces are in the draw; this is luck.
 static func item_prize(supplies: Array[Dictionary], floor_num: int, jackpot: bool) -> Dictionary:
 	if not jackpot:
 		var pool: Array[Dictionary] = []
 		for it: Dictionary in supplies:
-			if not it.has("mirror"):
+			if not it.has("mirror") and not it.has("poppet"):
 				pool.append(it)
 		return pool[randi() % pool.size()].duplicate()
 	# In the Abyss, the jackpot is a piece off the next band's shelf.

@@ -93,9 +93,10 @@ func unequip_spell(spell_id: String) -> void:
 func battle_items() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for item: Dictionary in inventory:
-		# Lethe Water is for the field: points are not put back mid-fight.
+		# Lethe Water is for the field: points are not put back mid-fight. A
+		# Straw Poppet is never used by hand at all.
 		if item.get("type", "") == "consumable" and int(item.get("qty", 0)) > 0 \
-				and not item.has("respec"):
+				and not item.has("respec") and not item.has("poppet"):
 			out.append(item)
 	return out
 
@@ -825,6 +826,29 @@ func battle_agility() -> int:
 
 func battle_luck() -> int:
 	return effective_luk()
+
+
+# ── The Straw Poppet ──────────────────────────────────────────────────────────
+
+# A poppet broke in the hero's place (Item.straw_poppet). The battle logs it;
+# out of a fight, the trap that did it says so.
+signal poppet_broke
+
+
+# Every blow on the hero lands here, in a fight or out of one, so this is the
+# one place a poppet has to watch: a blow that leaves the hero at 0 breaks one
+# and stands them back up before anything else sees them fall.
+func take_damage(amount: int) -> int:
+	var dealt: int = super(amount)
+	if hp > 0:
+		return dealt
+	for it: Dictionary in inventory:
+		if it.get("id", "") == Item.POPPET_ID:
+			remove_item(it, 1)
+			heal(maxi(1, max_hp * int(it.get("poppet", 50)) / 100))
+			poppet_broke.emit()
+			break
+	return dealt
 
 
 # ── Inventory management ──────────────────────────────────────────────────────
